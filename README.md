@@ -1,2 +1,2 @@
 # fits_web_ql
-AC/C++  FITSWebQL trial re-implementation in Rust
+A C/C++  FITSWebQL trial re-implementation in Rust
