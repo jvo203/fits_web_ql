@@ -1,0 +1,10 @@
+body {       
+    background-image: url(paper_texture_08.png);
+    background-size: 100%;
+    background-repeat: repeat;
+
+    -moz-user-select:none;
+    -webkit-user-select:none;
+    user-select:none;
+    ::selection:none;
+}

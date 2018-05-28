@@ -1,0 +1,36 @@
+<!DOCTYPE html><html><head><meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>ALMAWebQL v3</title></head><body bgcolor="gray" style="background-image: url(/fitswebql/blackboard.jpg); background-size: 100%; background-repeat: repeat;">
+<H1><font color="black">ALMAWebQL v3 HTTP server powered by libmicrohttpd and µWS</font></H1>
+<H2><font color="black">ALMA datasetId: </font><input type="text" id="datasetId" style="font-size:100%" size="15" value="ALMA01031054"> <button onclick="view_alma()" style="font-size:100%">Submit</button><br></H2>
+<H2><button onclick="randomise_alma()" style="font-size:100%">Random Test</button><br></H2>
+<H4><font color="black">TEST PAGE VERSION 2017-08-30</font></H4>
+<script>
+  function pad(num, size) {
+  var s = num+"";
+  while (s.length < size) s = "0" + s;
+		    return s;
+		    } ;
+		    
+		    function randomise_alma()
+		    {
+		    var maxId = 9999 ;
+		    var Id = Math.floor((Math.random() * maxId) + 1);
+		    var datasetId = "ALMA0101" + pad(Id.toString(), 4) ;
+		    document.getElementById("datasetId").value = datasetId ;
+
+		    view_alma() ;
+		    }
+  
+  function view_alma(){var datasetId = document.getElementById("datasetId").value.trim();
+  if(datasetId != "")
+  {
+  var url = null ;
+
+  url = "/fitswebql/FITSWebQL.html?datasetId=" + datasetId ;
+  
+  window.location.href = url;
+  }
+  else alert("empty datasetId string !");}
+</script>
+</body>
+</html>

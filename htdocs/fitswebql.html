@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>FITSWebQL</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">    
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>        
+    <link rel="stylesheet" href="fitswebql.css"/>
+    <script src="fitswebql.js"></script>
+  </head>
+  <body>
+
+    <div class="container">
+      <div id="requirements" class="modal fade" role="dialog">
+	<div class="modal-dialog">
+	  <div class="modal-content">
+	    <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" style="color:red;">&times;</button>
+              <h4 style="color:#a94442;">FITS Header Requirements</h4>
+            </div>
+	    <div class="modal-body">
+	      <p>If not all fields are present the software will offer reduced functionality</p>
+	      <table class="table normal">
+		<thead>
+		  <tr>
+		    <th>FIELD</th>
+		    <th>COMMENTS</th>		    
+		  </tr>
+		</thead>
+		<tbody>
+		  <tr>
+		    <td><i>BITPIX</i></td>
+		    <td>supported values: -64, -32, 8, 16, 32</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>NAXIS</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>NAXIS1</i></td>
+		    <td>width</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>NAXIS2</i></td>
+		    <td>height</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>NAXIS3</i></td>
+		    <td>depth (frequency or velocity)</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>NAXIS4</i></td>
+		    <td>polarisation (not supported yet)</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>BSCALE</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>BZERO</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>BMAJ</i></td>
+		    <td>synthesized beam display</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>BMIN</i></td>
+		    <td>synthesized beam display</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>BPA</i></td>
+		    <td>synthesized beam display</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>BTYPE</i></td>
+		    <td>i.e. 'Intensity'</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>OBJECT</i></td>
+		    <td>object name, i.e. 'MS1512-cB58'</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>BUNIT</i></td>
+		    <td>i.e. 'Jy/beam'</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CRVAL1</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CDELT1</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CRPIX1</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CUNIT1</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CRVAL2</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CDELT2</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CRPIX2</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CUNIT2</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CRVAL3</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CDELT3</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CRPIX3</i></td>
+		    <td></td>		    
+		  </tr>		  
+		  <tr>
+		    <td><i>CUNIT3</i></td>
+		    <td>i.e. 'Hz' or 'm/s'</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>CTYPE3</i></td>
+		    <td>if it contains a character 'f' (case insensitive) frequency is assumed; in case of 'v' velocity will be assumed for the third axis</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>RESTFRQ</i></td>
+		    <td>if the third axis contains velocity information, <i>Reference Frequency</i> to be used when converting velocity information into corresponding frequency</td>		    
+		  </tr>
+		  <tr>
+		    <td><i>SPECSYS</i></td>
+		    <td>i.e. 'LSRK'</td>		    
+		  </tr>		  		  
+		  <tr>
+		    <td><i>DATE&#8209;OBS</i></td>
+		    <td></td>		    
+		  </tr>
+		  <tr>
+		    <td><i>TIMESYS</i></td>
+		    <td>i.e. 'UTC'</td>		    
+		  </tr>
+		</tbody>
+	      </table>
+	    </div>
+	  </div>
+	</div>
+      </div>
+    </div>
+    
+    <!--header_bg_800x120.png-->
+    <div id="container" class="container">      
+      <img src="/fitswebql/header.jpg" class="img-responsive" width="100%">
+      <span>
+	<a href="https://www.nao.ac.jp/">
+	  <img src="/fitswebql/logo_naoj_all_s.png" class="img-responsive" style="width:215px" align="left">
+	</a>
+	<h1>FITSWebQL Personal Edition</h1>
+        <p>The software is geared mainly towards previewing radio-astronomy FITS data cubes, for example from ALMA. Support for optical astronomy FITS files is under consideration. FITS header field requirements: <i>CRVAL*</i>, <i>CDELT*</i>, <i>CRPIX*</i>, a full list is <a href="javascript:$('#requirements').modal('show');">available here</a>. In the future other FITS World Coordinate System representations will be supported too.</p>
+	<p>For help, to submit bug reports and feature requests please contact the developer: <a class="email" href="mailto:chris.zapart@nao.ac.jp">chris.zapart@nao.ac.jp</a></p>	
+      </span>      
+      <div>
+	<hr>
+	<h4 align="left">Select a FITS file to view (*.fits, *.FITS)</h4>
+	<br>
+      </div>
+      <div id="filesystem"/>
+    </div>    
+    
+    <script>
+      main() ;
+    </script>
+    
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-72136224-5', 'auto');
+      ga('send', 'pageview');
+
+    </script>
+    
+  </body>
+</html> 

@@ -1,14 +1,18 @@
 extern crate actix_web;
-use actix_web::{http, server, App, Path, Responder};
+use actix_web::*;
 
-fn index(info: Path<(u32, String)>) -> impl Responder {
-    format!("Hello {}! id:{}", info.1, info.0)
+fn index(req: HttpRequest) -> &'static str {
+    "FITSWebQL index page"
 }
 
 fn main() {
     server::new(
         || App::new()
-            .route("/{id}/{name}/index.html", http::Method::GET, index))
-        .bind("127.0.0.1:8080").unwrap()
+        .resource("/test", |r| r.f(index))
+        .handler(
+            "/",
+            fs::StaticFiles::new("htdocs")
+                .index_file("almawebql.html")))
+        .bind("localhost:8080").expect("Cannot bind to localhost:8080")
         .run();
 }

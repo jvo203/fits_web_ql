@@ -1,0 +1,55 @@
+body {
+    background-color: rgb(0,0,0);
+    color: lightgray;    
+    margin-top: 0.5%;
+    /*background-image: url(paper_texture_08.png);
+    background-size: 100%;*/
+}
+
+.email {
+    color: inherit;
+    font-style: italic;
+}
+
+.breadcrumb {
+    background-color: #222;
+    font-size: 1.25em;    
+}
+
+/* Add a slash symbol (/) before/behind each list item */
+ul.breadcrumb li+li:before {    
+    color: inherit;
+    content: "/";
+}
+
+tr:hover {
+    color: black;
+}
+
+.normal tr:hover {
+    color: inherit;
+}
+
+table {
+    font-size: 1.1em;
+}
+
+.modal-dialog {
+    /* new custom width */
+    min-width: 70%;
+
+    -moz-user-select:text;
+    -webkit-user-select:text;
+    user-select:text;    
+    ::-moz-selection { background: rgba(127,127,127,0.0) };
+    ::selection { background: rgba(127,127,127,0.0) };    
+}
+
+.modal-content {
+    background-color: rgb(0,0,0);
+    background-color: rgba(0,0,0,0.9);    
+}
+
+.modal-backdrop {
+   background-color: grey;
+}
