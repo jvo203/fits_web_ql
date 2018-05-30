@@ -1,8 +1,8 @@
 extern crate actix_web;
 use actix_web::*;
 
-fn fitswebql_entry(req: HttpRequest) -> Result<String> {
-    let fitswebql_path: String = req.match_info().query("path")?;
+fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
+    let fitswebql_path: String = req.match_info().query("path").unwrap();
     
     let query = req.query();
     
@@ -18,18 +18,22 @@ fn fitswebql_entry(req: HttpRequest) -> Result<String> {
 
     let dataset_id = match query.get("datasetId") {
         Some(x) => {x},
-        None => {return Ok(format!("Critical Error: no datasetId available"));}
+        None => {return HttpResponse::NotFound()
+            .content_type("text/html")
+            .body(format!("<p><b>Critical Error</b>: no datasetId available</p>"));}
     };
 
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id)
-    Ok(format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {}", fitswebql_path, db, table, dataset_id))
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {}", fitswebql_path, db, table, dataset_id))
 }
 
 fn main() {
-    #[cfg(default)]
+    #[cfg(not(feature = "local"))]
     let index_file = "almawebql.html" ;
 
-    #[cfg(local)]
+    #[cfg(feature = "local")]
     let index_file = "fitswebql.html" ;
 
     server::new(
