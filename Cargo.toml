@@ -5,7 +5,7 @@ authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 
 [features]
 default = []
-local = []
+server = []
 
 [dependencies]
 actix = "*"
