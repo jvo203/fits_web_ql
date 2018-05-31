@@ -10,3 +10,4 @@ server = []
 [dependencies]
 actix = "*"
 actix-web = "*"
+serde_json = "1.0"
