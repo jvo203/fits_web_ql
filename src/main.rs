@@ -31,13 +31,14 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
 
                     let dir_entry = json!({
                         "type" : "dir",
-                        "name" : format!("{:?}", entry.file_name()),
+                        "name" : format!("{}", entry.file_name().into_string().unwrap()),
                         "last_modified" : format!("{:?}", metadata.modified())
                     });
 
                     println!("{}", dir_entry.to_string());
 
                     contents.push_str(&dir_entry.to_string()) ;
+                    contents.push(',');
 
                     //contents.push_str(&format!("{{\"type\":\"dir\",\"name\":{:?},\"last_modified\":\"{:?}\"}},", entry.file_name(), metadata.modified() )) ;
                 }
