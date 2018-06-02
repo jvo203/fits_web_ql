@@ -1,3 +1,4 @@
+extern crate chrono;
 extern crate actix_web;
 
 #[macro_use]
@@ -21,35 +22,79 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
     let mut contents = String::from("[");
     let mut has_contents = false ;
 
+    /*let entry_set = path.read_dir().expect("read_dir call failed");
+    // ignore errors
+    let mut entries = entry_set.filter_map(|v| v.ok()).collect::<Vec<_>>();*/
+
+    //for entry in entries.sort_unstable() {
     for entry in path.read_dir().expect("read_dir call failed") {
         if let Ok(entry) = entry {
+            let file_name_buf = entry.file_name();
+            let file_name = file_name_buf.to_str().unwrap();
+
+            if file_name.starts_with(".") {
+                continue ;
+            }
+
             if let Ok(metadata) = entry.metadata() {
                 //println!("{:?}:{:?} filesize: {}", entry.path(), metadata, metadata.len());
 
                 if metadata.is_dir() {
                     has_contents = true ;
 
+                    let ts = match metadata.modified() {
+                        Ok(x) => x,
+                        Err(_) => std::time::UNIX_EPOCH
+                    } ;
+
+                    let std_duration = ts.duration_since(std::time::UNIX_EPOCH).unwrap() ;
+                    let chrono_duration = ::chrono::Duration::from_std(std_duration).unwrap() ;
+                    let unix = chrono::NaiveDateTime::from_timestamp(0, 0) ;
+                    let naive = unix + chrono_duration ;
+
                     let dir_entry = json!({
                         "type" : "dir",
                         "name" : format!("{}", entry.file_name().into_string().unwrap()),
-                        "last_modified" : format!("{:?}", metadata.modified())
+                        "last_modified" : format!("{}", naive.format("%c"))
                     });
 
                     println!("{}", dir_entry.to_string());
 
                     contents.push_str(&dir_entry.to_string()) ;
                     contents.push(',');
-
-                    //contents.push_str(&format!("{{\"type\":\"dir\",\"name\":{:?},\"last_modified\":\"{:?}\"}},", entry.file_name(), metadata.modified() )) ;
                 }
 
                 //filter by .fits .FITS
-                /*if metadata.is_file() {
-                    println!("extension: {:?}", entry.path().extension()) ;
+                if metadata.is_file() {
+                    let path = entry.path() ;
+                    let ext = path.extension().and_then(std::ffi::OsStr::to_str) ; 
+                    
+                    if ext == Some("fits") || ext == Some("FITS") {
+                        has_contents = true ;
 
-                    has_contents = true ;
-                    contents.push_str(&format!("{{\"type\":\"file\",\"name\":{:?},\"size\":{},\"last_modified\":\"{:?}\"}},", entry.file_name(), metadata.len(), metadata.modified() )) ;
-                }*/
+                        let ts = match metadata.modified() {
+                            Ok(x) => x,
+                            Err(_) => std::time::UNIX_EPOCH
+                        } ;
+
+                        let std_duration = ts.duration_since(std::time::UNIX_EPOCH).unwrap() ;
+                        let chrono_duration = ::chrono::Duration::from_std(std_duration).unwrap() ;
+                        let unix = chrono::NaiveDateTime::from_timestamp(0, 0) ;
+                        let naive = unix + chrono_duration ;
+
+                        let file_entry = json!({
+                            "type" : "file",
+                            "name" : format!("{}", entry.file_name().into_string().unwrap()),
+                            "size" : metadata.len(),
+                            "last_modified" : format!("{}", naive.format("%c"))
+                        });
+
+                        println!("{}", file_entry.to_string());
+
+                        contents.push_str(&file_entry.to_string()) ;
+                        contents.push(',');
+                    }
+                }
             }
         }
     }
