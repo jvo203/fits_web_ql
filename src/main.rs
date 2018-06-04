@@ -125,27 +125,58 @@ fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
     
     let query = req.query();
     
+    #[cfg(feature = "server")]
     let db = match query.get("db") {
         Some(x) => {x},
         None => {"alma"}//default database
     };
 
+    #[cfg(feature = "server")]
     let table = match query.get("table") {
         Some(x) => {x},
         None => {"cube"}//default table
     };
 
-    let dataset_id = match query.get("datasetId") {
+    #[cfg(not(feature = "server"))]
+    let dir = match query.get("dir") {
+        Some(x) => {x},
+        None => {"."}//by default use the current directory
+    };
+
+    #[cfg(not(feature = "server"))]
+    let ext = match query.get("ext") {
+        Some(x) => {x},
+        None => {"fits"}//a default FITS file extension
+    };
+
+    #[cfg(not(feature = "server"))]
+    let dataset = "filename" ;
+
+    #[cfg(feature = "server")]
+    let dataset = "datasetId" ;
+
+    let dataset_id = match query.get(dataset) {
         Some(x) => {x},
         None => {return HttpResponse::NotFound()
             .content_type("text/html")
             .body(format!("<p><b>Critical Error</b>: no datasetId available</p>"));}
-    };
+    };    
 
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id)
+
+    //if local add dir, ext to execute_fits
+
+    #[cfg(feature = "server")]
+    let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {}", fitswebql_path, db, table, dataset_id);
+
+    #[cfg(not(feature = "server"))]
+    let resp = format!("FITSWebQL path: {}, dir: {}, ext: {}, filename: {}", fitswebql_path, dir, ext, dataset_id);
+
+    println!("{}", resp);
+
     HttpResponse::Ok()
-        .content_type("text/html")
-        .body(format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {}", fitswebql_path, db, table, dataset_id))
+        .content_type("text/plain")        
+        .body(resp)        
 }
 
 fn main() {
