@@ -156,21 +156,21 @@ fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
     let dataset = "datasetId" ;
 
     let dataset_id = match query.get(dataset) {
-        Some(x) => {x},
+        Some(x) => {vec![x]},
         None => {return HttpResponse::NotFound()
             .content_type("text/html")
             .body(format!("<p><b>Critical Error</b>: no datasetId available</p>"));}
-    };    
+    };//further down the line: None => try to read dataset1,dataset2,... or filename1,filename2,...
 
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id)
 
     //if local add dir, ext to execute_fits
 
     #[cfg(feature = "server")]
-    let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {}", fitswebql_path, db, table, dataset_id);
+    let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}", fitswebql_path, db, table, dataset_id);
 
     #[cfg(not(feature = "server"))]
-    let resp = format!("FITSWebQL path: {}, dir: {}, ext: {}, filename: {}", fitswebql_path, dir, ext, dataset_id);
+    let resp = format!("FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}", fitswebql_path, dir, ext, dataset_id);
 
     println!("{}", resp);
 
@@ -192,7 +192,7 @@ fn main() {
         .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})
         .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::PUT).f(fitswebql_entry)})
         .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
-        .handler("/",fs::StaticFiles::new("htdocs").index_file(index_file)))
+        .handler("/", fs::StaticFiles::new("htdocs").index_file(index_file)))
         .bind("localhost:8080").expect("Cannot bind to localhost:8080")
         .run();
 }
