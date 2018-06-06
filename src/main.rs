@@ -174,7 +174,7 @@ fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
             } ;
 
             //the last resort
-            if v.len() == 0 {            
+            if v.is_empty() {            
                 return HttpResponse::NotFound()
                     .content_type("text/html")
                     .body(format!("<p><b>Critical Error</b>: no {} available</p>", dataset));
