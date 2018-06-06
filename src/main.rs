@@ -157,14 +157,38 @@ fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
 
     let dataset_id = match query.get(dataset) {
         Some(x) => {vec![x]},
-        None => {return HttpResponse::NotFound()
-            .content_type("text/html")
-            .body(format!("<p><b>Critical Error</b>: no datasetId available</p>"));}
-    };//further down the line: None => try to read dataset1,dataset2,... or filename1,filename2,...
+        None => {
+            //try to read multiple datasets or filename,
+            //i.e. dataset1,dataset2,... or filename1,filename2,...
+            let mut v: Vec<&str> = Vec::new();            
+            let mut count: u32 = 1;
 
+            loop {
+                let pattern = format!("{}{}", dataset, count);
+                count = count + 1;
+
+                match query.get(&pattern) {
+                    Some(x) => {v.push(x);},
+                    None => {break;}
+                } ;
+            } ;
+
+            //the last resort
+            if v.len() == 0 {            
+                return HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!("<p><b>Critical Error</b>: no {} available</p>", dataset));
+                };
+            
+            v
+        }
+    };
+
+    //server
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id)
 
-    //if local add dir, ext to execute_fits
+    //local
+    //execute_fits(&fitswebql_path, &dir, &ext, &dataset_id)
 
     #[cfg(feature = "server")]
     let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}", fitswebql_path, db, table, dataset_id);
@@ -184,8 +208,7 @@ fn main() {
     let index_file = "fitswebql.html" ;
 
     #[cfg(feature = "server")]
-    let index_file = "almawebql.html" ;
-    
+    let index_file = "almawebql.html" ;    
 
     server::new(
         move || App::new()
