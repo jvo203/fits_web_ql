@@ -184,12 +184,6 @@ fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
         }
     };
 
-    //server
-    //execute_fits(&fitswebql_path, &db, &table, &dataset_id)
-
-    //local
-    //execute_fits(&fitswebql_path, &dir, &ext, &dataset_id)
-
     #[cfg(feature = "server")]
     let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}", fitswebql_path, db, table, dataset_id);
 
@@ -198,9 +192,19 @@ fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
 
     println!("{}", resp);
 
+    //server
+    //execute_fits(&fitswebql_path, &db, &table, &dataset_id)
+
+    #[cfg(not(feature = "server"))]
+    //execute_fits(&fitswebql_path, &dir, &ext, &dataset_id)
+    execute_fits(&resp, &fitswebql_path, &dir, &ext, &dataset_id)
+}
+
+#[cfg(not(feature = "server"))]
+fn execute_fits(resp: &String, fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>) -> HttpResponse {
     HttpResponse::Ok()
         .content_type("text/plain")        
-        .body(resp)        
+        .body(resp)
 }
 
 fn main() {
