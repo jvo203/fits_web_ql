@@ -4,6 +4,17 @@ extern crate actix_web;
 #[macro_use]
 extern crate serde_json;
 
+#[cfg(not(feature = "server"))]
+static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
+
+static VERSION_STRING: &'static str = "SV2018-06-08.0";
+
+#[cfg(not(feature = "server"))]
+static SERVER_MODE: &'static str = "LOCAL";
+
+#[cfg(feature = "server")]
+static SERVER_MODE: &'static str = "SERVER";
+
 use actix_web::*;
 use std::env;
 
@@ -197,14 +208,135 @@ fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
 
     #[cfg(not(feature = "server"))]
     //execute_fits(&fitswebql_path, &dir, &ext, &dataset_id)
-    execute_fits(&resp, &fitswebql_path, &dir, &ext, &dataset_id)
+    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id)
 }
 
 #[cfg(not(feature = "server"))]
-fn execute_fits(resp: &String, fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>) -> HttpResponse {
+fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>) -> HttpResponse {
+
+    //get fits location
+
+    //launch FITS threads
+
+    http_fits_response(&fitswebql_path, &dataset_id)
+}
+
+fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>) -> HttpResponse {
+
+    let has_fits: bool = false ;//later on it should be changed to true; iterate over all datasets, setting it to false if not found
+
+    let composite: bool = false ;//should be read from the URL
+
+    //build up an HTML response
+    let mut html = String::from("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n");
+    html.push_str("<link rel=\"icon\" href=\"favicon.ico\"/>\n");
+    html.push_str("<link href=\"https://fonts.googleapis.com/css?family=Inconsolata\" rel=\"stylesheet\"/>\n");
+    html.push_str("<link href=\"https://fonts.googleapis.com/css?family=Lato\" rel=\"stylesheet\"/>\n");
+
+    html.push_str("<script src=\"https://d3js.org/d3.v4.min.js\"></script>\n");
+    html.push_str("<script src=\"reconnecting-websocket.js\"></script>\n");
+    html.push_str("<script src=\"//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js\"></script>\n");
+
+    html.push_str("<script src=\"ra_dec_conversion.js\"></script>\n");
+    html.push_str("<script src=\"sylvester.js\"></script>\n");
+    html.push_str("<script src=\"shortcut.js\"></script>\n");
+    html.push_str("<script src=\"colourmaps.js\"></script>\n");
+    html.push_str("<script src=\"lz4.min.js\"></script>\n");
+    html.push_str("<script src=\"marchingsquares-isocontours.min.js\"></script>\n");
+    html.push_str("<script src=\"marchingsquares-isobands.min.js\"></script>\n");    
+
+    //bootstrap
+    html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1\">\n");
+    html.push_str("<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css\">\n");
+    html.push_str("<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js\"></script>\n");
+    html.push_str("<script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js\"></script>\n");
+    
+    //FITSWebQL main JavaScript
+    html.push_str(&format!("<script src=\"fitswebql.js?{}\"></script>\n", VERSION_STRING));
+    //custom css styles
+    html.push_str("<link rel=\"stylesheet\" href=\"fitswebql.css\"/>\n");
+
+    html.push_str("<title>FITSWebQL</title></head><body>\n");
+    html.push_str(&format!("<div id='votable' style='width: 0; height: 0;' data-va_count='{}' ", dataset_id.len()));
+
+    if dataset_id.len() == 1 {
+        html.push_str(&format!("data-datasetId='{}' ", dataset_id[0]));
+    }
+    else {
+        for i in 0..dataset_id.len() {
+            html.push_str(&format!("data-datasetId{}='{}' ", i+1, dataset_id[i]));
+        }
+
+        if composite && dataset_id.len() <= 3 {
+            html.push_str("data-composite='1' ");
+        }
+    }
+
+    html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits));
+
+    //the page entry point
+    html.push_str("<script>
+        const golden_ratio = 1.6180339887;
+        var ALMAWS = null ;
+        var firstTime = true ;
+        var has_image = false ;         
+        var PROGRESS_VARIABLE = 0.0 ;
+        var PROGRESS_INFO = \"\" ;      
+        var RESTFRQ = 0.0 ;
+        var USER_SELFRQ = 0.0 ;
+        var USER_DELTAV = 0.0 ;
+        var ROOT_PATH = \"/fitswebql/\" ;
+        mainRenderer();
+        var idleResize = -1;
+        window.onresize = resizeMe;
+    </script>\n");
+
+    //Google Analytics
+    #[cfg(feature = "development")]
+    html.push_str("<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ 
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), 
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) 
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-72136224-1', 'auto');				
+  ga('send', 'pageview');						  									
+  </script>\n");
+
+    #[cfg(feature = "test")]
+    html.push_str("<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ 
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), 
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) 
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-72136224-2', 'auto');				
+  ga('send', 'pageview');  									
+  </script>\n");
+
+    #[cfg(feature = "production")]
+    html.push_str("<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-72136224-4', 'auto');
+  ga('send', 'pageview');
+  </script>\n");
+
+    #[cfg(not(feature = "server"))]
+    html.push_str("<script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-72136224-5', 'auto');
+      ga('send', 'pageview');
+      </script>\n");
+
+    html.push_str("</body></html>\n");
+
     HttpResponse::Ok()
-        .content_type("text/plain")        
-        .body(resp)
+        .content_type("text/html")
+        .body(html)
 }
 
 fn main() {
