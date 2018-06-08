@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-06-08.1";
+    return "JS2018-06-08.2";
 }
 
 var generateUid = function ()
@@ -1652,17 +1652,20 @@ function display_hourglass()
     var width = c.width;
     var height = c.height;
 
-    var img_width = 200 ;
-    var img_height = 200 ;
+	//hourglass
+    /*var img_width = 200 ;
+    var img_height = 200 ;*/
 
-    /*var img_width = 441 ;
-    var img_height = 291 ;*/
+	//squares
+    var img_width = 128 ;
+	var img_height = 128 ;	
     
     d3.select('#FrontSVG').append("svg:image")
 	.attr("id", "hourglass")
 	.attr("x", (width-img_width)/2)
 	.attr("y", (height-img_height)/2)
-	.attr("xlink:href", "hourglass.gif")
+	//.attr("xlink:href", "hourglass.gif")
+	.attr("xlink:href", "loading.gif")	
 	.attr("width", img_width)
 	.attr("height", img_height)
 	.attr("opacity", 1.0) ;
