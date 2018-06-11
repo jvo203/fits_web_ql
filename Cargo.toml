@@ -6,9 +6,12 @@ authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 [features]
 default = []
 server = []
+use-intrinsics = []
 
 [dependencies]
 actix = "*"
 actix-web = "*"
 serde_json = "1.0"
 chrono = "*"
+half = "*"
+lazy_static = "*"

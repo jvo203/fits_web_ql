@@ -1,8 +1,90 @@
+use std::str::FromStr;
 extern crate chrono;
 extern crate actix_web;
+extern crate half;
+
+use std::thread;
+use half::f16;
+
+#[macro_use]
+extern crate lazy_static;
 
 #[macro_use]
 extern crate serde_json;
+
+use std::time::{/*Duration,*/ SystemTime};
+use std::collections::HashMap;
+use std::sync::RwLock;
+
+static FITSCACHE: &'static str = "FITSCACHE";
+static NBINS: i32 = 1024;
+
+#[derive(Debug)]
+struct FITS {
+        dataset_id: String,
+        data_id: String,
+        //basic header/votable        
+        obj_name: String,        
+        obs_date: String,
+        timesys: String,
+        beam_unit: String,
+        beam_type: String,
+        filepath: String,
+        bmaj: f32,
+        bmin: f32,
+        bpa: f32,
+        restfrq: f32,
+        line: String,
+        obsra: f32,
+        obsdec: f32,
+        datamin: f32,
+        datamax: f32,
+        //this is a FITS data part
+        bitpix: i32,
+        naxis: i32,
+        width: i32,
+        height: i32,
+        depth: i32,
+        polarisation: i32,
+        data_u8: Vec<u8>,
+        data_i16: Vec<i16>,        
+        data_i32: Vec<i32>,
+        data_f16: Vec<f16>,//half-float (short)
+        data_f32: Vec<f32>,
+        data_f64: Vec<f64>,
+        ignrval: f32,
+        crval1: f32,
+        cdelt1: f32,
+        crpix1: f32,
+        cunit1: String,
+        ctype1: String,
+        crval2: f32,
+        cdelt2: f32,
+        crpix2: f32,
+        cunit2: String,
+        ctype2: String,
+        crval3: f32,
+        cdelt3: f32,
+        crpix3: f32,
+        cunit3: String,
+        ctype3: String,     
+        min: f32,
+        max: f32,
+        hist: Vec<i32>,
+        median: f32,
+        mad: f32,
+        mad_p: f32,
+        mad_n: f32,        
+        black: f32,
+        sensitivity: f32,                
+        timestamp: RwLock<SystemTime>,//last access time
+}
+
+lazy_static! {
+    static ref DATASETS: RwLock<HashMap<String, FITS>> = {
+        RwLock::new(HashMap::new())
+    };
+}
 
 #[cfg(not(feature = "server"))]
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
@@ -31,13 +113,8 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
     println!("scanning directory: {:?}", path) ;
 
     let mut contents = String::from("[");
-    let mut has_contents = false ;
-
-    /*let entry_set = path.read_dir().expect("read_dir call failed");
-    // ignore errors
-    let mut entries = entry_set.filter_map(|v| v.ok()).collect::<Vec<_>>();*/
-
-    //for entry in entries.sort_unstable() {
+    let mut has_contents = false ;   
+    
     for entry in path.read_dir().expect("read_dir call failed") {
         if let Ok(entry) = entry {
             let file_name_buf = entry.file_name();
@@ -195,37 +272,82 @@ fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
         }
     };
 
+    let composite = match query.get("composite") {
+        Some(x) => { match bool::from_str(x) {
+                        Ok(b) => {b},
+                        Err(_) => {false}
+                        }
+                },
+        None => {false}
+    };
+
     #[cfg(feature = "server")]
-    let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}", fitswebql_path, db, table, dataset_id);
+    let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}", fitswebql_path, db, table, dataset_id, composite);
 
     #[cfg(not(feature = "server"))]
-    let resp = format!("FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}", fitswebql_path, dir, ext, dataset_id);
+    let resp = format!("FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}, composite: {}", fitswebql_path, dir, ext, dataset_id, composite);
 
     println!("{}", resp);
 
     //server
-    //execute_fits(&fitswebql_path, &db, &table, &dataset_id)
+    //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite)
 
     #[cfg(not(feature = "server"))]
-    //execute_fits(&fitswebql_path, &dir, &ext, &dataset_id)
-    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id)
+    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite)
 }
 
 #[cfg(not(feature = "server"))]
-fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>) -> HttpResponse {
+fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool) -> HttpResponse {
 
-    //get fits location
+    //get fits location    
 
     //launch FITS threads
+    let mut has_fits: bool = true ;
 
-    http_fits_response(&fitswebql_path, &dataset_id)
+    //for each dataset_id
+    for i in 0..dataset_id.len() {
+        let data_id = dataset_id[i];
+
+        //does the entry exist in the datasets hash map?
+        let has_entry = {
+            let datasets = DATASETS.read().unwrap();
+            datasets.contains_key(data_id) 
+        } ;
+
+        //if it does not exist set has_fits to false and load the FITS data
+        if !has_entry {
+            has_fits = false ;
+
+            let my_dir = dir.to_string();
+            let my_data_id = data_id.to_string();
+            let my_ext = ext.to_string();
+
+            //load FITS data in a new thread
+            thread::spawn(move || {
+                // some work here
+                let filepath = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
+                println!("loading FITS data from {}", filepath); 
+
+                //let path = std::path::Path::new(&filepath);
+                //let fits = FITS::from_path(path) ;
+                //let mut datasets = DATASETS.write().unwrap();
+                //datasets.insert(data_id.clone(), fits);            
+            });
+        }
+        else {
+            //update the timestamp
+            let datasets = DATASETS.read().unwrap();
+            let dataset = datasets.get(data_id).unwrap() ;
+            *dataset.timestamp.write().unwrap() = SystemTime::now() ;
+        } ;
+    } ;
+
+    http_fits_response(&fitswebql_path, &dataset_id, composite, has_fits)
 }
 
-fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>) -> HttpResponse {
+fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite: bool, has_fits: bool) -> HttpResponse {
 
-    let has_fits: bool = false ;//later on it should be changed to true; iterate over all datasets, setting it to false if not found
-
-    let composite: bool = false ;//should be read from the URL
+    //let has_fits: bool = false ;//later on it should be changed to true; iterate over all datasets, setting it to false if not found    
 
     //build up an HTML response
     let mut html = String::from("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n");
