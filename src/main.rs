@@ -1,10 +1,12 @@
-use std::str::FromStr;
 extern crate chrono;
 extern crate actix_web;
 extern crate half;
 
 use std::thread;
 use half::f16;
+use std::io::Read;
+use std::str::FromStr;
+use std::fs::File;
 
 #[macro_use]
 extern crate lazy_static;
@@ -16,8 +18,13 @@ use std::time::{/*Duration,*/ SystemTime};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
+static JVO_FITS_DB: &'static str = "alma";
 static FITSCACHE: &'static str = "FITSCACHE";
-static NBINS: i32 = 1024;
+
+const FITS_CHUNK_LENGTH: usize = 2880;
+const FITS_LINE_LENGTH: usize = 80;
+const NBINS: usize = 1024;
 
 #[derive(Debug)]
 struct FITS {
@@ -76,8 +83,177 @@ struct FITS {
         mad_p: f32,
         mad_n: f32,        
         black: f32,
-        sensitivity: f32,                
+        sensitivity: f32,
+        has_data: bool,              
         timestamp: RwLock<SystemTime>,//last access time
+}
+
+impl FITS {
+    fn new(data_id: &String) -> FITS {
+        let mut fits = FITS {
+            dataset_id: data_id.clone(),
+            data_id: String::from(""),
+            obj_name: String::from(""),
+            obs_date: String::from(""),
+            timesys: String::from(""),
+            beam_unit: String::from(""),
+            beam_type: String::from(""),
+            filepath: String::from(""),
+            bmaj: 0.0,
+            bmin: 0.0,
+            bpa: 0.0,
+            restfrq: 0.0,
+            line: String::from(""),
+            obsra: 0.0,
+            obsdec: 0.0,
+            datamin: 0.0,
+            datamax: 0.0,
+            bitpix: 0,
+            naxis: 0,
+            width: 0,
+            height: 0,
+            depth: 0,
+            polarisation: 0,
+            data_u8: Vec::new(),
+            data_i16: Vec::new(),
+            data_i32: Vec::new(),
+            data_f16: Vec::new(),
+            data_f32: Vec::new(),
+            data_f64: Vec::new(),
+            ignrval: 0.0,
+            crval1: 0.0,
+            cdelt1: 0.0,
+            crpix1: 0.0,
+            cunit1: String::from(""),
+            ctype1: String::from(""),
+            crval2: 0.0,
+            cdelt2: 0.0,
+            crpix2: 0.0,
+            cunit2: String::from(""),
+            ctype2: String::from(""),
+            crval3: 0.0,
+            cdelt3: 0.0,
+            crpix3: 0.0,
+            cunit3: String::from(""),
+            ctype3: String::from(""),
+            min: 0.0,
+            max: 0.0,
+            hist: Vec::new(),
+            median: 0.0,
+            mad: 0.0,
+            mad_p: 0.0,
+            mad_n: 0.0,
+            black: 0.0,
+            sensitivity: 0.0,
+            has_data: false,
+            timestamp: RwLock::new(SystemTime::now()),                    
+        } ;        
+        
+        fits
+    }
+
+    fn from_path(data_id: &String, filepath: &std::path::Path) -> FITS {
+        let mut fits = FITS::new(data_id);
+        
+        //load data from filepath
+        let mut f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(x) => { println!("{:?}: {:?}", filepath, x);
+                        return fits;
+                        //a desperate attempt todownload FITS using the ALMA URL (will fail for non-ALMA datasets)                        
+                        /*let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, data_id) ;
+                        return FITS::from_url(&data_id, &url);*/                      
+                    }
+        } ;
+
+        match f.metadata() {
+            Ok(metadata) => {   let len = metadata.len() ;
+                                println!("{:?}, {} bytes", f, len);
+                                
+                                if len < FITS_CHUNK_LENGTH as u64 {
+                                    return fits;
+                                };
+                        }
+            Err(err) => {   println!("file metadata reading problem: {}", err);
+                            return fits;
+                    }
+        } ;
+
+        //OK, we have a FITS file with at least one chunk
+        let mut chunk = [0; FITS_CHUNK_LENGTH];
+
+        println!("reading FITS header...") ;
+
+        let mut end: bool = false ;
+        let mut no_hu: i32 = 0 ;
+
+        while !end {
+            //read a FITS chunk
+            match f.read(&mut chunk) {
+                Ok(n) => {if n == FITS_CHUNK_LENGTH {
+                    no_hu = no_hu + 1;
+
+                    //parse a FITS header chunk
+                    end = parse_fits_header_chunk(&chunk);
+                    } else {
+                        end = true ;
+
+                        if n > 0 {
+                            println!("CRITICAL: read fewer than {} bytes from FITS, exiting FITS::from_path", FITS_CHUNK_LENGTH);
+                            return fits;
+                        } ;
+                    };
+                },
+                Err(err) => {   end = true;
+                                println!("error reading FITS file: {}", err);
+                }
+            } ;
+        }
+
+        println!("{}/#hu = {}", data_id, no_hu);
+
+        //we've gotten so far, we have the data
+        fits.has_data = true ;
+
+        //and lastly create a symbolic link in the FITSCACHE directory
+        let filename = format!("{}/{}.fits", FITSCACHE, data_id);
+        let cachefile = std::path::Path::new(&filename);      
+        let _ = std::os::unix::fs::symlink(filepath, cachefile);     
+        
+        fits
+    }
+
+    fn from_url(data_id: &String, url: &String) -> FITS {
+        let mut fits = FITS::new(data_id);                
+
+        println!("FITS::from_url({})", url);
+
+        fits
+    }
+    
+}
+
+fn parse_fits_header_chunk(buf: &[u8]) -> bool {
+    let mut offset: usize = 0 ;
+
+    while offset < FITS_CHUNK_LENGTH {
+        let slice = &buf[offset..offset+FITS_LINE_LENGTH];
+        let line = match std::str::from_utf8(slice) {
+            Ok(x) => x,
+            Err(err) => {
+                println!("non-UTF8 characters found: {}", err);
+                return true;
+            }
+        } ;
+
+        if line.contains("END       ") {
+            return true ;
+        };
+
+        offset = offset + FITS_LINE_LENGTH;
+    }
+
+    return false ;
 }
 
 lazy_static! {
@@ -99,6 +275,24 @@ static SERVER_MODE: &'static str = "SERVER";
 
 use actix_web::*;
 use std::env;
+
+fn remove_symlinks() {
+    let cache = std::path::Path::new(FITSCACHE);
+
+    for entry in cache.read_dir().expect("read_dir call failed") {
+        if let Ok(entry) = entry {
+            //remove a file if it's a symbolic link
+            if let Ok(metadata) = entry.metadata() {
+                let file_type = metadata.file_type();
+
+                if file_type.is_symlink() {
+                    println!("removing a symbolic link: {:?}", entry.file_name());
+                    let _ = std::fs::remove_file(entry.path());
+                }
+            }     
+        }
+    }
+}
 
 fn get_home_directory() -> HttpResponse {
     match env::home_dir() {
@@ -316,28 +510,32 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
 
         //if it does not exist set has_fits to false and load the FITS data
         if !has_entry {
-            has_fits = false ;
+            has_fits = false ;            
 
             let my_dir = dir.to_string();
             let my_data_id = data_id.to_string();
             let my_ext = ext.to_string();
+            
+            DATASETS.write().unwrap().insert(my_data_id.clone(), FITS::new(&my_data_id)); 
 
             //load FITS data in a new thread
             thread::spawn(move || {
                 // some work here
-                let filepath = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
-                println!("loading FITS data from {}", filepath); 
+                let filename = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
+                println!("loading FITS data from {}", filename); 
 
-                //let path = std::path::Path::new(&filepath);
-                //let fits = FITS::from_path(path) ;
-                //let mut datasets = DATASETS.write().unwrap();
-                //datasets.insert(data_id.clone(), fits);            
+                let filepath = std::path::Path::new(&filename);           
+                let fits = FITS::from_path(&my_data_id.clone(), filepath);
+
+                DATASETS.write().unwrap().insert(my_data_id.clone(), fits);           
             });
         }
         else {
             //update the timestamp
             let datasets = DATASETS.read().unwrap();
             let dataset = datasets.get(data_id).unwrap() ;
+            
+            has_fits = has_fits && dataset.has_data ;
             *dataset.timestamp.write().unwrap() = SystemTime::now() ;
         } ;
     } ;
@@ -462,6 +660,8 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
 }
 
 fn main() {
+    remove_symlinks();
+
     #[cfg(not(feature = "server"))]
     let index_file = "fitswebql.html" ;
 
