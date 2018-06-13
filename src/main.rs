@@ -8,6 +8,44 @@ use std::io::Read;
 use std::str::FromStr;
 use std::fs::File;
 
+use std::fmt;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseFloatError {
+    _private: (),
+}
+
+impl ParseFloatError {
+    fn new() -> ParseFloatError {
+        ParseFloatError { _private: () }
+    }
+}
+
+impl fmt::Display for ParseFloatError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Could not parse float")
+    }
+}
+
+fn parse_f32(s: &String) -> Result<f32, ParseFloatError> {
+    let (a,b) = scan_fmt!( &s.replace("E"," ").replace("e"," "), "{f}{d}", f32, i32);   
+
+    let mantissa = match a {
+        Some(x) => x,
+        None => return Err(ParseFloatError::new()),
+    };
+
+    let exponent = match b {
+        Some(x) => x,
+        None => 0
+    };
+
+    Ok(mantissa * 10f32.powi(exponent))
+}
+
+#[macro_use]
+extern crate scan_fmt;
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -34,6 +72,7 @@ struct FITS {
         obj_name: String,        
         obs_date: String,
         timesys: String,
+        specsys: String,
         beam_unit: String,
         beam_type: String,
         filepath: String,
@@ -49,16 +88,19 @@ struct FITS {
         //this is a FITS data part
         bitpix: i32,
         naxis: i32,
+        naxes: [i32; 4],    
         width: i32,
         height: i32,
         depth: i32,
         polarisation: i32,
-        data_u8: Vec<u8>,
-        data_i16: Vec<i16>,        
-        data_i32: Vec<i32>,
-        data_f16: Vec<f16>,//half-float (short)
-        data_f32: Vec<f32>,
-        data_f64: Vec<f64>,
+        data_u8: Vec<Vec<u8>>,
+        data_i16: Vec<Vec<i16>>,        
+        data_i32: Vec<Vec<i32>>,
+        data_f16: Vec<Vec<f16>>,//half-float (short)
+        //data_f32: Vec<f32>,//float32 will always be converted to float16
+        data_f64: Vec<Vec<f64>>,
+        bscale: f32,
+        bzero: f32,
         ignrval: f32,
         crval1: f32,
         cdelt1: f32,
@@ -84,18 +126,22 @@ struct FITS {
         mad_n: f32,        
         black: f32,
         sensitivity: f32,
-        has_data: bool,              
+        has_frequency: bool,
+        has_velocity: bool,
+        frame_multiplier: f32,
+        has_data: bool,       
         timestamp: RwLock<SystemTime>,//last access time
 }
 
 impl FITS {
-    fn new(data_id: &String) -> FITS {
-        let mut fits = FITS {
-            dataset_id: data_id.clone(),
-            data_id: String::from(""),
+    fn new(id: &String) -> FITS {
+        let fits = FITS {
+            dataset_id: id.clone(),
+            data_id: format!("{}_00_00_00", id),
             obj_name: String::from(""),
             obs_date: String::from(""),
             timesys: String::from(""),
+            specsys: String::from(""),
             beam_unit: String::from(""),
             beam_type: String::from(""),
             filepath: String::from(""),
@@ -106,10 +152,11 @@ impl FITS {
             line: String::from(""),
             obsra: 0.0,
             obsdec: 0.0,
-            datamin: 0.0,
-            datamax: 0.0,
+            datamin: std::f32::MIN,
+            datamax: std::f32::MAX,
             bitpix: 0,
             naxis: 0,
+            naxes: [0; 4],
             width: 0,
             height: 0,
             depth: 0,
@@ -118,9 +165,11 @@ impl FITS {
             data_i16: Vec::new(),
             data_i32: Vec::new(),
             data_f16: Vec::new(),
-            data_f32: Vec::new(),
+            //data_f32: Vec::new(),//float32 will always be converted to float16
             data_f64: Vec::new(),
-            ignrval: 0.0,
+            bscale: 0.0,
+            bzero: 0.0,
+            ignrval: std::f32::MIN,
             crval1: 0.0,
             cdelt1: 0.0,
             crpix1: 0.0,
@@ -145,23 +194,26 @@ impl FITS {
             mad_n: 0.0,
             black: 0.0,
             sensitivity: 0.0,
+            has_frequency: false,
+            has_velocity: false,
+            frame_multiplier: 1.0,
             has_data: false,
             timestamp: RwLock::new(SystemTime::now()),                    
         } ;        
         
         fits
-    }
+    }    
 
-    fn from_path(data_id: &String, filepath: &std::path::Path) -> FITS {
-        let mut fits = FITS::new(data_id);
+    fn from_path(id: &String, filepath: &std::path::Path) -> FITS {
+        let mut fits = FITS::new(id);
         
         //load data from filepath
         let mut f = match File::open(filepath) {
             Ok(x) => x,
             Err(x) => { println!("{:?}: {:?}", filepath, x);
                         return fits;
-                        //a desperate attempt todownload FITS using the ALMA URL (will fail for non-ALMA datasets)                        
-                        /*let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, data_id) ;
+                        //a desperate attempt to download FITS using the ALMA URL (will fail for non-ALMA datasets)                        
+                        /*let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
                         return FITS::from_url(&data_id, &url);*/                      
                     }
         } ;
@@ -194,7 +246,7 @@ impl FITS {
                     no_hu = no_hu + 1;
 
                     //parse a FITS header chunk
-                    end = parse_fits_header_chunk(&chunk);
+                    end = fits.parse_fits_header_chunk(&chunk);
                     } else {
                         end = true ;
 
@@ -208,52 +260,519 @@ impl FITS {
                                 println!("error reading FITS file: {}", err);
                 }
             } ;
-        }
+        }           
 
-        println!("{}/#hu = {}", data_id, no_hu);
+        //test for frequency/velocity
+        fits.frame_reference_unit() ;
+        fits.frame_reference_type() ;
+
+        if fits.restfrq > 0.0 {
+            fits.has_frequency = true ;
+        }        
+
+        println!("{}/#hu = {}, {:?}", id, no_hu, fits); 
+
+        //compress the FITS header
+
+        //next read the data HUD(s)
+        //fits.make_fits_pixels_spectrum(f);
 
         //we've gotten so far, we have the data
         fits.has_data = true ;
 
         //and lastly create a symbolic link in the FITSCACHE directory
-        let filename = format!("{}/{}.fits", FITSCACHE, data_id);
+        let filename = format!("{}/{}.fits", FITSCACHE, id);
         let cachefile = std::path::Path::new(&filename);      
         let _ = std::os::unix::fs::symlink(filepath, cachefile);     
         
         fits
     }
 
-    fn from_url(data_id: &String, url: &String) -> FITS {
-        let mut fits = FITS::new(data_id);                
+    fn from_url(id: &String, url: &String) -> FITS {
+        let fits = FITS::new(id);                
 
         println!("FITS::from_url({})", url);
 
         fits
     }
+
+    fn frame_reference_type(&mut self) {
+        if self.ctype3.contains("F") || self.ctype3.contains("f") {
+            self.has_frequency = true ;
+        }
+
+        if self.ctype3.contains("V") || self.ctype3.contains("v") {
+            self.has_velocity = true ;
+        }
+    }
+
+    fn frame_reference_unit(&mut self) {
+        match self.cunit3.to_uppercase().as_ref() {
+            "HZ" => {
+                self.has_frequency = true;
+                self.frame_multiplier = 1.0;
+            },
+            "KHZ" => {
+                self.has_frequency = true;
+                self.frame_multiplier = 1000.0;
+            },
+            "MHZ" => {
+                self.has_frequency = true;
+                self.frame_multiplier = 1000000.0;
+            },
+            "GHZ" => {
+                self.has_frequency = true;
+                self.frame_multiplier = 1000000000.0;
+            },
+            "THZ" => {
+                self.has_frequency = true;
+                self.frame_multiplier = 1000000000000.0;
+            },
+            "M/S" => {
+                self.has_velocity = true;
+                self.frame_multiplier = 1.0;
+            },
+            "KM/S" => {
+                self.has_velocity = true;
+                self.frame_multiplier = 1000.0;
+            },
+            _ => {},
+        }
+    }
+
+    fn parse_fits_header_chunk(&mut self, buf: &[u8]) -> bool {
+        let mut offset: usize = 0 ;
+
+        while offset < FITS_CHUNK_LENGTH {
+            let slice = &buf[offset..offset+FITS_LINE_LENGTH];
+            let line = match std::str::from_utf8(slice) {
+                Ok(x) => x,
+                Err(err) => {
+                    println!("non-UTF8 characters found: {}", err);
+                    return true;
+                }
+            } ;
+
+            if line.contains("END       ") {
+                return true ;            
+            }
+
+            if line.contains("OBJECT  = ") {
+                self.obj_name = match scan_fmt!(line, "OBJECT  = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("DATE-OBS= ") {
+                self.obs_date = match scan_fmt!(line, "DATE-OBS= {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("LINE    = ") {
+                self.line = match scan_fmt!(line, "LINE    = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("J_LINE  = ") {
+                self.line = match scan_fmt!(line, "J_LINE  = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("SPECSYS = ") {
+                self.specsys = match scan_fmt!(line, "SPECSYS = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("TIMESYS = ") {
+                self.timesys = match scan_fmt!(line, "TIMESYS = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("BITPIX  = ") {
+                self.bitpix = match scan_fmt!(line, "BITPIX  = {d}", i32) {
+                    Some(x) => x,
+                    _ => 0
+                }
+            }
+
+            if line.contains("NAXIS   = ") {
+                self.naxis = match scan_fmt!(line, "NAXIS   = {d}", i32) {
+                    Some(x) => x,
+                    _ => 0
+                }
+            }
+
+            if line.contains("NAXIS1  = ") {
+                self.width = match scan_fmt!(line, "NAXIS1  = {d}", i32) {
+                    Some(x) => x,
+                    _ => 0
+                };
+
+                self.naxes[0] = self.width;
+            }
+
+            if line.contains("NAXIS2  = ") {
+                self.height = match scan_fmt!(line, "NAXIS2  = {d}", i32) {
+                    Some(x) => x,
+                    _ => 0
+                };
+
+                self.naxes[1] = self.height;
+            }
+
+            if line.contains("NAXIS3  = ") {
+                self.depth = match scan_fmt!(line, "NAXIS3  = {d}", i32) {
+                    Some(x) => x,
+                    _ => 0
+                };
+
+                self.naxes[2] = self.depth;
+            }
+
+            if line.contains("NAXIS4  = ") {
+                self.polarisation = match scan_fmt!(line, "NAXIS4  = {d}", i32) {
+                    Some(x) => x,
+                    _ => 0
+                };
+
+                self.naxes[3] = self.polarisation;
+            }            
+
+            if line.contains("BTYPE   = ") {
+                self.beam_type = match scan_fmt!(line, "BTYPE   = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("BUNIT   = ") {
+                self.beam_unit = match scan_fmt!(line, "BUNIT   = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("BMAJ    = ") {
+                let s = match scan_fmt!(line, "BMAJ    = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.bmaj = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("BMIN    = ") {
+                let s = match scan_fmt!(line, "BMIN    = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.bmin = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("BPA     = ") {
+                let s = match scan_fmt!(line, "BPA     = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.bpa = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("RESTFRQ = ") {
+                let s = match scan_fmt!(line, "RESTFRQ = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.restfrq = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("RESTFREQ= ") {
+                let s = match scan_fmt!(line, "RESTFREQ= {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.restfrq = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("OBSRA   = ") {
+                let s = match scan_fmt!(line, "OBSRA   = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.obsra = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("OBSDEC  = ") {
+                let s = match scan_fmt!(line, "OBSDEC  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.obsdec = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("DATAMIN = ") {
+                let s = match scan_fmt!(line, "DATAMIN = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.datamin = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => std::f32::MIN
+                }
+            }
+
+            if line.contains("DATAMAX = ") {
+                let s = match scan_fmt!(line, "DATAMAX = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.datamax = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => std::f32::MAX
+                }
+            }
+
+            if line.contains("BSCALE  = ") {
+                let s = match scan_fmt!(line, "BSCALE  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.bscale = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }            
+
+            if line.contains("BZERO   = ") {
+                let s = match scan_fmt!(line, "BZERO   = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.bzero = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("IGNRVAL = ") {
+                let s = match scan_fmt!(line, "IGNRVAL = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.ignrval = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => std::f32::MIN
+                }
+            }
+
+            if line.contains("CRVAL1  = ") {
+                let s = match scan_fmt!(line, "CRVAL1  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.crval1 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CRVAL2  = ") {
+                let s = match scan_fmt!(line, "CRVAL2  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.crval2 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CRVAL3  = ") {
+                let s = match scan_fmt!(line, "CRVAL3  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.crval3 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CDELT1  = ") {
+                let s = match scan_fmt!(line, "CDELT1  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.cdelt1 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CDELT2  = ") {
+                let s = match scan_fmt!(line, "CDELT2  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.cdelt2 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CDELT3  = ") {
+                let s = match scan_fmt!(line, "CDELT3  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.cdelt3 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CRPIX1  = ") {
+                let s = match scan_fmt!(line, "CRPIX1  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.crpix1 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CRPIX2  = ") {
+                let s = match scan_fmt!(line, "CRPIX2  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.crpix2 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CRPIX3  = ") {
+                let s = match scan_fmt!(line, "CRPIX3  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from("")
+                };
+
+                self.crpix3 = match parse_f32(&s) {
+                    Ok(x) => x,
+                    Err(_) => 0.0
+                }
+            }
+
+            if line.contains("CUNIT1  = ") {
+                self.cunit1 = match scan_fmt!(line, "CUNIT1  = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("CUNIT2  = ") {
+                self.cunit2 = match scan_fmt!(line, "CUNIT2  = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("CUNIT3  = ") {
+                self.cunit3 = match scan_fmt!(line, "CUNIT3  = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("CTYPE1  = ") {
+                self.ctype1 = match scan_fmt!(line, "CTYPE1  = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("CTYPE2  = ") {
+                self.ctype2 = match scan_fmt!(line, "CTYPE2  = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            if line.contains("CTYPE3  = ") {
+                self.ctype3 = match scan_fmt!(line, "CTYPE3  = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from("")
+                }
+            }
+
+            offset = offset + FITS_LINE_LENGTH;
+        }
+
+        return false ;
+    }
     
 }
 
-fn parse_fits_header_chunk(buf: &[u8]) -> bool {
-    let mut offset: usize = 0 ;
-
-    while offset < FITS_CHUNK_LENGTH {
-        let slice = &buf[offset..offset+FITS_LINE_LENGTH];
-        let line = match std::str::from_utf8(slice) {
-            Ok(x) => x,
-            Err(err) => {
-                println!("non-UTF8 characters found: {}", err);
-                return true;
-            }
-        } ;
-
-        if line.contains("END       ") {
-            return true ;
-        };
-
-        offset = offset + FITS_LINE_LENGTH;
+impl Drop for FITS {
+    fn drop(&mut self) {
+        if self.has_data {
+            println!("deleting {:?}", self);
+        } else {
+            println!("deleting an empty FITS structure: {}", self.dataset_id);
+        }
     }
-
-    return false ;
 }
 
 lazy_static! {
@@ -676,4 +1195,8 @@ fn main() {
         .handler("/", fs::StaticFiles::new("htdocs").index_file(index_file)))
         .bind("localhost:8080").expect("Cannot bind to localhost:8080")
         .run();
+
+    DATASETS.write().unwrap().clear();
+
+    remove_symlinks();
 }
