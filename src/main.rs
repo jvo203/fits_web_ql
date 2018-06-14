@@ -162,8 +162,8 @@ impl FITS {
             naxes: [0; 4],
             width: 0,
             height: 0,
-            depth: 0,
-            polarisation: 0,
+            depth: 1,
+            polarisation: 1,
             data_u8: Vec::new(),
             data_i16: Vec::new(),
             data_i32: Vec::new(),
@@ -479,7 +479,7 @@ impl FITS {
             if line.contains("NAXIS3  = ") {
                 self.depth = match scan_fmt!(line, "NAXIS3  = {d}", i32) {
                     Some(x) => x,
-                    _ => 0
+                    _ => 1
                 };
 
                 self.naxes[2] = self.depth;
@@ -488,7 +488,7 @@ impl FITS {
             if line.contains("NAXIS4  = ") {
                 self.polarisation = match scan_fmt!(line, "NAXIS4  = {d}", i32) {
                     Some(x) => x,
-                    _ => 0
+                    _ => 1
                 };
 
                 self.naxes[3] = self.polarisation;
