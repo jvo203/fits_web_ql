@@ -1,13 +1,15 @@
 extern crate chrono;
 extern crate actix_web;
 extern crate half;
+extern crate byteorder;
 
 use std::thread;
 use half::f16;
 use std::io::Read;
 use std::str::FromStr;
 use std::fs::File;
-
+use std::io::Cursor;
+use byteorder::{BigEndian, ReadBytesExt};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -231,33 +233,28 @@ impl FITS {
                     }
         } ;
 
-        //OK, we have a FITS file with at least one chunk
-        let mut chunk = [0; FITS_CHUNK_LENGTH];
-
+        //OK, we have a FITS file with at least one chunk        
         println!("reading FITS header...") ;
+
+        //let mut f = BufReader::with_capacity(FITS_CHUNK_LENGTH, f);
 
         let mut end: bool = false ;
         let mut no_hu: i32 = 0 ;
 
         while !end {
             //read a FITS chunk
-            match f.read(&mut chunk) {
-                Ok(n) => {if n == FITS_CHUNK_LENGTH {
+            let mut chunk = [0; FITS_CHUNK_LENGTH];
+
+            match f.read_exact(&mut chunk) {
+                Ok(()) => {
                     no_hu = no_hu + 1;
 
                     //parse a FITS header chunk
-                    end = fits.parse_fits_header_chunk(&chunk);
-                    } else {
-                        end = true ;
-
-                        if n > 0 {
-                            println!("CRITICAL: read fewer than {} bytes from FITS, exiting FITS::from_path", FITS_CHUNK_LENGTH);
-                            return fits;
-                        } ;
-                    };
+                    end = fits.parse_fits_header_chunk(&chunk);                    
                 },
-                Err(err) => {   end = true;
-                                println!("error reading FITS file: {}", err);
+                Err(err) => {                    
+                    println!("CRITICAL ERROR reading FITS header: {}", err);
+                    return fits;
                 }
             } ;
         }           
@@ -270,15 +267,43 @@ impl FITS {
             fits.has_frequency = true ;
         }        
 
-        println!("{}/#hu = {}, {:?}", id, no_hu, fits); 
-
         //compress the FITS header
 
-        //next read the data HUD(s)
-        //fits.make_fits_pixels_spectrum(f);
+        println!("{}/#hu = {}, {:?}", id, no_hu, fits);
+
+        //next read the data HUD(s)        
+        let frame_size: usize = fits.init_data_storage();
+        let mut data: Vec<u8> = vec![0; frame_size];
+        let mut frame: i32 = 0;
+
+        //let mut f = BufReader::with_capacity(frame_size, f);
+
+        println!("FITS cube frame size: {} bytes", frame_size);
+
+        while frame < fits.depth {                                 
+            //println!("requesting a cube frame {}/{}", frame, fits.depth);
+
+            //read a FITS cube frame
+            match f.read_exact(&mut data) {
+                Ok(()) => {                                        
+                    //process a FITS cube frame (endianness, half-float)
+                    //println!("processing cube frame {}/{}", frame+1, fits.depth);
+                    fits.add_cube_frame(&data, frame as usize);
+                    frame = frame + 1 ;
+                },
+                Err(err) => {
+                    println!("CRITICAL ERROR reading FITS data: {}", err);
+                    return fits;
+                }
+            } ;            
+        }        
 
         //we've gotten so far, we have the data
-        fits.has_data = true ;
+        fits.has_data = true ;        
+
+        println!("{}: reading FITS data completed", id);
+
+        //fits.make_fits_pixels_spectrum(f);
 
         //and lastly create a symbolic link in the FITSCACHE directory
         let filename = format!("{}/{}.fits", FITSCACHE, id);
@@ -294,6 +319,25 @@ impl FITS {
         println!("FITS::from_url({})", url);
 
         fits
+    }
+
+    fn init_data_storage(&mut self) -> usize {
+        if self.width == 0 || self.height == 0 || self.depth == 0 {
+            return 0;
+        }        
+
+        let capacity = self.width * self.height ;
+
+        match self.bitpix {
+            8 => self.data_u8.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+            16 => self.data_i16.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+            32 => self.data_i32.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+            -32 => self.data_f16.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+            -64 => self.data_f64.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+            _ => println!("unsupported bitpix: {}", self.bitpix)
+        }
+
+        (self.width * self.height * self.bitpix.abs() / 8) as usize
     }
 
     fn frame_reference_type(&mut self) {
@@ -336,9 +380,9 @@ impl FITS {
                 self.has_velocity = true;
                 self.frame_multiplier = 1000.0;
             },
-            _ => {},
+            _ => {}
         }
-    }
+    }    
 
     fn parse_fits_header_chunk(&mut self, buf: &[u8]) -> bool {
         let mut offset: usize = 0 ;
@@ -762,15 +806,69 @@ impl FITS {
 
         return false ;
     }
+
+    fn add_cube_frame(&mut self, buf: &Vec<u8>, frame: usize) {                
+        let mut rdr = Cursor::new(buf);
+        let len = self.width * self.height ;
+
+        match self.bitpix {
+            8 => {
+                //self.data_u8[frame].copy_from_slice(buf);
+                self.data_u8[frame] = buf.clone();
+                //println!("data_u8[{}]/len = {}", frame, self.data_u8[frame].len());
+            },
+            16 => {
+                for _ in 0..len {
+                    match rdr.read_i16::<BigEndian>() {
+                        Ok(int16) => {
+                            self.data_i16[frame].push(int16)
+                        },
+                        Err(err) => println!("BigEndian --> LittleEndian i16 conversion error: {}", err)
+                    }
+                }
+            }
+            32 => {
+                for _ in 0..len {
+                    match rdr.read_i32::<BigEndian>() {
+                        Ok(int32) => {
+                            self.data_i32[frame].push(int32)
+                        },
+                        Err(err) => println!("BigEndian --> LittleEndian i32 conversion error: {}", err)
+                    }
+                }
+            }
+            -32 => {
+                for _ in 0..len {
+                    match rdr.read_f32::<BigEndian>() {
+                        Ok(float32) => {                            
+                            let float16 = f16::from_f32(float32);
+                            //println!("f32 = {} <--> f16 = {}", float32, float16);
+                            self.data_f16[frame].push(float16);
+                        },
+                        Err(err) => println!("BigEndian --> LittleEndian f32 conversion error: {}", err)
+                    }                    
+                }                
+            },
+            -64 => {
+                for _ in 0..len {
+                    match rdr.read_f64::<BigEndian>() {
+                        Ok(float64) => {
+                            self.data_f64[frame].push(float64)
+                        },
+                        Err(err) => println!("BigEndian --> LittleEndian f64 conversion error: {}", err)
+                    }
+                }
+            }
+            _ => println!("unsupported bitpix: {}", self.bitpix)
+        }      
+    }
     
 }
 
 impl Drop for FITS {
     fn drop(&mut self) {
         if self.has_data {
-            println!("deleting {:?}", self);
-        } else {
-            println!("deleting an empty FITS structure: {}", self.dataset_id);
+            println!("deleting {}", self.dataset_id);
         }
     }
 }

@@ -13,6 +13,7 @@ actix = "*"
 actix-web = "*"
 serde_json = "1.0"
 chrono = "*"
-half = "*"
+half = {version = "*", default-features=true}
 lazy_static = "*"
 scan_fmt = "*"
+byteorder = "1"
