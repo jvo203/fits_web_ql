@@ -5,12 +5,13 @@ extern crate byteorder;
 
 use std::thread;
 use half::f16;
-use std::io::Read;
+use std::io::{Read,Write};
 use std::str::FromStr;
 use std::fs::File;
 use std::io::Cursor;
 use byteorder::{BigEndian, ReadBytesExt};
 use std::fmt;
+use std::mem;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseFloatError {
@@ -869,6 +870,52 @@ impl Drop for FITS {
     fn drop(&mut self) {
         if self.has_data {
             println!("deleting {}", self.dataset_id);
+
+            if self.bitpix == -32 && self.data_f16.len() > 0 {
+                //check if the binary file already exists in the FITSCACHE
+                let filename = format!("{}/{}.bin", FITSCACHE, self.dataset_id.replace("/","_"));
+                let filepath = std::path::Path::new(&filename);
+
+                if !filepath.exists() {
+                    println!("{}: writing half-float f16 data to cache", self.dataset_id);
+
+                    let tmp_filename = format!("{}/{}.bin.tmp", FITSCACHE, self.dataset_id.replace("/","_"));
+                    let tmp_filepath = std::path::Path::new(&tmp_filename);
+
+                    let mut buffer = match File::create(tmp_filepath) {
+                        Ok(f) => f,
+                        Err(err) => {
+                            println!("{}", err);
+                            return;
+                        }
+                    };
+
+                    for frame in 0..self.depth as usize {
+                        let v16 = self.data_f16[frame].clone();                        
+                        let ptr = v16.as_ptr() as *mut u8;
+                        let len = v16.len() ;
+                        let capacity = self.data_f16[frame].capacity() ;
+
+                        unsafe {
+                            mem::forget(v16);
+
+                            let raw: Vec<u8> = Vec::from_raw_parts(ptr, 2*len, 2*capacity);
+                            
+                            match buffer.write_all(&raw) {
+                                Ok(()) => {                                    
+                                },
+                                Err(err) => {
+                                    println!("binary cache write error: {}, removing the temporary file", err);
+                                    let _ = std::fs::remove_file(tmp_filepath);
+                                    return;
+                                }
+                            }
+                        };                                               
+                    };                    
+
+                    let _ = std::fs::rename(tmp_filepath, filepath);
+                }
+            }
         }
     }
 }
