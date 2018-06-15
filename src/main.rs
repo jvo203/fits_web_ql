@@ -1286,7 +1286,6 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
 
     //build up an HTML response
     let mut html = String::from("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n");
-    html.push_str("<link rel=\"icon\" href=\"favicon.ico\"/>\n");
     html.push_str("<link href=\"https://fonts.googleapis.com/css?family=Inconsolata\" rel=\"stylesheet\"/>\n");
     html.push_str("<link href=\"https://fonts.googleapis.com/css?family=Lato\" rel=\"stylesheet\"/>\n");
 
