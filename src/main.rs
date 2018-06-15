@@ -1,4 +1,5 @@
 extern crate chrono;
+extern crate actix;
 extern crate actix_web;
 extern crate half;
 extern crate byteorder;
@@ -12,6 +13,10 @@ use std::io::Cursor;
 use byteorder::{BigEndian, ReadBytesExt};
 use std::fmt;
 use std::mem;
+use std::env;
+
+use actix::*;
+use actix_web::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseFloatError {
@@ -920,6 +925,68 @@ impl Drop for FITS {
     }
 }
 
+#[derive(Debug)]
+struct fits_session {    
+    dataset_id: String,    
+}
+
+impl fits_session {
+    fn new(id: &String) -> fits_session {
+        let session = fits_session {
+            dataset_id: id.clone(),
+        } ;
+
+        println!("allocating a new websocket session for {}", id);
+
+        session
+    }
+}
+
+impl Drop for fits_session {
+    fn drop(&mut self) {
+        println!("dropping a websocket session for {}", self.dataset_id);
+    }
+}
+
+impl Actor for fits_session {
+    type Context = ws::WebsocketContext<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        println!("websocket connection started for {}", self.dataset_id);
+    }
+
+    fn stopped(&mut self, ctx: &mut Self::Context) {
+        println!("websocket connection stopped for {}", self.dataset_id);        
+    }     
+}
+
+/// forward progress messages from FITS loading to the websocket
+/*impl Handler<actix::Message> for fits_session {
+    type Result = ();
+
+    fn handle(&mut self, msg: actix::Message, ctx: &mut Self::Context) {
+        //ctx.text(msg.0);
+    }
+}*/
+
+// Handler for ws::Message messages
+impl StreamHandler<ws::Message, ws::ProtocolError> for fits_session {
+    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
+        //println!("WEBSOCKET MESSAGE: {:?}", msg);
+
+        match msg {
+            ws::Message::Ping(msg) => ctx.pong(&msg),
+            ws::Message::Text(text) => {                               
+                if text.contains("[heartbeat]") {
+                    ctx.text(text);
+                }
+            },                
+            ws::Message::Binary(_) => println!("ignoring an incoming binary websocket message"),
+            _ => ctx.stop(),
+        }
+    }
+}
+
 lazy_static! {
     static ref DATASETS: RwLock<HashMap<String, FITS>> = {
         RwLock::new(HashMap::new())
@@ -929,16 +996,13 @@ lazy_static! {
 #[cfg(not(feature = "server"))]
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-06-08.0";
+static VERSION_STRING: &'static str = "SV2018-06-15.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
 
 #[cfg(feature = "server")]
 static SERVER_MODE: &'static str = "SERVER";
-
-use actix_web::*;
-use std::env;
 
 fn remove_symlinks() {
     let cache = std::path::Path::new(FITSCACHE);
@@ -1064,6 +1128,15 @@ fn directory_handler(req: HttpRequest) -> HttpResponse {
         Some(x) => get_directory(std::path::PathBuf::from(x)),
         None => get_home_directory()//default database
     }
+}
+
+// do websocket handshake and start actor
+fn websocket_entry(req: HttpRequest) -> Result<HttpResponse> {
+    let dataset_id: String = req.match_info().query("id").unwrap();
+
+    let session = fits_session::new(&dataset_id);
+
+    ws::start(req, session)
 }
 
 fn fitswebql_entry(req: HttpRequest) -> HttpResponse {
@@ -1334,8 +1407,8 @@ fn main() {
 
     server::new(
         move || App::new()
-        .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})
-        .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::PUT).f(fitswebql_entry)})
+        .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})        
+        .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
         .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
         .handler("/", fs::StaticFiles::new("htdocs").index_file(index_file)))
         .bind("localhost:8080").expect("Cannot bind to localhost:8080")

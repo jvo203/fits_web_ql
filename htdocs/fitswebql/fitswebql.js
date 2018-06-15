@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-06-08.2";
+    return "JS2018-06-15.0";
 }
 
 var generateUid = function ()
@@ -1113,7 +1113,7 @@ function send_ping()
     {
 	t = performance.now() ;
 	
-	wsConn[va_count-1].send('[ping] ' + t);
+	wsConn[va_count-1].send('[heartbeat] ' + t);
     }
 }
 
@@ -1243,7 +1243,7 @@ function open_websocket_connection(datasetId, index)
 			.attr("opacity", 0.8);
 		    
 		    ALMAWS.binaryType = 'arraybuffer';
-		    ALMAWS.send("[open] datasetId=" + datasetId);
+		    //ALMAWS.send("[open] datasetId=" + datasetId);//no need to send it, the id is in the URL
 
 		    if(index == va_count)
 			send_ping() ;
@@ -1432,7 +1432,7 @@ function open_websocket_connection(datasetId, index)
 		    
 		    if(typeof evt.data === "string")
 		    {				
-			var cmd = "[ping]" ;
+			var cmd = "[heartbeat]" ;
 			var pos = received_msg.indexOf(cmd) ;
 
 			if(pos >= 0)
