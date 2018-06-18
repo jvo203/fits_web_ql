@@ -13,7 +13,9 @@ actix = "*"
 actix-web = "*"
 serde_json = "1.0"
 chrono = "*"
-half = {version = "*", default-features=true}
+#half = {version = "*", features = ["use-intrinsics"]}//cannot be used with a non-nightly stable Rust?
+half = "*"
 lazy_static = "*"
 scan_fmt = "*"
 byteorder = "1"
+uuid = { version = "0.6", features = ["v4"] }

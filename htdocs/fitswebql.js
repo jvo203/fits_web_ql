@@ -11,17 +11,6 @@ function localStorage_read_lastdir(key)
 	return localStorage.getItem(key) ;
 }
 
-function compare_files(a,b)
-{
-	if (a.name < b.name)
-	  return -1;
-
-	if (a.name > b.name)
-	  return 1;
-
-	return 0;
-  }
-
 function show_directory_contents(response)
 {
  	$("#filesystem").remove();
@@ -74,9 +63,6 @@ function show_directory_contents(response)
     
     //contents
     filelist = response.contents ;
-	
-	//sort files/dirs alphabetically by name
-	filelist.sort(compare_files);
 
     $("#files").append($("<tbody></tbody>")
 		       .attr("id", "tbody")) ;
