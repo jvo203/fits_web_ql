@@ -36,18 +36,20 @@ mod server;
 //mod state;
 
 struct WsSessionState {
-    addr: Addr<Syn, server::WsServer>,
+    addr: Addr<Syn, server::SessionServer>,
 }
 
 #[derive(Debug)]
 struct UserSession {    
-    dataset_id: String,    
+    dataset_id: String,
+    session_id: String,
 }
 
 impl UserSession {
     pub fn new(id: &String) -> UserSession {
         let session = UserSession {
             dataset_id: id.clone(),
+            session_id: String::from(""),
         } ;
 
         println!("allocating a new websocket session for {}", id);
@@ -70,38 +72,51 @@ impl Actor for UserSession {
 
         let addr: Addr<Syn, _> = ctx.address();
 
-        /*ctx.state()
+        ctx.state()
             .addr
             .send(server::Connect {
                 addr: addr.recipient(),
+                dataset_id: self.dataset_id.clone(),
             })
             .into_actor(self)
             .then(|res, act, ctx| {
                 match res {
-                    Ok(res) => println!("connected to the server, id: {}", res),
-                    // something is wrong with chat server
-                    _ => ctx.stop(),
+                    Ok(res) => {
+                        println!("connected to the SessionServer, id: {}", res);
+                        act.session_id = res;
+                    },
+                    // something is wrong with the SessionServer
+                    _ => {
+                        println!("cannot connect to the SessionServer instance, stopping the websocket");
+                        ctx.stop();
+                    },
                 }
                 fut::ok(())
             })
-        .wait(ctx);*/
+        .wait(ctx);
     }
 
     fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
-        println!("stopping the websocket connection for {}", self.dataset_id);
+        println!("stopping the websocket connection for {}/{}", self.dataset_id, self.session_id);
+
+        ctx.state().addr.do_send(server::Disconnect {
+            dataset_id: self.dataset_id.clone(),
+            id: self.session_id.clone()
+            });
 
         Running::Stop
     }     
 }
 
 /// forward progress messages from FITS loading to the websocket
-/*impl Handler<actix::Message> for UserSession {
+impl Handler<server::Message> for UserSession {
     type Result = ();
 
-    fn handle(&mut self, msg: actix::Message, ctx: &mut Self::Context) {
-        //ctx.text(msg.0);
+    fn handle(&mut self, msg: server::Message, ctx: &mut Self::Context) {
+        //println!("websocket sending '{}'", msg.0);
+        ctx.text(msg.0);
     }
-}*/
+}
 
 // Handler for ws::Message messages
 impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
@@ -130,7 +145,7 @@ lazy_static! {
 #[cfg(not(feature = "server"))]
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-06-18.0";
+static VERSION_STRING: &'static str = "SV2018-06-19.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -271,6 +286,8 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
 fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     let dataset_id: String = req.match_info().query("id").unwrap();
 
+    //dataset_id needs to be URI-decoded
+
     let session = UserSession::new(&dataset_id);
 
     ws::start(req, session)
@@ -279,6 +296,9 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
 fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     let fitswebql_path: String = req.match_info().query("path").unwrap();
     
+    let state = req.state();
+    let server = &state.addr;    
+
     let query = req.query();
     
     #[cfg(feature = "server")]
@@ -361,11 +381,11 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite)
 
     #[cfg(not(feature = "server"))]
-    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite)
+    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &server)
 }
 
 #[cfg(not(feature = "server"))]
-fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool) -> HttpResponse {
+fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
 
     //get fits location    
 
@@ -389,6 +409,7 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
             let my_dir = dir.to_string();
             let my_data_id = data_id.to_string();
             let my_ext = ext.to_string();
+            let my_server = server.clone();
             
             DATASETS.write().unwrap().insert(my_data_id.clone(), fits::FITS::new(&my_data_id)); 
 
@@ -399,7 +420,7 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
                 println!("loading FITS data from {}", filename); 
 
                 let filepath = std::path::Path::new(&filename);           
-                let fits = fits::FITS::from_path(&my_data_id.clone(), filepath);
+                let fits = fits::FITS::from_path(&my_data_id.clone(), filepath, &my_server);
 
                 DATASETS.write().unwrap().insert(my_data_id.clone(), fits);           
             });
@@ -544,11 +565,11 @@ fn main() {
     let sys = actix::System::new("fits_web_ql");
 
     // Start the WebSocket message server actor in a separate thread
-    let server: Addr<Syn, _> = Arbiter::start(|_| server::WsServer::default());
+    let server: Addr<Syn, _> = Arbiter::start(|_| server::SessionServer::default());
 
     HttpServer::new(
         move || {            
-            // Websocket sessions state
+            // WebSocket sessions state
             let state = WsSessionState {                
                 addr: server.clone(),                
             };            
@@ -562,7 +583,12 @@ fn main() {
         .bind("localhost:8080").expect("Cannot bind to localhost:8080")        
         .start();
 
-    println!("started a fits_web_ql server: localhost:8080");
+    #[cfg(not(feature = "server"))]
+    println!("started a local FITSWebQL server; point your browser to http://localhost:8080");
+
+    #[cfg(feature = "server")]
+    println!("started a fits_web_ql server on port 8080");
+
     let _ = sys.run();
 
     DATASETS.write().unwrap().clear();

@@ -8,6 +8,9 @@ use half::f16;
 use std::mem;
 use byteorder::{BigEndian, ReadBytesExt};
 
+use actix::*;
+use server;
+
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
 
@@ -155,7 +158,7 @@ impl FITS {
         fits
     }    
 
-    pub fn from_path(id: &String, filepath: &std::path::Path) -> FITS {
+    pub fn from_path(id: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
         let mut fits = FITS::new(id);
         
         //load data from filepath
@@ -229,6 +232,8 @@ impl FITS {
 
         println!("FITS cube frame size: {} bytes", frame_size);
 
+        let total = fits.depth;
+
         while frame < fits.depth {                                 
             //println!("requesting a cube frame {}/{}", frame, fits.depth);
 
@@ -237,8 +242,9 @@ impl FITS {
                 Ok(()) => {                                        
                     //process a FITS cube frame (endianness, half-float)
                     //println!("processing cube frame {}/{}", frame+1, fits.depth);
-                    fits.add_cube_frame(&data, frame as usize);
+                    fits.add_cube_frame(&data, frame as usize);                    
                     frame = frame + 1 ;
+                    fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
                 },
                 Err(err) => {
                     println!("CRITICAL ERROR reading FITS data: {}", err);
@@ -246,6 +252,8 @@ impl FITS {
                 }
             } ;            
         }        
+
+        fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
 
         //we've gotten so far, we have the data
         fits.has_data = true ;        
@@ -268,6 +276,20 @@ impl FITS {
         println!("FITS::from_url({})", url);
 
         fits
+    }
+
+    fn send_progress_notification(&mut self, server: &Addr<Syn, server::SessionServer>, notification: &str, total: i32, running: i32) {
+        let msg = json!({
+            "type" : "progress",
+            "message" : notification,
+            "total" : total,
+            "running" : running            
+        });
+
+        server.do_send(server::WsMessage {
+            msg: msg.to_string(),
+            dataset_id: self.dataset_id.clone(),
+        });
     }
 
     fn init_data_storage(&mut self) -> usize {
