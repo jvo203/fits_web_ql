@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-06-15.0";
+    return "JS2018-06-20.0";
 }
 
 var generateUid = function ()
@@ -8527,7 +8527,7 @@ function show_welcome()
 
     var title = headerDiv.append("h2")
 	.attr("align","center")
-	.text("WELCOME TO FITSWEBQL") ;
+	.text('WELCOME TO FITSWEBQL "Fe"') ;
 
     var bodyDiv = contentDiv.append("div")
 	.attr("id", "modal-body")

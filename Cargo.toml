@@ -19,3 +19,4 @@ lazy_static = "*"
 scan_fmt = "*"
 byteorder = "1"
 uuid = { version = "0.6", features = ["v4"] }
+percent-encoding = "*"

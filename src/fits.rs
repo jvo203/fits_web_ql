@@ -53,6 +53,10 @@ pub struct FITS {
         data_f16: Vec<Vec<f16>>,//half-float (short)
         //data_f32: Vec<f32>,//float32 will always be converted to float16
         data_f64: Vec<Vec<f64>>,
+        mean_spectrum: Vec<f32>,
+        integrated_spectrum: Vec<f32>,
+        mask: Vec<bool>,
+        pixels: Vec<f32>,
         bscale: f32,
         bzero: f32,
         ignrval: f32,
@@ -121,6 +125,10 @@ impl FITS {
             data_f16: Vec::new(),
             //data_f32: Vec::new(),//float32 will always be converted to float16
             data_f64: Vec::new(),
+            mean_spectrum: Vec::new(),
+            integrated_spectrum: Vec::new(),
+            mask: Vec::new(),
+            pixels: Vec::new(),
             bscale: 0.0,
             bzero: 0.0,
             ignrval: std::f32::MIN,
@@ -234,6 +242,15 @@ impl FITS {
 
         let total = fits.depth;
 
+        let cdelt3 = {
+            if fits.has_velocity && fits.depth > 1 {
+                fits.cdelt3 * fits.frame_multiplier / 1000.0
+            }
+            else {
+                1.0
+            }
+        };
+
         while frame < fits.depth {                                 
             //println!("requesting a cube frame {}/{}", frame, fits.depth);
 
@@ -242,7 +259,7 @@ impl FITS {
                 Ok(()) => {                                        
                     //process a FITS cube frame (endianness, half-float)
                     //println!("processing cube frame {}/{}", frame+1, fits.depth);
-                    fits.add_cube_frame(&data, frame as usize);                    
+                    fits.add_cube_frame(&data, cdelt3, frame as usize);                    
                     frame = frame + 1 ;
                     fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
                 },
@@ -252,15 +269,15 @@ impl FITS {
                 }
             } ;            
         }        
+        
+        //println!("mean spectrum: {:?}", fits.mean_spectrum);
+        //println!("integrated spectrum: {:?}", fits.integrated_spectrum);
+
+        //we've gotten so far, we have the data, pixels, mask and spectrum
+        fits.has_data = true ;
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
-
-        //we've gotten so far, we have the data
-        fits.has_data = true ;        
-
         println!("{}: reading FITS data completed", id);
-
-        //fits.make_fits_pixels_spectrum(f);
 
         //and lastly create a symbolic link in the FITSCACHE directory
         let filename = format!("{}/{}.fits", FITSCACHE, id);
@@ -295,9 +312,15 @@ impl FITS {
     fn init_data_storage(&mut self) -> usize {
         if self.width == 0 || self.height == 0 || self.depth == 0 {
             return 0;
-        }        
+        }
 
         let capacity = self.width * self.height ;
+
+        self.mask.resize(capacity as usize, false);
+        self.pixels.resize(capacity as usize, 0.0);
+
+        self.mean_spectrum.resize(self.depth as usize, 0.0);
+        self.integrated_spectrum.resize(self.depth as usize, 0.0);
 
         match self.bitpix {
             8 => self.data_u8.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
@@ -778,58 +801,153 @@ impl FITS {
         return false ;
     }
 
-    fn add_cube_frame(&mut self, buf: &Vec<u8>, frame: usize) {                
+    fn add_cube_frame(&mut self, buf: &Vec<u8>, cdelt3: f32, frame: usize) {                
         let mut rdr = Cursor::new(buf);
         let len = self.width * self.height ;
 
         match self.bitpix {
-            8 => {
-                //self.data_u8[frame].copy_from_slice(buf);
-                self.data_u8[frame] = buf.clone();
-                //println!("data_u8[{}]/len = {}", frame, self.data_u8[frame].len());
+            8 => {                                
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                for i in 0..len {
+                    self.data_u8[frame].push(buf[i as usize]);
+
+                    let tmp = self.bzero + self.bscale * (buf[i as usize] as f32) ;
+                    if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {    
+                        self.pixels[i as usize] += tmp ;                                
+                        self.mask[i as usize] = true ;
+
+                        sum += tmp ;
+                        count += 1 ;                                
+                    }                   
+                }
+
+                //mean and integrated intensities @ frame
+                if count > 0 {
+                    self.mean_spectrum[frame] = sum / (count as f32) ;
+                    self.integrated_spectrum[frame] = sum * cdelt3 ;
+                }
             },
+
             16 => {
-                for _ in 0..len {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                for i in 0..len {
                     match rdr.read_i16::<BigEndian>() {
                         Ok(int16) => {
-                            self.data_i16[frame].push(int16)
+                            self.data_i16[frame].push(int16);
+
+                            let tmp = self.bzero + self.bscale * (int16 as f32) ;
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                self.pixels[i as usize] += tmp ;                                
+                                self.mask[i as usize] = true ;
+
+                                sum += tmp ;
+                                count += 1 ;                                
+                            }
                         },
                         Err(err) => println!("BigEndian --> LittleEndian i16 conversion error: {}", err)
                     }
                 }
-            }
+
+                //mean and integrated intensities @ frame
+                if count > 0 {
+                    self.mean_spectrum[frame] = sum / (count as f32) ;
+                    self.integrated_spectrum[frame] = sum * cdelt3 ;
+                }
+            },
+
             32 => {
-                for _ in 0..len {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                for i in 0..len {
                     match rdr.read_i32::<BigEndian>() {
                         Ok(int32) => {
-                            self.data_i32[frame].push(int32)
+                            self.data_i32[frame].push(int32);
+
+                            let tmp = self.bzero + self.bscale * (int32 as f32) ;
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                self.pixels[i as usize] += tmp ;                                
+                                self.mask[i as usize] = true ;
+
+                                sum += tmp ;
+                                count += 1 ;                                
+                            }
                         },
                         Err(err) => println!("BigEndian --> LittleEndian i32 conversion error: {}", err)
                     }
                 }
-            }
+
+                //mean and integrated intensities @ frame
+                if count > 0 {
+                    self.mean_spectrum[frame] = sum / (count as f32) ;
+                    self.integrated_spectrum[frame] = sum * cdelt3 ;
+                }
+            },
+
             -32 => {
-                for _ in 0..len {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                for i in 0..len {
                     match rdr.read_f32::<BigEndian>() {
                         Ok(float32) => {                            
                             let float16 = f16::from_f32(float32);
                             //println!("f32 = {} <--> f16 = {}", float32, float16);
                             self.data_f16[frame].push(float16);
+
+                            let tmp = self.bzero + self.bscale * float32;
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                self.pixels[i as usize] += tmp ;                                
+                                self.mask[i as usize] = true ;
+
+                                sum += tmp ;
+                                count += 1 ;                                
+                            }                            
                         },
                         Err(err) => println!("BigEndian --> LittleEndian f32 conversion error: {}", err)
                     }                    
-                }                
+                }
+
+                //mean and integrated intensities @ frame
+                if count > 0 {
+                    self.mean_spectrum[frame] = sum / (count as f32) ;
+                    self.integrated_spectrum[frame] = sum * cdelt3 ;
+                }
             },
+
             -64 => {
-                for _ in 0..len {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                for i in 0..len {
                     match rdr.read_f64::<BigEndian>() {
                         Ok(float64) => {
-                            self.data_f64[frame].push(float64)
+                            self.data_f64[frame].push(float64);
+
+                            let tmp = self.bzero + self.bscale * (float64 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                self.pixels[i as usize] += tmp ;                                
+                                self.mask[i as usize] = true ;
+
+                                sum += tmp ;
+                                count += 1 ;                                
+                            }
                         },
                         Err(err) => println!("BigEndian --> LittleEndian f64 conversion error: {}", err)
                     }
                 }
-            }
+
+                //mean and integrated intensities @ frame
+                if count > 0 {
+                    self.mean_spectrum[frame] = sum / (count as f32) ;
+                    self.integrated_spectrum[frame] = sum * cdelt3 ;
+                }
+            },
+
             _ => println!("unsupported bitpix: {}", self.bitpix)
         }      
     }

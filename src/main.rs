@@ -1,5 +1,6 @@
 extern crate actix;
 extern crate actix_web;
+extern crate percent_encoding;
 
 extern crate byteorder;
 extern crate chrono;
@@ -15,6 +16,7 @@ use std::collections::BTreeMap;
 use actix::*;
 use actix_web::*;
 use actix_web::server::HttpServer;
+use percent_encoding::percent_decode;
 
 #[macro_use]
 extern crate scan_fmt;
@@ -97,7 +99,7 @@ impl Actor for UserSession {
     }
 
     fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
-        println!("stopping the websocket connection for {}/{}", self.dataset_id, self.session_id);
+        println!("stopping a websocket connection for {}/{}", self.dataset_id, self.session_id);
 
         ctx.state().addr.do_send(server::Disconnect {
             dataset_id: self.dataset_id.clone(),
@@ -284,7 +286,12 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
 
 // do websocket handshake and start an actor
 fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
-    let dataset_id: String = req.match_info().query("id").unwrap();
+    let dataset_id_orig: String = req.match_info().query("id").unwrap();
+
+    let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
+        Ok(x) => x.into_owned(),
+        Err(err) => dataset_id_orig.clone(),
+    };
 
     //dataset_id needs to be URI-decoded
 
@@ -584,10 +591,16 @@ fn main() {
         .start();
 
     #[cfg(not(feature = "server"))]
-    println!("started a local FITSWebQL server; point your browser to http://localhost:8080");
+    {
+        println!("started a local FITSWebQL server; point your browser to http://localhost:8080");
+        println!("press CTRL+C to exit");
+    }    
 
     #[cfg(feature = "server")]
-    println!("started a fits_web_ql server on port 8080");
+    {
+        println!("started a fits_web_ql server on port 8080");
+        println!("send SIGINT to shutdown");
+    }
 
     let _ = sys.run();
 
