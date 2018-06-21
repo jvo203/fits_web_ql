@@ -401,7 +401,7 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> HttpResponse {
         None => {            
             return HttpResponse::NotFound()
                 .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: datasetId parameter not found</p>"));
+                .body(format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"));
         }
     };
 
@@ -410,6 +410,55 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> HttpResponse {
     return HttpResponse::NotFound()
         .content_type("text/html")
         .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"));                
+}
+
+fn get_molecules(req: HttpRequest<WsSessionState>) -> HttpResponse {
+    //println!("{:?}", req);
+
+    let dataset_id = match req.query().get("datasetId") {
+        Some(x) => {x},
+        None => {            
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"));
+        }
+    };
+
+    //freq_start
+    let freq_start = match req.query().get("freq_start") {
+        Some(x) => {x},
+        None => {            
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"));
+        }
+    };
+
+    let freq_start = match freq_start.parse::<f32>() {        
+        Ok(x) => x,
+        Err(_) => 0.0
+    };
+
+    //freq_end
+    let freq_end = match req.query().get("freq_end") {
+        Some(x) => {x},
+        None => {            
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"));
+        }
+    };
+
+    let freq_end = match freq_end.parse::<f32>() {        
+        Ok(x) => x,
+        Err(_) => 0.0
+    };
+
+    println!("get_molecules http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
+
+    return HttpResponse::NotFound()
+        .content_type("text/html")
+        .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"));                
 }
 
 #[cfg(not(feature = "server"))]
@@ -606,6 +655,7 @@ fn main() {
                 .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
                 .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
                 .resource("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})
+                .resource("/{path}/get_molecules", |r| {r.method(http::Method::GET).f(get_molecules)})
                 .handler("/", fs::StaticFiles::new("htdocs").index_file(index_file))
         })
         .bind(&format!("localhost:{}", SERVER_PORT)).expect(&format!("Cannot bind to localhost:{}", SERVER_PORT))        
