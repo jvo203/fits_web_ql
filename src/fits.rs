@@ -7,6 +7,7 @@ use std::io::Cursor;
 use half::f16;
 use std::mem;
 use byteorder::{BigEndian, ReadBytesExt};
+use lz4_compress;
 
 use actix::*;
 use server;
@@ -53,6 +54,7 @@ pub struct FITS {
         data_f16: Vec<Vec<f16>>,//half-float (short)
         //data_f32: Vec<f32>,//float32 will always be converted to float16
         data_f64: Vec<Vec<f64>>,
+        compressed_header: Vec<u8>,
         mean_spectrum: Vec<f32>,
         integrated_spectrum: Vec<f32>,
         mask: Vec<bool>,
@@ -87,6 +89,7 @@ pub struct FITS {
         has_frequency: bool,
         has_velocity: bool,
         frame_multiplier: f32,
+        pub has_header: bool,
         pub has_data: bool,       
         pub timestamp: RwLock<SystemTime>,//last access time
 }
@@ -125,6 +128,7 @@ impl FITS {
             data_f16: Vec::new(),
             //data_f32: Vec::new(),//float32 will always be converted to float16
             data_f64: Vec::new(),
+            compressed_header: Vec::new(),
             mean_spectrum: Vec::new(),
             integrated_spectrum: Vec::new(),
             mask: Vec::new(),
@@ -159,6 +163,7 @@ impl FITS {
             has_frequency: false,
             has_velocity: false,
             frame_multiplier: 1.0,
+            has_header: false,
             has_data: false,
             timestamp: RwLock::new(SystemTime::now()),                    
         } ;        
@@ -167,8 +172,8 @@ impl FITS {
     }    
 
     pub fn from_path(id: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
-        let mut fits = FITS::new(id);
-        
+        let mut fits = FITS::new(id);        
+
         //load data from filepath
         let mut f = match File::open(filepath) {
             Ok(x) => x,
@@ -198,6 +203,7 @@ impl FITS {
 
         //let mut f = BufReader::with_capacity(FITS_CHUNK_LENGTH, f);
 
+        let mut header: Vec<u8> = Vec::new();
         let mut end: bool = false ;
         let mut no_hu: i32 = 0 ;
 
@@ -210,7 +216,8 @@ impl FITS {
                     no_hu = no_hu + 1;
 
                     //parse a FITS header chunk
-                    end = fits.parse_fits_header_chunk(&chunk);                    
+                    end = fits.parse_fits_header_chunk(&chunk);
+                    header.extend_from_slice(&chunk);
                 },
                 Err(err) => {                    
                     println!("CRITICAL ERROR reading FITS header: {}", err);
@@ -227,9 +234,15 @@ impl FITS {
             fits.has_frequency = true ;
         }        
 
-        //compress the FITS header
+        fits.has_header = true ;
 
         println!("{}/#hu = {}, {:?}", id, no_hu, fits);
+
+        //compress the FITS header
+        if !header.is_empty() {
+            fits.compressed_header = lz4_compress::compress(&header);
+            println!("FITS header length {}, lz4-compressed {} bytes", header.len(), fits.compressed_header.len());
+        }        
 
         //next read the data HUD(s)        
         let frame_size: usize = fits.init_data_storage();

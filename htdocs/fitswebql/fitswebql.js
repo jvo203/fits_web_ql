@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-06-20.0";
+    return "JS2018-06-21.0";
 }
 
 var generateUid = function ()
@@ -1024,7 +1024,7 @@ function process_progress_event(data, index)
 		
 		PROGRESS_INFO = "[server] " + message + " " + progress + "%" ;		
 
-		console.log(PROGRESS_INFO) ;
+		//console.log(PROGRESS_INFO) ;
 		
 		d3.select("#progress-bar"+index)
 		    .attr("aria-valuenow", progress)

@@ -6,6 +6,7 @@ extern crate byteorder;
 extern crate chrono;
 extern crate half;
 extern crate uuid;
+extern crate lz4_compress;
 
 use std::thread;
 use std::str::FromStr;
@@ -146,8 +147,9 @@ lazy_static! {
 
 #[cfg(not(feature = "server"))]
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
+const SERVER_PORT: i32 = 8080;
 
-static VERSION_STRING: &'static str = "SV2018-06-19.0";
+static VERSION_STRING: &'static str = "SV2018-06-21.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -290,7 +292,7 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
 
     let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
         Ok(x) => x.into_owned(),
-        Err(err) => dataset_id_orig.clone(),
+        Err(_) => dataset_id_orig.clone(),
     };
 
     //dataset_id needs to be URI-decoded
@@ -391,6 +393,25 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &server)
 }
 
+fn get_spectrum(req: HttpRequest<WsSessionState>) -> HttpResponse {
+    //println!("{:?}", req);
+
+    let dataset_id = match req.query().get("datasetId") {
+        Some(x) => {x},
+        None => {            
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: datasetId parameter not found</p>"));
+        }
+    };
+
+    println!("get_spectrum http request for {}", dataset_id);
+
+    return HttpResponse::NotFound()
+        .content_type("text/html")
+        .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"));                
+}
+
 #[cfg(not(feature = "server"))]
 fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
 
@@ -417,19 +438,18 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
             let my_data_id = data_id.to_string();
             let my_ext = ext.to_string();
             let my_server = server.clone();
-            
-            DATASETS.write().unwrap().insert(my_data_id.clone(), fits::FITS::new(&my_data_id)); 
-
+                                    
+            DATASETS.write().unwrap().insert(my_data_id.clone(), fits::FITS::new(&my_data_id));            
+               
             //load FITS data in a new thread
             thread::spawn(move || {
-                // some work here
                 let filename = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
                 println!("loading FITS data from {}", filename); 
 
                 let filepath = std::path::Path::new(&filename);           
                 let fits = fits::FITS::from_path(&my_data_id.clone(), filepath, &my_server);
 
-                DATASETS.write().unwrap().insert(my_data_id.clone(), fits);           
+                DATASETS.write().unwrap().insert(my_data_id.clone(), fits);                           
             });
         }
         else {
@@ -585,20 +605,21 @@ fn main() {
                 .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
                 .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
                 .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
+                .resource("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})
                 .handler("/", fs::StaticFiles::new("htdocs").index_file(index_file))
         })
-        .bind("localhost:8080").expect("Cannot bind to localhost:8080")        
+        .bind(&format!("localhost:{}", SERVER_PORT)).expect(&format!("Cannot bind to localhost:{}", SERVER_PORT))        
         .start();
 
     #[cfg(not(feature = "server"))]
     {
-        println!("started a local FITSWebQL server; point your browser to http://localhost:8080");
+        println!("started a local FITSWebQL server; point your browser to http://localhost:{}", SERVER_PORT);
         println!("press CTRL+C to exit");
     }    
 
     #[cfg(feature = "server")]
     {
-        println!("started a fits_web_ql server on port 8080");
+        println!("started a fits_web_ql server on port {}", SERVER_PORT);
         println!("send SIGINT to shutdown");
     }
 
