@@ -97,7 +97,7 @@ impl Handler<Disconnect> for SessionServer {
             };
 
             if remove_entry {
-                println!("[SessionServer]: removing an empty dataset {}", &msg.dataset_id);
+                println!("[SessionServer]: unlinking a dataset {}", &msg.dataset_id);
                 self.datasets.remove(&msg.dataset_id);
             }
         }     

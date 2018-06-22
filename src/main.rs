@@ -149,7 +149,7 @@ lazy_static! {
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 
-static VERSION_STRING: &'static str = "SV2018-06-21.0";
+static VERSION_STRING: &'static str = "SV2018-06-22.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -167,7 +167,7 @@ fn remove_symlinks() {
                 let file_type = metadata.file_type();
 
                 if file_type.is_symlink() {
-                    println!("removing a symbolic link: {:?}", entry.file_name());
+                    println!("removing a symbolic link to {:?}", entry.file_name());
                     let _ = std::fs::remove_file(entry.path());
                 }
             }     
@@ -677,4 +677,6 @@ fn main() {
 
     DATASETS.write().unwrap().clear();
     remove_symlinks();
+
+    println!("FITSWebQL: clean shutdown completed.");
 }
