@@ -51,7 +51,7 @@ impl Default for SessionServer {
 
 /// Make actor from `SessionServer`
 impl Actor for SessionServer {    
-    type Context = Context<Self>;
+    type Context = SyncContext<Self>;
 }
 
 /// Handler for Connect message.
@@ -59,7 +59,7 @@ impl Actor for SessionServer {
 impl Handler<Connect> for SessionServer {
     type Result = String;
 
-    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {        
+    fn handle(&mut self, msg: Connect, _: &mut SyncContext<Self>) -> Self::Result {        
         // register a new session with a random uuid
         let id = Uuid::new_v4();        
         self.sessions.insert(id, msg.addr);
@@ -77,7 +77,7 @@ impl Handler<Connect> for SessionServer {
 impl Handler<Disconnect> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: Disconnect, _: &mut SyncContext<Self>) {
         let id = Uuid::parse_str(&msg.id).unwrap();
 
         if self.sessions.remove(&id).is_some() {
@@ -108,7 +108,7 @@ impl Handler<Disconnect> for SessionServer {
 impl Handler<WsMessage> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: WsMessage, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: WsMessage, _: &mut SyncContext<Self>) {
         //println!("[SessionServer]: received a WsMessage '{}' bound for '{}'", &msg.msg, &msg.dataset_id);
 
         match self.datasets.get(&msg.dataset_id) {

@@ -298,7 +298,7 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
 }
 
 // do websocket handshake and start an actor
-fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
+/*fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
@@ -311,9 +311,24 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=H
     let session = UserSession::new(&dataset_id);
 
     Ok(Box::new(result(ws::start(req, session))))
+}*/
+
+fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
+    let dataset_id_orig: String = req.match_info().query("id").unwrap();
+
+    let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
+        Ok(x) => x.into_owned(),
+        Err(_) => dataset_id_orig.clone(),
+    };
+
+    //dataset_id needs to be URI-decoded
+
+    let session = UserSession::new(&dataset_id);
+
+    ws::start(req, session)
 }
 
-fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
+fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     let fitswebql_path: String = req.match_info().query("path").unwrap();
     
     let state = req.state();
@@ -371,10 +386,9 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResp
 
             //the last resort
             if v.is_empty() {            
-                return result(Ok(HttpResponse::NotFound()
+                return HttpResponse::NotFound()
                     .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: no {} available</p>", dataset))))
-                    .responder();
+                    .body(format!("<p><b>Critical Error</b>: no {} available</p>", dataset))                    
                 };
             
             v
@@ -402,7 +416,7 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResp
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite)
 
     #[cfg(not(feature = "server"))]
-    result(Ok(execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &server))).responder()
+    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &server)
 }
 
 fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
@@ -782,7 +796,8 @@ fn main() {
     let sys = actix::System::new("fits_web_ql");
 
     // Start the WebSocket message server actor in a separate thread
-    let server: Addr<Syn, _> = Arbiter::start(|_| server::SessionServer::default());    
+    //let server: Addr<Syn, _> = Arbiter::start(|_| server::SessionServer::default());    
+    let server: Addr<Syn, _> = SyncArbiter::start(32,|| server::SessionServer::default());//16 or 32 threads at most
 
     HttpServer::new(
         move || {            
