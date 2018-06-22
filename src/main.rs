@@ -8,6 +8,7 @@ extern crate half;
 extern crate uuid;
 extern crate lz4_compress;
 extern crate futures;
+extern crate bytes;
 
 use std::sync::Arc;
 use std::{thread,time};
@@ -20,6 +21,7 @@ use actix::*;
 use actix_web::*;
 use actix_web::server::HttpServer;
 use futures::future::{Future,result};
+use bytes::Bytes;
 use percent_encoding::percent_decode;
 
 #[macro_use]
@@ -406,7 +408,7 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResp
 fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
-    let dataset_id = match req.query().get("datasetId") {
+    /*let dataset_id = match req.query().get("datasetId") {
         Some(x) => {x},
         None => {            
             return result(Ok(HttpResponse::NotFound()
@@ -416,9 +418,21 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
         }
     };
 
-    println!("[get_spectrum] http request for {}", dataset_id);
+    println!("[get_spectrum] http request for {}", dataset_id);*/
 
-    result(Ok({
+    req.body()                     // <- get Body future
+        //.limit(1024)                // <- change max size of the body to a 1kb
+        .from_err()
+        .and_then(|bytes: Bytes| {  // <- complete body
+            
+            //let ten_secs = time::Duration::from_secs(10);
+            //thread::sleep(ten_secs);
+
+            println!("==== BODY ==== {:?}", bytes);
+            Ok(HttpResponse::Ok().into())
+        }).responder()
+
+    /*result(Ok({
         let datasets = DATASETS.read().unwrap();
 
         println!("[get_spectrum] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
@@ -452,7 +466,7 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
                 .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
         }
     }))
-    .responder()
+    .responder()*/
 }
 
 fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
@@ -503,7 +517,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
     println!("[get_molecules] http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
 
     result(Ok({
-        let datasets = DATASETS.read().unwrap();
+        /*let datasets = DATASETS.read().unwrap();
 
         println!("[get_molecules] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
 
@@ -519,7 +533,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
             }
         };
 
-        println!("[get_molecules] obtained read access to {}, has_header = {}", dataset_id, fits.has_header);
+        println!("[get_molecules] obtained read access to {}, has_header = {}", dataset_id, fits.has_header);*/
 
         HttpResponse::NotFound()
             .content_type("text/html")
