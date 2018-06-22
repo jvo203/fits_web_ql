@@ -171,14 +171,14 @@ impl FITS {
         fits
     }    
 
-    pub fn from_path(id: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
-        let mut fits = FITS::new(id);        
+    pub fn load_from_path(&mut self, id: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) /*-> FITS*/ {
+        let mut fits = self;//FITS::new(id);        
 
         //load data from filepath
         let mut f = match File::open(filepath) {
             Ok(x) => x,
             Err(x) => { println!("{:?}: {:?}", filepath, x);
-                        return fits;
+                        return //fits;
                         //a desperate attempt to download FITS using the ALMA URL (will fail for non-ALMA datasets)                        
                         /*let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
                         return FITS::from_url(&data_id, &url);*/                      
@@ -190,16 +190,16 @@ impl FITS {
                                 println!("{:?}, {} bytes", f, len);
                                 
                                 if len < FITS_CHUNK_LENGTH as u64 {
-                                    return fits;
+                                    return //fits;
                                 };
                         }
             Err(err) => {   println!("file metadata reading problem: {}", err);
-                            return fits;
+                            return //fits;
                     }
         } ;
 
         //OK, we have a FITS file with at least one chunk        
-        println!("reading FITS header...") ;
+        println!("{}: reading FITS header...", id) ;
 
         //let mut f = BufReader::with_capacity(FITS_CHUNK_LENGTH, f);
 
@@ -221,7 +221,7 @@ impl FITS {
                 },
                 Err(err) => {                    
                     println!("CRITICAL ERROR reading FITS header: {}", err);
-                    return fits;
+                    return //fits;
                 }
             } ;
         }           
@@ -278,7 +278,7 @@ impl FITS {
                 },
                 Err(err) => {
                     println!("CRITICAL ERROR reading FITS data: {}", err);
-                    return fits;
+                    return //fits;
                 }
             } ;            
         }        
@@ -297,7 +297,7 @@ impl FITS {
         let cachefile = std::path::Path::new(&filename);      
         let _ = std::os::unix::fs::symlink(filepath, cachefile);     
         
-        fits
+        //fits
     }
 
     fn from_url(id: &String, url: &String) -> FITS {

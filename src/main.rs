@@ -7,8 +7,10 @@ extern crate chrono;
 extern crate half;
 extern crate uuid;
 extern crate lz4_compress;
+extern crate futures;
 
-use std::thread;
+use std::sync::Arc;
+use std::{thread,time};
 use std::str::FromStr;
 use std::env;
 use std::time::{SystemTime};
@@ -17,6 +19,7 @@ use std::collections::BTreeMap;
 use actix::*;
 use actix_web::*;
 use actix_web::server::HttpServer;
+use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 
 #[macro_use]
@@ -139,8 +142,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
     }
 }
 
-lazy_static! {
+/*lazy_static! {
     static ref DATASETS: RwLock<HashMap<String, fits::FITS>> = {
+        RwLock::new(HashMap::new())
+    };
+}*/
+
+lazy_static! {
+    static ref DATASETS: RwLock<HashMap<String, Arc<RwLock<Box<fits::FITS>>>>> = {
         RwLock::new(HashMap::new())
     };
 }
@@ -287,7 +296,7 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
 }
 
 // do websocket handshake and start an actor
-fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
+fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
@@ -299,10 +308,10 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
 
     let session = UserSession::new(&dataset_id);
 
-    ws::start(req, session)
+    Ok(Box::new(result(ws::start(req, session))))
 }
 
-fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
+fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     let fitswebql_path: String = req.match_info().query("path").unwrap();
     
     let state = req.state();
@@ -360,9 +369,10 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
 
             //the last resort
             if v.is_empty() {            
-                return HttpResponse::NotFound()
+                return result(Ok(HttpResponse::NotFound()
                     .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: no {} available</p>", dataset));
+                    .body(format!("<p><b>Critical Error</b>: no {} available</p>", dataset))))
+                    .responder();
                 };
             
             v
@@ -390,37 +400,71 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite)
 
     #[cfg(not(feature = "server"))]
-    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &server)
+    result(Ok(execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &server))).responder()
 }
 
-fn get_spectrum(req: HttpRequest<WsSessionState>) -> HttpResponse {
+fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
     let dataset_id = match req.query().get("datasetId") {
         Some(x) => {x},
         None => {            
-            return HttpResponse::NotFound()
+            return result(Ok(HttpResponse::NotFound()
                 .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"));
+                .body(format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"))))
+                .responder()
         }
     };
 
-    println!("get_spectrum http request for {}", dataset_id);
+    println!("[get_spectrum] http request for {}", dataset_id);
 
-    return HttpResponse::NotFound()
-        .content_type("text/html")
-        .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"));                
+    result(Ok({
+        let datasets = DATASETS.read().unwrap();
+
+        println!("[get_spectrum] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
+
+        let fits = match datasets.get(dataset_id).unwrap().read() {
+            Ok(x) => x,
+            Err(err) => {
+                println!("[get_spectrum] {}: cannot obtain a read access to {}", err, dataset_id);
+
+                return result(Ok(HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!("<p><b>Critical Error</b>: {} not found</p>", dataset_id))))
+                    .responder();
+            }
+        };
+
+        println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
+
+        if fits.has_data {
+            let resp = json!({
+                //"HEADERSIZE" : fits.compressed_header.len()
+            });
+
+            HttpResponse::Ok()
+                .content_type("application/json")
+                .body(format!("{}",resp.to_string()))
+        }
+        else {
+            HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
+        }
+    }))
+    .responder()
 }
 
-fn get_molecules(req: HttpRequest<WsSessionState>) -> HttpResponse {
+fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
     let dataset_id = match req.query().get("datasetId") {
         Some(x) => {x},
         None => {            
-            return HttpResponse::NotFound()
+            return result(Ok(HttpResponse::NotFound()
                 .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"));
+                .body(format!("<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"))))
+                .responder();
         }
     };
 
@@ -428,9 +472,10 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> HttpResponse {
     let freq_start = match req.query().get("freq_start") {
         Some(x) => {x},
         None => {            
-            return HttpResponse::NotFound()
+            return result(Ok(HttpResponse::NotFound()
                 .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"));
+                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"))))
+                .responder();
         }
     };
 
@@ -443,9 +488,10 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> HttpResponse {
     let freq_end = match req.query().get("freq_end") {
         Some(x) => {x},
         None => {            
-            return HttpResponse::NotFound()
+            return result(Ok(HttpResponse::NotFound()
                 .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"));
+                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"))))
+                .responder();
         }
     };
 
@@ -454,15 +500,36 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> HttpResponse {
         Err(_) => 0.0
     };
 
-    println!("get_molecules http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
+    println!("[get_molecules] http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
 
-    return HttpResponse::NotFound()
-        .content_type("text/html")
-        .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"));                
+    result(Ok({
+        let datasets = DATASETS.read().unwrap();
+
+        println!("[get_molecules] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
+
+        let fits = match datasets.get(dataset_id).unwrap().read() {
+            Ok(x) => x,
+            Err(err) => {
+                println!("[get_molecules] {}: cannot obtain a read access to {}", err, dataset_id);
+
+                return result(Ok(HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!("<p><b>Critical Error</b>: {} not found</p>", dataset_id))))
+                    .responder();
+            }
+        };
+
+        println!("[get_molecules] obtained read access to {}, has_header = {}", dataset_id, fits.has_header);
+
+        HttpResponse::NotFound()
+            .content_type("text/html")
+            .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"))
+    }))
+    .responder()
 }
 
-#[cfg(not(feature = "server"))]
-fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
+/*#[cfg(not(feature = "server"))]
+fn execute_fits_old(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
 
     //get fits location    
 
@@ -508,6 +575,66 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
             
             has_fits = has_fits && dataset.has_data ;
             *dataset.timestamp.write().unwrap() = SystemTime::now() ;
+        } ;
+    } ;
+
+    http_fits_response(&fitswebql_path, &dataset_id, composite, has_fits)
+}*/
+
+#[cfg(not(feature = "server"))]
+fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
+
+    //get fits location    
+
+    //launch FITS threads
+    let mut has_fits: bool = true ;
+
+    //for each dataset_id
+    for i in 0..dataset_id.len() {
+        let data_id = dataset_id[i];        
+        
+        let mut datasets = DATASETS.write().unwrap();                
+
+        //if it does not exist set has_fits to false and load the FITS data
+        if !datasets.contains_key(data_id) {
+            has_fits = false ;            
+
+            let my_dir = dir.to_string();
+            let my_data_id = data_id.to_string();
+            let my_ext = ext.to_string();
+            let my_server = server.clone();                                                           
+               
+            datasets.insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id))))); 
+
+            //load FITS data in a new thread
+            thread::spawn(move || {
+                let filename = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
+                println!("loading FITS data from {}", filename);                 
+                
+                let datasets = DATASETS.read().unwrap();
+
+                let mut fits = match datasets.get(&my_data_id).unwrap().write() {                    
+                    Ok(x) => x,                        
+                    Err(err) => {                        
+                        println!("{}: cannot obtain a mutable reference to {}", err, my_data_id);
+                        return;
+                    }                
+                };                
+
+                //println!("obtained a mutable reference to {}", my_data_id);
+
+                let filepath = std::path::Path::new(&filename);
+                fits.load_from_path(&my_data_id.clone(), filepath, &my_server);            
+            });
+        }
+        else {
+            //update the timestamp            
+            let dataset = datasets.get(data_id).unwrap().read().unwrap() ;
+            
+            has_fits = has_fits && dataset.has_data ;
+            *dataset.timestamp.write().unwrap() = SystemTime::now() ;
+
+            println!("updated an access timestamp for {}", data_id);
         } ;
     } ;
 
@@ -641,7 +768,7 @@ fn main() {
     let sys = actix::System::new("fits_web_ql");
 
     // Start the WebSocket message server actor in a separate thread
-    let server: Addr<Syn, _> = Arbiter::start(|_| server::SessionServer::default());
+    let server: Addr<Syn, _> = Arbiter::start(|_| server::SessionServer::default());    
 
     HttpServer::new(
         move || {            
