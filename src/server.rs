@@ -13,13 +13,14 @@ pub struct Message(pub String);
 pub struct Connect {
     pub addr: Recipient<Syn, Message>,
     pub dataset_id: String,
+    pub id: Uuid,
 }
 
 /// Session is disconnected
 #[derive(Message)]
 pub struct Disconnect {
     pub dataset_id: String,
-    pub id: String,    
+    pub id: Uuid,    
 }
 
 /// broadcast a message to a dataset
@@ -51,7 +52,7 @@ impl Default for SessionServer {
 
 /// Make actor from `SessionServer`
 impl Actor for SessionServer {    
-    type Context = SyncContext<Self>;
+    type Context = Context<Self>;
 }
 
 /// Handler for Connect message.
@@ -59,14 +60,14 @@ impl Actor for SessionServer {
 impl Handler<Connect> for SessionServer {
     type Result = String;
 
-    fn handle(&mut self, msg: Connect, _: &mut SyncContext<Self>) -> Self::Result {        
-        // register a new session with a random uuid
-        let id = Uuid::new_v4();        
+    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {        
+        // register a new session
+        let id = msg.id;        
         self.sessions.insert(id, msg.addr);
 
         println!("[SessionServer]: registering a new session {}/{}", msg.dataset_id, id); 
 
-        self.datasets.entry(msg.dataset_id).or_insert(HashSet::new()).insert(id);       
+        self.datasets.entry(msg.dataset_id).or_insert(HashSet::new()).insert(id);
 
         // return the session id
         id.to_string()
@@ -77,8 +78,9 @@ impl Handler<Connect> for SessionServer {
 impl Handler<Disconnect> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: Disconnect, _: &mut SyncContext<Self>) {
-        let id = Uuid::parse_str(&msg.id).unwrap();
+    fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
+        //let id = Uuid::parse_str(&msg.id).unwrap();
+        let id = msg.id;
 
         if self.sessions.remove(&id).is_some() {
             println!("[SessionServer]: removing a session {}/{}", &msg.dataset_id, id);
@@ -108,7 +110,7 @@ impl Handler<Disconnect> for SessionServer {
 impl Handler<WsMessage> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: WsMessage, _: &mut SyncContext<Self>) {
+    fn handle(&mut self, msg: WsMessage, _: &mut Context<Self>) {
         //println!("[SessionServer]: received a WsMessage '{}' bound for '{}'", &msg.msg, &msg.dataset_id);
 
         match self.datasets.get(&msg.dataset_id) {

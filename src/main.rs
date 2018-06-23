@@ -8,7 +8,6 @@ extern crate half;
 extern crate uuid;
 extern crate lz4_compress;
 extern crate futures;
-extern crate bytes;
 
 use std::sync::Arc;
 use std::{thread,time};
@@ -21,8 +20,8 @@ use actix::*;
 use actix_web::*;
 use actix_web::server::HttpServer;
 use futures::future::{Future,result};
-use bytes::Bytes;
 use percent_encoding::percent_decode;
+use uuid::Uuid;
 
 #[macro_use]
 extern crate scan_fmt;
@@ -39,9 +38,7 @@ use std::sync::RwLock;
 static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
 
 mod fits;
-//mod user;
 mod server;
-//mod state;
 
 struct WsSessionState {
     addr: Addr<Syn, server::SessionServer>,
@@ -50,14 +47,15 @@ struct WsSessionState {
 #[derive(Debug)]
 struct UserSession {    
     dataset_id: String,
-    session_id: String,
+    session_id: Uuid,
 }
 
 impl UserSession {
     pub fn new(id: &String) -> UserSession {
         let session = UserSession {
             dataset_id: id.clone(),
-            session_id: String::from(""),
+            //session_id: String::from(""),
+            session_id: Uuid::new_v4(),
         } ;
 
         println!("allocating a new websocket session for {}", id);
@@ -82,26 +80,11 @@ impl Actor for UserSession {
 
         ctx.state()
             .addr
-            .send(server::Connect {
+            .do_send(server::Connect {
                 addr: addr.recipient(),
                 dataset_id: self.dataset_id.clone(),
-            })
-            .into_actor(self)
-            .then(|res, act, ctx| {
-                match res {
-                    Ok(res) => {
-                        println!("connected to the SessionServer, id: {}", res);
-                        act.session_id = res;
-                    },
-                    // something is wrong with the SessionServer
-                    _ => {
-                        println!("cannot connect to the SessionServer instance, stopping the websocket");
-                        ctx.stop();
-                    },
-                }
-                fut::ok(())
-            })
-        .wait(ctx);
+                id: self.session_id,
+            });
     }
 
     fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
@@ -422,7 +405,7 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
 fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
-    /*let dataset_id = match req.query().get("datasetId") {
+    let dataset_id = match req.query().get("datasetId") {
         Some(x) => {x},
         None => {            
             return result(Ok(HttpResponse::NotFound()
@@ -432,21 +415,9 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
         }
     };
 
-    println!("[get_spectrum] http request for {}", dataset_id);*/
+    println!("[get_spectrum] http request for {}", dataset_id);
 
-    req.body()                     // <- get Body future
-        //.limit(1024)                // <- change max size of the body to a 1kb
-        .from_err()
-        .and_then(|bytes: Bytes| {  // <- complete body
-            
-            //let ten_secs = time::Duration::from_secs(10);
-            //thread::sleep(ten_secs);
-
-            println!("==== BODY ==== {:?}", bytes);
-            Ok(HttpResponse::Ok().into())
-        }).responder()
-
-    /*result(Ok({
+    result(Ok({
         let datasets = DATASETS.read().unwrap();
 
         println!("[get_spectrum] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
@@ -480,7 +451,7 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
                 .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
         }
     }))
-    .responder()*/
+    .responder()
 }
 
 fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
@@ -531,7 +502,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
     println!("[get_molecules] http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
 
     result(Ok({
-        /*let datasets = DATASETS.read().unwrap();
+        let datasets = DATASETS.read().unwrap();
 
         println!("[get_molecules] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
 
@@ -547,7 +518,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
             }
         };
 
-        println!("[get_molecules] obtained read access to {}, has_header = {}", dataset_id, fits.has_header);*/
+        println!("[get_molecules] obtained read access to {}, has_header = {}", dataset_id, fits.has_header);
 
         HttpResponse::NotFound()
             .content_type("text/html")
@@ -796,8 +767,8 @@ fn main() {
     let sys = actix::System::new("fits_web_ql");
 
     // Start the WebSocket message server actor in a separate thread
-    //let server: Addr<Syn, _> = Arbiter::start(|_| server::SessionServer::default());    
-    let server: Addr<Syn, _> = SyncArbiter::start(32,|| server::SessionServer::default());//16 or 32 threads at most
+    let server: Addr<Syn, _> = Arbiter::start(|_| server::SessionServer::default());    
+    //let server: Addr<Syn, _> = SyncArbiter::start(32,|| server::SessionServer::default());//16 or 32 threads at most
 
     HttpServer::new(
         move || {            
