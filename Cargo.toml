@@ -22,3 +22,4 @@ uuid = { version = "0.6", features = ["v4"] }
 percent-encoding = "*"
 lz4-compress = "*"
 futures = "*"
+parking_lot = "*"

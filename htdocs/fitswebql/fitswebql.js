@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-06-21.0";
+    return "JS2018-06-24.0";
 }
 
 var generateUid = function ()
@@ -7221,6 +7221,14 @@ function fetch_spectral_lines(datasetId, freq_start, freq_end)
 	    }, 1000) ;
 	}
 	
+	if (xmlhttp.readyState == 4 && xmlhttp.status == 202)
+	{	    
+	    console.log("Server not ready, long-polling molecules again.") ;
+	    setTimeout(function () {
+		fetch_spectral_lines(datasetId, freq_start, freq_end) ;
+	    }, 0) ;
+	}
+
 	if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
 	{
 	    var response = JSON.parse(xmlhttp.responseText);
@@ -7260,6 +7268,14 @@ function fetch_spectrum(datasetId, index, reload)
 	    setTimeout(function () {
 		fetch_spectrum(datasetId, index, true) ;
 	    }, 1000) ;
+	}
+
+	if (xmlhttp.readyState == 4 && xmlhttp.status == 202)
+	{	    
+	    console.log("Server not ready, long-polling spectrum again.") ;
+	    setTimeout(function () {
+		fetch_spectrum(datasetId, index, true) ;
+	    }, 0) ;
 	}
 	
 	if (xmlhttp.readyState == 4 && xmlhttp.status == 200)

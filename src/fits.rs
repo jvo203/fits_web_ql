@@ -1,5 +1,6 @@
 use std;
-use std::sync::RwLock;
+//use std::sync::RwLock;
+use parking_lot::RwLock;
 use std::time::{SystemTime};
 use std::fs::File;
 use std::io::{Read,Write};
