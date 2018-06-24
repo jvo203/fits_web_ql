@@ -8,6 +8,8 @@ use half::f16;
 use std::mem;
 use byteorder::{BigEndian, ReadBytesExt};
 use lz4_compress;
+use serde_json::Value;
+
 
 use actix::*;
 use server;
@@ -963,6 +965,12 @@ impl FITS {
 
             _ => println!("unsupported bitpix: {}", self.bitpix)
         }      
+    }
+
+    pub fn to_json(&self) -> String {
+        json!({
+                "HEADERSIZE" : self.compressed_header.len(),
+        }).to_string()
     }
     
 }

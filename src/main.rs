@@ -143,7 +143,7 @@ lazy_static! {
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 
-static VERSION_STRING: &'static str = "SV2018-06-22.1";
+static VERSION_STRING: &'static str = "SV2018-06-24.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -281,7 +281,7 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
 }
 
 // do websocket handshake and start an actor
-/*fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
+fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
@@ -291,12 +291,14 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
 
     //dataset_id needs to be URI-decoded
 
-    let session = UserSession::new(&dataset_id);
+    Ok(Box::new(result({
+        let session = UserSession::new(&dataset_id);
+        ws::start(req, session)
+    }
+    )))
+}
 
-    Ok(Box::new(result(ws::start(req, session))))
-}*/
-
-fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
+/*fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
@@ -309,7 +311,7 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     let session = UserSession::new(&dataset_id);
 
     ws::start(req, session)
-}
+}*/
 
 fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     let fitswebql_path: String = req.match_info().query("path").unwrap();
@@ -437,13 +439,9 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
         println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
 
         if fits.has_data {
-            let resp = json!({
-                //"HEADERSIZE" : fits.compressed_header.len()
-            });
-
             HttpResponse::Ok()
                 .content_type("application/json")
-                .body(format!("{}",resp.to_string()))
+                .body(format!("{}",fits.to_json()))
         }
         else {
             HttpResponse::NotFound()
