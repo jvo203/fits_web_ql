@@ -1,3 +1,5 @@
+#![recursion_limit="1024"]
+
 extern crate actix;
 extern crate actix_web;
 extern crate percent_encoding;
@@ -6,7 +8,6 @@ extern crate byteorder;
 extern crate chrono;
 extern crate half;
 extern crate uuid;
-extern crate lz4_compress;
 extern crate futures;
 
 use std::sync::Arc;
@@ -22,6 +23,7 @@ use actix_web::server::HttpServer;
 use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 use uuid::Uuid;
+extern crate base64;
 
 #[macro_use]
 extern crate scan_fmt;
@@ -147,7 +149,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; long intervals block the main event loop for too long
 
-static VERSION_STRING: &'static str = "SV2018-06-24.0";
+static VERSION_STRING: &'static str = "SV2018-06-25.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -500,27 +502,46 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
     println!("[get_molecules] http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
 
     result(Ok({
-        let datasets = DATASETS.read();//.unwrap();
+        if freq_start == 0.0 && freq_end == 0.0 {
+            let datasets = DATASETS.read();//.unwrap();
 
-        println!("[get_molecules] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
+            println!("[get_molecules] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
 
-        let fits = match datasets.get(dataset_id).unwrap().try_read_for(time::Duration::from_millis(LONG_POLL_TIMEOUT)) {
-            Some(x) => x,
-            None => {
-                println!("[get_molecules]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
+            let fits = match datasets.get(dataset_id).unwrap().try_read_for(time::Duration::from_millis(LONG_POLL_TIMEOUT)) {
+                Some(x) => x,
+                None => {
+                    println!("[get_molecules]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
-                return result(Ok(HttpResponse::Accepted()
+                    return result(Ok(HttpResponse::Accepted()
                     .content_type("text/html")
                     .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id))))
                     .responder();
+                }
+            };
+
+            println!("[get_molecules] obtained read access to {}, has_header = {}", dataset_id, fits.has_header);
+
+            if fits.has_header {
+                //get the freq_start, freq_end range from FITS
+                let (freq_start, freq_end) = fits.get_frequency_range();
+                println!("[get_molecules] frequency range {} - {} GHz", freq_start, freq_end);
+
+                HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(format!("{{\"molecules\" : []}}"))
+            }        
+            else {            
+                HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"))            
             }
-        };
-
-        println!("[get_molecules] obtained read access to {}, has_header = {}", dataset_id, fits.has_header);
-
-        HttpResponse::NotFound()
-            .content_type("text/html")
-            .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"))
+        }
+        else {            
+            //fetch molecules from sqlite without waiting for a FITS header
+            HttpResponse::Ok()
+                .content_type("application/json")
+                .body(format!("{{\"molecules\" : []}}"))
+        }
     }))
     .responder()
 }

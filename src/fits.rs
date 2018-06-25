@@ -8,12 +8,10 @@ use std::io::Cursor;
 use half::f16;
 use std::mem;
 use byteorder::{BigEndian, ReadBytesExt};
-use lz4_compress;
-use serde_json::Value;
-
 
 use actix::*;
 use server;
+use base64::encode;
 
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
@@ -57,7 +55,7 @@ pub struct FITS {
         data_f16: Vec<Vec<f16>>,//half-float (short)
         //data_f32: Vec<f32>,//float32 will always be converted to float16
         data_f64: Vec<Vec<f64>>,
-        compressed_header: Vec<u8>,
+        header: String,        
         mean_spectrum: Vec<f32>,
         integrated_spectrum: Vec<f32>,
         mask: Vec<bool>,
@@ -88,7 +86,9 @@ pub struct FITS {
         mad_p: f32,
         mad_n: f32,        
         black: f32,
+        white: f32,
         sensitivity: f32,
+        flux: String,
         has_frequency: bool,
         has_velocity: bool,
         frame_multiplier: f32,
@@ -131,7 +131,7 @@ impl FITS {
             data_f16: Vec::new(),
             //data_f32: Vec::new(),//float32 will always be converted to float16
             data_f64: Vec::new(),
-            compressed_header: Vec::new(),
+            header: String::from(""),            
             mean_spectrum: Vec::new(),
             integrated_spectrum: Vec::new(),
             mask: Vec::new(),
@@ -162,7 +162,9 @@ impl FITS {
             mad_p: 0.0,
             mad_n: 0.0,
             black: 0.0,
+            white: 0.0,
             sensitivity: 0.0,
+            flux: String::from("logistic"),
             has_frequency: false,
             has_velocity: false,
             frame_multiplier: 1.0,
@@ -220,7 +222,7 @@ impl FITS {
 
                     //parse a FITS header chunk
                     end = fits.parse_fits_header_chunk(&chunk);
-                    header.extend_from_slice(&chunk);
+                    header.extend_from_slice(&chunk);                    
                 },
                 Err(err) => {                    
                     println!("CRITICAL ERROR reading FITS header: {}", err);
@@ -235,17 +237,25 @@ impl FITS {
 
         if fits.restfrq > 0.0 {
             fits.has_frequency = true ;
-        }        
+        }                
 
         fits.has_header = true ;
 
         println!("{}/#hu = {}, {:?}", id, no_hu, fits);
 
+        fits.header = match String::from_utf8(header) {
+            Ok(x) => x,
+            Err(err) => {
+                println!("FITS HEADER UTF8: {}", err);
+                String::from("")
+            }
+        };
+
         //compress the FITS header
-        if !header.is_empty() {
+        /*if !header.is_empty() {
             fits.compressed_header = lz4_compress::compress(&header);
             println!("FITS header length {}, lz4-compressed {} bytes", header.len(), fits.compressed_header.len());
-        }        
+        }*/       
 
         //next read the data HUD(s)        
         let frame_size: usize = fits.init_data_storage();
@@ -968,10 +978,88 @@ impl FITS {
         }      
     }
 
+    pub fn get_frequency_range(&self) -> (f32, f32) {
+        let mut fmin: f32 = 0.0;
+        let mut fmax: f32 = 0.0;
+
+        if self.depth > 1 && self.has_frequency {
+            let mut f1 = 0_f32 ;
+            let mut f2 = 0_f32 ;
+
+            if self.has_velocity {
+                let c = 299792458_f32 ;//speed of light [m/s]
+	  
+	            let v1 : f32 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * (1.0 - self.crpix3) ;
+
+	            let v2 : f32 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * ((self.depth as f32) - self.crpix3) ;
+
+	            f1 = self.restfrq * ( (1.0-v1/c)/(1.0+v1/c) ).sqrt() ;
+	            f2 = self.restfrq * ( (1.0-v2/c)/(1.0+v2/c) ).sqrt() ;
+            }
+            else {
+                f1 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * (1.0 - self.crpix3) ;
+
+	            f2 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * ((self.depth as f32) - self.crpix3) ;                
+            };
+
+            fmin = f1.min(f2);
+            fmax = f1.max(f2);         
+        }
+
+        (fmin/1000000000.0, fmax/1000000000.0)
+    }
+
     pub fn to_json(&self) -> String {
-        json!({
-                "HEADERSIZE" : self.compressed_header.len(),
-        }).to_string()
+        let value = json!({                
+                "HEADER" : self.header,
+                "width" : self.width,
+                "height" : self.height,
+                "depth" : self.depth,
+                "polarisation" : self.polarisation,
+                "filesize" : 0,
+                "IGNRVAL" : self.ignrval,
+                "CRVAL1" : self.crval1,
+                "CRVAL2" : self.crval2,
+                "CRVAL3" : self.crval3,
+                "CDELT1" : self.cdelt1,
+                "CDELT2" : self.cdelt2,
+                "CDELT3" : self.cdelt3,
+                "CRPIX1" : self.crpix1,
+                "CRPIX2" : self.crpix2,
+                "CRPIX3" : self.crpix3,
+                "CUNIT1" : self.cunit1,
+                "CUNIT2" : self.cunit2,
+                "CUNIT3" : self.cunit3,
+                "CTYPE1" : self.ctype1,
+                "CTYPE2" : self.ctype2,
+                "CTYPE3" : self.ctype3,
+                "BMAJ" : self.bmaj,
+                "BMIN" : self.bmin,
+                "BPA" : self.bpa,
+                "BUNIT" : self.beam_unit,
+                "BTYPE" : self.beam_type,
+                "SPECSYS" : self.specsys,
+                "RESTFRQ" : self.restfrq,
+                "OBSRA" : self.obsra,
+                "OBSDEC" : self.obsdec,
+                "OBJECT" : self.obj_name,
+                "DATEOBS" : self.obs_date,
+                "TIMESYS" : self.timesys,
+                "LINE" : self.line,
+                "mean_spectrum" : &self.mean_spectrum,
+                "integrated_spectrum" : &self.integrated_spectrum,
+                /* the histogram part, min, max etc... */
+                "min" : self.min,
+                "max" : self.max, 
+                "median" : self.median,
+                "sensitivity" : self.sensitivity,
+                "black" : self.black,
+                "white" : self.white,
+                "flux" : self.flux,
+                "histogram" : &self.hist,
+        });
+
+        value.to_string()
     }
     
 }

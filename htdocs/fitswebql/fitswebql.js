@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-06-24.0";
+    return "JS2018-06-25.0";
 }
 
 var generateUid = function ()
@@ -7251,15 +7251,15 @@ function fetch_spectral_lines(datasetId, freq_start, freq_end)
     xmlhttp.send();
 } ;
 
-function fetch_spectrum(datasetId, index, reload)
+function fetch_spectrum(datasetId, index, add_timestamp)
 {
     var xmlhttp = new XMLHttpRequest();
 
     var intensity = 'integrated' ;//'mean' or 'integrated'
     var url = 'get_spectrum?datasetId=' + encodeURIComponent(datasetId) + '&' + encodeURIComponent(get_js_version()) ;
 
-    if(reload)
-	url += '&timestamp=' + Date.now() ;
+    if(add_timestamp)
+		url += '&timestamp=' + Date.now() ;
     
     xmlhttp.onreadystatechange = function() {
 	if (xmlhttp.readyState == 4 && xmlhttp.status == 502)
@@ -7274,7 +7274,7 @@ function fetch_spectrum(datasetId, index, reload)
 	{	    
 	    console.log("Server not ready, long-polling spectrum again.") ;
 	    setTimeout(function () {
-		fetch_spectrum(datasetId, index, true) ;
+		fetch_spectrum(datasetId, index, false) ;
 	    }, 0) ;
 	}
 	
@@ -8942,30 +8942,12 @@ function setup_FITS_header_page()
 function display_FITS_header(index)
 {
     let fitsData = fitsContainer[index-1] ;
-    
+	let fitsHeader = fitsData.HEADER;
+
+	//probably there is no need for 'try' as the LZ4 decompressor has been removed
+	//decompression is now handled by the browser behind the scenes
     try
     {
-	fitsHeader = new Uint8Array(window.atob(fitsData.HEADER.replace(/\s/g, '')).split("").map(function(c) {
-	    return c.charCodeAt(0); }));
-	
-	var Buffer = require('buffer').Buffer ;
-	var LZ4 = require('lz4') ;
-	
-	var uncompressed = new Buffer(parseInt(fitsData.HEADERSIZE,10)) ;
-	uncompressedSize = LZ4.decodeBlock(new Buffer(fitsHeader), uncompressed) ;
-	uncompressed = uncompressed.slice(0, uncompressedSize) ;
-
-	try
-	{
-	    fitsHeader = String.fromCharCode.apply(null, uncompressed) ;
-	}
-	catch (err)
-	{
-	    fitsHeader = '' ;
-	    for ( var i = 0; i < uncompressed.length; i++ )
-		fitsHeader += String.fromCharCode(uncompressed[i]) ;
-	} ;
-	
 	var headerText = document.getElementById('headerText#'+index);
 	headerText.innerHTML = fitsHeader.trim().replace(/(.{80})/g, "$1<br>");
 
