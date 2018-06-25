@@ -7185,10 +7185,10 @@ function display_molecules()
 	//console.log("spectral line @ x = ",x, (f/1e9).toPrecision(7), text.trim()) ;
 
 	var cdms = '' ;
-	var intensity = parseFloat(molecule.cdms) ;
+	var intensity = molecule.cdms ;
 
 	if(intensity != 0.0)
-	    cmds = ' CDMS/JPL Int. ' + molecule.cdms.trim() ;
+	    cmds = ' CDMS/JPL Int. ' + intensity ;
 	
 	var htmlStr = molecule.name.trim() + ' ' + text.trim() + ' ' + molecule.quantum.trim() + ' <span style="font-size: 80%">(' + molecule.list + ')</span>' ;
 

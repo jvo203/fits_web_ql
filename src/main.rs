@@ -10,6 +10,8 @@ extern crate half;
 extern crate uuid;
 extern crate futures;
 
+extern crate rusqlite;
+
 use std::sync::Arc;
 use std::{thread,time};
 use std::str::FromStr;
@@ -23,7 +25,6 @@ use actix_web::server::HttpServer;
 use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 use uuid::Uuid;
-extern crate base64;
 
 #[macro_use]
 extern crate scan_fmt;
@@ -156,6 +157,109 @@ static SERVER_MODE: &'static str = "LOCAL";
 
 #[cfg(feature = "server")]
 static SERVER_MODE: &'static str = "SERVER";
+
+#[derive(Debug)]
+struct Molecule {
+    species: String,
+    name: String,
+    frequency: f64,
+    qn: String,
+    cdms_intensity: f64,
+    lovas_intensity: f64,
+    e_l: f64,
+    linelist: String,
+}
+
+fn fetch_molecules(freq_start: f32, freq_end: f32) -> String {
+    //splatalogue sqlite db integration    
+    let mut molecules : Vec<serde_json::Value> = Vec::new();
+
+    let splat_path = std::path::Path::new("splatalogue_v3.db");
+
+    match rusqlite::Connection::open(splat_path) {
+        Ok(splat_db) => {
+            println!("[fetch_molecules] connected to splatalogue sqlite");
+
+            match splat_db.prepare(&format!("SELECT * FROM lines WHERE frequency>={} AND frequency<={};", freq_start, freq_end)) {
+                Ok(mut stmt) => {
+                    let molecule_iter = stmt.query_map(&[], |row| {                        
+                        Molecule {
+                            species: match row.get_checked(0) {
+                                Ok(x) => x,
+                                Err(_) => String::from("")
+                            },
+                            name: match row.get_checked(1) {
+                                Ok(x) => x,
+                                Err(_) => String::from("")
+                            },
+                            frequency: match row.get_checked(2) {
+                                Ok(x) => x,
+                                Err(_) => 0.0
+                            },
+                            qn: match row.get_checked(3) {
+                                Ok(x) => x,
+                                Err(_) => String::from("")
+                            },
+                            cdms_intensity: match row.get_checked(4) {
+                                Ok(x) => x,
+                                Err(_) => 0.0
+                            },
+                            lovas_intensity: match row.get_checked(5) {
+                                Ok(x) => x,
+                                Err(_) => 0.0
+                            },
+                            e_l: match row.get_checked(6) {
+                                Ok(x) => x,
+                                Err(_) => 0.0
+                            },
+                            linelist: match row.get_checked(7) {
+                                Ok(x) => x,
+                                Err(_) => String::from("")
+                            },
+                        }
+                    }).unwrap();
+
+                    for molecule in molecule_iter {
+                        //println!("molecule {:?}", molecule.unwrap());
+                        let mol = molecule.unwrap();
+
+                        let mol_entry = json!({
+                            "species" : mol.species,
+                            "name" : mol.name,
+                            "frequency" : mol.frequency,
+                            "quantum" : mol.qn,
+                            "cdms" : mol.cdms_intensity,
+                            "lovas" : mol.lovas_intensity,
+                            "E_L" : mol.e_l,
+                            "list" : mol.linelist
+                        });
+
+                        molecules.push(mol_entry);
+                    }
+                },
+                Err(err) => println!("sqlite prepare error: {}", err)
+            }            
+        },
+        Err(err) => {
+            println!("error connecting to splatalogue sqlite: {}", err);
+        }
+    };
+
+    let mut contents = String::from("[");
+
+    for entry in &molecules {
+        contents.push_str(&entry.to_string()) ;
+        contents.push(',');
+    };
+
+    if !molecules.is_empty() {
+        contents.pop() ;
+    }   
+
+    contents.push(']');
+
+    contents
+}
 
 fn remove_symlinks() {
     let cache = std::path::Path::new(fits::FITSCACHE);
@@ -526,9 +630,11 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
                 let (freq_start, freq_end) = fits.get_frequency_range();
                 println!("[get_molecules] frequency range {} - {} GHz", freq_start, freq_end);
 
+                let content = fetch_molecules(freq_start, freq_end);                
+
                 HttpResponse::Ok()
                     .content_type("application/json")
-                    .body(format!("{{\"molecules\" : []}}"))
+                    .body(format!("{{\"molecules\" : {}}}", content))
             }        
             else {            
                 HttpResponse::NotFound()
@@ -777,6 +883,10 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
 fn main() {
     remove_symlinks();
 
+    //splatalogue sqlite db integration
+    /*let splat_path = std::path::Path::new("splatalogue_v3.db");
+    let splat_db = sqlite::open(splat_path).unwrap();*/
+
     #[cfg(not(feature = "server"))]
     let index_file = "fitswebql.html" ;
 
@@ -793,7 +903,8 @@ fn main() {
         move || {            
             // WebSocket sessions state
             let state = WsSessionState {                
-                addr: server.clone(),                
+                addr: server.clone(),
+                //splat_db: Mutex::new(splat_db),       
             };            
         
             App::with_state(state)            

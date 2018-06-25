@@ -11,7 +11,6 @@ use-intrinsics = []
 [dependencies]
 actix = "*"
 actix-web = "*"
-base64 = "*"
 serde_json = "*"
 chrono = "*"
 #half = {version = "*", features = ["use-intrinsics"]}//cannot be used with a non-nightly stable Rust?
@@ -23,3 +22,4 @@ uuid = { version = "0.6", features = ["v4"] }
 percent-encoding = "*"
 futures = "*"
 parking_lot = "*"
+rusqlite = "*"

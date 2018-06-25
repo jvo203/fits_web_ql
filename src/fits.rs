@@ -11,7 +11,6 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 use actix::*;
 use server;
-use base64::encode;
 
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
