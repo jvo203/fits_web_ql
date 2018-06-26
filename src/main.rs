@@ -712,7 +712,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
                 dataset_id: dataset_id.to_owned(),
             })
             .wait();            
-
+            
             match resp {
                 Ok(content) => {
                     if content == "" {
@@ -731,7 +731,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
                         .content_type("text/html")
                         .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"))                        
                 }
-            }               
+            }                         
         }
         else {                        
             //fetch molecules from sqlite without waiting for a FITS header            
