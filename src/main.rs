@@ -150,7 +150,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; long intervals block the main event loop for too long
 
-static VERSION_STRING: &'static str = "SV2018-06-25.0";
+static VERSION_STRING: &'static str = "SV2018-06-26.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -558,7 +558,7 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
     .responder()
 }
 
-fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
+fn get_molecules_lock(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
     let dataset_id = match req.query().get("datasetId") {
@@ -606,7 +606,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
     println!("[get_molecules] http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
 
     result(Ok({
-        if freq_start == 0.0 && freq_end == 0.0 {
+        if freq_start == 0.0 || freq_end == 0.0 {
             let datasets = DATASETS.read();//.unwrap();
 
             println!("[get_molecules] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
@@ -643,10 +643,103 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
             }
         }
         else {            
-            //fetch molecules from sqlite without waiting for a FITS header
+            //fetch molecules from sqlite without waiting for a FITS header    
+            let content = fetch_molecules(freq_start, freq_end);                
+
             HttpResponse::Ok()
                 .content_type("application/json")
-                .body(format!("{{\"molecules\" : []}}"))
+                .body(format!("{{\"molecules\" : {}}}", content))
+        }
+    }))
+    .responder()
+}
+
+fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
+    //println!("{:?}", req);    
+
+    let dataset_id = match req.query().get("datasetId") {
+        Some(x) => {x},
+        None => {            
+            return result(Ok(HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"))))
+                .responder();
+        }
+    };
+
+    //freq_start
+    let freq_start = match req.query().get("freq_start") {
+        Some(x) => {x},
+        None => {            
+            return result(Ok(HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"))))
+                .responder();
+        }
+    };
+
+    let freq_start = match freq_start.parse::<f32>() {        
+        Ok(x) => x,
+        Err(_) => 0.0
+    };
+
+    //freq_end
+    let freq_end = match req.query().get("freq_end") {
+        Some(x) => {x},
+        None => {            
+            return result(Ok(HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"))))
+                .responder();
+        }
+    };
+
+    let freq_end = match freq_end.parse::<f32>() {        
+        Ok(x) => x,
+        Err(_) => 0.0
+    };
+
+    println!("[get_molecules] http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
+
+    result(Ok({
+        if freq_start == 0.0 || freq_end == 0.0 {
+            //send a request to the SessionServers
+
+            let state = req.state();
+            let server = &state.addr;
+
+            let resp = server.send(server::GetMolecules {                
+                dataset_id: dataset_id.to_owned(),
+            })
+            .wait();            
+
+            match resp {
+                Ok(content) => {
+                    if content == "" {
+                        HttpResponse::Accepted()                        
+                            .content_type("text/html")
+                            .body(format!("<p><b>spectral lines for {} not available yet</p>", dataset_id))                            
+                    }
+                    else {
+                        HttpResponse::Ok()
+                            .content_type("application/json")
+                            .body(format!("{{\"molecules\" : {}}}", content))                            
+                    }
+                },
+                Err(err) => {
+                    HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"))                        
+                }
+            }               
+        }
+        else {                        
+            //fetch molecules from sqlite without waiting for a FITS header            
+            let content = fetch_molecules(freq_start, freq_end);                
+
+            HttpResponse::Ok()
+                .content_type("application/json")
+                .body(format!("{{\"molecules\" : {}}}", content))
         }
     }))
     .responder()
@@ -903,8 +996,7 @@ fn main() {
         move || {            
             // WebSocket sessions state
             let state = WsSessionState {                
-                addr: server.clone(),
-                //splat_db: Mutex::new(splat_db),       
+                addr: server.clone(),                    
             };            
         
             App::with_state(state)            

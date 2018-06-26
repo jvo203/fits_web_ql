@@ -256,6 +256,9 @@ impl FITS {
             println!("FITS header length {}, lz4-compressed {} bytes", header.len(), fits.compressed_header.len());
         }*/       
 
+        let freq_range = fits.get_frequency_range();
+        fits.notify_frequency_range(&server, freq_range);
+
         //next read the data HUD(s)        
         let frame_size: usize = fits.init_data_storage();
         let mut data: Vec<u8> = vec![0; frame_size];
@@ -318,6 +321,13 @@ impl FITS {
         println!("FITS::from_url({})", url);
 
         fits
+    }
+
+    fn notify_frequency_range(&mut self, server: &Addr<Syn, server::SessionServer>, freq_range: (f32, f32)) {
+        server.do_send(server::FrequencyRangeMessage {
+            freq_range: freq_range,
+            dataset_id: self.dataset_id.clone(),
+        });
     }
 
     fn send_progress_notification(&mut self, server: &Addr<Syn, server::SessionServer>, notification: &str, total: i32, running: i32) {
@@ -982,8 +992,8 @@ impl FITS {
         let mut fmax: f32 = 0.0;
 
         if self.depth > 1 && self.has_frequency {
-            let mut f1 = 0_f32 ;
-            let mut f2 = 0_f32 ;
+            let f1 ;
+            let f2 ;
 
             if self.has_velocity {
                 let c = 299792458_f32 ;//speed of light [m/s]

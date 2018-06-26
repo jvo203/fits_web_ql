@@ -7223,10 +7223,10 @@ function fetch_spectral_lines(datasetId, freq_start, freq_end)
 	
 	if (xmlhttp.readyState == 4 && xmlhttp.status == 202)
 	{	    
-	    console.log("Server not ready, long-polling molecules again.") ;
+	    console.log("Server not ready, long-polling molecules again after 100 ms.") ;
 	    setTimeout(function () {
 		fetch_spectral_lines(datasetId, freq_start, freq_end) ;
-	    }, 0) ;
+	    }, 100) ;
 	}
 
 	if (xmlhttp.readyState == 4 && xmlhttp.status == 200)

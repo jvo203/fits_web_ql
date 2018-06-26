@@ -1,7 +1,12 @@
+use std::path;
 use std::collections::{HashMap, HashSet};
 
 use actix::*;
+use rusqlite;
 use uuid::Uuid;
+
+use serde_json;
+use Molecule;
 
 /// the server sends this messages to session
 #[derive(Message)]
@@ -32,10 +37,29 @@ pub struct WsMessage {
     pub dataset_id: String,
 }
 
+/// broadcast a message to a dataset
+#[derive(Message)]
+pub struct FrequencyRangeMessage {    
+    /// frequency range    
+    pub freq_range: (f32, f32),    
+    /// dataset
+    pub dataset_id: String,
+}
+
+/// New session is created
+#[derive(Message)]
+#[rtype(String)]
+pub struct GetMolecules {    
+    pub dataset_id: String,
+}
+
 /// `SessionServer` manages sending messages from the FITSWebQL host server to WebSocket clients
 pub struct SessionServer {
     sessions: HashMap<Uuid, Recipient<Syn, Message>>,
-    datasets: HashMap<String, HashSet<Uuid>>,    
+    datasets: HashMap<String, HashSet<Uuid>>,
+    molecules: HashMap<String, String>,
+    //splatalogue db
+    conn_res: rusqlite::Result<rusqlite::Connection>,
 }
 
 impl Default for SessionServer {
@@ -45,7 +69,9 @@ impl Default for SessionServer {
 
         SessionServer {
             sessions: HashMap::new(),
-            datasets: HashMap::new(),            
+            datasets: HashMap::new(),
+            molecules: HashMap::new(),
+            conn_res: rusqlite::Connection::open(path::Path::new("splatalogue_v3.db")),
         }
     }
 }
@@ -100,7 +126,11 @@ impl Handler<Disconnect> for SessionServer {
 
             if remove_entry {
                 println!("[SessionServer]: unlinking a dataset {}", &msg.dataset_id);
+
                 self.datasets.remove(&msg.dataset_id);
+
+                //do not remove the molecules here, wait for a delete request from the FITS dataset itself
+                //self.molecules.remove(&msg.dataset_id);
             }
         }     
     }
@@ -125,5 +155,119 @@ impl Handler<WsMessage> for SessionServer {
                 //println!("[SessionServer]: {} not found", &msg.dataset_id);                        
             }
         }
+    }
+}
+
+/// Handler for GetMolecules message.
+impl Handler<GetMolecules> for SessionServer {
+    type Result = String;
+
+    fn handle(&mut self, msg: GetMolecules, _: &mut Context<Self>) -> Self::Result {        
+        match self.molecules.get(&msg.dataset_id) {            
+            Some(contents) => contents.clone(),
+            None => String::from("")
+        }
+    }
+}
+
+/// Handler for FrequencyRange message.
+impl Handler<FrequencyRangeMessage> for SessionServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: FrequencyRangeMessage, _: &mut Context<Self>) {
+        println!("[SessionServer]: received a frequency range {:?} GHz for '{}'", &msg.freq_range, &msg.dataset_id);        
+
+        let (freq_start, freq_end) = msg.freq_range;
+
+        if freq_start == 0.0 || freq_end == 0.0 {
+            //insert an empty JSON array into self.molecules
+            self.molecules.insert(msg.dataset_id, String::from("[]"));
+            return;
+        }
+
+        let mut molecules : Vec<serde_json::Value> = Vec::new();
+
+        match self.conn_res {
+            Ok(ref splat_db) => {
+                println!("[SessionServer] splatalogue sqlite connection Ok");                
+
+                match splat_db.prepare(&format!("SELECT * FROM lines WHERE frequency>={} AND frequency<={};", freq_start, freq_end)) {
+                    Ok(mut stmt) => {
+                        let molecule_iter = stmt.query_map(&[], |row| {                        
+                            Molecule {
+                                species: match row.get_checked(0) {
+                                    Ok(x) => x,
+                                    Err(_) => String::from("")
+                                },
+                                name: match row.get_checked(1) {
+                                    Ok(x) => x,
+                                    Err(_) => String::from("")
+                                },
+                                frequency: match row.get_checked(2) {
+                                    Ok(x) => x,
+                                    Err(_) => 0.0
+                                },
+                                qn: match row.get_checked(3) {
+                                    Ok(x) => x,
+                                    Err(_) => String::from("")
+                                },
+                                cdms_intensity: match row.get_checked(4) {
+                                    Ok(x) => x,
+                                    Err(_) => 0.0
+                                },
+                                lovas_intensity: match row.get_checked(5) {
+                                    Ok(x) => x,
+                                    Err(_) => 0.0
+                                },
+                                e_l: match row.get_checked(6) {
+                                    Ok(x) => x,
+                                    Err(_) => 0.0
+                                },
+                                linelist: match row.get_checked(7) {
+                                    Ok(x) => x,
+                                    Err(_) => String::from("")
+                                },
+                            }
+                        }).unwrap();
+
+                        for molecule in molecule_iter {
+                            //println!("molecule {:?}", molecule.unwrap());
+                            let mol = molecule.unwrap();
+
+                            let mol_entry = json!({
+                                "species" : mol.species,
+                                "name" : mol.name,
+                                "frequency" : mol.frequency,
+                                "quantum" : mol.qn,
+                                "cdms" : mol.cdms_intensity,
+                                "lovas" : mol.lovas_intensity,
+                                "E_L" : mol.e_l,
+                                "list" : mol.linelist
+                            });
+
+                            molecules.push(mol_entry);
+                        }
+                    },
+                    Err(err) => println!("sqlite prepare error: {}", err)
+                } 
+            },
+            Err(ref err) => println!("[SessionServer] error connecting to splatalogue sqlite: {}", err)
+        }
+
+        let mut contents = String::from("[");
+
+        for entry in &molecules {
+            contents.push_str(&entry.to_string()) ;
+            contents.push(',');
+        };
+
+        if !molecules.is_empty() {
+            contents.pop() ;
+        }   
+
+        contents.push(']');
+
+        //println!("{}", contents);
+        self.molecules.insert(msg.dataset_id, contents);
     }
 }
