@@ -8,9 +8,15 @@ use std::io::Cursor;
 use half::f16;
 use std::mem;
 use byteorder::{BigEndian, ReadBytesExt};
+use precise_time;
 
 use actix::*;
 use server;
+use rayon::prelude::*;
+use rayon;
+
+use std::cmp::Ordering::Equal;
+use num_integer::Integer;
 
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
@@ -23,6 +29,7 @@ const NBINS: usize = 1024;
 pub struct FITS {
         dataset_id: String,
         data_id: String,
+        filesize: u64,
         //basic header/votable        
         obj_name: String,        
         obs_date: String,
@@ -57,8 +64,8 @@ pub struct FITS {
         header: String,        
         mean_spectrum: Vec<f32>,
         integrated_spectrum: Vec<f32>,
-        mask: Vec<bool>,
-        pixels: Vec<f32>,
+        pub mask: Vec<bool>,
+        pub pixels: Vec<f32>,        
         bscale: f32,
         bzero: f32,
         ignrval: f32,
@@ -101,6 +108,7 @@ impl FITS {
         let fits = FITS {
             dataset_id: id.clone(),
             data_id: format!("{}_00_00_00", id),
+            filesize: 0,
             obj_name: String::from(""),
             obs_date: String::from(""),
             timesys: String::from(""),
@@ -190,12 +198,15 @@ impl FITS {
         } ;
 
         match f.metadata() {
-            Ok(metadata) => {   let len = metadata.len() ;
-                                println!("{:?}, {} bytes", f, len);
+            Ok(metadata) => {   let len = metadata.len() ;                                
+
+                                println!("{:?}, {} bytes", f, len);                                
                                 
+                                fits.filesize = len;
+
                                 if len < FITS_CHUNK_LENGTH as u64 {
                                     return //fits;
-                                };
+                                };                                
                         }
             Err(err) => {   println!("file metadata reading problem: {}", err);
                             return //fits;
@@ -303,6 +314,20 @@ impl FITS {
 
         //we've gotten so far, we have the data, pixels, mask and spectrum
         fits.has_data = true ;
+
+        if !fits.pixels.is_empty() {
+            //sort the pixels in parallel using rayon
+            let mut ord_pixels = fits.pixels.clone();
+            //println!("unordered pixels: {:?}", ord_pixels);
+
+            let start = precise_time::precise_time_ns();
+            ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
+            let stop = precise_time::precise_time_ns();
+
+            println!("[pixels] parallel sorting time: {} [ms]", (stop-start)/1000000);
+
+            fits.make_histogram(&ord_pixels);
+        };
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
         println!("{}: reading FITS data completed", id);
@@ -850,7 +875,7 @@ impl FITS {
 
                     let tmp = self.bzero + self.bscale * (buf[i as usize] as f32) ;
                     if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {    
-                        self.pixels[i as usize] += tmp ;                                
+                        self.pixels[i as usize] += tmp * cdelt3 ;                                
                         self.mask[i as usize] = true ;
 
                         sum += tmp ;
@@ -876,7 +901,7 @@ impl FITS {
 
                             let tmp = self.bzero + self.bscale * (int16 as f32) ;
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                self.pixels[i as usize] += tmp ;                                
+                                self.pixels[i as usize] += tmp * cdelt3;                                
                                 self.mask[i as usize] = true ;
 
                                 sum += tmp ;
@@ -905,7 +930,7 @@ impl FITS {
 
                             let tmp = self.bzero + self.bscale * (int32 as f32) ;
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                self.pixels[i as usize] += tmp ;                                
+                                self.pixels[i as usize] += tmp * cdelt3;                                
                                 self.mask[i as usize] = true ;
 
                                 sum += tmp ;
@@ -936,7 +961,7 @@ impl FITS {
 
                             let tmp = self.bzero + self.bscale * float32;
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                self.pixels[i as usize] += tmp ;                                
+                                self.pixels[i as usize] += tmp * cdelt3;                                
                                 self.mask[i as usize] = true ;
 
                                 sum += tmp ;
@@ -965,7 +990,7 @@ impl FITS {
 
                             let tmp = self.bzero + self.bscale * (float64 as f32);
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                self.pixels[i as usize] += tmp ;                                
+                                self.pixels[i as usize] += tmp * cdelt3;                                
                                 self.mask[i as usize] = true ;
 
                                 sum += tmp ;
@@ -985,6 +1010,190 @@ impl FITS {
 
             _ => println!("unsupported bitpix: {}", self.bitpix)
         }      
+    }
+
+    fn make_histogram(&mut self, ord_pixels: &Vec<f32>) {
+        let len = ord_pixels.len();
+
+        //in the future need to take into account the mask and IGNRVAL
+        let pmin = ord_pixels[0];
+        let pmax = ord_pixels[len-1];
+
+        let median = {
+            if len.is_odd() {
+                ord_pixels[len >> 1]
+            }
+            else {
+                (ord_pixels[(len >> 1) -1] + ord_pixels[len >> 1]) / 2.0
+            }        
+        };
+
+        /*let start = precise_time::precise_time_ns();
+
+        let (mut mad, count) : (f32, i32) = rayon::join(
+            || {
+            ord_pixels.par_iter()
+                .map(|&x| (x - median).abs())
+                .sum()
+            },
+            || {
+            self.mask.par_iter()
+                .map(|&m| m as i32)
+                .sum()            
+            }           
+        );
+
+        let (mut mad_p, count_p) : (f32, i32) = rayon::join(
+             || {
+            ord_pixels.iter()
+                .zip(self.mask.iter())
+                .map(|(x, m)| {
+                    if *m && x > &median {
+                        x - median                        
+                    }
+                    else {
+                        0.0
+                    }                    
+                })
+                .sum()                
+            },
+            || {
+            ord_pixels.iter()
+                .zip(self.mask.iter())
+                .map(|(x, m)| {
+                    if *m && x > &median {
+                        1
+                    }
+                    else {
+                        0
+                    }                    
+                })
+                .sum()
+            }
+        );
+
+         let (mut mad_n, count_n) : (f32, i32) = rayon::join(
+             || {
+            ord_pixels.iter()
+                .zip(self.mask.iter())
+                .map(|(x, m)| {
+                    if *m && x < &median {
+                        median - x
+                    }
+                    else {
+                        0.0
+                    }                    
+                })
+                .sum()                
+            },
+            || {
+            ord_pixels.iter()
+                .zip(self.mask.iter())
+                .map(|(x, m)| {
+                    if *m && x < &median {
+                        1
+                    }
+                    else {
+                        0
+                    }                    
+                })
+                .sum()
+            }
+        );       
+
+        let stop = precise_time::precise_time_ns();*/
+        
+        //a single-threaded version (seems to be more efficient than rayon in this case)
+        let mut mad : f32 = 0.0;
+        let mut count : i32 = 0;
+        let mut mad_n : f32 = 0.0;
+        let mut count_n : i32 = 0;
+        let mut mad_p : f32 = 0.0;
+        let mut count_p : i32 = 0;
+
+        let start = precise_time::precise_time_ns();
+
+        for i in 0..len {
+            if self.mask[i] {
+                let x = ord_pixels[i] ;
+
+                mad += (x - median).abs() ;
+                count += 1 ;
+
+                if x > median {
+                    mad_p += x - median ;
+                    count_p += 1 ;
+                }
+
+                if x < median {
+                    mad_n += median - x ;
+                    count_n += 1 ;
+                }
+            }
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        mad = if count > 0 {
+            mad / (count as f32)
+        } else {            
+            0.0
+        };
+
+        mad_p = if count_p > 0 {
+            mad_p / (count_p as f32)
+        } else {
+            mad
+        };
+
+        mad_n = if count_n > 0 {
+            mad_n / (count_n as f32)
+        } else {
+            mad
+        };
+
+        let u = 7.5_f32 ;
+        let v = 15.0_f32 ;
+
+        let black = pmin.max(median - u * mad_n) ;
+        let white = pmax.min(median + u * mad_p) ;
+        let sensitivity = 1.0 / (white - black) ;
+
+        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
+
+        self.min = pmin;
+        self.max = pmax;
+        self.median = median;
+        self.black = black;
+        self.white = white;
+        self.sensitivity = sensitivity;
+        self.mad = mad;
+        self.mad_n = mad_n;
+        self.mad_p = mad_p;
+
+        //the histogram part
+        let dx = (pmax - pmin) / (NBINS as f32) ;
+        let mut bin = pmin + dx ;
+        let mut index = 0 ;
+
+        self.hist.resize(NBINS, 0);
+
+        let start = precise_time::precise_time_ns();
+
+        for x in ord_pixels {
+            while x >= &bin {
+                bin = bin + dx ;
+                index = index + 1 ;
+            } ;
+
+            if x >= &pmin && x <= &pmax && index < NBINS {
+                self.hist[index] = self.hist[index] + 1;
+            }
+        };
+
+        let stop = precise_time::precise_time_ns();
+
+        println!("histogram creation elapsed time {} [μs]", (stop-start)/1000);
     }
 
     pub fn get_frequency_range(&self) -> (f32, f32) {
@@ -1025,7 +1234,7 @@ impl FITS {
                 "height" : self.height,
                 "depth" : self.depth,
                 "polarisation" : self.polarisation,
-                "filesize" : 0,
+                "filesize" : self.filesize,
                 "IGNRVAL" : self.ignrval,
                 "CRVAL1" : self.crval1,
                 "CRVAL2" : self.crval2,
