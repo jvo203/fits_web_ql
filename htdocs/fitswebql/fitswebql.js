@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-06-25.0";
+    return "JS2018-06-28.0";
 }
 
 var generateUid = function ()
@@ -7272,10 +7272,10 @@ function fetch_spectrum(datasetId, index, add_timestamp)
 
 	if (xmlhttp.readyState == 4 && xmlhttp.status == 202)
 	{	    
-	    console.log("Server not ready, long-polling spectrum again.") ;
+	    console.log("Server not ready, long-polling spectrum again after 100ms.") ;
 	    setTimeout(function () {
 		fetch_spectrum(datasetId, index, false) ;
-	    }, 0) ;
+	    }, 100) ;
 	}
 	
 	if (xmlhttp.readyState == 4 && xmlhttp.status == 200)

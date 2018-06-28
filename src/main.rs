@@ -3,6 +3,7 @@
 extern crate actix;
 extern crate actix_web;
 extern crate percent_encoding;
+extern crate evmap;
 
 extern crate byteorder;
 extern crate chrono;
@@ -152,7 +153,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-06-27.0";
+static VERSION_STRING: &'static str = "SV2018-06-28.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -393,7 +394,7 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
 }
 
 // do websocket handshake and start an actor
-/*fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
+fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     //dataset_id needs to be URI-decoded
@@ -405,9 +406,9 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
     let session = UserSession::new(&dataset_id);
 
     Ok(Box::new(result(ws::start(req, session))))
-}*/
+}
 
-fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
+/*fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     //dataset_id needs to be URI-decoded
@@ -419,7 +420,7 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     let session = UserSession::new(&dataset_id);
 
     ws::start(req, session)
-}
+}*/
 
 fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     let fitswebql_path: String = req.match_info().query("path").unwrap();
@@ -481,7 +482,7 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
             if v.is_empty() {            
                 return HttpResponse::NotFound()
                     .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: no {} available</p>", dataset))                    
+                    .body(format!("<p><b>Critical Error</b>: no {} available</p>", dataset));                    
                 };
             
             v
@@ -525,17 +526,17 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
         }
     };
 
-    println!("[get_spectrum] http request for {}", dataset_id);
+    //println!("[get_spectrum] http request for {}", dataset_id);
 
     result(Ok({
         let datasets = DATASETS.read();//.unwrap();
 
-        println!("[get_spectrum] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
+        //println!("[get_spectrum] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
 
-        let fits = match datasets.get(dataset_id).unwrap().try_read_for(time::Duration::from_millis(LONG_POLL_TIMEOUT)) {
+        let fits = match datasets.get(dataset_id).unwrap().try_read()/*_for(time::Duration::from_millis(LONG_POLL_TIMEOUT))*/ {
             Some(x) => x,
             None => {
-                println!("[get_spectrum]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
+                //println!("[get_spectrum]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
                 return result(Ok(HttpResponse::Accepted()
                     .content_type("text/html")
@@ -544,7 +545,14 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
             }
         };
 
-        println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
+        //println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
+
+        if fits.is_dummy {
+            return result(Ok(HttpResponse::Accepted()
+                    .content_type("text/html")
+                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id))))
+                    .responder();
+        }
 
         if fits.has_data {
             HttpResponse::Ok()
@@ -747,8 +755,8 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
     .responder()
 }
 
-/*#[cfg(not(feature = "server"))]
-fn execute_fits_old(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
+#[cfg(not(feature = "server"))]
+fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
 
     //get fits location    
 
@@ -761,7 +769,7 @@ fn execute_fits_old(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &
 
         //does the entry exist in the datasets hash map?
         let has_entry = {
-            let datasets = DATASETS.read().unwrap();
+            let datasets = DATASETS.read();/*.unwrap();*/
             datasets.contains_key(data_id) 
         } ;
 
@@ -774,7 +782,7 @@ fn execute_fits_old(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &
             let my_ext = ext.to_string();
             let my_server = server.clone();
                                     
-            DATASETS.write().unwrap().insert(my_data_id.clone(), fits::FITS::new(&my_data_id));            
+            DATASETS.write().insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id)))));
                
             //load FITS data in a new thread
             thread::spawn(move || {
@@ -784,25 +792,25 @@ fn execute_fits_old(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &
                 let filepath = std::path::Path::new(&filename);           
                 let fits = fits::FITS::from_path(&my_data_id.clone(), filepath, &my_server);
 
-                DATASETS.write().unwrap().insert(my_data_id.clone(), fits);                           
+                DATASETS.write().insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits))));  
             });
         }
         else {
             //update the timestamp
-            let datasets = DATASETS.read().unwrap();
-            let dataset = datasets.get(data_id).unwrap() ;
+            let datasets = DATASETS.read();/*.unwrap();*/
+            let dataset = datasets.get(data_id).unwrap().read() ;
             
             has_fits = has_fits && dataset.has_data ;
-            *dataset.timestamp.write().unwrap() = SystemTime::now() ;
+            *dataset.timestamp.write()/*.unwrap() */= SystemTime::now() ;
         } ;
     } ;
 
     http_fits_response(&fitswebql_path, &dataset_id, composite, has_fits)
-}*/
+}
 
 #[cfg(not(feature = "server"))]
-fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
-
+fn execute_fits_global_lock(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
+    println!("calling execute_fits for {:?}", dataset_id);
     //get fits location    
 
     //launch FITS threads
@@ -812,18 +820,28 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
     for i in 0..dataset_id.len() {
         let data_id = dataset_id[i];        
         
+        println!("execute_fits: waiting for a DATASETS write lock for {}", data_id);
         let mut datasets = DATASETS.write();//.unwrap();                
 
-        //if it does not exist set has_fits to false and load the FITS data
-        if !datasets.contains_key(data_id) {
+        //does the entry exist in the datasets hash map?
+        /*let has_entry = {
+            println!("execute_fits/has_entry: waiting for a DATASETS read lock for {}", data_id);
+            let datasets = DATASETS.read();
+            datasets.contains_key(data_id) 
+        } ;*/
+
+        //if it does not exist set has_fits to false and load the FITS data        
+        if ! /*has_entry*/ datasets.contains_key(data_id) {
             has_fits = false ;            
 
             let my_dir = dir.to_string();
             let my_data_id = data_id.to_string();
             let my_ext = ext.to_string();
             let my_server = server.clone();                                                           
-               
-            datasets.insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id))))); 
+                                                        
+            //println!("execute_fits: waiting for a DATASETS write lock for {}", my_data_id);
+            //let mut datasets = DATASETS.write();                
+            datasets.insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id)))));
 
             //load FITS data in a new thread
             thread::spawn(move || {
@@ -831,8 +849,8 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
                 println!("loading FITS data from {}", filename);                 
                 
                 let datasets = DATASETS.read();//.unwrap();
-
-                let mut fits = /*match*/ datasets.get(&my_data_id).unwrap().write();/* {                    
+                let mut fits = /*match*/ datasets.get(&my_data_id).unwrap().write();                
+                /* {                    
                     Ok(x) => x,                        
                     Err(err) => {                        
                         println!("{}: cannot obtain a mutable reference to {}", err, my_data_id);
@@ -842,12 +860,19 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
 
                 //println!("obtained a mutable reference to {}", my_data_id);
 
-                let filepath = std::path::Path::new(&filename);
-                fits.load_from_path(&my_data_id.clone(), filepath, &my_server);            
+                /*let mut fits = {
+                    let datasets = DATASETS.read();
+                    datasets.get(&my_data_id).unwrap().write()
+                };*/
+
+                /*let filepath = std::path::Path::new(&filename);
+                fits.load_from_path(&my_data_id.clone(), filepath, &my_server);*/
             });
         }
         else {
-            //update the timestamp            
+            //update the timestamp
+            println!("execute_fits/timestamp: waiting for a DATASETS read lock for {}", data_id);
+            //let datasets = DATASETS.read();        
             let dataset = datasets.get(data_id).unwrap().read();//.unwrap() ;
             
             has_fits = has_fits && dataset.has_data ;
@@ -861,7 +886,7 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
 }
 
 fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite: bool, has_fits: bool) -> HttpResponse {
-
+    println!("calling http_fits_response for {:?}", dataset_id);
     //let has_fits: bool = false ;//later on it should be changed to true; iterate over all datasets, setting it to false if not found    
 
     //build up an HTML response
