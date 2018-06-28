@@ -394,7 +394,7 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
 }
 
 // do websocket handshake and start an actor
-fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
+/*fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=HttpResponse, Error=Error>>, Error> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     //dataset_id needs to be URI-decoded
@@ -406,9 +406,9 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=H
     let session = UserSession::new(&dataset_id);
 
     Ok(Box::new(result(ws::start(req, session))))
-}
+}*/
 
-/*fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
+fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     //dataset_id needs to be URI-decoded
@@ -420,7 +420,7 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<Box<Future<Item=H
     let session = UserSession::new(&dataset_id);
 
     ws::start(req, session)
-}*/
+}
 
 fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     let fitswebql_path: String = req.match_info().query("path").unwrap();
@@ -769,7 +769,7 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
 
         //does the entry exist in the datasets hash map?
         let has_entry = {
-            let datasets = DATASETS.read();/*.unwrap();*/
+            let datasets = DATASETS.read();
             datasets.contains_key(data_id) 
         } ;
 
@@ -797,11 +797,11 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
         }
         else {
             //update the timestamp
-            let datasets = DATASETS.read();/*.unwrap();*/
+            let datasets = DATASETS.read();
             let dataset = datasets.get(data_id).unwrap().read() ;
             
             has_fits = has_fits && dataset.has_data ;
-            *dataset.timestamp.write()/*.unwrap() */= SystemTime::now() ;
+            *dataset.timestamp.write() = SystemTime::now() ;
         } ;
     } ;
 
@@ -848,8 +848,8 @@ fn execute_fits_global_lock(fitswebql_path: &String, dir: &str, ext: &str, datas
                 let filename = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
                 println!("loading FITS data from {}", filename);                 
                 
-                let datasets = DATASETS.read();//.unwrap();
-                let mut fits = /*match*/ datasets.get(&my_data_id).unwrap().write();                
+                //let datasets = DATASETS.read();//.unwrap();
+                //let mut fits = /*match*/ datasets.get(&my_data_id).unwrap().write();                
                 /* {                    
                     Ok(x) => x,                        
                     Err(err) => {                        
