@@ -384,7 +384,7 @@ impl FITS {
 
         let total = self.depth;
 
-        (0 .. self.depth).into_iter().for_each(|frame| {            
+        let gather_f16 : Vec<_> = (0 .. self.depth).into_par_iter()./*for_each*/map(|frame| {            
             //frame is i32
             let start = (frame as usize) * frame_size ;
             let end = start + frame_size ;
@@ -396,16 +396,19 @@ impl FITS {
             let mut sum : f32 = 0.0 ;
             let mut count : i32 = 0 ;
 
+            let mut data_f16 : Vec<f16> = Vec::with_capacity(len) ; 
+
             for i in 0..len {                
                 match rdr.read_u16::<LittleEndian>() {
                     Ok(u16) => {                            
                         let float16 = f16::from_bits(u16);
-                        self.data_f16[frame as usize].push(float16);
+                        //self.data_f16[frame as usize].push(float16);
+                        data_f16.push(float16);
 
                         let tmp = self.bzero + self.bscale * float16.to_f32() ;
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                            self.pixels[i as usize] += tmp * cdelt3;                                
-                            self.mask[i as usize] = true ;
+                            /*self.pixels[i as usize] += tmp * cdelt3;                                
+                            self.mask[i as usize] = true ;*/
 
                             sum += tmp ;
                             count += 1 ;                                
@@ -416,13 +419,18 @@ impl FITS {
             }
 
             //mean and integrated intensities @ frame
-            if count > 0 {
+            /*if count > 0 {
                 self.mean_spectrum[frame as usize] = sum / (count as f32) ;
                 self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
-            }
+            }*/
             
             self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
-        });
+            data_f16
+        }).collect();
+
+        self.data_f16 = gather_f16 ;
+
+        //calculate pixels, mask and *_spectrum in a separate loop
 
         return true;
     }
@@ -546,6 +554,7 @@ impl FITS {
             println!("{}: reading half-float f16 data from cache", id);
 
             if !fits.read_from_cache(filepath, frame_size/2, cdelt3, &server) {
+                println!("CRITICAL ERROR reading from half-float cache");
                 return fits;
             }
         }
@@ -616,14 +625,14 @@ impl FITS {
         fits
     }
 
-    fn notify_frequency_range(&mut self, server: &Addr<Syn, server::SessionServer>, freq_range: (f32, f32)) {
+    fn notify_frequency_range(&self, server: &Addr<Syn, server::SessionServer>, freq_range: (f32, f32)) {
         server.do_send(server::FrequencyRangeMessage {
             freq_range: freq_range,
             dataset_id: self.dataset_id.clone(),
         });
     }
 
-    fn send_progress_notification(&mut self, server: &Addr<Syn, server::SessionServer>, notification: &str, total: i32, running: i32) {
+    fn send_progress_notification(&self, server: &Addr<Syn, server::SessionServer>, notification: &str, total: i32, running: i32) {
         let msg = json!({
             "type" : "progress",
             "message" : notification,
@@ -1441,6 +1450,11 @@ impl FITS {
 
         //the histogram part
         let dx = (pmax - pmin) / (NBINS as f32) ;
+
+        if dx <= 0.0 {
+            return ;
+        }
+
         let mut bin = pmin + dx ;
         let mut index = 0 ;
 
