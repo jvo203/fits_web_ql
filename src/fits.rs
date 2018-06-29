@@ -7,13 +7,13 @@ use std::io::{Read,Write};
 use std::io::Cursor;
 use half::f16;
 use std::mem;
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
 use precise_time;
 
 use actix::*;
 use server;
 use rayon::prelude::*;
-use rayon;
+use memmap::Mmap;
 
 use std::cmp::Ordering::Equal;
 use num_integer::Integer;
@@ -105,7 +105,7 @@ pub struct FITS {
 }
 
 impl FITS {
-    pub fn new(id: &String) -> FITS {
+    pub fn new(id: &String, flux: &String) -> FITS {
         let fits = FITS {
             dataset_id: id.clone(),
             data_id: format!("{}_00_00_00", id),
@@ -172,7 +172,7 @@ impl FITS {
             black: 0.0,
             white: 0.0,
             sensitivity: 0.0,
-            flux: String::from("logistic"),
+            flux: flux.clone(),
             has_frequency: false,
             has_velocity: false,
             frame_multiplier: 1.0,
@@ -185,36 +185,282 @@ impl FITS {
         fits
     }    
 
-    pub fn from_path(/*&mut self, */id: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
-        let mut fits = FITS::new(id);    
+    pub fn from_path_mmap(id: &String, flux: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
+        let mut fits = FITS::new(id, flux);            
+        fits.is_dummy = false;
+
+        //load data from filepath
+        let f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(x) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
+                return fits;                                           
+            }
+        } ;
+
+        match f.metadata() {
+            Ok(metadata) => {
+                let len = metadata.len() ;                                
+
+                println!("{:?}, {} bytes", f, len);                                
+                                
+                fits.filesize = len;
+
+                if len < FITS_CHUNK_LENGTH as u64 {
+                    return fits;
+                };
+            }                
+            Err(err) => {
+                println!("CRITICAL ERROR file metadata reading problem: {}", err);
+                return fits;
+            }
+        } ;
+
+        //OK, we have a FITS file with at least one chunk        
+        println!("{}: reading FITS header...", id) ;
+
+        //mmap the file
+        let mmap = match unsafe { Mmap::map(&f) } {
+            Ok(mmap) => mmap,
+            Err(err) => {
+                println!("CRITICAL ERROR failed to mmap {:?}: {}", filepath, err);
+                return fits;
+            }
+        };
+
+        if mmap.len() != fits.filesize as usize {
+            println!("CRITICAL ERROR {:?}: length mismatch", filepath);
+            return fits;
+        };
+
+        let mut header: Vec<u8> = Vec::new();
+        let mut end: bool = false ;
+        let mut no_hu: i32 = 0 ;
+        let mut offset: usize = 0 ;
+
+        while !end {
+            //read a FITS chunk (get a slice from mmap)
+            let chunk : &[u8] = &mmap[offset .. offset+FITS_CHUNK_LENGTH];
+            offset += FITS_CHUNK_LENGTH;
+            
+            no_hu = no_hu + 1;
+
+            //parse a FITS header chunk
+            end = fits.parse_fits_header_chunk(&chunk);
+            header.extend_from_slice(&chunk);
+        }           
+
+        //test for frequency/velocity
+        fits.frame_reference_unit() ;
+        fits.frame_reference_type() ;
+
+        if fits.restfrq > 0.0 {
+            fits.has_frequency = true ;
+        }                
+
+        fits.has_header = true ;
+
+        println!("{}/#hu = {}, {:?}", id, no_hu, fits);
+
+        fits.header = match String::from_utf8(header) {
+            Ok(x) => x,
+            Err(err) => {
+                println!("FITS HEADER UTF8: {}", err);
+                String::from("")
+            }
+        };
+
+        let freq_range = fits.get_frequency_range();
+        fits.notify_frequency_range(&server, freq_range);
+
+        //next read the data HUD(s)        
+        let frame_size: usize = fits.init_data_storage();        
+
+        println!("FITS cube frame size: {} bytes", frame_size);
+
+        let total = fits.depth;
+
+        let cdelt3 = {
+            if fits.has_velocity && fits.depth > 1 {
+                fits.cdelt3 * fits.frame_multiplier / 1000.0
+            }
+            else {
+                1.0
+            }
+        };
+
+        //into_iter or into_par_iter
+        (0 .. fits.depth).into_iter().for_each(|frame| {            
+            //frame is i32
+            let start = offset + (frame as usize) * frame_size ;
+            let end = start + frame_size ;
+            let data : &[u8] = &mmap[start..end];
+
+            println!("processing cube frame {}/{}", frame+1, fits.depth);
+            fits.process_cube_frame(&data, cdelt3, frame as usize);//cannot borrow mutable fits in parallel
+            fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
+        });
+
+        let mut frame: i32 = 0;
+        while frame < fits.depth {                                 
+            //println!("requesting a cube frame {}/{}", frame, fits.depth);
+
+            //FITS data (mmap slice)
+            let data: Vec<u8> = vec![0; frame_size];
+            //take a slice at offset + frame*frame_size
+            /*let start = offset + frame * frame_size ;
+            let end = start + frame_size ;
+            let data : &[u8] = &mmap[start..end];*/
+
+            frame = frame + 1 ;
+
+            //read a FITS cube frame
+            /*match f.read_exact(&mut data) {
+                Ok(()) => {                                        
+                    //process a FITS cube frame (endianness, half-float)
+                    //println!("processing cube frame {}/{}", frame+1, fits.depth);
+                    fits.process_cube_frame(&data, cdelt3, frame as usize);                    
+                    frame = frame + 1 ;
+                    fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
+                },
+                Err(err) => {
+                    println!("CRITICAL ERROR reading FITS data: {}", err);
+                    return fits;
+                }
+            } ;*/           
+        }        
+
+        //we've gotten so far, we have the data, pixels, mask and spectrum
+        fits.has_data = true ;
+
+        if !fits.pixels.is_empty() {
+            //sort the pixels in parallel using rayon
+            let mut ord_pixels = fits.pixels.clone();
+            //println!("unordered pixels: {:?}", ord_pixels);
+
+            let start = precise_time::precise_time_ns();
+            ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
+            let stop = precise_time::precise_time_ns();
+
+            println!("[pixels] parallel sorting time: {} [ms]", (stop-start)/1000000);
+
+            fits.make_histogram(&ord_pixels);
+
+            if fits.flux == "" {
+                fits.histogram_classifier();
+            };
+        };
+
+        fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
+        println!("{}: reading FITS data completed", id);
+
+        //and lastly create a symbolic link in the FITSCACHE directory
+        let filename = format!("{}/{}.fits", FITSCACHE, id);
+        let cachefile = std::path::Path::new(&filename);      
+        let _ = std::os::unix::fs::symlink(filepath, cachefile);
+
+        fits
+    }
+
+    fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<Syn, server::SessionServer>) -> bool {
+        //mmap the half-float file
+
+        //load data from filepath
+        let f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(err) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, err);
+                return false;      
+            }
+        } ;
+
+        let mmap = match unsafe { Mmap::map(&f) } {
+            Ok(mmap) => mmap,
+            Err(err) => {
+                println!("CRITICAL ERROR failed to mmap {:?}: {}", filepath, err);
+                return false ;
+            }
+        };
+
+        let total = self.depth;
+
+        (0 .. self.depth).into_iter().for_each(|frame| {            
+            //frame is i32
+            let start = (frame as usize) * frame_size ;
+            let end = start + frame_size ;
+            let data : &[u8] = &mmap[start..end];
+
+            let mut rdr = Cursor::new(data);
+
+            let len = data.len() / 2 ;
+            let mut sum : f32 = 0.0 ;
+            let mut count : i32 = 0 ;
+
+            for i in 0..len {                
+                match rdr.read_u16::<LittleEndian>() {
+                    Ok(u16) => {                            
+                        let float16 = f16::from_bits(u16);
+                        self.data_f16[frame as usize].push(float16);
+
+                        let tmp = self.bzero + self.bscale * float16.to_f32() ;
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            self.pixels[i as usize] += tmp * cdelt3;                                
+                            self.mask[i as usize] = true ;
+
+                            sum += tmp ;
+                            count += 1 ;                                
+                        }
+                    },
+                    Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
+                }
+            }
+
+            //mean and integrated intensities @ frame
+            if count > 0 {
+                self.mean_spectrum[frame as usize] = sum / (count as f32) ;
+                self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
+            }
+            
+            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
+        });
+
+        return true;
+    }
+
+    pub fn from_path(/*&mut self, */id: &String, flux: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
+        let mut fits = FITS::new(id, flux);    
         //let mut fits = self;
         fits.is_dummy = false;
 
         //load data from filepath
         let mut f = match File::open(filepath) {
             Ok(x) => x,
-            Err(x) => { println!("{:?}: {:?}", filepath, x);
-                        return fits;
-                        //a desperate attempt to download FITS using the ALMA URL (will fail for non-ALMA datasets)                        
-                        /*let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
-                        return FITS::from_url(&data_id, &url);*/                      
-                    }
+            Err(x) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
+                return fits;
+
+                //a desperate attempt to download FITS using the ALMA URL (will fail for non-ALMA datasets)                        
+                /*let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
+                return FITS::from_url(&data_id, &url);*/
+            }
         } ;
 
         match f.metadata() {
-            Ok(metadata) => {   let len = metadata.len() ;                                
+            Ok(metadata) => {
+                let len = metadata.len() ;                                
 
-                                println!("{:?}, {} bytes", f, len);                                
+                println!("{:?}, {} bytes", f, len);                                
                                 
-                                fits.filesize = len;
+                fits.filesize = len;
 
-                                if len < FITS_CHUNK_LENGTH as u64 {
-                                    return fits;
-                                };                                
-                        }
-            Err(err) => {   println!("file metadata reading problem: {}", err);
-                            return fits;
-                    }
+                if len < FITS_CHUNK_LENGTH as u64 {
+                    return fits;
+                };                                
+            }
+            Err(err) => {
+                println!("CRITICAL ERROR file metadata reading problem: {}", err);
+                return fits;
+            }
         } ;
 
         //OK, we have a FITS file with at least one chunk        
@@ -275,9 +521,7 @@ impl FITS {
         fits.notify_frequency_range(&server, freq_range);
 
         //next read the data HUD(s)        
-        let frame_size: usize = fits.init_data_storage();
-        let mut data: Vec<u8> = vec![0; frame_size];
-        let mut frame: i32 = 0;
+        let frame_size: usize = fits.init_data_storage();        
 
         //let mut f = BufReader::with_capacity(frame_size, f);
 
@@ -294,24 +538,40 @@ impl FITS {
             }
         };
 
-        while frame < fits.depth {                                 
-            //println!("requesting a cube frame {}/{}", frame, fits.depth);
+        //check if bitpix == -32 and the F16 half-float cache file exists
+        let filename = format!("{}/{}.bin", FITSCACHE, id.replace("/","_"));
+        let filepath = std::path::Path::new(&filename);
 
-            //read a FITS cube frame
-            match f.read_exact(&mut data) {
-                Ok(()) => {                                        
-                    //process a FITS cube frame (endianness, half-float)
-                    //println!("processing cube frame {}/{}", frame+1, fits.depth);
-                    fits.add_cube_frame(&data, cdelt3, frame as usize);                    
-                    frame = frame + 1 ;
-                    fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
-                },
-                Err(err) => {
-                    println!("CRITICAL ERROR reading FITS data: {}", err);
-                    return fits;
-                }
-            } ;            
-        }        
+        if fits.bitpix == -32 && filepath.exists() {                        
+            println!("{}: reading half-float f16 data from cache", id);
+
+            if !fits.read_from_cache(filepath, frame_size/2, cdelt3, &server) {
+                return fits;
+            }
+        }
+        else {
+            let mut data: Vec<u8> = vec![0; frame_size];
+            let mut frame: i32 = 0;
+
+            while frame < fits.depth {                                 
+                //println!("requesting a cube frame {}/{}", frame, fits.depth);
+
+                //read a FITS cube frame
+                match f.read_exact(&mut data) {
+                    Ok(()) => {                                        
+                        //process a FITS cube frame (endianness, half-float)
+                        //println!("processing cube frame {}/{}", frame+1, fits.depth);
+                        fits.process_cube_frame(&data, cdelt3, frame as usize);                    
+                        frame = frame + 1 ;
+                        fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
+                    },
+                    Err(err) => {
+                        println!("CRITICAL ERROR reading FITS data: {}", err);
+                        return fits;
+                    }
+                } ;            
+            }
+        }       
         
         //println!("mean spectrum: {:?}", fits.mean_spectrum);
         //println!("integrated spectrum: {:?}", fits.integrated_spectrum);
@@ -331,7 +591,10 @@ impl FITS {
             println!("[pixels] parallel sorting time: {} [ms]", (stop-start)/1000000);
 
             fits.make_histogram(&ord_pixels);
-            fits.histogram_classifier();
+
+            if fits.flux == "" {
+                fits.histogram_classifier();
+            };
         };
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
@@ -345,8 +608,8 @@ impl FITS {
         fits
     }
 
-    fn from_url(id: &String, url: &String) -> FITS {
-        let fits = FITS::new(id);                
+    fn from_url(id: &String, flux: &String, url: &String) -> FITS {
+        let fits = FITS::new(id, flux);                
 
         println!("FITS::from_url({})", url);
 
@@ -865,8 +1128,8 @@ impl FITS {
 
         return false ;
     }
-
-    fn add_cube_frame(&mut self, buf: &Vec<u8>, cdelt3: f32, frame: usize) {                
+    
+    fn process_cube_frame(&mut self, buf: &[u8], cdelt3: f32, frame: usize) {                
         let mut rdr = Cursor::new(buf);
         let len = self.width * self.height ;
 
@@ -1120,7 +1383,7 @@ impl FITS {
 
         for i in 0..len {
             if self.mask[i] {
-                let x = ord_pixels[i] ;
+                let x = self.pixels[i] ;
 
                 mad += (x - median).abs() ;
                 count += 1 ;
@@ -1202,11 +1465,8 @@ impl FITS {
     }
 
     fn histogram_classifier(&mut self) {
-        let mut cdf : Vec<i64> = Vec::new();
-        let mut slot : Vec<f64> = Vec::new();
-
-        cdf.resize(NBINS, 0);
-        slot.resize(NBINS, 0.0);
+        let mut cdf : Vec<i64> = vec![0; NBINS];
+        let mut slot : Vec<f64> = vec![0.0; NBINS];
 
         let mut total : i64 = self.hist[0] as i64;
         cdf[0] = total;

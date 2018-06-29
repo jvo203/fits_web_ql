@@ -3,7 +3,7 @@
 extern crate actix;
 extern crate actix_web;
 extern crate percent_encoding;
-extern crate evmap;
+extern crate memmap;
 
 extern crate byteorder;
 extern crate chrono;
@@ -153,7 +153,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-06-28.0";
+static VERSION_STRING: &'static str = "SV2018-06-29.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -498,11 +498,16 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
         None => {false}
     };
 
+    let flux = match query.get("flux") {
+        Some(x) => {x},
+        None => {""}//nothing by default
+    };
+
     #[cfg(feature = "server")]
-    let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}", fitswebql_path, db, table, dataset_id, composite);
+    let resp = format!("FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}, flux: {}", fitswebql_path, db, table, dataset_id, composite, flux);
 
     #[cfg(not(feature = "server"))]
-    let resp = format!("FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}, composite: {}", fitswebql_path, dir, ext, dataset_id, composite);
+    let resp = format!("FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}, composite: {}, flux: {}", fitswebql_path, dir, ext, dataset_id, composite, flux);
 
     println!("{}", resp);
 
@@ -510,7 +515,7 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite)
 
     #[cfg(not(feature = "server"))]
-    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &server)
+    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &flux, &server)
 }
 
 fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
@@ -756,7 +761,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
 }
 
 #[cfg(not(feature = "server"))]
-fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
+fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
 
     //get fits location    
 
@@ -781,8 +786,9 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
             let my_data_id = data_id.to_string();
             let my_ext = ext.to_string();
             let my_server = server.clone();
+            let my_flux = flux.to_string();
                                     
-            DATASETS.write().insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id)))));
+            DATASETS.write().insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id, &my_flux)))));
                
             //load FITS data in a new thread
             thread::spawn(move || {
@@ -790,7 +796,7 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
                 println!("loading FITS data from {}", filename); 
 
                 let filepath = std::path::Path::new(&filename);           
-                let fits = fits::FITS::from_path(&my_data_id.clone(), filepath, &my_server);
+                let fits = fits::FITS::from_path(&my_data_id.clone(), &my_flux.clone(), filepath, &my_server);//from_path or from_path_mmap
 
                 DATASETS.write().insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits))));  
             });
@@ -809,7 +815,7 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
 }
 
 #[cfg(not(feature = "server"))]
-fn execute_fits_global_lock(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
+fn execute_fits_global_lock(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
     println!("calling execute_fits for {:?}", dataset_id);
     //get fits location    
 
@@ -838,10 +844,11 @@ fn execute_fits_global_lock(fitswebql_path: &String, dir: &str, ext: &str, datas
             let my_data_id = data_id.to_string();
             let my_ext = ext.to_string();
             let my_server = server.clone();                                                           
+            let my_flux = flux.to_string();
                                                         
             //println!("execute_fits: waiting for a DATASETS write lock for {}", my_data_id);
             //let mut datasets = DATASETS.write();                
-            datasets.insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id)))));
+            datasets.insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id, &my_flux)))));
 
             //load FITS data in a new thread
             thread::spawn(move || {
