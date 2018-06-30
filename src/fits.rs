@@ -384,7 +384,7 @@ impl FITS {
 
         let total = self.depth;
 
-        let gather_f16 : Vec<_> = (0 .. self.depth).into_par_iter()./*for_each*/map(|frame| {            
+        (0 .. self.depth).into_iter().for_each(|frame| {            
             //frame is i32
             let start = (frame as usize) * frame_size ;
             let end = start + frame_size ;
@@ -396,19 +396,16 @@ impl FITS {
             let mut sum : f32 = 0.0 ;
             let mut count : i32 = 0 ;
 
-            let mut data_f16 : Vec<f16> = Vec::with_capacity(len) ; 
-
             for i in 0..len {                
                 match rdr.read_u16::<LittleEndian>() {
                     Ok(u16) => {                            
                         let float16 = f16::from_bits(u16);
-                        //self.data_f16[frame as usize].push(float16);
-                        data_f16.push(float16);
+                        self.data_f16[frame as usize].push(float16);
 
                         let tmp = self.bzero + self.bscale * float16.to_f32() ;
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                            /*self.pixels[i as usize] += tmp * cdelt3;                                
-                            self.mask[i as usize] = true ;*/
+                            self.pixels[i as usize] += tmp * cdelt3;                                
+                            self.mask[i as usize] = true ;
 
                             sum += tmp ;
                             count += 1 ;                                
@@ -419,18 +416,13 @@ impl FITS {
             }
 
             //mean and integrated intensities @ frame
-            /*if count > 0 {
+            if count > 0 {
                 self.mean_spectrum[frame as usize] = sum / (count as f32) ;
                 self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
-            }*/
+            }
             
             self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
-            data_f16
-        }).collect();
-
-        self.data_f16 = gather_f16 ;
-
-        //calculate pixels, mask and *_spectrum in a separate loop
+        });
 
         return true;
     }

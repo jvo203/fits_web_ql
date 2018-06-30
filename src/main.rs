@@ -16,7 +16,7 @@ extern crate time as precise_time;
 extern crate num_integer;
 
 use std::sync::Arc;
-use std::{thread,time};
+use std::thread;
 use std::str::FromStr;
 use std::env;
 use std::time::{SystemTime};
@@ -153,7 +153,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-06-29.0";
+static VERSION_STRING: &'static str = "SV2018-06-30.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -573,102 +573,6 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
     .responder()
 }
 
-fn get_molecules_lock(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
-    //println!("{:?}", req);
-
-    let dataset_id = match req.query().get("datasetId") {
-        Some(x) => {x},
-        None => {            
-            return result(Ok(HttpResponse::NotFound()
-                .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"))))
-                .responder();
-        }
-    };
-
-    //freq_start
-    let freq_start = match req.query().get("freq_start") {
-        Some(x) => {x},
-        None => {            
-            return result(Ok(HttpResponse::NotFound()
-                .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"))))
-                .responder();
-        }
-    };
-
-    let freq_start = match freq_start.parse::<f32>() {        
-        Ok(x) => x,
-        Err(_) => 0.0
-    };
-
-    //freq_end
-    let freq_end = match req.query().get("freq_end") {
-        Some(x) => {x},
-        None => {            
-            return result(Ok(HttpResponse::NotFound()
-                .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"))))
-                .responder();
-        }
-    };
-
-    let freq_end = match freq_end.parse::<f32>() {        
-        Ok(x) => x,
-        Err(_) => 0.0
-    };
-
-    println!("[get_molecules] http request for {}: freq_start={}, freq_end={}", dataset_id, freq_start, freq_end);
-
-    result(Ok({
-        if freq_start == 0.0 || freq_end == 0.0 {
-            let datasets = DATASETS.read();//.unwrap();
-
-            println!("[get_molecules] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
-
-            let fits = match datasets.get(dataset_id).unwrap().try_read_for(time::Duration::from_millis(LONG_POLL_TIMEOUT)) {
-                Some(x) => x,
-                None => {
-                    println!("[get_molecules]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
-
-                    return result(Ok(HttpResponse::Accepted()
-                    .content_type("text/html")
-                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id))))
-                    .responder();
-                }
-            };
-
-            println!("[get_molecules] obtained read access to {}, has_header = {}", dataset_id, fits.has_header);
-
-            if fits.has_header {
-                //get the freq_start, freq_end range from FITS
-                let (freq_start, freq_end) = fits.get_frequency_range();
-                println!("[get_molecules] frequency range {} - {} GHz", freq_start, freq_end);
-
-                let content = fetch_molecules(freq_start, freq_end);                
-
-                HttpResponse::Ok()
-                    .content_type("application/json")
-                    .body(format!("{{\"molecules\" : {}}}", content))
-            }        
-            else {            
-                HttpResponse::NotFound()
-                    .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"))            
-            }
-        }
-        else {            
-            //fetch molecules from sqlite without waiting for a FITS header    
-            let content = fetch_molecules(freq_start, freq_end);                
-
-            HttpResponse::Ok()
-                .content_type("application/json")
-                .body(format!("{{\"molecules\" : {}}}", content))
-        }
-    }))
-    .responder()
-}
-
 fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);    
 
@@ -808,84 +712,6 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
             
             has_fits = has_fits && dataset.has_data ;
             *dataset.timestamp.write() = SystemTime::now() ;
-        } ;
-    } ;
-
-    http_fits_response(&fitswebql_path, &dataset_id, composite, has_fits)
-}
-
-#[cfg(not(feature = "server"))]
-fn execute_fits_global_lock(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
-    println!("calling execute_fits for {:?}", dataset_id);
-    //get fits location    
-
-    //launch FITS threads
-    let mut has_fits: bool = true ;
-
-    //for each dataset_id
-    for i in 0..dataset_id.len() {
-        let data_id = dataset_id[i];        
-        
-        println!("execute_fits: waiting for a DATASETS write lock for {}", data_id);
-        let mut datasets = DATASETS.write();//.unwrap();                
-
-        //does the entry exist in the datasets hash map?
-        /*let has_entry = {
-            println!("execute_fits/has_entry: waiting for a DATASETS read lock for {}", data_id);
-            let datasets = DATASETS.read();
-            datasets.contains_key(data_id) 
-        } ;*/
-
-        //if it does not exist set has_fits to false and load the FITS data        
-        if ! /*has_entry*/ datasets.contains_key(data_id) {
-            has_fits = false ;            
-
-            let my_dir = dir.to_string();
-            let my_data_id = data_id.to_string();
-            let my_ext = ext.to_string();
-            let my_server = server.clone();                                                           
-            let my_flux = flux.to_string();
-                                                        
-            //println!("execute_fits: waiting for a DATASETS write lock for {}", my_data_id);
-            //let mut datasets = DATASETS.write();                
-            datasets.insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits::FITS::new(&my_data_id, &my_flux)))));
-
-            //load FITS data in a new thread
-            thread::spawn(move || {
-                let filename = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
-                println!("loading FITS data from {}", filename);                 
-                
-                //let datasets = DATASETS.read();//.unwrap();
-                //let mut fits = /*match*/ datasets.get(&my_data_id).unwrap().write();                
-                /* {                    
-                    Ok(x) => x,                        
-                    Err(err) => {                        
-                        println!("{}: cannot obtain a mutable reference to {}", err, my_data_id);
-                        return;
-                    }                
-                };*/                
-
-                //println!("obtained a mutable reference to {}", my_data_id);
-
-                /*let mut fits = {
-                    let datasets = DATASETS.read();
-                    datasets.get(&my_data_id).unwrap().write()
-                };*/
-
-                /*let filepath = std::path::Path::new(&filename);
-                fits.load_from_path(&my_data_id.clone(), filepath, &my_server);*/
-            });
-        }
-        else {
-            //update the timestamp
-            println!("execute_fits/timestamp: waiting for a DATASETS read lock for {}", data_id);
-            //let datasets = DATASETS.read();        
-            let dataset = datasets.get(data_id).unwrap().read();//.unwrap() ;
-            
-            has_fits = has_fits && dataset.has_data ;
-            *dataset.timestamp.write()/*.unwrap()*/ = SystemTime::now() ;
-
-            println!("updated an access timestamp for {}", data_id);
         } ;
     } ;
 
