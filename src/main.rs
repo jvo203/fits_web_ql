@@ -3,7 +3,6 @@
 extern crate actix;
 extern crate actix_web;
 extern crate percent_encoding;
-extern crate memmap;
 
 extern crate byteorder;
 extern crate chrono;
