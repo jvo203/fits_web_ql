@@ -308,7 +308,7 @@ impl FITS {
         let mut frame: i32 = 0;
 
         while frame < self.depth {                                          
-            //read a FITS cube frame (half-float only)
+            //receive a FITS cube frame (half-float only)
             match rx.recv() {
                 Ok(data) => {                                        
                     //println!("processing cube frame {}/{}", frame+1, self.depth);
@@ -485,16 +485,57 @@ impl FITS {
                 return fits;
             }
         }
-        else {
-            let mut data: Vec<u8> = vec![0; frame_size];
+        else {            
+            let (tx, rx) = mpsc::channel();
+
+            thread::spawn(move || {
+                let mut frame: i32 = 0;
+
+                while frame < total {                                 
+                    //println!("requesting a cube frame {}/{}", frame, fits.depth);
+                    let mut data: Vec<u8> = vec![0; frame_size];
+
+                    //read a FITS cube frame
+                    match f.read_exact(&mut data) {
+                        Ok(()) => {                                                                
+                            //println!("sending a cube frame for processing {}/{}", frame+1, total);
+                            //send data for processing -> tx
+                            match tx.send(data) {
+                                Ok(()) => {
+                                },
+                                Err(err) => {
+                                    println!("file reading thread: {}", err);
+                                    return;
+                                }
+                            };
+
+                            frame = frame + 1 ;
+                        },
+                        Err(err) => {
+                            println!("CRITICAL ERROR reading FITS data: {}", err);
+
+                            let data: Vec<u8> = Vec::new();
+                            tx.send(data).unwrap();
+
+                            return;
+                        }
+                    };
+                }
+            });
+        
             let mut frame: i32 = 0;
 
             while frame < fits.depth {                                 
                 //println!("requesting a cube frame {}/{}", frame, fits.depth);
 
-                //read a FITS cube frame
-                match f.read_exact(&mut data) {
-                    Ok(()) => {                                        
+                //receive a FITS cube frame
+                match rx.recv() {
+                    Ok(data) => {        
+                        if data.is_empty() {
+                            println!("CRITICAL ERROR received empty FITS data");
+                            return fits ;
+                        };
+                                              
                         //process a FITS cube frame (endianness, half-float)
                         //println!("processing cube frame {}/{}", frame+1, fits.depth);
                         fits.process_cube_frame(&data, cdelt3, frame as usize);                    
@@ -502,7 +543,7 @@ impl FITS {
                         fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
                     },
                     Err(err) => {
-                        println!("CRITICAL ERROR reading FITS data: {}", err);
+                        println!("CRITICAL ERROR receiving FITS data: {}", err);
                         return fits;
                     }
                 } ;            
