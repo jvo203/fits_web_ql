@@ -1,6 +1,7 @@
 use std;
 //use std::sync::RwLock;
 use parking_lot::RwLock;
+use std::thread;
 use std::time::{SystemTime};
 use std::fs::File;
 use std::io::{Read,Write};
@@ -9,6 +10,7 @@ use half::f16;
 use std::mem;
 use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
 use precise_time;
+use std::sync::mpsc;
 
 use actix::*;
 use server;
@@ -252,6 +254,114 @@ impl FITS {
         return true;
     }
 
+    fn read_from_cache_concurrent(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<Syn, server::SessionServer>) -> bool {
+        //mmap the half-float file
+
+        //load data from filepath
+        let mut f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(err) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, err);
+                return false;      
+            }
+        } ;
+
+        let total = self.depth;        
+
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(move || {
+            let mut frame: i32 = 0;
+
+            while frame < total {                                 
+                //println!("requesting a cube frame {}/{}", frame, fits.depth);
+                let mut data: Vec<u8> = vec![0; frame_size];
+
+                //read a FITS cube frame (half-float only)
+                match f.read_exact(&mut data) {
+                    Ok(()) => {                                                                
+                        //println!("sending a cube frame for processing {}/{}", frame+1, total);
+                        //send data for processing -> tx
+                        match tx.send(data) {
+                            Ok(()) => {
+                            },
+                            Err(err) => {
+                                println!("file reading thread: {}", err);
+                                return;
+                            }
+                        };
+
+                        frame = frame + 1 ;
+                    },
+                    Err(err) => {
+                        println!("CRITICAL ERROR reading FITS data: {}", err);
+
+                        let data: Vec<u8> = Vec::new();
+                        tx.send(data).unwrap();
+
+                        return;
+                    }
+                };
+            }
+        });
+
+        let mut frame: i32 = 0;
+
+        while frame < self.depth {                                          
+            //read a FITS cube frame (half-float only)
+            match rx.recv() {
+                Ok(data) => {                                        
+                    //println!("processing cube frame {}/{}", frame+1, self.depth);
+
+                    if data.is_empty() {
+                        println!("CRITICAL ERROR received empty FITS data");
+                        return false ;
+                    };
+
+                    let len = data.len() / 2 ;
+                    let mut sum : f32 = 0.0 ;
+                    let mut count : i32 = 0 ;
+
+                    let mut rdr = Cursor::new(data);
+
+                    for i in 0..len {                
+                        match rdr.read_u16::<LittleEndian>() {
+                            Ok(u16) => {                      
+                                let float16 = f16::from_bits(u16);
+                                self.data_f16[frame as usize].push(float16);
+
+                                let tmp = self.bzero + self.bscale * float16.to_f32() ;
+                                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                    self.pixels[i as usize] += tmp * cdelt3;    
+                                    self.mask[i as usize] = true ;
+
+                                    sum += tmp ;
+                                    count += 1 ;                                
+                                }
+                            },
+                            Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
+                        }
+                    }
+
+                    //mean and integrated intensities @ frame
+                    if count > 0 {
+                        self.mean_spectrum[frame as usize] = sum / (count as f32) ;
+                        self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
+                    }
+
+                    frame = frame + 1 ;
+                    self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
+                },
+                Err(err) => {
+                    println!("CRITICAL ERROR receiving FITS data: {}", err);
+                    return false;
+                }
+            } ;            
+        }
+
+        return true;
+    }
+
     pub fn from_path(/*&mut self, */id: &String, flux: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
         let mut fits = FITS::new(id, flux);    
         //let mut fits = self;
@@ -370,7 +480,7 @@ impl FITS {
         if fits.bitpix == -32 && filepath.exists() {                        
             println!("{}: reading half-float f16 data from cache", id);
 
-            if !fits.read_from_cache(filepath, frame_size/2, cdelt3, &server) {
+            if !fits.read_from_cache_concurrent(filepath, frame_size/2, cdelt3, &server) {
                 println!("CRITICAL ERROR reading from half-float cache");
                 return fits;
             }
