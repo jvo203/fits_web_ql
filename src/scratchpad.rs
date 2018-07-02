@@ -465,3 +465,71 @@ fn execute_fits_global_lock(fitswebql_path: &String, dir: &str, ext: &str, datas
 
     http_fits_response(&fitswebql_path, &dataset_id, composite, has_fits)
 }
+
+fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<Syn, server::SessionServer>) -> bool {
+        //mmap the half-float file
+
+        //load data from filepath
+        let mut f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(err) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, err);
+                return false;      
+            }
+        } ;
+
+        let total = self.depth;
+        let mut frame: i32 = 0;
+
+        while frame < self.depth {                                 
+            //println!("requesting a cube frame {}/{}", frame, fits.depth);
+            let mut data: Vec<u8> = vec![0; frame_size];
+
+            //read a FITS cube frame (half-float only)
+            match f.read_exact(&mut data) {
+                Ok(()) => {                                        
+                    //println!("processing cube frame {}/{}", frame+1, fits.depth);
+
+                    let len = data.len() / 2 ;
+                    let mut sum : f32 = 0.0 ;
+                    let mut count : i32 = 0 ;
+
+                    let mut rdr = Cursor::new(data);
+
+                    for i in 0..len {                
+                        match rdr.read_u16::<LittleEndian>() {
+                            Ok(u16) => {                      
+                                let float16 = f16::from_bits(u16);
+                                self.data_f16[frame as usize].push(float16);
+
+                                let tmp = self.bzero + self.bscale * float16.to_f32() ;
+                                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                    self.pixels[i as usize] += tmp * cdelt3;    
+                                    self.mask[i as usize] = true ;
+
+                                    sum += tmp ;
+                                    count += 1 ;                                
+                                }
+                            },
+                            Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
+                        }
+                    }
+
+                    //mean and integrated intensities @ frame
+                    if count > 0 {
+                        self.mean_spectrum[frame as usize] = sum / (count as f32) ;
+                        self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
+                    }
+
+                    frame = frame + 1 ;
+                    self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
+                },
+                Err(err) => {
+                    println!("CRITICAL ERROR reading FITS data: {}", err);
+                    return false;
+                }
+            } ;            
+        }
+
+        return true;
+    }

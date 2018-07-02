@@ -198,74 +198,6 @@ impl FITS {
             }
         } ;
 
-        let total = self.depth;
-        let mut frame: i32 = 0;
-
-        while frame < self.depth {                                 
-            //println!("requesting a cube frame {}/{}", frame, fits.depth);
-            let mut data: Vec<u8> = vec![0; frame_size];
-
-            //read a FITS cube frame (half-float only)
-            match f.read_exact(&mut data) {
-                Ok(()) => {                                        
-                    //println!("processing cube frame {}/{}", frame+1, fits.depth);
-
-                    let len = data.len() / 2 ;
-                    let mut sum : f32 = 0.0 ;
-                    let mut count : i32 = 0 ;
-
-                    let mut rdr = Cursor::new(data);
-
-                    for i in 0..len {                
-                        match rdr.read_u16::<LittleEndian>() {
-                            Ok(u16) => {                      
-                                let float16 = f16::from_bits(u16);
-                                self.data_f16[frame as usize].push(float16);
-
-                                let tmp = self.bzero + self.bscale * float16.to_f32() ;
-                                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                    self.pixels[i as usize] += tmp * cdelt3;    
-                                    self.mask[i as usize] = true ;
-
-                                    sum += tmp ;
-                                    count += 1 ;                                
-                                }
-                            },
-                            Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
-                        }
-                    }
-
-                    //mean and integrated intensities @ frame
-                    if count > 0 {
-                        self.mean_spectrum[frame as usize] = sum / (count as f32) ;
-                        self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
-                    }
-
-                    frame = frame + 1 ;
-                    self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
-                },
-                Err(err) => {
-                    println!("CRITICAL ERROR reading FITS data: {}", err);
-                    return false;
-                }
-            } ;            
-        }
-
-        return true;
-    }
-
-    fn read_from_cache_concurrent(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<Syn, server::SessionServer>) -> bool {
-        //mmap the half-float file
-
-        //load data from filepath
-        let mut f = match File::open(filepath) {
-            Ok(x) => x,
-            Err(err) => {
-                println!("CRITICAL ERROR {:?}: {:?}", filepath, err);
-                return false;      
-            }
-        } ;
-
         let total = self.depth;        
 
         let (tx, rx) = mpsc::channel();
@@ -295,10 +227,6 @@ impl FITS {
                     },
                     Err(err) => {
                         println!("CRITICAL ERROR reading FITS data: {}", err);
-
-                        let data: Vec<u8> = Vec::new();
-                        tx.send(data).unwrap();
-
                         return;
                     }
                 };
@@ -307,57 +235,46 @@ impl FITS {
 
         let mut frame: i32 = 0;
 
-        while frame < self.depth {                                          
-            //receive a FITS cube frame (half-float only)
-            match rx.recv() {
-                Ok(data) => {                                        
-                    //println!("processing cube frame {}/{}", frame+1, self.depth);
+        for data in rx {            
+            let len = data.len() / 2 ;
+            let mut sum : f32 = 0.0 ;
+            let mut count : i32 = 0 ;
 
-                    if data.is_empty() {
-                        println!("CRITICAL ERROR received empty FITS data");
-                        return false ;
-                    };
+            let mut rdr = Cursor::new(data);
 
-                    let len = data.len() / 2 ;
-                    let mut sum : f32 = 0.0 ;
-                    let mut count : i32 = 0 ;
+            for i in 0..len {                
+                match rdr.read_u16::<LittleEndian>() {                    
+                    Ok(u16) => {                                              
+                        let float16 = f16::from_bits(u16);
+                        self.data_f16[frame as usize].push(float16);
 
-                    let mut rdr = Cursor::new(data);
+                        let tmp = self.bzero + self.bscale * float16.to_f32() ;
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
+                            self.pixels[i as usize] += tmp * cdelt3;    
+                            self.mask[i as usize] = true ;
 
-                    for i in 0..len {                
-                        match rdr.read_u16::<LittleEndian>() {
-                            Ok(u16) => {                      
-                                let float16 = f16::from_bits(u16);
-                                self.data_f16[frame as usize].push(float16);
-
-                                let tmp = self.bzero + self.bscale * float16.to_f32() ;
-                                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                    self.pixels[i as usize] += tmp * cdelt3;    
-                                    self.mask[i as usize] = true ;
-
-                                    sum += tmp ;
-                                    count += 1 ;                                
-                                }
-                            },
-                            Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
-                        }
-                    }
-
-                    //mean and integrated intensities @ frame
-                    if count > 0 {
-                        self.mean_spectrum[frame as usize] = sum / (count as f32) ;
-                        self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
-                    }
-
-                    frame = frame + 1 ;
-                    self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
-                },
-                Err(err) => {
-                    println!("CRITICAL ERROR receiving FITS data: {}", err);
-                    return false;
+                            sum += tmp ;
+                            count += 1 ;                                
+                            }
+                    },
+                    Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
                 }
-            } ;            
+            }
+
+            //mean and integrated intensities @ frame
+            if count > 0 {
+                self.mean_spectrum[frame as usize] = sum / (count as f32) ;
+                self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
+            }
+
+            frame = frame + 1 ;
+            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
         }
+
+        if frame != total {
+            println!("CRITICAL ERROR not all FITS cube frames have been read: {}/{}", frame, total);
+            return false;
+        };
 
         return true;
     }
@@ -480,7 +397,7 @@ impl FITS {
         if fits.bitpix == -32 && filepath.exists() {                        
             println!("{}: reading half-float f16 data from cache", id);
 
-            if !fits.read_from_cache_concurrent(filepath, frame_size/2, cdelt3, &server) {
+            if !fits.read_from_cache(filepath, frame_size/2, cdelt3, &server) {
                 println!("CRITICAL ERROR reading from half-float cache");
                 return fits;
             }
@@ -513,10 +430,6 @@ impl FITS {
                         },
                         Err(err) => {
                             println!("CRITICAL ERROR reading FITS data: {}", err);
-
-                            let data: Vec<u8> = Vec::new();
-                            tx.send(data).unwrap();
-
                             return;
                         }
                     };
@@ -525,30 +438,17 @@ impl FITS {
         
             let mut frame: i32 = 0;
 
-            while frame < fits.depth {                                 
-                //println!("requesting a cube frame {}/{}", frame, fits.depth);
+            for data in rx {
+                fits.process_cube_frame(&data, cdelt3, frame as usize);                    
+                frame = frame + 1 ;
+                fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
+            };
 
-                //receive a FITS cube frame
-                match rx.recv() {
-                    Ok(data) => {        
-                        if data.is_empty() {
-                            println!("CRITICAL ERROR received empty FITS data");
-                            return fits ;
-                        };
-                                              
-                        //process a FITS cube frame (endianness, half-float)
-                        //println!("processing cube frame {}/{}", frame+1, fits.depth);
-                        fits.process_cube_frame(&data, cdelt3, frame as usize);                    
-                        frame = frame + 1 ;
-                        fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
-                    },
-                    Err(err) => {
-                        println!("CRITICAL ERROR receiving FITS data: {}", err);
-                        return fits;
-                    }
-                } ;            
-            }
-        }       
+            if frame != fits.depth {
+                println!("CRITICAL ERROR not all FITS cube frames have been read: {}/{}", frame, fits.depth);
+                return fits;
+            };
+        }
         
         //println!("mean spectrum: {:?}", fits.mean_spectrum);
         //println!("integrated spectrum: {:?}", fits.integrated_spectrum);
