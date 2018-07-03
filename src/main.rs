@@ -152,7 +152,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-07-02.0";
+static VERSION_STRING: &'static str = "SV2018-07-03.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -644,7 +644,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
                             .body(format!("{{\"molecules\" : {}}}", content))                            
                     }
                 },
-                Err(err) => {
+                Err(_) => {
                     HttpResponse::NotFound()
                         .content_type("text/html")
                         .body(format!("<p><b>Critical Error</b>: spectral lines not found</p>"))                        

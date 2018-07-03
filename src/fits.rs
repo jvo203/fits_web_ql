@@ -85,8 +85,8 @@ pub struct FITS {
         crpix3: f32,
         cunit3: String,
         ctype3: String,     
-        min: f32,
-        max: f32,
+        pmin: f32,
+        pmax: f32,
         hist: Vec<i32>,
         median: f32,
         mad: f32,
@@ -163,8 +163,8 @@ impl FITS {
             crpix3: 0.0,
             cunit3: String::from(""),
             ctype3: String::from(""),
-            min: std::f32::MIN,
-            max: std::f32::MAX,
+            pmin: std::f32::MIN,
+            pmax: std::f32::MAX,
             hist: Vec::new(),
             median: 0.0,
             mad: 0.0,
@@ -1298,7 +1298,7 @@ impl FITS {
         };
 
         let u = 7.5_f32 ;
-        let v = 15.0_f32 ;
+        //let v = 15.0_f32 ;
 
         let black = pmin.max(median - u * mad_n) ;
         let white = pmax.min(median + u * mad_p) ;
@@ -1306,8 +1306,8 @@ impl FITS {
 
         println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
 
-        self.min = pmin;
-        self.max = pmax;
+        self.pmin = pmin;
+        self.pmax = pmax;
         self.median = median;
         self.black = black;
         self.white = white;
@@ -1448,9 +1448,9 @@ impl FITS {
                 "LINE" : self.line,
                 "mean_spectrum" : &self.mean_spectrum,
                 "integrated_spectrum" : &self.integrated_spectrum,
-                /* the histogram part, min, max etc... */
-                "min" : self.min,
-                "max" : self.max, 
+                /* the histogram part, pixel min, max etc... */
+                "min" : self.pmin,
+                "max" : self.pmax, 
                 "median" : self.median,
                 "sensitivity" : self.sensitivity,
                 "black" : self.black,
