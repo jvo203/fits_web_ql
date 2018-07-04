@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::{Read,Write};
 use std::io::Cursor;
 use half::f16;
-use std::mem;
+use std::{mem,ptr};
 use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
 use precise_time;
 use std::sync::mpsc;
@@ -18,6 +18,64 @@ use rayon::prelude::*;
 
 use std::cmp::Ordering::Equal;
 use num_integer::Integer;
+
+use vpx_sys::*;
+use num_rational::Rational64;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct TimeInfo {
+    pub pts: Option<i64>,
+    pub dts: Option<i64>,
+    pub duration: Option<u64>,
+    pub timebase: Option<Rational64>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PSNR {
+    pub samples: [u32; 4],
+    pub sse: [u64; 4],
+    pub psnr: [f64; 4],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Packet {
+    pub data : Vec<u8>,
+    pub pos : Option<usize>,
+    pub stream_index : isize,
+    pub t: TimeInfo,
+
+    // side_data : SideData;
+
+    pub is_key: bool,
+    pub is_corrupted: bool,
+}
+
+impl Packet {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Packet {
+            data : Vec::with_capacity(capacity),
+            t: TimeInfo::default(),
+            pos : None,
+            stream_index : -1,
+            is_key: false,
+            is_corrupted: false,
+        }
+    }
+
+    pub fn new() -> Self {
+        Self::with_capacity(0)
+    }
+}
+
+/// Safe wrapper around `vpx_codec_cx_pkt`
+#[derive(Clone, Debug, PartialEq)]
+pub enum VPXPacket {
+    Packet(Packet),
+    Stats(Vec<u8>),
+    MBStats(Vec<u8>),
+    PSNR(PSNR),
+    Custom(Vec<u8>),
+}
 
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
@@ -472,6 +530,8 @@ impl FITS {
             if fits.flux == "" {
                 fits.histogram_classifier();
             };
+
+            fits.make_vpx_image();
         };
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
@@ -1376,6 +1436,143 @@ impl FITS {
         let stop = precise_time::precise_time_ns();
 
         println!("histogram classifier elapsed time {} [μs]", (stop-start)/1000);
+    }
+
+    fn make_vpx_image(&mut self) {
+        /*unsafe {
+            println!("{:?}",vpx_codec_vp9_cx());
+        };*/
+        //let mut cfg: vpx_codec_enc_cfg_t = Default::default();
+
+        println!("libvpx version: {}", VPX_ENCODER_ABI_VERSION);
+
+        let w = self.width as u32 ;
+        let h = self.height as u32 ;
+
+        let mut img: vpx_image = unsafe { mem::uninitialized() };
+        let mut ctx = unsafe { mem::uninitialized() };
+
+        let align = 32 ;
+
+        let ret = unsafe { vpx_img_alloc(&mut img, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };//I420
+        if ret.is_null() {
+            panic!("Image allocation failed");
+        }
+        mem::forget(ret); // img and ret are the same
+        print!("{:#?}", img);
+
+        let pixel_count = w * h ;
+        let y : &[u8] = &vec![128; pixel_count as usize];
+        let u : &[u8] = &vec![128; (pixel_count/4) as usize];
+        let v : &[u8] = &vec![128; (pixel_count/4) as usize];        
+
+        img.planes[0] = unsafe { mem::transmute(y.as_ptr()) };
+        img.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
+        img.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
+
+        /*img.stride[0] = w as i32 ;
+        img.stride[1] = w as i32 ;
+        img.stride[2] = w as i32 ;*/
+
+        /*for i in 0..frame.buf.count() {
+            let s: &[u8] = frame.buf.as_slice(i).unwrap();
+            img.planes[i] = unsafe { mem::transmute(s.as_ptr()) };
+            img.stride[i] = frame.buf.linesize(i).unwrap() as i32;
+        }*/
+
+        let mut cfg = unsafe { mem::uninitialized() };
+        let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut cfg, 0) };
+
+        if ret != VPX_CODEC_OK {
+            panic!("Default Configuration failed");
+        }
+
+        cfg.g_w = w;
+        cfg.g_h = h;
+        cfg.g_timebase.num = 1;
+        cfg.g_timebase.den = 30;
+        cfg.rc_target_bitrate = 100 * 1014;
+
+        ret = unsafe {
+            vpx_codec_enc_init_ver(
+                &mut ctx,
+                vpx_codec_vp9_cx(),
+                &mut cfg,
+                0,
+                (14+4+5) as i32,//23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
+            )
+        };
+
+        if ret != VPX_CODEC_OK {
+            println!("ret: {:?}", ret);
+            panic!("Codec Init failed");
+        }
+
+        let mut out = 0;
+        let mut flags = 0;
+
+        flags |= VPX_EFLAG_FORCE_KF;
+
+        let start = precise_time::precise_time_ns();
+
+        unsafe {            
+            let ret = vpx_codec_encode(                
+                &mut ctx,
+                &mut img,
+                0,
+                1,
+                flags as i64,
+                /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
+            );
+            if ret != VPX_CODEC_OK {
+                panic!("Encode failed {:?}", ret);
+            }
+
+            let ret = unsafe {                
+                vpx_codec_encode(
+                    &mut ctx,
+                    ptr::null_mut(),
+                    0,
+                    1,
+                    0,
+                    /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
+                )
+            };        
+
+            if ret != VPX_CODEC_OK {
+                panic!("Encode flush failed {:?}", ret);
+            }
+
+            let mut iter = mem::zeroed();
+            loop {                
+                let pkt = vpx_codec_get_cx_data(&mut ctx, &mut iter);                
+
+                if pkt.is_null() {
+                    break;
+                } else {
+                    println!("{:#?}", unsafe { *pkt }.kind);
+                    out = 1;
+
+                    //if VPX_CODEC_CX_FRAME_PKT get packet into a Packet structure
+                }
+            }
+        }    
+
+        if out != 1 {
+            panic!("No packet produced");
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        println!("VP9 image frame encode time: {} [ms]", (stop-start)/1000000);
+
+        unsafe {
+            vpx_img_free(&mut img)
+        };
+
+        unsafe {
+            vpx_codec_destroy(&mut ctx)
+        };
     }
 
     pub fn get_frequency_range(&self) -> (f32, f32) {

@@ -14,6 +14,9 @@ extern crate rusqlite;
 extern crate time as precise_time;
 extern crate num_integer;
 
+extern crate vpx_sys;
+extern crate num_rational;
+
 use std::sync::Arc;
 use std::thread;
 use std::str::FromStr;
@@ -48,6 +51,7 @@ static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
 mod molecule;
 mod fits;
 mod server;
+//mod encoder;
 
 use molecule::Molecule;
 
