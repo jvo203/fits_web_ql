@@ -45,8 +45,11 @@ use parking_lot::RwLock;
 
 static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
 
+mod molecule;
 mod fits;
 mod server;
+
+use molecule::Molecule;
 
 struct WsSessionState {
     addr: Addr<Syn, server::SessionServer>,
@@ -152,25 +155,13 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-07-03.0";
+static VERSION_STRING: &'static str = "SV2018-07-04.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
 
 #[cfg(feature = "server")]
 static SERVER_MODE: &'static str = "SERVER";
-
-#[derive(Debug)]
-struct Molecule {
-    species: String,
-    name: String,
-    frequency: f64,
-    qn: String,
-    cdms_intensity: f64,
-    lovas_intensity: f64,
-    e_l: f64,
-    linelist: String,
-}
 
 fn fetch_molecules(freq_start: f32, freq_end: f32) -> String {
     //splatalogue sqlite db integration    
@@ -185,58 +176,13 @@ fn fetch_molecules(freq_start: f32, freq_end: f32) -> String {
             match splat_db.prepare(&format!("SELECT * FROM lines WHERE frequency>={} AND frequency<={};", freq_start, freq_end)) {
                 Ok(mut stmt) => {
                     let molecule_iter = stmt.query_map(&[], |row| {                        
-                        Molecule {
-                            species: match row.get_checked(0) {
-                                Ok(x) => x,
-                                Err(_) => String::from("")
-                            },
-                            name: match row.get_checked(1) {
-                                Ok(x) => x,
-                                Err(_) => String::from("")
-                            },
-                            frequency: match row.get_checked(2) {
-                                Ok(x) => x,
-                                Err(_) => 0.0
-                            },
-                            qn: match row.get_checked(3) {
-                                Ok(x) => x,
-                                Err(_) => String::from("")
-                            },
-                            cdms_intensity: match row.get_checked(4) {
-                                Ok(x) => x,
-                                Err(_) => 0.0
-                            },
-                            lovas_intensity: match row.get_checked(5) {
-                                Ok(x) => x,
-                                Err(_) => 0.0
-                            },
-                            e_l: match row.get_checked(6) {
-                                Ok(x) => x,
-                                Err(_) => 0.0
-                            },
-                            linelist: match row.get_checked(7) {
-                                Ok(x) => x,
-                                Err(_) => String::from("")
-                            },
-                        }
+                        Molecule::from_sqlite_row(row)
                     }).unwrap();
 
                     for molecule in molecule_iter {
                         //println!("molecule {:?}", molecule.unwrap());
-                        let mol = molecule.unwrap();
-
-                        let mol_entry = json!({
-                            "species" : mol.species,
-                            "name" : mol.name,
-                            "frequency" : mol.frequency,
-                            "quantum" : mol.qn,
-                            "cdms" : mol.cdms_intensity,
-                            "lovas" : mol.lovas_intensity,
-                            "E_L" : mol.e_l,
-                            "list" : mol.linelist
-                        });
-
-                        molecules.push(mol_entry);
+                        let mol = molecule.unwrap();                        
+                        molecules.push(mol.to_json());
                     }
                 },
                 Err(err) => println!("sqlite prepare error: {}", err)
