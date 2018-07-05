@@ -132,8 +132,40 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
         match msg {
             ws::Message::Ping(msg) => ctx.pong(&msg),
             ws::Message::Text(text) => {                               
-                if text.contains("[heartbeat]") {
-                    ctx.text(text);
+                if (&text).contains("[heartbeat]") {
+                    ctx.text(&text);                
+                }
+
+                if (&text).contains("[image]") {
+                    let datasets = DATASETS.read();
+
+                    let fits = match datasets.get(&self.dataset_id).unwrap().try_read() {
+                        Some(x) => x,
+                        None => {
+                            let msg = json!({
+                                "type" : "image",
+                                "message" : "unavailable",                  
+                            });
+
+                            ctx.text(msg.to_string());
+                            return;
+                        }
+                    };
+
+                    if fits.is_dummy {
+                        let msg = json!({
+                            "type" : "image",
+                            "message" : "unavailable",                  
+                        });
+
+                        ctx.text(msg.to_string());
+                        return;
+                    };
+
+                    if fits.has_data {
+                        //fits.make_vpx_image()
+                        //send in a binary response
+                    };
                 }
             },                
             ws::Message::Binary(_) => println!("ignoring an incoming binary websocket message"),
@@ -159,7 +191,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-07-04.0";
+static VERSION_STRING: &'static str = "SV2018-07-05.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -467,6 +499,80 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
     execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &flux, &server)
 }
 
+
+fn get_image(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
+    //println!("{:?}", req);
+
+    let dataset_id = match req.query().get("datasetId") {
+        Some(x) => {x},
+        None => {            
+            return result(Ok(HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"))))
+                .responder()
+        }
+    };
+
+    //println!("[get_image] http request for {}", dataset_id);    
+
+    //check the IMAGECACHE first
+    let filename = format!("{}/{}.vp9", fits::IMAGECACHE, dataset_id.replace("/","_"));
+    let filepath = std::path::Path::new(&filename);
+
+    if filepath.exists() {
+        return result(fs::NamedFile::open(filepath).respond_to(&req)).responder();
+    };
+
+    result(Ok({
+        let datasets = DATASETS.read();//.unwrap();
+
+        //println!("[get_image] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
+
+        let fits = match datasets.get(dataset_id).unwrap().try_read()/*_for(time::Duration::from_millis(LONG_POLL_TIMEOUT))*/ {
+            Some(x) => x,
+            None => {
+                //println!("[get_image]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
+
+                return result(Ok(HttpResponse::Accepted()
+                    .content_type("text/html")
+                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id))))
+                    .responder();
+            }
+        };
+
+        //println!("[get_image] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
+
+        if fits.is_dummy {
+            return result(Ok(HttpResponse::Accepted()
+                    .content_type("text/html")
+                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id))
+                    )).responder();
+        }
+
+        if fits.has_data {
+            //send the binary image data from IMAGECACHE                       
+            let filename = format!("{}/{}.vp9", fits::IMAGECACHE, dataset_id.replace("/","_"));
+            let filepath = std::path::Path::new(&filename);
+
+            if filepath.exists() {
+                return result(fs::NamedFile::open(filepath).respond_to(&req)).responder();
+            }
+            else {
+                return result(Ok(HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
+                )).responder();
+            };
+        }
+        else {
+            HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
+        }
+    }))
+    .responder()
+}
+
 fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
@@ -684,9 +790,12 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     html.push_str("<script src=\"sylvester.js\"></script>\n");
     html.push_str("<script src=\"shortcut.js\"></script>\n");
     html.push_str("<script src=\"colourmaps.js\"></script>\n");
-    html.push_str("<script src=\"lz4.min.js\"></script>\n");
+    //html.push_str("<script src=\"lz4.min.js\"></script>\n");
     html.push_str("<script src=\"marchingsquares-isocontours.min.js\"></script>\n");
     html.push_str("<script src=\"marchingsquares-isobands.min.js\"></script>\n");    
+
+    //VP9 decoder
+    html.push_str("<script src=\"ogv-decoder-video-vp9.js\"></script>\n");
 
     //bootstrap
     html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1\">\n");
@@ -812,6 +921,7 @@ fn main() {
                 .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
                 .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
                 .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
+                .resource("/{path}/get_image", |r| {r.method(http::Method::GET).f(get_image)})
                 .resource("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})
                 .resource("/{path}/get_molecules", |r| {r.method(http::Method::GET).f(get_molecules)})
                 .handler("/", fs::StaticFiles::new("htdocs").index_file(index_file))

@@ -1,7 +1,7 @@
 use std::{mem,ptr};
+
 use vpx_sys::*;
 use num_rational::Rational64;
-
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct TimeInfo {
@@ -45,6 +45,68 @@ impl Packet {
 
     pub fn new() -> Self {
         Self::with_capacity(0)
+    }
+}
+
+/// Safe wrapper around `vpx_codec_cx_pkt`
+#[derive(Clone, Debug, PartialEq)]
+pub enum VPXPacket {
+    Packet(Packet),
+    Stats(Vec<u8>),
+    MBStats(Vec<u8>),
+    PSNR(PSNR),
+    Custom(Vec<u8>),
+}
+
+
+fn to_buffer(buf: vpx_fixed_buf_t) -> Vec<u8> {
+    let mut v: Vec<u8> = Vec::with_capacity(buf.sz);
+    unsafe {
+        ptr::copy_nonoverlapping(mem::transmute(buf.buf), v.as_mut_ptr(), buf.sz);
+        v.set_len(buf.sz);
+    }
+    v
+}
+
+
+impl VPXPacket {
+    fn new(pkt: vpx_codec_cx_pkt) -> VPXPacket {
+        use self::vpx_codec_cx_pkt_kind::*;
+        match pkt.kind {
+            VPX_CODEC_CX_FRAME_PKT => {
+                let f = unsafe { pkt.data.frame };
+                let mut p = Packet::with_capacity(f.sz);
+                unsafe {
+                    ptr::copy_nonoverlapping(mem::transmute(f.buf), p.data.as_mut_ptr(), f.sz);
+                    p.data.set_len(f.sz);
+                }
+                p.t.pts = Some(f.pts);
+                p.is_key = (f.flags & VPX_FRAME_IS_KEY) != 0;
+
+                VPXPacket::Packet(p)
+            }
+            VPX_CODEC_STATS_PKT => {
+                let b = to_buffer(unsafe { pkt.data.twopass_stats });
+                VPXPacket::Stats(b)
+            }
+            VPX_CODEC_FPMB_STATS_PKT => {
+                let b = to_buffer(unsafe { pkt.data.firstpass_mb_stats });
+                VPXPacket::MBStats(b)
+            }
+            VPX_CODEC_PSNR_PKT => {
+                let p = unsafe { pkt.data.psnr };
+
+                VPXPacket::PSNR(PSNR {
+                    samples: p.samples,
+                    sse: p.sse,
+                    psnr: p.psnr,
+                })
+            }
+            VPX_CODEC_CUSTOM_PKT => {
+                let b = to_buffer(unsafe { pkt.data.raw });
+                VPXPacket::Custom(b)
+            }
+        }
     }
 }
 

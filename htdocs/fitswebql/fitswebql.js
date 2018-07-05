@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-07-02.0";
+    return "JS2018-07-05.0";
 }
 
 var generateUid = function ()
@@ -1245,8 +1245,11 @@ function open_websocket_connection(datasetId, index)
 		    ALMAWS.binaryType = 'arraybuffer';
 		    //ALMAWS.send("[open] datasetId=" + datasetId);//no need to send it, the id is in the URL
 
+			//request an image (if it is not in the browser cache)
+			//ALMAWS.send("[image]");
+
 		    if(index == va_count)
-			send_ping() ;
+				send_ping() ;
 		});
 
 		ALMAWS.addEventListener("error", function(evt) {
@@ -1480,8 +1483,17 @@ function open_websocket_connection(datasetId, index)
 			    var data = JSON.parse(received_msg);			    
 			    
 			    if(data.type == "progress")
-				process_progress_event(data, index) ;
+						process_progress_event(data, index) ;
 				
+				if(data.type == "image")
+				{
+					if(data.message.indexOf("unavailable") >= 0)
+					{
+						console.log("Server not ready, long-polling the image again after 100 ms.") ;
+						setTimeout(function () {ALMAWS.send("[image]");}, 100) ;
+					}
+				}
+
 			    return ;
 			}
 			catch (e)
@@ -1681,7 +1693,7 @@ function hide_hourglass()
     { } ;
 }
 
-function fetch_image(url, index)
+function fetch_image_old(url, index)
 {
     let imageCanvas = document.createElement('canvas') ;
     imageCanvas.style.visibility = "hidden";
@@ -7251,6 +7263,53 @@ function fetch_spectral_lines(datasetId, freq_start, freq_end)
     xmlhttp.send();
 } ;
 
+function fetch_image(datasetId, index, add_timestamp)
+{
+	var xmlhttp = new XMLHttpRequest();
+
+	var url = 'get_image?datasetId=' + encodeURIComponent(datasetId) + '&' + encodeURIComponent(get_js_version()) ;
+
+	if(add_timestamp)
+		url += '&timestamp=' + Date.now() ;
+
+	xmlhttp.onreadystatechange = function() {
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 502)
+		{	    
+			console.log("Connection error, re-fetching image after 1 second.") ;
+			setTimeout(function () {
+			fetch_image(datasetId, index, true) ;
+			}, 1000) ;
+		}
+		
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 202)
+		{	    
+			console.log("Server not ready, long-polling image again after 100ms.") ;
+			setTimeout(function () {
+			fetch_image(datasetId, index, false) ;
+			}, 100) ;
+		}
+			
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
+		{			
+			var received_msg = xmlhttp.response ;
+
+	    	if(received_msg instanceof ArrayBuffer)
+	    	{
+				/*var dv = new DataView(received_msg) ;
+				console.log("image dataview: ", dv);*/
+
+				var frame = new Uint8Array(received_msg);				
+				console.log("image frame: ", frame);
+			}
+		}
+	}
+
+	xmlhttp.open("GET", url, true);//"GET" to help with caching
+	xmlhttp.responseType = 'arraybuffer';
+    xmlhttp.timeout = 0 ;
+    xmlhttp.send();
+}
+
 function fetch_spectrum(datasetId, index, add_timestamp)
 {
     var xmlhttp = new XMLHttpRequest();
@@ -10847,7 +10906,9 @@ async*/ function mainRenderer()
 		open_websocket_connection(datasetId, 1);
 		//open_video_websocket(datasetId);
 	    
-	    //fetch_image(encodeURI("IMAGECACHE/" + datasetId + ".bpg" + "&" + votable.getAttribute('data-server-string')), 1) ;	    
+		//fetch_image(encodeURI("IMAGECACHE/" + datasetId + ".bpg" + "&" + votable.getAttribute('data-server-string')), 1) ;
+		
+		fetch_image(datasetId, 1, false) ;
 	    
 	    fetch_spectrum(datasetId, 1, false) ;
 
@@ -10863,6 +10924,8 @@ async*/ function mainRenderer()
 		open_websocket_connection(datasetId[index-1], index);
 		
 		//fetch_image(encodeURI("IMAGECACHE/" + datasetId[index-1] + ".bpg" + "&" + votable.getAttribute('data-server-string')), index) ;
+
+		fetch_image(datasetId[index-1], index, false) ;
 
 		fetch_spectrum(datasetId[index-1], index, false) ;				
 		

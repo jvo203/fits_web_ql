@@ -20,65 +20,10 @@ use std::cmp::Ordering::Equal;
 use num_integer::Integer;
 
 use vpx_sys::*;
-use num_rational::Rational64;
-
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct TimeInfo {
-    pub pts: Option<i64>,
-    pub dts: Option<i64>,
-    pub duration: Option<u64>,
-    pub timebase: Option<Rational64>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct PSNR {
-    pub samples: [u32; 4],
-    pub sse: [u64; 4],
-    pub psnr: [f64; 4],
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Packet {
-    pub data : Vec<u8>,
-    pub pos : Option<usize>,
-    pub stream_index : isize,
-    pub t: TimeInfo,
-
-    // side_data : SideData;
-
-    pub is_key: bool,
-    pub is_corrupted: bool,
-}
-
-impl Packet {
-    pub fn with_capacity(capacity: usize) -> Self {
-        Packet {
-            data : Vec::with_capacity(capacity),
-            t: TimeInfo::default(),
-            pos : None,
-            stream_index : -1,
-            is_key: false,
-            is_corrupted: false,
-        }
-    }
-
-    pub fn new() -> Self {
-        Self::with_capacity(0)
-    }
-}
-
-/// Safe wrapper around `vpx_codec_cx_pkt`
-#[derive(Clone, Debug, PartialEq)]
-pub enum VPXPacket {
-    Packet(Packet),
-    Stats(Vec<u8>),
-    MBStats(Vec<u8>),
-    PSNR(PSNR),
-    Custom(Vec<u8>),
-}
 
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
+pub static IMAGECACHE: &'static str = "IMAGECACHE";
 
 const FITS_CHUNK_LENGTH: usize = 2880;
 const FITS_LINE_LENGTH: usize = 80;
@@ -1439,12 +1384,23 @@ impl FITS {
     }
 
     fn make_vpx_image(&mut self) {
+        //check if the .vp9 file is already in the IMAGECACHE
+
+        let filename = format!("{}/{}.vp9", IMAGECACHE, self.dataset_id.replace("/","_"));
+        let filepath = std::path::Path::new(&filename);
+
+        if filepath.exists() {
+            return ;
+        }
+
         /*unsafe {
             println!("{:?}",vpx_codec_vp9_cx());
         };*/
         //let mut cfg: vpx_codec_enc_cfg_t = Default::default();
 
         println!("libvpx version: {}", VPX_ENCODER_ABI_VERSION);
+
+        let mut image_frame : Vec<u8> = Vec::new() ;
 
         let w = self.width as u32 ;
         let h = self.height as u32 ;
@@ -1456,7 +1412,8 @@ impl FITS {
 
         let ret = unsafe { vpx_img_alloc(&mut img, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };//I420
         if ret.is_null() {
-            panic!("Image allocation failed");
+            println!("VP9 image frame error: image allocation failed");
+            return ;
         }
         mem::forget(ret); // img and ret are the same
         print!("{:#?}", img);
@@ -1484,7 +1441,14 @@ impl FITS {
         let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut cfg, 0) };
 
         if ret != VPX_CODEC_OK {
-            panic!("Default Configuration failed");
+            println!("VP9 image frame error: default Configuration failed");
+
+            //release the image
+            unsafe {
+                vpx_img_free(&mut img)
+            };
+
+            return ;
         }
 
         cfg.g_w = w;
@@ -1503,9 +1467,14 @@ impl FITS {
             )
         };
 
-        if ret != VPX_CODEC_OK {
-            println!("ret: {:?}", ret);
-            panic!("Codec Init failed");
+        if ret != VPX_CODEC_OK {            
+            println!("VP9 image frame error: codec init failed {:?}", ret);
+
+            unsafe {
+                vpx_img_free(&mut img)
+            };  
+
+            return ;
         }
 
         let mut out = 0;
@@ -1525,10 +1494,20 @@ impl FITS {
                 /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
             );
             if ret != VPX_CODEC_OK {
-                panic!("Encode failed {:?}", ret);
+                println!("VP9 image frame error: encode failed {:?}", ret);
+
+                unsafe {
+                    vpx_img_free(&mut img)
+                };
+
+                unsafe {
+                    vpx_codec_destroy(&mut ctx)
+                };
+
+                return ;
             }
 
-            let ret = unsafe {                
+            let ret =                 
                 vpx_codec_encode(
                     &mut ctx,
                     ptr::null_mut(),
@@ -1536,11 +1515,20 @@ impl FITS {
                     1,
                     0,
                     /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
-                )
-            };        
+                );                
 
             if ret != VPX_CODEC_OK {
-                panic!("Encode flush failed {:?}", ret);
+                println!("VP9 image frame error: encode flush failed {:?}", ret);
+
+                unsafe {
+                    vpx_img_free(&mut img)
+                };
+
+                unsafe {
+                    vpx_codec_destroy(&mut ctx)
+                };
+
+                return ;
             }
 
             let mut iter = mem::zeroed();
@@ -1553,13 +1541,28 @@ impl FITS {
                     println!("{:#?}", unsafe { *pkt }.kind);
                     out = 1;
 
-                    //if VPX_CODEC_CX_FRAME_PKT get packet into a Packet structure
+                    if unsafe { *pkt }.kind == vpx_codec_cx_pkt_kind::VPX_CODEC_CX_FRAME_PKT {
+                        //println!("got a VPX Frame Packet");         
+
+                        //let packet = VPXPacket::new(unsafe { *pkt }) ;
+
+                        let f = unsafe {*pkt}.data.frame ;
+
+                        println!("frame length: {} bytes", f.sz);
+
+                        image_frame = Vec::with_capacity(f.sz);
+                        unsafe {
+                            ptr::copy_nonoverlapping(mem::transmute(f.buf), image_frame.as_mut_ptr(), f.sz);
+                            image_frame.set_len(f.sz);
+                        }
+                    }                    
                 }
             }
         }    
 
         if out != 1 {
-            panic!("No packet produced");
+            println!("VP9 image frame error: no image packet produced");
+            return ;
         }
 
         let stop = precise_time::precise_time_ns();
@@ -1573,6 +1576,29 @@ impl FITS {
         unsafe {
             vpx_codec_destroy(&mut ctx)
         };
+
+        let tmp_filename = format!("{}/{}.vp9.tmp", IMAGECACHE, self.dataset_id.replace("/","_"));
+        let tmp_filepath = std::path::Path::new(&tmp_filename);
+
+        let mut buffer = match File::create(tmp_filepath) {            
+            Ok(f) => f,
+            Err(err) => {                
+                println!("{}", err);
+                return;
+            }
+        };
+
+        match buffer.write_all(&image_frame) {
+            Ok(()) => {                                    
+            },
+            Err(err) => {
+                println!("image cache write error: {}, removing the temporary file", err);
+                let _ = std::fs::remove_file(tmp_filepath);
+                return;
+            }
+        };
+
+        let _ = std::fs::rename(tmp_filepath, filepath);
     }
 
     pub fn get_frequency_range(&self) -> (f32, f32) {
