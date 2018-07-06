@@ -7307,7 +7307,7 @@ function fetch_image(datasetId, index, add_timestamp)
 				decoder = new OGVDecoderVideoVP9();
 				console.log(decoder);				
 
-				//decoder.init();
+				decoder.init(function () {console.log("init callback done");});
 				decoder.processFrame([frame], function () {console.log("processFrame callback done");});
 			}
 		}
