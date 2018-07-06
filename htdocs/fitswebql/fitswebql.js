@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-07-05.0";
+    return "JS2018-07-06.0";
 }
 
 var generateUid = function ()
@@ -7300,6 +7300,15 @@ function fetch_image(datasetId, index, add_timestamp)
 
 				var frame = new Uint8Array(received_msg);				
 				console.log("image frame: ", frame);
+
+				//var player = new OGVPlayer();
+				//console.log(player);
+
+				decoder = new OGVDecoderVideoVP9();
+				console.log(decoder);				
+
+				//decoder.init();
+				decoder.processFrame([frame], function () {console.log("processFrame callback done");});
 			}
 		}
 	}
@@ -10435,8 +10444,8 @@ function stream_h264()
 async*/ function mainRenderer()
 {
     /*sessionID = generateUid() ;
-    console.log("sessionID:", sessionID) ;*/
-    
+    console.log("sessionID:", sessionID) ;*/	
+
     try {
 	enable_3d_view() ;
     }

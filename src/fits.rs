@@ -1405,27 +1405,27 @@ impl FITS {
         let w = self.width as u32 ;
         let h = self.height as u32 ;
 
-        let mut img: vpx_image = unsafe { mem::uninitialized() };
+        let mut raw: vpx_image = unsafe { mem::uninitialized() };
         let mut ctx = unsafe { mem::uninitialized() };
 
         let align = 32 ;
 
-        let ret = unsafe { vpx_img_alloc(&mut img, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };//I420
+        let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };//I420
         if ret.is_null() {
             println!("VP9 image frame error: image allocation failed");
             return ;
         }
         mem::forget(ret); // img and ret are the same
-        print!("{:#?}", img);
+        print!("{:#?}", raw);
 
         let pixel_count = w * h ;
         let y : &[u8] = &vec![128; pixel_count as usize];
         let u : &[u8] = &vec![128; (pixel_count/4) as usize];
         let v : &[u8] = &vec![128; (pixel_count/4) as usize];        
 
-        img.planes[0] = unsafe { mem::transmute(y.as_ptr()) };
-        img.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
-        img.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
+        raw.planes[0] = unsafe { mem::transmute(y.as_ptr()) };
+        raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
+        raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
 
         /*img.stride[0] = w as i32 ;
         img.stride[1] = w as i32 ;
@@ -1445,7 +1445,7 @@ impl FITS {
 
             //release the image
             unsafe {
-                vpx_img_free(&mut img)
+                vpx_img_free(&mut raw)
             };
 
             return ;
@@ -1471,7 +1471,7 @@ impl FITS {
             println!("VP9 image frame error: codec init failed {:?}", ret);
 
             unsafe {
-                vpx_img_free(&mut img)
+                vpx_img_free(&mut raw)
             };  
 
             return ;
@@ -1479,7 +1479,6 @@ impl FITS {
 
         let mut out = 0;
         let mut flags = 0;
-
         flags |= VPX_EFLAG_FORCE_KF;
 
         let start = precise_time::precise_time_ns();
@@ -1487,17 +1486,18 @@ impl FITS {
         unsafe {            
             let ret = vpx_codec_encode(                
                 &mut ctx,
-                &mut img,
+                &mut raw,
                 0,
                 1,
                 flags as i64,
                 /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
             );
+
             if ret != VPX_CODEC_OK {
-                println!("VP9 image frame error: encode failed {:?}", ret);
+                println!("VP9 image frame error: encode flush failed {:?}", ret);
 
                 unsafe {
-                    vpx_img_free(&mut img)
+                    vpx_img_free(&mut raw)
                 };
 
                 unsafe {
@@ -1507,21 +1507,33 @@ impl FITS {
                 return ;
             }
 
+            let mut iter = mem::zeroed();
+            loop {
+                let pkt = vpx_codec_get_cx_data(&mut ctx, &mut iter); 
+
+                if pkt.is_null() {
+                    break;
+                } else {
+                    println!("got something");
+                }            
+            };
+
+            //flush the encoder (end encoding)
             let ret =                 
                 vpx_codec_encode(
                     &mut ctx,
                     ptr::null_mut(),
-                    0,
+                    -1,
                     1,
                     0,
                     /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
-                );                
+                );
 
             if ret != VPX_CODEC_OK {
-                println!("VP9 image frame error: encode flush failed {:?}", ret);
+                println!("VP9 image frame error: encode failed {:?}", ret);
 
                 unsafe {
-                    vpx_img_free(&mut img)
+                    vpx_img_free(&mut raw)
                 };
 
                 unsafe {
@@ -1537,16 +1549,14 @@ impl FITS {
 
                 if pkt.is_null() {
                     break;
-                } else {
+                } else {                    
                     println!("{:#?}", unsafe { *pkt }.kind);
-                    out = 1;
+                    out = 1;                                        
 
-                    if unsafe { *pkt }.kind == vpx_codec_cx_pkt_kind::VPX_CODEC_CX_FRAME_PKT {
-                        //println!("got a VPX Frame Packet");         
+                    println!("{:#?}",{*pkt}.data.frame);
 
-                        //let packet = VPXPacket::new(unsafe { *pkt }) ;
-
-                        let f = unsafe {*pkt}.data.frame ;
+                    if unsafe { *pkt }.kind == vpx_codec_cx_pkt_kind::VPX_CODEC_CX_FRAME_PKT {    
+                        let f = (*pkt).data.frame ;
 
                         println!("frame length: {} bytes", f.sz);
 
@@ -1555,10 +1565,10 @@ impl FITS {
                             ptr::copy_nonoverlapping(mem::transmute(f.buf), image_frame.as_mut_ptr(), f.sz);
                             image_frame.set_len(f.sz);
                         }
-                    }                    
+                    }
                 }
-            }
-        }    
+            }          
+        }   
 
         if out != 1 {
             println!("VP9 image frame error: no image packet produced");
@@ -1570,7 +1580,7 @@ impl FITS {
         println!("VP9 image frame encode time: {} [ms]", (stop-start)/1000000);
 
         unsafe {
-            vpx_img_free(&mut img)
+            vpx_img_free(&mut raw)
         };
 
         unsafe {

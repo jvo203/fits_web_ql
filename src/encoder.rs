@@ -110,6 +110,8 @@ impl VPXPacket {
     }
 }
 
+//end of the vpx packet stuff
+
 pub struct VP9EncoderConfig {
     pub cfg: vpx_codec_enc_cfg,
 }
@@ -265,3 +267,55 @@ impl VPXCodec for VP9Encoder {
         &mut self.ctx
     }
 }
+
+========================================================================
+
+                    if unsafe { *pkt }.kind == vpx_codec_cx_pkt_kind::VPX_CODEC_CX_FRAME_PKT {
+                        //println!("got a VPX Frame Packet");         
+
+                        let packet = VPXPacket::new(unsafe { *pkt });
+
+                        match packet {
+                            VPXPacket::Packet(p) => {
+                                println!("{:#?}", p);
+                                println!("packet/data length: {:#?} bytes", p.data.len());
+                            },
+                            _ => {},
+                        };
+
+                        /*let f = (*pkt).data.frame ;
+
+                        println!("frame length: {} bytes", f.sz);
+
+                        image_frame = Vec::with_capacity(f.sz);
+                        unsafe {
+                            ptr::copy_nonoverlapping(mem::transmute(f.buf), image_frame.as_mut_ptr(), f.sz);
+                            image_frame.set_len(f.sz);
+                        }*/
+                    }
+
+===================================
+
+            let ret =                 
+                vpx_codec_encode(
+                    &mut ctx,
+                    ptr::null_mut(),
+                    0,
+                    1,
+                    0,
+                    /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
+                );                
+
+            if ret != VPX_CODEC_OK {
+                println!("VP9 image frame error: encode flush failed {:?}", ret);
+
+                unsafe {
+                    vpx_img_free(&mut raw)
+                };
+
+                unsafe {
+                    vpx_codec_destroy(&mut ctx)
+                };
+
+                return ;
+            }                    

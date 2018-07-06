@@ -7,3 +7,8 @@ After cloning the fits_web_ql repository the 809MB-large spectral lines database
 http://jvo.nao.ac.jp/~chris/splatalogue_v3.db
 
 and placed inside the fits_web_ql directory.
+
+# How to run a local version (Personal Edition)
+cd into the fits_web_ql directory and execute
+
+cargo run --release
