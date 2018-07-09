@@ -21,6 +21,73 @@ use num_integer::Integer;
 
 use vpx_sys::*;
 
+fn get_packets(mut ctx: vpx_codec_ctx_t) -> Option<Vec<u8>> {    
+    unsafe {
+        let mut iter = mem::zeroed();
+
+        loop {
+            let pkt = vpx_codec_get_cx_data(&mut ctx, &mut iter);
+
+            if pkt.is_null() {            
+                break;
+            } else {            
+                println!("{:#?}", (*pkt).kind);
+                
+                if (*pkt).kind == vpx_codec_cx_pkt_kind::VPX_CODEC_CX_FRAME_PKT {    
+                    //println!("{:#?}",(*pkt).data.frame);
+                    let f = (*pkt).data.frame ;
+
+                    println!("frame length: {} bytes", f.sz);
+
+                    let mut image_frame: Vec<u8> = Vec::with_capacity(f.sz);                        
+                    ptr::copy_nonoverlapping(mem::transmute(f.buf), image_frame.as_mut_ptr(), f.sz);
+                    image_frame.set_len(f.sz);
+
+                    return Some(image_frame);
+                };                
+            }
+        };
+    };
+
+    None
+}
+
+fn encode_frame(mut ctx: vpx_codec_ctx_t, mut img: vpx_image, frame: i64, flags: i64) -> Result<Option<Vec<u8>>, vpx_codec_err_t> {
+    let ret = unsafe {
+             vpx_codec_encode(
+                &mut ctx,
+                &mut img,
+                frame,
+                1,
+                flags,
+                VPX_DL_GOOD_QUALITY as u64,
+            )
+    };
+
+    match ret {        
+        VPX_CODEC_OK => Ok(get_packets(ctx)),        
+        _ => Err(ret),
+    }    
+}
+
+fn flush_frame(mut ctx: vpx_codec_ctx_t) -> Result<Option<Vec<u8>>, vpx_codec_err_t> {
+    let ret = unsafe {                
+        vpx_codec_encode(
+        &mut ctx,
+        ptr::null_mut(),
+        -1,
+        1,
+        0,
+        VPX_DL_GOOD_QUALITY as u64,
+        )
+    };
+
+    match ret {        
+        VPX_CODEC_OK => Ok(get_packets(ctx)),
+        _ => Err(ret),
+    } 
+}
+
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
@@ -1476,116 +1543,66 @@ impl FITS {
 
             return ;
         }
-
-        let mut out = 0;
+        
         let mut flags = 0;
         flags |= VPX_EFLAG_FORCE_KF;
 
         let start = precise_time::precise_time_ns();
+        
+         //call encode_frame with a valid image
+        match encode_frame(ctx, raw, 0, flags as i64) {            
+            Ok(res) => match res {                
+                Some(res) => image_frame = res,
+                _ => {},
+            },
+            Err(err) => {
+                println!("codec error: {:?}", err);
 
-        unsafe {            
-            let ret = vpx_codec_encode(                
-                &mut ctx,
-                &mut raw,
-                0,
-                1,
-                flags as i64,
-                /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
-            );
-
-            if ret != VPX_CODEC_OK {
-                println!("VP9 image frame error: encode flush failed {:?}", ret);
-
-                unsafe {
-                    vpx_img_free(&mut raw)
-                };
-
-                unsafe {
-                    vpx_codec_destroy(&mut ctx)
-                };
+                unsafe { vpx_img_free(&mut raw) };
+                unsafe { vpx_codec_destroy(&mut ctx) };
 
                 return ;
             }
+        }; 
 
-            let mut iter = mem::zeroed();
-            loop {
-                let pkt = vpx_codec_get_cx_data(&mut ctx, &mut iter); 
+        //flush the encoder to signal the end    
+        match flush_frame(ctx) {
+            Ok(res) => match res {
+                Some(res) => image_frame = res,
+                _ => {},
+            },
+            Err(err) => {
+                println!("codec error: {:?}", err);
 
-                if pkt.is_null() {
-                    break;
-                } else {
-                    println!("got something");
-                }            
+                unsafe { vpx_img_free(&mut raw) };
+                unsafe { vpx_codec_destroy(&mut ctx) };
+
+                return ;
+            }
+        }; 
+
+        //println!("{:?}", image_frame);
+
+        if image_frame.is_empty() {
+            println!("VP9 image frame error: no image packet produced");
+
+            unsafe {
+                vpx_img_free(&mut raw)
             };
 
-            //flush the encoder (end encoding)
-            let ret =                 
-                vpx_codec_encode(
-                    &mut ctx,
-                    ptr::null_mut(),
-                    -1,
-                    1,
-                    0,
-                    /*VPX_DL_REALTIME*/VPX_DL_GOOD_QUALITY as u64,
-                );
+            unsafe {
+                vpx_codec_destroy(&mut ctx)
+            };
 
-            if ret != VPX_CODEC_OK {
-                println!("VP9 image frame error: encode failed {:?}", ret);
-
-                unsafe {
-                    vpx_img_free(&mut raw)
-                };
-
-                unsafe {
-                    vpx_codec_destroy(&mut ctx)
-                };
-
-                return ;
-            }
-
-            let mut iter = mem::zeroed();
-            loop {                
-                let pkt = vpx_codec_get_cx_data(&mut ctx, &mut iter);                
-
-                if pkt.is_null() {
-                    break;
-                } else {                    
-                    println!("{:#?}", unsafe { *pkt }.kind);
-                    out = 1;                                        
-
-                    println!("{:#?}",{*pkt}.data.frame);
-
-                    if unsafe { *pkt }.kind == vpx_codec_cx_pkt_kind::VPX_CODEC_CX_FRAME_PKT {    
-                        let f = (*pkt).data.frame ;
-
-                        println!("frame length: {} bytes", f.sz);
-
-                        image_frame = Vec::with_capacity(f.sz);
-                        unsafe {
-                            ptr::copy_nonoverlapping(mem::transmute(f.buf), image_frame.as_mut_ptr(), f.sz);
-                            image_frame.set_len(f.sz);
-                        }
-                    }
-                }
-            }          
-        }   
-
-        if out != 1 {
-            println!("VP9 image frame error: no image packet produced");
             return ;
         }
 
         let stop = precise_time::precise_time_ns();
 
-        println!("VP9 image frame encode time: {} [ms]", (stop-start)/1000000);
+        println!("VP9 image frame encode time: {} [ms]", (stop-start)/1000000);        
 
-        unsafe {
-            vpx_img_free(&mut raw)
-        };
-
-        unsafe {
-            vpx_codec_destroy(&mut ctx)
-        };
+        unsafe { vpx_img_free(&mut raw) };
+        unsafe { vpx_codec_destroy(&mut ctx) };
 
         let tmp_filename = format!("{}/{}.vp9.tmp", IMAGECACHE, self.dataset_id.replace("/","_"));
         let tmp_filepath = std::path::Path::new(&tmp_filename);
