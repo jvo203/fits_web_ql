@@ -1475,7 +1475,7 @@ impl FITS {
         let mut raw: vpx_image = unsafe { mem::uninitialized() };
         let mut ctx = unsafe { mem::uninitialized() };
 
-        let align = 32 ;
+        let align = 1 ;
 
         let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };//I420
         if ret.is_null() {
