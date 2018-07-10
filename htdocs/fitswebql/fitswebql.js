@@ -7308,7 +7308,7 @@ function fetch_image(datasetId, index, add_timestamp)
 				console.log(decoder);				
 
 				decoder.init(function () {console.log("init callback done");});
-				decoder.processFrame([frame], function () {console.log("processFrame callback done");});
+				decoder.processFrame(frame, function () {console.log("processFrame callback done");});
 			}
 		}
 	}

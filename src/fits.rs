@@ -18,6 +18,7 @@ use rayon::prelude::*;
 
 use std::cmp::Ordering::Equal;
 use num_integer::Integer;
+use num;
 
 use vpx_sys::*;
 
@@ -1450,6 +1451,105 @@ impl FITS {
         println!("histogram classifier elapsed time {} [μs]", (stop-start)/1000);
     }
 
+    fn pixels_to_luminance(&self) -> Vec<u8> {
+        match self.flux.as_ref() {            
+            "linear" => {
+                let slope = 1.0 / (self.white - self.black) ;
+
+                self.pixels.par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                
+                                let pixel = num::clamp( (x - self.black) * slope, 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "logistic" => {                
+                self.pixels.par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                
+                                let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - self.median) * self.sensitivity).exp() ), 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "ratio" => {
+                self.pixels.par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                                                
+                                let pixel = 5.0 * (x - self.black) * self.sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*pixel/(1.0 + pixel)) as u8
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "square" => {
+                self.pixels.par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                                                
+                                let pixel = (x - self.black) * self.sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp(pixel*pixel, 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },            
+            //by default assume "legacy"
+            _ => {
+                let lmin = (0.5f32).ln() ;
+                let lmax = (1.5f32).ln() ;
+
+                self.pixels.par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                         
+                                let pixel = 0.5 + (x - self.pmin) / (self.pmax - self.pmin) ;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+        }    
+    }
+
     fn make_vpx_image(&mut self) {
         //check if the .vp9 file is already in the IMAGECACHE
 
@@ -1466,6 +1566,8 @@ impl FITS {
         //let mut cfg: vpx_codec_enc_cfg_t = Default::default();
 
         println!("libvpx version: {}", VPX_ENCODER_ABI_VERSION);
+
+        let start = precise_time::precise_time_ns();
 
         let mut image_frame : Vec<u8> = Vec::new() ;
 
@@ -1486,7 +1588,10 @@ impl FITS {
         print!("{:#?}", raw);
 
         let pixel_count = w * h ;
-        let y : &[u8] = &vec![128; pixel_count as usize];
+
+        let y : Vec<u8> = self.pixels_to_luminance();
+
+        //let y : &[u8] = &vec![128; pixel_count as usize];
         let u : &[u8] = &vec![128; (pixel_count/4) as usize];
         let v : &[u8] = &vec![128; (pixel_count/4) as usize];        
 
@@ -1494,9 +1599,9 @@ impl FITS {
         raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
         raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
 
-        /*img.stride[0] = w as i32 ;
-        img.stride[1] = w as i32 ;
-        img.stride[2] = w as i32 ;*/
+        raw.stride[0] = w as i32 ;
+        /*raw.stride[1] = (w/2) as i32 ;
+        raw.stride[2] = (w/2) as i32 ;*/
 
         /*for i in 0..frame.buf.count() {
             let s: &[u8] = frame.buf.as_slice(i).unwrap();
@@ -1523,6 +1628,7 @@ impl FITS {
         cfg.g_timebase.num = 1;
         cfg.g_timebase.den = 30;
         cfg.rc_target_bitrate = 100 * 1014;
+        cfg.g_threads = 4;
 
         ret = unsafe {
             vpx_codec_enc_init_ver(
@@ -1546,9 +1652,10 @@ impl FITS {
         
         let mut flags = 0;
         flags |= VPX_EFLAG_FORCE_KF;
-
-        let start = precise_time::precise_time_ns();
         
+        //flip the FITS image vertically
+        unsafe { vpx_img_flip(&mut raw) };
+
          //call encode_frame with a valid image
         match encode_frame(ctx, raw, 0, flags as i64) {            
             Ok(res) => match res {                
