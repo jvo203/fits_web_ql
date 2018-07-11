@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-07-06.0";
+    return "JS2018-07-11.2";
 }
 
 var generateUid = function ()
@@ -704,6 +704,194 @@ function replot_y_axis()
 	bunit = 'N/A' ;
 
     d3.select("#ylabel").text(yLabel + ' ' + fitsData.BTYPE.trim() + " [" + bunit + "]");
+}
+
+function process_image(w, h, bytes, stride, index)
+{		
+	let image_bounding_dims = {x1: 0, y1: 0, width: w, height: h};
+	var pixel_range = image_pixel_range(bytes, w, h, stride) ;
+	console.log("min pixel:", pixel_range.min_pixel, "max pixel:", pixel_range.max_pixel) ;
+
+	let imageCanvas = document.createElement('canvas') ;
+    imageCanvas.style.visibility = "hidden";
+	var context = imageCanvas.getContext('2d');
+
+	imageCanvas.width = w ;
+	imageCanvas.height = h ;
+	console.log(imageCanvas.width, imageCanvas.height) ;
+
+	let imageData=context.createImageData(w,h);
+	let imageFrame = {bytes:new Uint8ClampedArray(bytes), w:w, h:w, stride:stride};	
+
+	apply_colourmap(imageData, colourmap, bytes, w, h, stride) ;
+	context.putImageData(imageData, 0, 0);
+
+	imageContainer[index-1] = {imageCanvas:imageCanvas, imageFrame:imageFrame, imageData:imageData, newImageData:null, image_bounding_dims:image_bounding_dims, pixel_range:pixel_range} ;
+
+	//next display the image
+
+	
+	if(va_count == 1)
+	{
+	    //place the image onto the main canvas
+	    var c = document.getElementById('HTMLCanvas');
+	    var width = c.width;
+	    var height = c.height;
+	    var ctx = c.getContext("2d");
+
+	    ctx.mozImageSmoothingEnabled = false;
+	    ctx.webkitImageSmoothingEnabled = false;
+	    ctx.msImageSmoothingEnabled = false;
+	    ctx.imageSmoothingEnabled = false;
+
+	    var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
+	    
+	    var img_width = scale*image_bounding_dims.width ;
+	    var img_height = scale*image_bounding_dims.height;
+	    
+	    ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);	   
+	    
+	    setup_image_selection() ;
+
+	    has_image = true ;
+	    
+	    setup_viewports() ;
+	    
+	    display_legend() ;
+
+	    display_gridlines() ;
+
+	    display_beam() ;
+	    
+	    setup_3d_view() ;
+	}
+	else
+	{
+	    if(!composite_view)
+	    {
+		//place the image onto the main canvas
+		var c = document.getElementById('HTMLCanvas' + index);
+		var width = c.width;
+		var height = c.height;
+		var ctx = c.getContext("2d");
+		
+		ctx.mozImageSmoothingEnabled = false;
+		ctx.webkitImageSmoothingEnabled = false;
+		ctx.msImageSmoothingEnabled = false;
+		ctx.imageSmoothingEnabled = false;
+		//ctx.globalAlpha=0.9;
+
+		var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;	    
+		scale = 2.0 * scale / va_count ;
+		
+		var img_width = scale*image_bounding_dims.width ;
+		var img_height = scale*image_bounding_dims.height;	    
+
+		let image_position = get_image_position(index, width, height) ;
+		let posx = image_position.posx ;
+		let posy = image_position.posy ;
+
+		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, posx-img_width/2, posy-img_height/2, img_width, img_height);
+
+		add_line_label(index) ;
+		
+		setup_image_selection_index(index, posx-img_width/2, posy-img_height/2, img_width, img_height);
+	    }
+	    else
+		//add a channel to the RGB composite image
+	    {
+		if(compositeCanvas == null)
+		{
+		    compositeCanvas = document.createElement('canvas') ;
+		    compositeCanvas.style.visibility = "hidden";
+		    //compositeCanvas = document.getElementById('CompositeCanvas');
+		    
+		    compositeCanvas.width = imageCanvas.width ;
+		    compositeCanvas.height = imageCanvas.height ;		
+		}	    
+
+		if(compositeImageData == null)
+		{
+		    var ctx = compositeCanvas.getContext('2d');
+		    compositeImageData = ctx.createImageData(compositeCanvas.width,compositeCanvas.height);
+		}
+		
+		add_composite_channel(bytes, w, h, stride, compositeImageData, index-1) ;
+	    }
+	}
+
+	image_count++ ;
+
+	if(image_count == va_count)
+	{	    	    
+	    //display the composite image
+	    if(composite_view)	    
+	    {						
+		if(compositeCanvas != null && compositeImageData != null)
+		{
+		    var tmp = compositeCanvas.getContext('2d');
+		    tmp.putImageData(compositeImageData, 0, 0);
+		    
+		    //place the image onto the main canvas
+		    var c = document.getElementById('HTMLCanvas');
+		    var width = c.width;
+		    var height = c.height;
+		    var ctx = c.getContext("2d");
+
+		    ctx.mozImageSmoothingEnabled = false;
+		    ctx.webkitImageSmoothingEnabled = false;
+		    ctx.msImageSmoothingEnabled = false;
+		    ctx.imageSmoothingEnabled = false;
+
+		    var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
+		    
+		    var img_width = scale*image_bounding_dims.width ;
+		    var img_height = scale*image_bounding_dims.height;
+		    
+		    ctx.drawImage(compositeCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
+
+		    //hide multiple images
+		    for(let index=0;index<va_count;index++)
+		    {
+			try
+			{
+			    
+			    d3.select("#image_rectangle"+(index+1)).remove() ;
+			}
+			catch (e)
+			{} ;
+			
+			document.getElementById("HTMLCanvas"+(index+1)).style.display = "none";
+		    }
+		    
+		    setup_image_selection() ;
+		    
+		    setup_viewports() ;
+
+		    console.log(imageContainer) ;
+		    
+		    display_rgb_legend() ;
+
+		    setup_3d_view() ;
+		}
+	    }
+	    
+	    has_image = true ;
+	    
+	    hide_hourglass() ;
+
+	    display_gridlines() ;
+
+	    display_beam() ;
+	}
+	
+	try
+	{
+	    var element = document.getElementById('BackHTMLCanvas');
+	    element.parentNode.removeChild(element);
+	}
+	catch (e)
+	{ }
 }
 
 function process_image_event(image, index)
@@ -1556,24 +1744,26 @@ function fetch_binned_image(dataId)
     img.src = url ;
 }
 
-function image_pixel_range(image)
+function image_pixel_range(bytes, w, h, stride)
 {
     var min_pixel = 255 ;
     var max_pixel = 0 ;
-    
-    for(var i=0|0;i<image.data.length;i=(i+4)|0)
-    {
-	if(image.data[i+3] > 0)
-	{
-	    var pixel = image.data[i] ;
+	
+	for(var j=0;j<h;j++)
+	{	  
+	  let offset = j * stride ;
 
-	    if (pixel > max_pixel)
-		max_pixel = pixel ;
+	  for(var i=0;i<w;i++)
+	    {			
+	    	let pixel = bytes[offset++] ;
+	      
+	    	if (pixel > max_pixel)
+				max_pixel = pixel ;
 
-	    if (pixel < min_pixel)
-		min_pixel = pixel ;
-	}
-    }
+			if (pixel < min_pixel)
+				min_pixel = pixel ;
+	    } ;	  
+	} ;
 
     return {min_pixel: min_pixel, max_pixel: max_pixel} ;
 }
@@ -1991,7 +2181,7 @@ function display_gridlines()
 	.domain([1, 0]) ;
     	//.domain([image_bounding_dims.y1, image_bounding_dims.y1 + image_bounding_dims.height-1]);    
 
-    var svg = d3.select("#BackgroundSVG") ;    
+    var svg = d3.select("#BackgroundSVG") ;   
     
     svg = svg.append("g")
 	.attr("id", "gridlines")
@@ -2139,9 +2329,15 @@ function display_gridlines()
 	    .style("text-anchor", "start");//was end, dx -.35, dy 0
     }
 
-    displayGridlines = true ;
+    //displayGridlines = true ;
     var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines' ;
-    d3.select("#displayGridlines").html(htmlStr);
+	d3.select("#displayGridlines").html(htmlStr);
+	
+	var elem = d3.select("#gridlines");
+	if(displayGridlines)
+		elem.attr("opacity",1);
+	else
+		elem.attr("opacity",0);
 }
 
 function display_beam()
@@ -6822,10 +7018,8 @@ function setup_image_selection()
 		d3.select("#ra").text(x2glon(orig_x)) ;
 
 	    if(fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
-		d3.select("#dec").text(y2dec(orig_y)) ;
-	    
-	    var pixel_coord = 4 * (Math.round(y) * imageCanvas.width + Math.round(x)) ;
-
+		d3.select("#dec").text(y2dec(orig_y)) ;		
+		
 	    //for each image
 	    var pixelText = '' ;
 	    var displayPixel = true ;
@@ -6835,12 +7029,14 @@ function setup_image_selection()
 		var pixel_range = imageContainer[index-1].pixel_range ;
 		var min_pixel = pixel_range.min_pixel ;
 		var max_pixel = pixel_range.max_pixel ;
-		var imageDataCopy = imageContainer[index-1].imageDataCopy ;
+		var imageFrame = imageContainer[index-1].imageFrame ;
 		
-		var pixel = imageDataCopy[pixel_coord] ;
-		var alpha = imageDataCopy[pixel_coord+3] ;
+		var pixel_coord = Math.round(y) * imageFrame.stride + Math.round(x) ;		
+
+		var pixel = imageFrame.bytes[pixel_coord] ;
+		var alpha = 255;//imageDataCopy[pixel_coord+3] ;		
 		var pixelVal = get_pixel_flux(pixel, index) ;
-		var prefix = "" ;
+		var prefix = "" ;		
 
 		if (pixel == max_pixel)
 		    prefix = "≥" ;
@@ -6988,7 +7184,7 @@ function setup_image_selection()
 			
 			if(transport_mode == 'WS' && wsConn[index].readyState == 1)
 			{						
-			    let strRequest = 'datasetId=' + dataId + '&x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=false&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id ;
+			    let strRequest = 'x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=false&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id ;
 			    
 			    wsConn[index].send('[spectrum] ' + strRequest + '&timestamp=' + performance.now());
 			}
@@ -7304,11 +7500,17 @@ function fetch_image(datasetId, index, add_timestamp)
 				//var player = new OGVPlayer();
 				//console.log(player);
 
-				decoder = new OGVDecoderVideoVP9();
+				var decoder = new OGVDecoderVideoVP9();
 				console.log(decoder);				
 
 				decoder.init(function () {console.log("init callback done");});
-				decoder.processFrame(frame, function () {console.log("processFrame callback done");});
+				decoder.processFrame(frame, function () {
+					process_image(decoder.frameBuffer.format.displayWidth,
+						decoder.frameBuffer.format.displayHeight,
+						decoder.frameBuffer.y.bytes,
+						decoder.frameBuffer.y.stride,
+						index);
+				});
 			}
 		}
 	}
@@ -8391,7 +8593,8 @@ function display_menu()
 	.append("a")
 	.attr("id", "displayGridlines")
 	.style('cursor','pointer')
-	.on("click", function () {displayGridlines = !displayGridlines;		  
+	.on("click", function () {displayGridlines = !displayGridlines;
+					localStorage_write_boolean("displayGridlines", displayGridlines) ;
 				  var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines' ;
 				  d3.select(this).html(htmlStr);
 				  var elem = d3.select("#gridlines");
@@ -10631,7 +10834,8 @@ async*/ function mainRenderer()
 	displayLegend = true ;
 	displayMolecules = true ;
 	displaySpectrum = true ;
-	displayGridlines = false ;
+	//displayGridlines = false ;
+	displayGridlines = localStorage_read_boolean("displayGridlines", false) ;
 	displayBeam = false ;
 
 	has_contours = false ;

@@ -148,7 +148,7 @@ function interpolate_colourmap(value, colourmap, alpha)
     return strValue ;
 } ;
 
-function apply_colourmap(image, colourmap)
+function apply_colourmap(image, colourmap, bytes, w, h, stride)
 {
     var start = performance.now() ;
 
@@ -224,95 +224,59 @@ function apply_colourmap(image, colourmap)
 
     var no_colours = 64 ;
     var interp_factor = no_colours / 256.0 ;
-    
-    for (var i=0|0;i<image.data.length;i=(i+4)|0)
-    {
-	var r = image.data[i] ;
-	var g = image.data[i+1] ;
-	var b = image.data[i+2] ;
+	
+	let dst_offset = 0 ;
 
-	var pixel = Math.round( (r + g + b)/3 ) ;
-	pixel = invert ? (255 - pixel) : pixel ;
+	for(var j=0;j<h;j++)
+	{	  
+	  let offset = j * stride ;
 
-	var pos = pixel * interp_factor ;
-	var frac = pos - Math.floor(pos) ;
-	var x0 = Math.floor(pos) ;
+	  for(var i=0;i<w;i++)
+	    {			
+			let pixel = bytes[offset++] ;
+			pixel = invert ? (255 - pixel) : pixel ;
 
-	r = 255 * (cmR[x0] + (cmR[x0+1] - cmR[x0])*frac) ;
-	g = 255 * (cmG[x0] + (cmG[x0+1] - cmG[x0])*frac) ;
-	b = 255 * (cmB[x0] + (cmB[x0+1] - cmB[x0])*frac) ;
+			let pos = pixel * interp_factor ;
+			let frac = pos - Math.floor(pos) ;
+			let x0 = Math.floor(pos) ;
 
-	image.data[i] = r ;
-	image.data[i+1] = g ;
-	image.data[i+2] = b ;
-    }
+			let r = 255 * (cmR[x0] + (cmR[x0+1] - cmR[x0])*frac) ;
+			let g = 255 * (cmG[x0] + (cmG[x0+1] - cmG[x0])*frac) ;
+			let b = 255 * (cmB[x0] + (cmB[x0+1] - cmB[x0])*frac) ;
+			
+			image.data[dst_offset++] = r ;
+			image.data[dst_offset++] = g ;
+			image.data[dst_offset++] = b ;
+			image.data[dst_offset++] = 255 ;//the alpha channel
+		}
+	}
 
     var end = performance.now() ;
-
-    logicalProcessors = window.navigator.hardwareConcurrency ;
     
-    console.log("colourmap: time taken " + (end-start).toFixed(1) + " [ms];", "logical cores available:", logicalProcessors) ;
-
-    //EMSCRIPTEN fast_colourmap
-    /*var numBytes = image.data.length ;
-    var ptr = Module._malloc(numBytes);
-    var heapBytes = new Uint8Array(Module.HEAPU8.buffer, ptr, numBytes);
-
-    // copy data into heapBytes
-    heapBytes.set(new Uint8Array(image.data));
-
-    var cmRF32 = new Float32Array(cmR);
-    var cmGF32 = new Float32Array(cmG);
-    var cmBF32 = new Float32Array(cmB);
-    
-    numBytes = cmRF32.length * cmRF32.BYTES_PER_ELEMENT;
-    ptr = Module._malloc(numBytes);
-    var heapR = new Uint8Array(Module.HEAPU8.buffer, ptr, numBytes);
-    heapR.set(new Uint8Array(cmRF32.buffer));
-
-    numBytes = cmGF32.length * cmGF32.BYTES_PER_ELEMENT;
-    ptr = Module._malloc(numBytes);
-    var heapG = new Uint8Array(Module.HEAPU8.buffer, ptr, numBytes);
-    heapG.set(new Uint8Array(cmGF32.buffer));
-
-    numBytes = cmBF32.length * cmBF32.BYTES_PER_ELEMENT;
-    ptr = Module._malloc(numBytes);
-    var heapB = new Uint8Array(Module.HEAPU8.buffer, ptr, numBytes);
-    heapB.set(new Uint8Array(cmBF32.buffer));
-
-    var start = performance.now() ;
-    fast_colourmap = Module.cwrap('fast_colourmap', null, ['number', 'number', 'number', 'number', 'number', 'number', 'number']) ;
-    fast_colourmap(heapBytes.byteOffset, image.data.length, invert, interp_factor, heapR.byteOffset, heapG.byteOffset, heapB.byteOffset) ;
-    var end = performance.now() ;
-    
-    image.data.set(heapBytes) ;
-    
-    Module._free(heapBytes.byteOffset);
-    Module._free(heapR.byteOffset);
-    Module._free(heapG.byteOffset);
-    Module._free(heapB.byteOffset);
-    
-    console.log("fast_colourmap: time taken " + (end-start).toFixed(1) + " [ms]") ;*/
+    console.log("colourmap: time taken " + (end-start).toFixed(1) + " [ms]") ;
 }
 
-function add_composite_channel(sourceImageData, destImageData, channel)
+function add_composite_channel(bytes, w, h, stride, destImageData, channel)
 {    
     if(destImageData == null)
 	return ;
     
     if(channel >= 3)
 	return ;
-    
-    for (var i=0|0;i<sourceImageData.length;i=(i+4)|0)
-    {
-	var r = sourceImageData[i] ;
-	var g = sourceImageData[i+1] ;
-	var b = sourceImageData[i+2] ;
-	var a = sourceImageData[i+3] ;
+	
+	let dst_offset = 0 ;
 
-	var pixel = Math.round( (r + g + b)/3 ) ;
+	for(var j=0;j<h;j++)
+	{	  
+	  let offset = j * stride ;
 
-	destImageData.data[i+channel] = pixel ;
-	destImageData.data[i+3] += a / va_count ;
-    }    
+	  for(var i=0;i<w;i++)
+	    {			
+			let pixel = bytes[offset++] ;
+			
+			destImageData.data[dst_offset+channel] = pixel ;
+			destImageData.data[dst_offset+3] = 255 ;//the alpha channel
+			dst_offset += 4 ;//move to the next RGBA position
+		}		
+	}
 }

@@ -11,6 +11,7 @@ use std::{mem,ptr};
 use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
 use precise_time;
 use std::sync::mpsc;
+use num_cpus;
 
 use actix::*;
 use server;
@@ -1579,7 +1580,8 @@ impl FITS {
 
         let align = 1 ;
 
-        let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };//I420
+        let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };//I420 or I444        
+
         if ret.is_null() {
             println!("VP9 image frame error: image allocation failed");
             return ;
@@ -1587,13 +1589,35 @@ impl FITS {
         mem::forget(ret); // img and ret are the same
         print!("{:#?}", raw);
 
-        let pixel_count = w * h ;
+        //let pixel_count = w * h ;
 
         let y : Vec<u8> = self.pixels_to_luminance();
+        /*let u : Vec<u8> = {            
+            self.mask.par_iter()
+                .map(|&m| if m {
+                    255
+                }
+                else {
+                    0
+                }
+                )
+                .collect()
+        };*/
+
+        //I444        
+        //let v : &[u8] = &vec![128; pixel_count as usize];
 
         //let y : &[u8] = &vec![128; pixel_count as usize];
-        let u : &[u8] = &vec![128; (pixel_count/4) as usize];
-        let v : &[u8] = &vec![128; (pixel_count/4) as usize];        
+        //I420        
+        let stride_u = raw.stride[1] ;
+        let stride_v = raw.stride[2] ;
+        let count = stride_u * stride_v ;
+
+        /*let u : &[u8] = &vec![128; (pixel_count/4) as usize];
+        let v : &[u8] = &vec![128; (pixel_count/4) as usize];*/
+
+        let u : &[u8] = &vec![128; count as usize];
+        let v : &[u8] = &vec![128; count as usize];
 
         raw.planes[0] = unsafe { mem::transmute(y.as_ptr()) };
         raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
@@ -1601,7 +1625,7 @@ impl FITS {
 
         raw.stride[0] = w as i32 ;
         /*raw.stride[1] = (w/2) as i32 ;
-        raw.stride[2] = (w/2) as i32 ;*/
+        raw.stride[2] = (h/2) as i32 ;*/
 
         /*for i in 0..frame.buf.count() {
             let s: &[u8] = frame.buf.as_slice(i).unwrap();
@@ -1621,14 +1645,14 @@ impl FITS {
             };
 
             return ;
-        }
+        }        
 
         cfg.g_w = w;
         cfg.g_h = h;
         cfg.g_timebase.num = 1;
-        cfg.g_timebase.den = 30;
-        cfg.rc_target_bitrate = 100 * 1014;
-        cfg.g_threads = 4;
+        cfg.g_timebase.den = 30;        
+        cfg.rc_target_bitrate = 256;// [kilobits per second]
+        cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
 
         ret = unsafe {
             vpx_codec_enc_init_ver(
