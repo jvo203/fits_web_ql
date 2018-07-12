@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-07-11.2";
+    return "JS2018-07-12.0";
 }
 
 var generateUid = function ()
@@ -7867,7 +7867,7 @@ function imageTimeout()
 	if(va_count > 1)
 	    dataId = datasetId[index] ;
 	
-	var strRequest = 'datasetId=' + dataId + '&x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=true&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id + '&timestamp=' + performance.now();    
+	var strRequest = 'x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=true&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id + '&timestamp=' + performance.now();    
 	
 	wsConn[index].send('[spectrum] ' + strRequest);
     }
