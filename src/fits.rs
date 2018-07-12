@@ -99,6 +99,18 @@ const FITS_LINE_LENGTH: usize = 80;
 const NBINS: usize = 1024;
 
 #[derive(Debug)]
+pub enum Beam {
+    Circle,
+    Square,
+}
+
+#[derive(Debug)]
+pub enum Intensity {
+    Mean,
+    Integrated,
+}
+
+#[derive(Debug)]
 pub struct FITS {
         dataset_id: String,
         data_id: String,
@@ -111,13 +123,13 @@ pub struct FITS {
         beam_unit: String,
         beam_type: String,
         filepath: String,
-        bmaj: f32,
-        bmin: f32,
-        bpa: f32,
-        restfrq: f32,
+        bmaj: f64,
+        bmin: f64,
+        bpa: f64,
+        restfrq: f64,
         line: String,
-        obsra: f32,
-        obsdec: f32,
+        obsra: f64,
+        obsdec: f64,
         datamin: f32,
         datamax: f32,
         //this is a FITS data part
@@ -142,19 +154,19 @@ pub struct FITS {
         bscale: f32,
         bzero: f32,
         ignrval: f32,
-        crval1: f32,
-        cdelt1: f32,
-        crpix1: f32,
+        crval1: f64,
+        cdelt1: f64,
+        crpix1: f64,
         cunit1: String,
         ctype1: String,
-        crval2: f32,
-        cdelt2: f32,
-        crpix2: f32,
+        crval2: f64,
+        cdelt2: f64,
+        crpix2: f64,
         cunit2: String,
         ctype2: String,
-        crval3: f32,
-        cdelt3: f32,
-        crpix3: f32,
+        crval3: f64,
+        cdelt3: f64,
+        crpix3: f64,
         cunit3: String,
         ctype3: String,     
         pmin: f32,
@@ -170,7 +182,7 @@ pub struct FITS {
         flux: String,
         has_frequency: bool,
         has_velocity: bool,
-        frame_multiplier: f32,
+        frame_multiplier: f64,
         pub has_header: bool,
         pub has_data: bool,           
         pub timestamp: RwLock<SystemTime>,//last access time
@@ -469,7 +481,7 @@ impl FITS {
         if fits.bitpix == -32 && filepath.exists() {                        
             println!("{}: reading half-float f16 data from cache", id);
 
-            if !fits.read_from_cache(filepath, frame_size/2, cdelt3, &server) {
+            if !fits.read_from_cache(filepath, frame_size/2, cdelt3 as f32, &server) {
                 println!("CRITICAL ERROR reading from half-float cache");
                 return fits;
             }
@@ -511,7 +523,7 @@ impl FITS {
             let mut frame: i32 = 0;
 
             for data in rx {
-                fits.process_cube_frame(&data, cdelt3, frame as usize);                    
+                fits.process_cube_frame(&data, cdelt3 as f32, frame as usize);                    
                 frame = frame + 1 ;
                 fits.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
             };
@@ -567,7 +579,7 @@ impl FITS {
         fits
     }
 
-    fn notify_frequency_range(&self, server: &Addr<Syn, server::SessionServer>, freq_range: (f32, f32)) {
+    fn notify_frequency_range(&self, server: &Addr<Syn, server::SessionServer>, freq_range: (f64, f64)) {
         server.do_send(server::FrequencyRangeMessage {
             freq_range: freq_range,
             dataset_id: self.dataset_id.clone(),
@@ -786,7 +798,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.bmaj = match s.parse::<f32>() {
+                self.bmaj = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -798,7 +810,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.bmin = match s.parse::<f32>() {
+                self.bmin = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -810,7 +822,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.bpa = match s.parse::<f32>() {
+                self.bpa = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -822,7 +834,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.restfrq = match s.parse::<f32>() {
+                self.restfrq = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -834,7 +846,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.restfrq = match s.parse::<f32>() {
+                self.restfrq = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -846,7 +858,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.obsra = match s.parse::<f32>() {
+                self.obsra = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -858,7 +870,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.obsdec = match s.parse::<f32>() {
+                self.obsdec = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -930,7 +942,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.crval1 = match s.parse::<f32>() {
+                self.crval1 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -942,7 +954,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.crval2 = match s.parse::<f32>() {
+                self.crval2 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -954,7 +966,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.crval3 = match s.parse::<f32>() {
+                self.crval3 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -966,7 +978,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.cdelt1 = match s.parse::<f32>() {
+                self.cdelt1 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -978,7 +990,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.cdelt2 = match s.parse::<f32>() {
+                self.cdelt2 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -990,7 +1002,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.cdelt3 = match s.parse::<f32>() {
+                self.cdelt3 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -1002,7 +1014,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.crpix1 = match s.parse::<f32>() {
+                self.crpix1 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -1014,7 +1026,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.crpix2 = match s.parse::<f32>() {
+                self.crpix2 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -1026,7 +1038,7 @@ impl FITS {
                     _ => String::from("")
                 };
 
-                self.crpix3 = match s.parse::<f32>() {
+                self.crpix3 = match s.parse::<f64>() {
                     Ok(x) => x,
                     Err(_) => 0.0
                 }
@@ -1651,7 +1663,7 @@ impl FITS {
         cfg.g_h = h;
         cfg.g_timebase.num = 1;
         cfg.g_timebase.den = 30;        
-        cfg.rc_target_bitrate = 256;// [kilobits per second]
+        cfg.rc_target_bitrate = 512;// [kilobits per second]
         cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
 
         ret = unsafe {
@@ -1759,20 +1771,205 @@ impl FITS {
         let _ = std::fs::rename(tmp_filepath, filepath);
     }
 
-    pub fn get_frequency_range(&self) -> (f32, f32) {
-        let mut fmin: f32 = 0.0;
-        let mut fmax: f32 = 0.0;
+    pub fn get_spectrum(&self, mut x1: i32, mut y1: i32, mut x2: i32, mut y2: i32, beam: Beam, intensity: Intensity, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<Vec<f32>> {
+        //spatial range checks
+        x1 = x1.max(0);
+        y1 = y1.max(0);
+
+        x2 = x2.min(self.width);
+        y2 = y2.min(self.height);
+
+        let cdelt3 = {
+            if self.has_velocity && self.depth > 1 {
+                self.cdelt3 * self.frame_multiplier / 1000.0
+            }
+            else {
+                1.0
+            }
+        };
+
+        match self.get_spectrum_range(frame_start, frame_end, ref_freq) {
+            Some((start,end)) => {
+                println!("start:{} end:{}", start, end);
+
+                let average = match intensity {
+                    Intensity::Mean => true,
+                    _ => false,
+                };
+
+                let spectrum : Vec<f32> = match beam {
+                    Beam::Circle => {                          
+                        //calculate the centre and squared radius
+	                    let cx = (x1 + x2) >> 1 ;
+	                    let cy = (y1 + y2) >> 1 ;
+	                    let r = ((x2 - x1) >> 1).min((y2 - y1) >> 1 );
+	                    let r2 = r * r ;
+
+                        println!("cx = {}, cy = {}, r = {}", cx, cy, r) ;
+
+                        (start .. end+1).into_par_iter().map(|frame| {                            
+                            //self.get_radial_spectrum_at(frame, x1, x2, y1, y2, cx, cy, r2, average, cdelt3)
+                            0.0
+                        }).collect()
+                    },
+                    _ => {                        
+                        (start .. end+1).into_par_iter().map(|frame| {
+                            //self.get_square_spectrum_at(frame, x1, x2, y1, y2, average, cdelt3)       
+                            0.0
+                        }).collect()
+                    },
+                };                       
+
+                println!("spectrum length = {}", spectrum.len());
+
+                //return the spectrum
+                Some(spectrum)
+            },
+            None => {
+                println!("error: an invalid spectrum range");
+                None
+            },
+        }   
+    }
+
+    pub fn get_spectrum_range(&self, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<(usize, usize)> {
+        if self.depth > 1 {
+            if self.has_velocity && ref_freq > 0.0 {
+                return Some(self.get_freq2vel_bounds(frame_start, frame_end, ref_freq)) ;
+            };
+
+            if self.has_frequency && ref_freq > 0.0 {
+                return Some(self.get_frequency_bounds(frame_start, frame_end)) ;
+            };
+
+            if self.has_velocity {
+	            return Some(self.get_velocity_bounds(frame_start, frame_end)) ;
+            }
+        };
+
+        //a default empty range
+        None
+    }
+
+    pub fn get_freq2vel_bounds(&self, frame_start: f64, frame_end: f64, ref_freq: f64) -> (usize, usize) {        
+        let c = 299792458_f64 ;//speed of light [m/s]
+
+        let f_ratio = frame_start / ref_freq ;
+        let v1 = (1.0 - f_ratio * f_ratio)/(1.0 + f_ratio * f_ratio)*c ;
+    
+        let f_ratio = frame_end / ref_freq ;
+        let v2 = (1.0 - f_ratio * f_ratio)/(1.0 + f_ratio * f_ratio)*c ;  
+
+        let x1 = self.crpix3 + (v1 - self.crval3 * self.frame_multiplier) / (self.cdelt3 * self.frame_multiplier) - 1.0 ;
+        let x2 = self.crpix3 + (v2 - self.crval3 * self.frame_multiplier) / (self.cdelt3 * self.frame_multiplier) - 1.0 ;
+    
+        let mut start = x1.round() as i32 ;
+        let mut end = x2.round() as i32 ;
+
+        if self.cdelt3 < 0.0 {
+	        start = self.depth-1 - start ;
+	        end = self.depth-1 - end ;
+        } ;
+  
+        if end < start {
+	        let tmp = start ;
+	        start = end ;
+	        end = tmp ;
+        } ;  
+  
+        start = start.max(0) ;
+        start = start.min(self.depth-1) ;
+  
+        end = end.max(0) ;
+        end = end.min(self.depth-1) ;
+
+        (start as usize, end as usize)
+    }
+
+    pub fn get_frequency_bounds(&self, freq_start: f64, freq_end: f64) -> (usize, usize) {
+        let mut start = 0 ;
+        let mut end = self.depth-1 ;
+
+        if freq_start > 0.0 && freq_end > 0.0 {
+            let f1 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * (1.0 - self.crpix3) ;
+            let f2 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * ((self.depth as f64) - self.crpix3) ;
+
+            let band_lo = f1.min(f2) ;
+            let band_hi = f1.max(f2) ;
+
+            if self.cdelt3 > 0.0 {
+	            start = ((freq_start - band_lo)/(band_hi - band_lo)*(self.depth as f64 -1.0)).round() as i32 ;
+	            end = ((freq_end - band_lo)/(band_hi - band_lo)*(self.depth as f64 -1.0)).round() as i32 ;
+            }
+            else {
+	            start = ((band_hi - freq_start)/(band_hi - band_lo)*(self.depth as f64 -1.0)).round() as i32 ;
+	            end = ((band_hi - freq_end)/(band_hi - band_lo)*(self.depth as f64 -1.0)).round() as i32 ;
+            } ;
+
+            if end < start {
+	            let tmp = start ;
+	            start = end ;
+	            end = tmp ;
+            } ;  
+  
+            start = start.max(0) ;
+            start = start.min(self.depth-1) ;
+  
+            end = end.max(0) ;
+            end = end.min(self.depth-1) ;
+        } ;
+
+        (start as usize, end as usize)
+    }
+
+    pub fn get_velocity_bounds(&self, vel_start: f64, vel_end: f64) -> (usize, usize) {
+        let mut start ;
+        let mut end ;
+
+        let v1 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * (1.0 - self.crpix3) ;
+        let v2 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * ((self.depth as f64) - self.crpix3) ;
+
+        let band_lo = v1.min(v2) ;
+        let band_hi = v1.max(v2) ;
+
+        if self.cdelt3 > 0.0 {
+	        start = ((vel_start - band_lo)/(band_hi - band_lo)*(self.depth as f64 -1.0)).round() as i32 ;
+	        end = ((vel_end - band_lo)/(band_hi - band_lo)*(self.depth as f64 -1.0)).round() as i32 ;
+        }
+        else {
+	        start = ((band_hi - vel_start)/(band_hi - band_lo)*(self.depth as f64 -1.0)).round() as i32 ;
+	        end = ((band_hi - vel_end)/(band_hi - band_lo)*(self.depth as f64 -1.0)).round() as i32 ;
+        } ;
+
+        if end < start {
+	        let tmp = start ;
+	        start = end ;
+	        end = tmp ;
+        } ;  
+  
+        start = start.max(0) ;
+        start = start.min(self.depth-1) ;
+  
+        end = end.max(0) ;
+        end = end.min(self.depth-1) ;
+
+        (start as usize, end as usize)
+    }
+
+    pub fn get_frequency_range(&self) -> (f64, f64) {
+        let mut fmin: f64 = 0.0;
+        let mut fmax: f64 = 0.0;
 
         if self.depth > 1 && self.has_frequency {
             let f1 ;
             let f2 ;
 
             if self.has_velocity {
-                let c = 299792458_f32 ;//speed of light [m/s]
+                let c = 299792458_f64 ;//speed of light [m/s]
 	  
-	            let v1 : f32 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * (1.0 - self.crpix3) ;
+	            let v1 : f64 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * (1.0 - self.crpix3) ;
 
-	            let v2 : f32 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * ((self.depth as f32) - self.crpix3) ;
+	            let v2 : f64 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * ((self.depth as f64) - self.crpix3) ;
 
 	            f1 = self.restfrq * ( (1.0-v1/c)/(1.0+v1/c) ).sqrt() ;
 	            f2 = self.restfrq * ( (1.0-v2/c)/(1.0+v2/c) ).sqrt() ;
@@ -1780,7 +1977,7 @@ impl FITS {
             else {
                 f1 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * (1.0 - self.crpix3) ;
 
-	            f2 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * ((self.depth as f32) - self.crpix3) ;                
+	            f2 = self.crval3 * self.frame_multiplier + self.cdelt3 * self.frame_multiplier * ((self.depth as f64) - self.crpix3) ;                
             };
 
             fmin = f1.min(f2);

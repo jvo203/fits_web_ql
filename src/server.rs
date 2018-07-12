@@ -41,7 +41,7 @@ pub struct WsMessage {
 #[derive(Message)]
 pub struct FrequencyRangeMessage {    
     /// frequency range    
-    pub freq_range: (f32, f32),    
+    pub freq_range: (f64, f64),    
     /// dataset
     pub dataset_id: String,
 }

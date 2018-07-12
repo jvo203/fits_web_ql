@@ -138,8 +138,112 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[spectrum]") {
-                    println!("{}", text);
-                    //ctx.text(&text);                
+                    //println!("{}", text.replace("&"," "));
+                    let (x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt!(&text.replace("&"," "), "[spectrum] x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
+
+                    let x1 = match x1 {
+                        Some(x) => x,
+                        _ => 0,
+                    };
+
+                    let y1 = match y1 {
+                        Some(y) => y,
+                        _ => 0,
+                    };
+
+                    let x2 = match x2 {
+                        Some(x) => x,
+                        _ => 0,
+                    };
+
+                    let y2 = match y2 {
+                        Some(y) => y,
+                        _ => 0,
+                    };
+
+                    let image = match image {
+                        Some(x) => x,
+                        _ => false,
+                    };
+
+                    let beam = match beam {
+                        Some(s) => match s.as_ref() {
+                            "square" => fits::Beam::Square,
+                            _ => fits::Beam::Circle,                            
+                        },
+                        _ => fits::Beam::Circle,
+                    };
+
+                    let intensity = match intensity {
+                        Some(s) => match s.as_ref() {
+                            "mean" => fits::Intensity::Mean,
+                            _ => fits::Intensity::Integrated,                            
+                        },
+                        _ => fits::Intensity::Integrated,
+                    };
+
+                    let frame_start = match frame_start {
+                        Some(s) => match s.parse::<f64>() {                            
+                            Ok(x) => x,
+                            Err(_) => 0.0
+                        },
+                        _ => 0.0,
+                    };
+
+                    let frame_end = match frame_end {
+                        Some(s) => match s.parse::<f64>() {                            
+                            Ok(x) => x,
+                            Err(_) => 0.0
+                        },
+                        _ => 0.0,
+                    };
+
+                    let ref_freq = match ref_freq {
+                        Some(s) => match s.parse::<f64>() {                            
+                            Ok(x) => x,
+                            Err(_) => 0.0
+                        },
+                        _ => 0.0,
+                    };
+
+                    let seq_id = match seq_id {
+                        Some(x) => x,
+                        _ => 0,
+                    };
+
+                    let timestamp = match timestamp {
+                        Some(s) => match s.parse::<f64>() { 
+                            Ok(x) => x,
+                            Err(_) => 0.0
+                        },
+                        _ => 0.0,
+                    };
+
+                    println!("x1:{} y1:{} x2:{} y2:{} image:{} beam:{:?} intensity:{:?} frame_start:{} frame_end:{} ref_freq:{} seq_id:{} timestamp:{}", x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp);
+
+                    //get a read lock to the dataset
+                    let datasets = DATASETS.read();
+
+                    let fits = match datasets.get(&self.dataset_id).unwrap().try_read() {
+                        Some(x) => x,
+                        None => {
+                            let msg = json!({
+                                "type" : "spectrum",
+                                "message" : "unavailable",                  
+                            });
+
+                            ctx.text(msg.to_string());
+                            return;
+                        }
+                    };
+
+                    if fits.has_data {
+                        fits.get_spectrum(x1, y1, x2, y2, beam, intensity, frame_start, frame_end, ref_freq);
+
+                        //send a binary response message (serialize a structure?, bson?)
+
+                        //ctx.text(&text);                
+                    };
                 }
 
                 if (&text).contains("[image]") {
@@ -197,7 +301,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-07-11.0";
+static VERSION_STRING: &'static str = "SV2018-07-12.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
