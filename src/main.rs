@@ -19,6 +19,14 @@ extern crate num_cpus;
 extern crate vpx_sys;
 extern crate num_rational;
 
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate bincode;
+
+use bincode::{serialize, deserialize};
+
 use std::sync::Arc;
 use std::thread;
 use std::env;
@@ -55,6 +63,15 @@ mod server;
 //mod encoder;
 
 use molecule::Molecule;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WsSpectrum {
+    pub ts: f32,
+    pub seq_id: u32,
+    pub msg_type: u32,
+    pub length: u32,
+    pub spectrum: Vec<f32>
+}
 
 struct WsSessionState {
     addr: Addr<Syn, server::SessionServer>,
@@ -238,11 +255,28 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     };
 
                     if fits.has_data {
-                        fits.get_spectrum(x1, y1, x2, y2, beam, intensity, frame_start, frame_end, ref_freq);
+                        match fits.get_spectrum(x1, y1, x2, y2, beam, intensity, frame_start, frame_end, ref_freq) {
+                            Some(spectrum) => {
+                                //send a binary response message (serialize a structure to a binary stream)
+                                let ws_spectrum = WsSpectrum {
+                                    ts: timestamp as f32,
+                                    seq_id: seq_id as u32,
+                                    msg_type: 0,
+                                    length: spectrum.len() as u32,
+                                    spectrum: spectrum
+                                };
 
-                        //send a binary response message (serialize a structure?, bson?)
-
-                        //ctx.text(&text);                
+                                match serialize(&ws_spectrum) {
+                                    Ok(bin) => {                      
+                                        println!("binary length: {}", bin.len());
+                                        //println!("{}", bin);
+                                        ctx.binary(bin);
+                                    },
+                                    Err(err) => println!("error serializing a WebSocket spectrum response: {}", err)
+                                }            
+                            },
+                            None => {},
+                        };                                        
                     };
                 }
 
