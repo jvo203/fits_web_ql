@@ -1771,13 +1771,13 @@ impl FITS {
         let _ = std::fs::rename(tmp_filepath, filepath);
     }
 
-    pub fn get_spectrum(&self, mut x1: i32, mut y1: i32, mut x2: i32, mut y2: i32, beam: Beam, intensity: Intensity, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<Vec<f32>> {
+    pub fn get_spectrum(&self, x1: i32, y1: i32, x2: i32, y2: i32, beam: Beam, intensity: Intensity, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<Vec<f32>> {
         //spatial range checks
-        x1 = x1.max(0);
-        y1 = y1.max(0);
+        let x1 = x1.max(0) as usize ;
+        let y1 = y1.max(0) as usize ;
 
-        x2 = x2.min(self.width);
-        y2 = y2.min(self.height);
+        let x2 = x2.min(self.width) as usize ;
+        let y2 = y2.min(self.height) as usize ;
 
         let cdelt3 = {
             if self.has_velocity && self.depth > 1 {
@@ -1792,10 +1792,12 @@ impl FITS {
             Some((start,end)) => {
                 println!("start:{} end:{}", start, end);
 
-                let average = match intensity {
+                let mean = match intensity {
                     Intensity::Mean => true,
                     _ => false,
                 };
+
+                let start_watch = precise_time::precise_time_ns();
 
                 let spectrum : Vec<f32> = match beam {
                     Beam::Circle => {                          
@@ -1808,19 +1810,20 @@ impl FITS {
                         println!("cx = {}, cy = {}, r = {}", cx, cy, r) ;
 
                         (start .. end+1).into_par_iter().map(|frame| {                            
-                            //self.get_radial_spectrum_at(frame, x1, x2, y1, y2, cx, cy, r2, average, cdelt3)
-                            0.0
+                            self.get_radial_spectrum_at(frame, x1, x2, y1, y2, cx, cy, r2, mean, cdelt3 as f32)                            
                         }).collect()
                     },
                     _ => {                        
                         (start .. end+1).into_par_iter().map(|frame| {
-                            //self.get_square_spectrum_at(frame, x1, x2, y1, y2, average, cdelt3)       
-                            0.0
+                            self.get_square_spectrum_at(frame, x1, x2, y1, y2, mean, cdelt3 as f32)
                         }).collect()
                     },
                 };                       
 
-                println!("spectrum length = {}", spectrum.len());
+                let stop_watch = precise_time::precise_time_ns();                
+
+                //println!("{:?}", spectrum);
+                println!("spectrum length = {}, elapsed time: {} [ms]", spectrum.len(), (stop_watch-start_watch)/1000000);
 
                 //return the spectrum
                 Some(spectrum)
@@ -1832,7 +1835,359 @@ impl FITS {
         }   
     }
 
-    pub fn get_spectrum_range(&self, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<(usize, usize)> {
+    fn get_radial_spectrum_at(&self, frame: usize, x1: usize, x2: usize, y1: usize, y2: usize, cx: usize, cy: usize, r2: usize, mean: bool, cdelt3: f32) -> f32 {
+        match self.bitpix {
+            8 => {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                //self.data_u8
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let int8 = self.data_u8[frame][offset+x];
+                        
+                        let tmp = self.bzero + self.bscale * (int8 as f32);
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            let dist2 = (cx-x)*(cx-x) + (cy-y)*(cy-y) ;
+                                
+                            if dist2 <= r2 { 
+                                sum += tmp ;
+                                count += 1 ;
+                            };
+                        };                        
+                    };
+                };
+                
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            16 => {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+                
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let int16 = self.data_i16[frame][offset+x];
+                        
+                        let tmp = self.bzero + self.bscale * (int16 as f32);
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            let dist2 = (cx-x)*(cx-x) + (cy-y)*(cy-y) ;
+                                
+                            if dist2 <= r2 { 
+                                sum += tmp ;
+                                count += 1 ;
+                            };
+                        };                        
+                    };
+                };
+                
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            32 => {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+                
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let int32 = self.data_i32[frame][offset+x];
+                        
+                        let tmp = self.bzero + self.bscale * (int32 as f32);
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            let dist2 = (cx-x)*(cx-x) + (cy-y)*(cy-y) ;
+                                
+                            if dist2 <= r2 { 
+                                sum += tmp ;
+                                count += 1 ;
+                            };
+                        };                        
+                    };
+                };
+
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            -32 => {                
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let float16 = self.data_f16[frame][offset+x];
+
+                        if float16.is_finite() {
+                            let tmp = self.bzero + self.bscale * float16.to_f32();
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                let dist2 = (cx-x)*(cx-x) + (cy-y)*(cy-y) ;
+
+                                if dist2 <= r2 { 
+                                    sum += tmp ;
+                                    count += 1 ;
+                                };
+                            };
+                        };
+                    };
+                };
+
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            -64 => {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;                
+
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let float64 = self.data_f64[frame][offset+x];
+
+                        if float64.is_finite() {
+                            let tmp = self.bzero + self.bscale * (float64 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                let dist2 = (cx-x)*(cx-x) + (cy-y)*(cy-y) ;
+
+                                if dist2 <= r2 { 
+                                    sum += tmp ;
+                                    count += 1 ;
+                                };
+                            };
+                        };
+                    };
+                };
+                
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            _ => 0.0
+        }        
+    }
+
+    fn get_square_spectrum_at(&self, frame: usize, x1: usize, x2: usize, y1: usize, y2: usize, mean: bool, cdelt3: f32) -> f32 {
+        match self.bitpix {
+            8 => {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                //self.data_u8
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let int8 = self.data_u8[frame][offset+x];
+                        
+                        let tmp = self.bzero + self.bscale * (int8 as f32);
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            sum += tmp ;
+                            count += 1 ;                            
+                        };                        
+                    };
+                };
+                
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            16 => {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+                
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let int16 = self.data_i16[frame][offset+x];
+                        
+                        let tmp = self.bzero + self.bscale * (int16 as f32);
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            sum += tmp ;
+                            count += 1 ;                            
+                        };                        
+                    };
+                };
+                
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            32 => {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+                
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let int32 = self.data_i32[frame][offset+x];
+                        
+                        let tmp = self.bzero + self.bscale * (int32 as f32);
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            sum += tmp ;
+                            count += 1 ;                          
+                        };                        
+                    };
+                };
+
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            -32 => {                
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;
+
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let float16 = self.data_f16[frame][offset+x];
+
+                        if float16.is_finite() {
+                            let tmp = self.bzero + self.bscale * float16.to_f32();
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                sum += tmp ;
+                                count += 1 ;                                
+                            };
+                        };
+                    };
+                };
+
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            -64 => {
+                let mut sum : f32 = 0.0;
+                let mut count : i32 = 0;                
+
+                for y in y1..y2 {
+                    let offset = y * self.width as usize ;
+                    for x in x1..x2 {
+                        let float64 = self.data_f64[frame][offset+x];
+
+                        if float64.is_finite() {
+                            let tmp = self.bzero + self.bscale * (float64 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                sum += tmp ;
+                                count += 1 ;                               
+                            };
+                        };
+                    };
+                };
+                
+                if count > 0 {
+                    if mean {
+                        //mean intensity
+                        sum / (count as f32)
+                    }
+                    else {
+                        //integrated intensity
+                        sum * cdelt3
+                    }
+                }
+                else {
+                    0.0
+                }
+            },
+            _ => 0.0
+        }        
+    }
+
+    fn get_spectrum_range(&self, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<(usize, usize)> {
         if self.depth > 1 {
             if self.has_velocity && ref_freq > 0.0 {
                 return Some(self.get_freq2vel_bounds(frame_start, frame_end, ref_freq)) ;
@@ -1851,7 +2206,7 @@ impl FITS {
         None
     }
 
-    pub fn get_freq2vel_bounds(&self, frame_start: f64, frame_end: f64, ref_freq: f64) -> (usize, usize) {        
+    fn get_freq2vel_bounds(&self, frame_start: f64, frame_end: f64, ref_freq: f64) -> (usize, usize) {        
         let c = 299792458_f64 ;//speed of light [m/s]
 
         let f_ratio = frame_start / ref_freq ;
@@ -1886,7 +2241,7 @@ impl FITS {
         (start as usize, end as usize)
     }
 
-    pub fn get_frequency_bounds(&self, freq_start: f64, freq_end: f64) -> (usize, usize) {
+    fn get_frequency_bounds(&self, freq_start: f64, freq_end: f64) -> (usize, usize) {
         let mut start = 0 ;
         let mut end = self.depth-1 ;
 
@@ -1922,7 +2277,7 @@ impl FITS {
         (start as usize, end as usize)
     }
 
-    pub fn get_velocity_bounds(&self, vel_start: f64, vel_end: f64) -> (usize, usize) {
+    fn get_velocity_bounds(&self, vel_start: f64, vel_end: f64) -> (usize, usize) {
         let mut start ;
         let mut end ;
 
@@ -1956,7 +2311,7 @@ impl FITS {
         (start as usize, end as usize)
     }
 
-    pub fn get_frequency_range(&self) -> (f64, f64) {
+    fn get_frequency_range(&self) -> (f64, f64) {
         let mut fmin: f64 = 0.0;
         let mut fmax: f64 = 0.0;
 
