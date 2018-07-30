@@ -168,7 +168,10 @@ pub struct FITS {
         cdelt3: f64,
         crpix3: f64,
         cunit3: String,
-        ctype3: String,     
+        ctype3: String,
+        dmin: f32,
+        dmax: f32,
+        global_hist: RwLock<Vec<i64>>,
         pmin: f32,
         pmax: f32,
         hist: Vec<i32>,
@@ -247,6 +250,9 @@ impl FITS {
             crpix3: 0.0,
             cunit3: String::from(""),
             ctype3: String::from(""),
+            dmin: std::f32::MAX,//no mistake here
+            dmax: std::f32::MIN,//no mistake here
+            global_hist: RwLock::new(Vec::new()),
             pmin: std::f32::MIN,
             pmax: std::f32::MAX,
             hist: Vec::new(),
@@ -324,6 +330,10 @@ impl FITS {
             let mut sum : f32 = 0.0 ;
             let mut count : i32 = 0 ;
 
+            //no mistake here, the initial ranges are supposed to be broken
+            let mut frame_min = std::f32::MAX;
+            let mut frame_max = std::f32::MIN;
+
             let mut rdr = Cursor::new(data);
 
             for i in 0..len {                
@@ -337,6 +347,9 @@ impl FITS {
                             self.pixels[i as usize] += tmp * cdelt3;    
                             self.mask[i as usize] = true ;
 
+                            frame_min = frame_min.min(tmp);
+                            frame_max = frame_max.max(tmp);
+
                             sum += tmp ;
                             count += 1 ;                                
                             }
@@ -344,6 +357,9 @@ impl FITS {
                     Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
                 }
             }
+
+            self.dmin = self.dmin.min(frame_min);
+            self.dmax = self.dmax.max(frame_max);
 
             //mean and integrated intensities @ frame
             if count > 0 {
@@ -551,13 +567,15 @@ impl FITS {
 
             println!("[pixels] parallel sorting time: {} [ms]", (stop-start)/1000000);
 
-            fits.make_histogram(&ord_pixels);
+            fits.make_image_histogram(&ord_pixels);
 
             if fits.flux == "" {
                 fits.histogram_classifier();
             };
 
             fits.make_vpx_image();
+
+            fits.make_global_histogram();
         };
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
@@ -1096,11 +1114,15 @@ impl FITS {
         let mut rdr = Cursor::new(buf);
         let len = self.width * self.height ;
 
-        match self.bitpix {
-            8 => {                                
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
+        let mut sum : f32 = 0.0;
+        let mut count : i32 = 0;
 
+        //no mistake here, the initial ranges are supposed to be broken
+        let mut frame_min = std::f32::MAX;
+        let mut frame_max = std::f32::MIN;
+
+        match self.bitpix {
+            8 => {                                                
                 for i in 0..len {
                     self.data_u8[frame].push(buf[i as usize]);
 
@@ -1109,22 +1131,16 @@ impl FITS {
                         self.pixels[i as usize] += tmp * cdelt3 ;                                
                         self.mask[i as usize] = true ;
 
+                        frame_min = frame_min.min(tmp);
+                        frame_max = frame_max.max(tmp);
+
                         sum += tmp ;
                         count += 1 ;                                
                     }                   
-                }
-
-                //mean and integrated intensities @ frame
-                if count > 0 {
-                    self.mean_spectrum[frame] = sum / (count as f32) ;
-                    self.integrated_spectrum[frame] = sum * cdelt3 ;
-                }
+                }                
             },
 
-            16 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-
+            16 => {                
                 for i in 0..len {
                     match rdr.read_i16::<BigEndian>() {
                         Ok(int16) => {
@@ -1135,6 +1151,9 @@ impl FITS {
                                 self.pixels[i as usize] += tmp * cdelt3;                                
                                 self.mask[i as usize] = true ;
 
+                                frame_min = frame_min.min(tmp);
+                                frame_max = frame_max.max(tmp);
+
                                 sum += tmp ;
                                 count += 1 ;                                
                             }
@@ -1142,18 +1161,9 @@ impl FITS {
                         Err(err) => println!("BigEndian --> LittleEndian i16 conversion error: {}", err)
                     }
                 }
-
-                //mean and integrated intensities @ frame
-                if count > 0 {
-                    self.mean_spectrum[frame] = sum / (count as f32) ;
-                    self.integrated_spectrum[frame] = sum * cdelt3 ;
-                }
             },
 
-            32 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-
+            32 => {                
                 for i in 0..len {
                     match rdr.read_i32::<BigEndian>() {
                         Ok(int32) => {
@@ -1164,6 +1174,9 @@ impl FITS {
                                 self.pixels[i as usize] += tmp * cdelt3;                                
                                 self.mask[i as usize] = true ;
 
+                                frame_min = frame_min.min(tmp);
+                                frame_max = frame_max.max(tmp);
+
                                 sum += tmp ;
                                 count += 1 ;                                
                             }
@@ -1171,18 +1184,9 @@ impl FITS {
                         Err(err) => println!("BigEndian --> LittleEndian i32 conversion error: {}", err)
                     }
                 }
-
-                //mean and integrated intensities @ frame
-                if count > 0 {
-                    self.mean_spectrum[frame] = sum / (count as f32) ;
-                    self.integrated_spectrum[frame] = sum * cdelt3 ;
-                }
             },
 
-            -32 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-
+            -32 => {            
                 for i in 0..len {
                     match rdr.read_f32::<BigEndian>() {
                         Ok(float32) => {                            
@@ -1195,6 +1199,9 @@ impl FITS {
                                 self.pixels[i as usize] += tmp * cdelt3;                                
                                 self.mask[i as usize] = true ;
 
+                                frame_min = frame_min.min(tmp);
+                                frame_max = frame_max.max(tmp);
+
                                 sum += tmp ;
                                 count += 1 ;                                
                             }                            
@@ -1202,18 +1209,9 @@ impl FITS {
                         Err(err) => println!("BigEndian --> LittleEndian f32 conversion error: {}", err)
                     }                    
                 }
-
-                //mean and integrated intensities @ frame
-                if count > 0 {
-                    self.mean_spectrum[frame] = sum / (count as f32) ;
-                    self.integrated_spectrum[frame] = sum * cdelt3 ;
-                }
             },
 
-            -64 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-
+            -64 => {                
                 for i in 0..len {
                     match rdr.read_f64::<BigEndian>() {
                         Ok(float64) => {
@@ -1224,6 +1222,9 @@ impl FITS {
                                 self.pixels[i as usize] += tmp * cdelt3;                                
                                 self.mask[i as usize] = true ;
 
+                                frame_min = frame_min.min(tmp);
+                                frame_max = frame_max.max(tmp);
+
                                 sum += tmp ;
                                 count += 1 ;                                
                             }
@@ -1231,19 +1232,46 @@ impl FITS {
                         Err(err) => println!("BigEndian --> LittleEndian f64 conversion error: {}", err)
                     }
                 }
-
-                //mean and integrated intensities @ frame
-                if count > 0 {
-                    self.mean_spectrum[frame] = sum / (count as f32) ;
-                    self.integrated_spectrum[frame] = sum * cdelt3 ;
-                }
             },
 
             _ => println!("unsupported bitpix: {}", self.bitpix)
-        }      
+        };
+
+        self.dmin = self.dmin.min(frame_min);
+        self.dmax = self.dmax.max(frame_max);
+
+        //mean and integrated intensities @ frame
+        if count > 0 {            
+            self.mean_spectrum[frame] = sum / (count as f32) ;
+            self.integrated_spectrum[frame] = sum * cdelt3 ;
+        }
     }
 
-    fn make_histogram(&mut self, ord_pixels: &Vec<f32>) {
+    fn make_global_histogram(&self) {
+        println!("global dmin = {}, dmax = {}", self.dmin, self.dmax);
+
+        {
+            //do it once and release the write lock
+            self.global_hist.write().resize(NBINS, 0);
+        }
+
+        //parallel histogram of all data
+        let _ = (0..self.depth).into_par_iter().map(|frame| {
+            //a local histogram
+            let mut hist = vec![0; NBINS];
+
+            //build a local histogram using frame data            
+            match self.bitpix {
+                //an iterator over the vector
+                //if data_xxx[frame][i] is_finite
+                _ => println!("unsupported bitpix: {}", self.bitpix),
+            };
+
+            //get a write lock to the global histogram, update it
+        });
+    } 
+
+    fn make_image_histogram(&mut self, ord_pixels: &Vec<f32>) {
         let len = ord_pixels.len();
 
         //in the future need to take into account the mask and IGNRVAL
