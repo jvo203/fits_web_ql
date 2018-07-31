@@ -335,7 +335,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-07-30.0";
+static VERSION_STRING: &'static str = "SV2018-07-31.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -910,7 +910,13 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
                 let filepath = std::path::Path::new(&filename);           
                 let fits = fits::FITS::from_path(&my_data_id.clone(), &my_flux.clone(), filepath, &my_server);//from_path or from_path_mmap
 
-                DATASETS.write().insert(my_data_id.clone(), Arc::new(RwLock::new(Box::new(fits))));  
+                let fits = Arc::new(RwLock::new(Box::new(fits)));
+                
+                DATASETS.write().insert(my_data_id.clone(), fits.clone());
+
+                thread::spawn(move || {
+                    fits.read().make_data_histogram(); 
+                });
             });
         }
         else {

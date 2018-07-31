@@ -171,7 +171,10 @@ pub struct FITS {
         ctype3: String,
         dmin: f32,
         dmax: f32,
-        global_hist: RwLock<Vec<i64>>,
+        data_hist: RwLock<Vec<i64>>,
+        data_median: RwLock<f32>,
+        data_mad_p: RwLock<f32>,
+        data_mad_n: RwLock<f32>,
         pmin: f32,
         pmax: f32,
         hist: Vec<i32>,
@@ -252,7 +255,10 @@ impl FITS {
             ctype3: String::from(""),
             dmin: std::f32::MAX,//no mistake here
             dmax: std::f32::MIN,//no mistake here
-            global_hist: RwLock::new(Vec::new()),
+            data_hist: RwLock::new(Vec::new()),
+            data_median: RwLock::new(0.0),
+            data_mad_p: RwLock::new(0.0),
+            data_mad_n: RwLock::new(0.0),
             pmin: std::f32::MIN,
             pmax: std::f32::MAX,
             hist: Vec::new(),
@@ -573,9 +579,7 @@ impl FITS {
                 fits.histogram_classifier();
             };
 
-            fits.make_vpx_image();
-
-            fits.make_global_histogram();
+            fits.make_vpx_image();                    
         };
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
@@ -1247,28 +1251,200 @@ impl FITS {
         }
     }
 
-    fn make_global_histogram(&self) {
+    pub fn make_data_histogram(&self) {
         println!("global dmin = {}, dmax = {}", self.dmin, self.dmax);
-
-        {
-            //do it once and release the write lock
-            self.global_hist.write().resize(NBINS, 0);
+        
+        self.data_hist.write().resize(NBINS, 0);        
+        
+        fn increment_histogram(x : f32, datamin: f32, datamax: f32, dmin: f32, dmax: f32, hist: &mut Vec<i64>) {            
+            if x.is_finite() && x >= datamin && x <= datamax {
+                //add it to a local histogram
+                let bin = (NBINS as f32) * (x - dmin) / (dmax - dmin) ;
+                let index = num::clamp(bin as usize, 0, NBINS-1) ;
+                hist[index] = hist[index] + 1 ;
+            }
         }
 
+        fn update_deviation(x : f32, datamin: f32, datamax: f32, median: f32, mad_p: &mut f32, mad_n: &mut f32, count_p: &mut i64, count_n: &mut i64) {            
+            if x.is_finite() && x >= datamin && x <= datamax {
+                if x > median {
+                    *mad_p = *mad_p + (x - median) ;
+                    *count_p = *count_p + 1 ;
+                };
+
+                if x < median {
+                    *mad_n = *mad_n + (median - x) ;
+                    *count_n = *count_n + 1 ;
+                };
+            }
+        }
+
+        let start = precise_time::precise_time_ns();
+
         //parallel histogram of all data
-        let _ = (0..self.depth).into_par_iter().map(|frame| {
-            //a local histogram
+        //actually serial so as not to affect other threads, smooth real-time spectrum calculation etc?
+        //into_par_iter or into_iter
+        (0..self.depth).into_iter().for_each(|frame| {
+            //init a local histogram
             let mut hist = vec![0; NBINS];
 
             //build a local histogram using frame data            
             match self.bitpix {
-                //an iterator over the vector
-                //if data_xxx[frame][i] is_finite
+                8 => {
+                    for x in &self.data_u8[frame as usize] {
+                        let tmp = self.bzero + self.bscale * (*x as f32);
+                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                    }
+                },
+                16 => {
+                    for x in &self.data_i16[frame as usize] {
+                        let tmp = self.bzero + self.bscale * (*x as f32);
+                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                    }
+                },
+                32 => {
+                    for x in &self.data_i32[frame as usize] {
+                        let tmp = self.bzero + self.bscale * (*x as f32);
+                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                    }
+                },
+                -32 => {                    
+                    /*self.data_f16[frame as usize].iter()
+                        .zip(self.mask.iter())
+                            .for_each(|(x, m)| {*/
+                    for x in &self.data_f16[frame as usize] {
+                        //            if *m {                            
+                        let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
+                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                    }
+                        //    })
+                },
+                -64 => {
+                    for x in &self.data_f64[frame as usize] {
+                        let tmp = self.bzero + self.bscale * (*x as f32);
+                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                    }
+                },
                 _ => println!("unsupported bitpix: {}", self.bitpix),
             };
 
             //get a write lock to the global histogram, update it
+            let mut data_hist = self.data_hist.write() ;
+
+            for i in 0..NBINS {
+                data_hist[i] = data_hist[i] + hist[i] ;
+            }
+        });                      
+
+        let data_hist = self.data_hist.read() ;
+
+        let mut total: i64 = 0 ;        
+
+        for i in 0..NBINS {
+            total += data_hist[i];
+        };
+
+        //find the percentiles and/or the median and madN, madP
+        let mut cumulative: i64 = 0 ;
+        let mut pos = 0 ;
+
+        for i in 0..NBINS {
+            if cumulative + data_hist[i] >= (total >> 1) {
+                pos = i ;
+                break ;
+            };
+
+            cumulative += data_hist[i];
+        };
+
+        let dx = (self.dmax - self.dmin) / ( (NBINS << 1) as f32) ;
+        let median = self.dmin + ( ( (pos << 1) + 1) as f32) * dx ;        
+        *self.data_median.write() = median ;
+
+        //mutex-protected global variables        
+        let data_count_p = RwLock::new(0_i64);
+        let data_count_n = RwLock::new(0_i64);
+
+        (0..self.depth).into_iter().for_each(|frame| {
+            //init local madP, madN
+            let mut mad_p = 0.0_f32 ;
+            let mut mad_n = 0.0_f32 ;
+            let mut count_p = 0_i64 ;
+            let mut count_n = 0_i64 ;
+
+            //build a local histogram using frame data            
+            match self.bitpix {
+                8 => {
+                    for x in &self.data_u8[frame as usize] {
+                        let tmp = self.bzero + self.bscale * (*x as f32);
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
+                    }
+                },
+                16 => {
+                    for x in &self.data_i16[frame as usize] {
+                        let tmp = self.bzero + self.bscale * (*x as f32);
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
+                    }
+                },
+                32 => {
+                    for x in &self.data_i32[frame as usize] {
+                        let tmp = self.bzero + self.bscale * (*x as f32);
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
+                    }
+                },
+                -32 => {                                        
+                    for x in &self.data_f16[frame as usize] {
+                        //            if *m {                            
+                        let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
+                    }                 
+                },
+                -64 => {
+                    for x in &self.data_f64[frame as usize] {
+                        let tmp = self.bzero + self.bscale * (*x as f32);
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
+                    }
+                },
+                _ => println!("unsupported bitpix: {}", self.bitpix),
+            };
+
+            //update global mad,count
+            let mut data_mad_p = self.data_mad_p.write() ;
+            let mut data_mad_n = self.data_mad_n.write() ;
+
+            let mut data_count_p = data_count_p.write() ;
+            let mut data_count_n = data_count_n.write() ;
+
+            *data_mad_p += mad_p ;
+            *data_mad_n += mad_n ;
+
+            *data_count_p += count_p ;
+            *data_count_n += count_n ;
         });
+
+        let mut data_mad_p = self.data_mad_p.write() ;
+        let mut data_mad_n = self.data_mad_n.write() ;
+
+        let data_count_p = data_count_p.read() ;
+        let data_count_n = data_count_n.read() ;
+
+        if *data_count_p > 0 {
+            *data_mad_p /= *data_count_p as f32 ;
+        };
+
+        if *data_count_n > 0 {
+            *data_mad_n /= *data_count_n as f32 ;
+        };
+
+        println!("median of a data histogram: {} at pos {}, mad_p = {}, mad_n = {}", *self.data_median.read(), pos, *data_mad_p, *data_mad_n);
+
+        //artificial delay to test concurrency
+        /*let ten_secs = std::time::Duration::from_secs(10);
+        thread::sleep(ten_secs);*/
+
+        let stop = precise_time::precise_time_ns();  
+
+        println!("data histogram creation elapsed time {} [ms]", (stop-start)/1000000);
     } 
 
     fn make_image_histogram(&mut self, ord_pixels: &Vec<f32>) {
@@ -1804,8 +1980,10 @@ impl FITS {
         let x1 = x1.max(0) as usize ;
         let y1 = y1.max(0) as usize ;
 
-        let x2 = x2.min(self.width) as usize ;
-        let y2 = y2.min(self.height) as usize ;
+        let x2 = x2.min(self.width-1) as usize ;//added -1 (see a comment below)
+        let y2 = y2.min(self.height-1) as usize ;//added -1 to prevent data access overflows
+
+        //if x2 < 0 from the Kalman Filter is passed, <let x2> results in a negative number, then overflows during a conversion to an unsigned usize... needs to be fixed
 
         let cdelt3 = {
             if self.has_velocity && self.depth > 1 {
