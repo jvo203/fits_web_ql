@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-07-12.0";
+    return "JS2018-08-01.0";
 }
 
 var generateUid = function ()
@@ -5568,6 +5568,12 @@ function setup_axes()
 	.attr("opacity", 0.0)
 	.style('cursor','pointer')
 	.on("mouseleave", function () {
+		//send an end_video command via WebSockets
+		for(let index=0;index<va_count;index++)
+		{
+			wsConn[index].send('[end_video]');
+		};
+
 	    shortcut.remove("f");
 	    shortcut.remove("Left") ;
 	    shortcut.remove("Right") ;
@@ -5597,6 +5603,12 @@ function setup_axes()
 	    modal.style.display = "none";
 	})
 	.on("mouseenter", function () {
+		//send an init_video command via WebSockets
+		for(let index=0;index<va_count;index++)
+		{
+			wsConn[index].send('[init_video] fps=' + vidFPS);
+		};
+
 	    hide_navigation_bar() ;
 
 	    d3.select("#scaling")
@@ -5847,7 +5859,32 @@ function x_axis_move(offset)
 	modal.style.right = "2.5%" ;
 	modal.style.left = null ;
     } ;
-    
+
+	if(!freqdrag)
+	{
+		//initially assume 10 frames per second for a video
+		//later on use a Kalman Filter to predict the next frame position and request it		
+		vidInterval = 1000 / vidFPS ;
+
+		now = performance.now() ;
+		elapsed = performance.now() - then ;
+
+		if(elapsed > vidInterval)
+		{
+			then = now - (elapsed % vidInterval);
+
+			//for each dataset request a video frame via WebSockets
+			sent_vid_id++ ;
+
+			for(let index=0;index<va_count;index++)
+		    {
+				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id ;
+
+				wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());
+			} ;
+		} ;
+	} ;
+
     zoom_molecules(freq) ;
 }
 
@@ -10780,9 +10817,18 @@ async*/ function mainRenderer()
 	ping_latency = 0 ;
 	computed = 0 ;
 	processed = 0 ;
+
+	//image
 	recv_seq_id = 0 ;
 	sent_seq_id = 0 ;
 	last_seq_id = 0 ;
+
+	//video
+	vidFPS = 10 ;
+	recv_vid_id = 0 ;
+	sent_vid_id = 0 ;
+	last_vid_id = 0 ;
+
 	spectrum_stack = [] ;
 	image_stack = [] ;
 	zoom_location = 'lower' ;

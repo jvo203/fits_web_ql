@@ -3,6 +3,7 @@
 extern crate actix;
 extern crate actix_web;
 extern crate percent_encoding;
+extern crate itertools;
 
 extern crate byteorder;
 extern crate chrono;
@@ -39,6 +40,8 @@ use actix_web::server::HttpServer;
 use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 use uuid::Uuid;
+
+use vpx_sys::*;
 
 #[macro_use]
 extern crate scan_fmt;
@@ -151,7 +154,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
             ws::Message::Ping(msg) => ctx.pong(&msg),
             ws::Message::Text(text) => {                               
                 if (&text).contains("[heartbeat]") {
-                    ctx.text(&text);                
+                    ctx.text(&text);       
+                }
+
+                if (&text).contains("[init_video]") {
+                    println!("{}", text.replace("&"," "));                
+                }
+
+                if (&text).contains("[end_video]") {
+                    println!("{}", text);
                 }
 
                 if (&text).contains("[spectrum]") {
@@ -308,7 +319,79 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     if fits.has_data {
                         //fits.make_vpx_image()
-                        //send in a binary response
+                        //send a binary response
+                    };
+                }
+
+
+                if (&text).contains("[video]") {
+                    //println!("{}", text.replace("&"," "));
+                    let (frame, key, ref_freq, seq_id, timestamp) = scan_fmt!(&text.replace("&"," "), "[video] frame={} key={} ref_freq={} seq_id={} timestamp={}", String, bool,String, i32, String);
+
+                    let frame = match frame {
+                        Some(s) => match s.parse::<f64>() {                            
+                            Ok(x) => x,
+                            Err(_) => 0.0
+                        },
+                        _ => 0.0,
+                    };
+
+                    let ref_freq = match ref_freq {
+                        Some(s) => match s.parse::<f64>() {                            
+                            Ok(x) => x,
+                            Err(_) => 0.0
+                        },
+                        _ => 0.0,
+                    };
+
+                    let keyframe = match key {
+                        Some(x) => x,
+                        _ => false,
+                    };
+
+                    let seq_id = match seq_id {
+                        Some(x) => x,
+                        _ => 0,
+                    };
+
+                    let timestamp = match timestamp {
+                        Some(s) => match s.parse::<f64>() { 
+                            Ok(x) => x,
+                            Err(_) => 0.0
+                        },
+                        _ => 0.0,
+                    };
+
+                    println!("frame:{} keyframe:{} ref_freq:{} seq_id:{} timestamp:{}", frame, keyframe, ref_freq, seq_id, timestamp);
+
+                    let datasets = DATASETS.read();
+
+                    let fits = match datasets.get(&self.dataset_id).unwrap().try_read() {
+                        Some(x) => x,
+                        None => {
+                            let msg = json!({
+                                "type" : "video",
+                                "message" : "unavailable",                  
+                            });
+
+                            ctx.text(msg.to_string());
+                            return;
+                        }
+                    };
+
+                    if fits.has_data {
+                        match fits.get_video_frame(frame, ref_freq) {                            
+                            Some(mut image) => {
+                                //serialize a video response with seq_id, timestamp
+                                //send a binary response
+                                print!("{:#?}", image);
+
+                                //encode_frame(image, keyframe)
+
+                                unsafe { vpx_img_free(&mut image) };
+                            },
+                            None => {},
+                        };
                     };
                 }
             },                
@@ -335,7 +418,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-07-31.0";
+static VERSION_STRING: &'static str = "SV2018-08-01.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1101,13 +1184,13 @@ fn main() {
 
     #[cfg(feature = "server")]
     {
-        println!("started a fits_web_ql server on port {}", SERVER_PORT);
-        println!("send SIGINT to shutdown");
+        println!("started a fits_web_ql server process on port {}", SERVER_PORT);
+        println!("send SIGINT to shutdown, i.e. killall -s SIGINT fits_web_ql");
     }
 
     let _ = sys.run();
 
-    DATASETS.write()./*unwrap().*/clear();
+    DATASETS.write().clear();
     remove_symlinks();
 
     println!("FITSWebQL: clean shutdown completed.");

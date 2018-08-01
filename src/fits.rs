@@ -20,6 +20,7 @@ use rayon::prelude::*;
 use std::cmp::Ordering::Equal;
 use num_integer::Integer;
 use num;
+use itertools::Itertools;
 
 use vpx_sys::*;
 
@@ -1279,31 +1280,35 @@ impl FITS {
             }
         }
 
-        let start = precise_time::precise_time_ns();
+        //skip most of the data, take every nth value
+        //this will produce an approximate all-data histogram
+        let data_step = 100 ;
+
+        let start = precise_time::precise_time_ns();        
 
         //parallel histogram of all data
         //actually serial so as not to affect other threads, smooth real-time spectrum calculation etc?
         //into_par_iter or into_iter
-        (0..self.depth).into_iter().for_each(|frame| {
+        (0..self.depth).into_par_iter().for_each(|frame| {
             //init a local histogram
             let mut hist = vec![0; NBINS];
 
             //build a local histogram using frame data            
             match self.bitpix {
                 8 => {
-                    for x in &self.data_u8[frame as usize] {
+                    for x in self.data_u8[frame as usize].iter().step(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
                 },
                 16 => {
-                    for x in &self.data_i16[frame as usize] {
+                    for x in self.data_i16[frame as usize].iter().step(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
                 },
                 32 => {
-                    for x in &self.data_i32[frame as usize] {
+                    for x in self.data_i32[frame as usize].iter().step(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
@@ -1312,7 +1317,7 @@ impl FITS {
                     /*self.data_f16[frame as usize].iter()
                         .zip(self.mask.iter())
                             .for_each(|(x, m)| {*/
-                    for x in &self.data_f16[frame as usize] {
+                    for x in self.data_f16[frame as usize].iter().step(data_step) {
                         //            if *m {                            
                         let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
@@ -1320,7 +1325,7 @@ impl FITS {
                         //    })
                 },
                 -64 => {
-                    for x in &self.data_f64[frame as usize] {
+                    for x in self.data_f64[frame as usize].iter().step(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
@@ -1365,7 +1370,8 @@ impl FITS {
         let data_count_p = RwLock::new(0_i64);
         let data_count_n = RwLock::new(0_i64);
 
-        (0..self.depth).into_iter().for_each(|frame| {
+        //into_par_iter or into_iter
+        (0..self.depth).into_par_iter().for_each(|frame| {
             //init local madP, madN
             let mut mad_p = 0.0_f32 ;
             let mut mad_n = 0.0_f32 ;
@@ -1375,32 +1381,32 @@ impl FITS {
             //build a local histogram using frame data            
             match self.bitpix {
                 8 => {
-                    for x in &self.data_u8[frame as usize] {
+                    for x in self.data_u8[frame as usize].iter().step(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
                     }
                 },
                 16 => {
-                    for x in &self.data_i16[frame as usize] {
+                    for x in self.data_i16[frame as usize].iter().step(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
                     }
                 },
                 32 => {
-                    for x in &self.data_i32[frame as usize] {
+                    for x in self.data_i32[frame as usize].iter().step(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
                     }
                 },
                 -32 => {                                        
-                    for x in &self.data_f16[frame as usize] {
+                    for x in self.data_f16[frame as usize].iter().step(data_step) {
                         //            if *m {                            
                         let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
                     }                 
                 },
                 -64 => {
-                    for x in &self.data_f64[frame as usize] {
+                    for x in self.data_f64[frame as usize].iter().step(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
                     }
@@ -1436,7 +1442,7 @@ impl FITS {
             *data_mad_n /= *data_count_n as f32 ;
         };
 
-        println!("median of a data histogram: {} at pos {}, mad_p = {}, mad_n = {}", *self.data_median.read(), pos, *data_mad_p, *data_mad_n);
+        println!("median of an approximate all-data histogram: {} at pos {}, mad_p = {}, mad_n = {}", *self.data_median.read(), pos, *data_mad_p, *data_mad_n);
 
         //artificial delay to test concurrency
         /*let ten_secs = std::time::Duration::from_secs(10);
@@ -1444,7 +1450,7 @@ impl FITS {
 
         let stop = precise_time::precise_time_ns();  
 
-        println!("data histogram creation elapsed time {} [ms]", (stop-start)/1000000);
+        println!("all-data histogram creation elapsed time {} [ms]", (stop-start)/1000000);
     } 
 
     fn make_image_histogram(&mut self, ord_pixels: &Vec<f32>) {
@@ -1668,6 +1674,586 @@ impl FITS {
         println!("histogram classifier elapsed time {} [μs]", (stop-start)/1000);
     }
 
+    fn data_to_luminance_u8(&self, frame: usize) -> Vec<u8> {
+        //calculate white, black, sensitivity from the data_histogram
+        let u = 7.5_f32 ;
+        //let v = 15.0_f32 ;
+
+        let median = *self.data_median.read() ;
+        let black = self.dmin.max((*self.data_median.read()) - u * (*self.data_mad_n.read())) ;
+        let white = self.dmax.min((*self.data_median.read()) + u * (*self.data_mad_p.read())) ;
+        let sensitivity = 1.0 / (white - black) ;
+
+        match self.flux.as_ref() {            
+            "linear" => {
+                let slope = 1.0 / (white - black) ;
+
+                self.data_u8[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                         
+                                let x = self.bzero + self.bscale * (*x as f32);       
+                                let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })                        
+                        .collect()
+            },
+            "logistic" => {                
+                self.data_u8[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                      
+                                let x = self.bzero + self.bscale * (*x as f32);          
+                                let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "ratio" => {
+                self.data_u8[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                            
+                                let x = self.bzero + self.bscale * (*x as f32);                    
+                                let pixel = 5.0 * (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*pixel/(1.0 + pixel)) as u8
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "square" => {
+                self.data_u8[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                
+                                let x = self.bzero + self.bscale * (*x as f32);                     
+                                let pixel = (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp(pixel*pixel, 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },            
+            //by default assume "legacy"
+            _ => {
+                let lmin = (0.5f32).ln() ;
+                let lmax = (1.5f32).ln() ;
+
+                self.data_u8[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {          
+                                let x = self.bzero + self.bscale * (*x as f32);               
+                                let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+        }
+    }
+    
+    fn data_to_luminance_i16(&self, frame: usize) -> Vec<u8> {
+        //calculate white, black, sensitivity from the data_histogram
+        let u = 7.5_f32 ;
+        //let v = 15.0_f32 ;
+
+        let median = *self.data_median.read() ;
+        let black = self.dmin.max((*self.data_median.read()) - u * (*self.data_mad_n.read())) ;
+        let white = self.dmax.min((*self.data_median.read()) + u * (*self.data_mad_p.read())) ;
+        let sensitivity = 1.0 / (white - black) ;
+
+        match self.flux.as_ref() {            
+            "linear" => {
+                let slope = 1.0 / (white - black) ;
+
+                self.data_i16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                         
+                                let x = self.bzero + self.bscale * (*x as f32);       
+                                let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })                        
+                        .collect()
+            },
+            "logistic" => {                
+                self.data_i16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                      
+                                let x = self.bzero + self.bscale * (*x as f32);          
+                                let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "ratio" => {
+                self.data_i16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                            
+                                let x = self.bzero + self.bscale * (*x as f32);                    
+                                let pixel = 5.0 * (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*pixel/(1.0 + pixel)) as u8
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "square" => {
+                self.data_i16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                
+                                let x = self.bzero + self.bscale * (*x as f32);                     
+                                let pixel = (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp(pixel*pixel, 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },            
+            //by default assume "legacy"
+            _ => {
+                let lmin = (0.5f32).ln() ;
+                let lmax = (1.5f32).ln() ;
+
+                self.data_i16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {          
+                                let x = self.bzero + self.bscale * (*x as f32);               
+                                let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+        }
+    }
+
+    fn data_to_luminance_i32(&self, frame: usize) -> Vec<u8> {
+        //calculate white, black, sensitivity from the data_histogram
+        let u = 7.5_f32 ;
+        //let v = 15.0_f32 ;
+
+        let median = *self.data_median.read() ;
+        let black = self.dmin.max((*self.data_median.read()) - u * (*self.data_mad_n.read())) ;
+        let white = self.dmax.min((*self.data_median.read()) + u * (*self.data_mad_p.read())) ;
+        let sensitivity = 1.0 / (white - black) ;
+
+        match self.flux.as_ref() {            
+            "linear" => {
+                let slope = 1.0 / (white - black) ;
+
+                self.data_i32[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                         
+                                let x = self.bzero + self.bscale * (*x as f32);       
+                                let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })                        
+                        .collect()
+            },
+            "logistic" => {                
+                self.data_i32[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                      
+                                let x = self.bzero + self.bscale * (*x as f32);          
+                                let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "ratio" => {
+                self.data_i32[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                            
+                                let x = self.bzero + self.bscale * (*x as f32);                    
+                                let pixel = 5.0 * (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*pixel/(1.0 + pixel)) as u8
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "square" => {
+                self.data_i32[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                
+                                let x = self.bzero + self.bscale * (*x as f32);                     
+                                let pixel = (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp(pixel*pixel, 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },            
+            //by default assume "legacy"
+            _ => {
+                let lmin = (0.5f32).ln() ;
+                let lmax = (1.5f32).ln() ;
+
+                self.data_i32[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {          
+                                let x = self.bzero + self.bscale * (*x as f32);               
+                                let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+        }
+    }
+
+
+    fn data_to_luminance_f16(&self, frame: usize) -> Vec<u8> {
+        //calculate white, black, sensitivity from the data_histogram
+        let u = 7.5_f32 ;
+        //let v = 15.0_f32 ;
+
+        let median = *self.data_median.read() ;
+        let black = self.dmin.max((*self.data_median.read()) - u * (*self.data_mad_n.read())) ;
+        let white = self.dmax.min((*self.data_median.read()) + u * (*self.data_mad_p.read())) ;
+        let sensitivity = 1.0 / (white - black) ;
+
+        match self.flux.as_ref() {            
+            "linear" => {
+                let slope = 1.0 / (white - black) ;
+
+                self.data_f16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                         
+                                let x = self.bzero + self.bscale * (*x).to_f32();       
+                                let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })                        
+                        .collect()
+            },
+            "logistic" => {                
+                self.data_f16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                      
+                                let x = self.bzero + self.bscale * (*x).to_f32();          
+                                let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "ratio" => {
+                self.data_f16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                            
+                                let x = self.bzero + self.bscale * (*x).to_f32();                    
+                                let pixel = 5.0 * (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*pixel/(1.0 + pixel)) as u8
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "square" => {
+                self.data_f16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                
+                                let x = self.bzero + self.bscale * (*x).to_f32();                     
+                                let pixel = (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp(pixel*pixel, 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },            
+            //by default assume "legacy"
+            _ => {
+                let lmin = (0.5f32).ln() ;
+                let lmax = (1.5f32).ln() ;
+
+                self.data_f16[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {          
+                                let x = self.bzero + self.bscale * (*x).to_f32();               
+                                let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+        }
+    }
+
+    fn data_to_luminance_f64(&self, frame: usize) -> Vec<u8> {
+        //calculate white, black, sensitivity from the data_histogram
+        let u = 7.5_f32 ;
+        //let v = 15.0_f32 ;
+
+        let median = *self.data_median.read() ;
+        let black = self.dmin.max((*self.data_median.read()) - u * (*self.data_mad_n.read())) ;
+        let white = self.dmax.min((*self.data_median.read()) + u * (*self.data_mad_p.read())) ;
+        let sensitivity = 1.0 / (white - black) ;
+
+        match self.flux.as_ref() {            
+            "linear" => {
+                let slope = 1.0 / (white - black) ;
+
+                self.data_f64[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                         
+                                let x = self.bzero + self.bscale * (*x as f32);       
+                                let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })                        
+                        .collect()
+            },
+            "logistic" => {                
+                self.data_f64[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                      
+                                let x = self.bzero + self.bscale * (*x as f32);          
+                                let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
+                                (255.0*pixel) as u8
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "ratio" => {
+                self.data_f64[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                                            
+                                let x = self.bzero + self.bscale * (*x as f32);                    
+                                let pixel = 5.0 * (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*pixel/(1.0 + pixel)) as u8
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+            "square" => {
+                self.data_f64[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {                
+                                let x = self.bzero + self.bscale * (*x as f32);                     
+                                let pixel = (x - black) * sensitivity;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp(pixel*pixel, 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },            
+            //by default assume "legacy"
+            _ => {
+                let lmin = (0.5f32).ln() ;
+                let lmax = (1.5f32).ln() ;
+
+                self.data_f64[frame].par_iter()
+                    .zip(self.mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m {          
+                                let x = self.bzero + self.bscale * (*x as f32);               
+                                let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
+                                
+                                if pixel > 0.0 {
+                                    (255.0*num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0)) as u8  
+                                }
+                                else {
+                                    0
+                                }                                
+                            }                            
+                            else {
+                                0
+                            }
+                        })
+                        .collect()
+            },
+        }
+    }
+
+    fn data_to_luminance(&self, frame: usize) -> Option<Vec<u8>> {
+        match self.bitpix {
+            8 => Some(self.data_to_luminance_u8(frame)),
+            16 => Some(self.data_to_luminance_i16(frame)),
+            32 => Some(self.data_to_luminance_i32(frame)),
+            -32 => Some(self.data_to_luminance_f16(frame)),
+            -64 => Some(self.data_to_luminance_f64(frame)),
+            _ => {
+                println!("unsupported bitpix: {}", self.bitpix);
+                None
+            }
+        }
+    }
+
     fn pixels_to_luminance(&self) -> Vec<u8> {
         match self.flux.as_ref() {            
             "linear" => {
@@ -1765,6 +2351,58 @@ impl FITS {
                         .collect()
             },
         }    
+    }
+
+    pub fn get_video_frame(&self, frame: f64, ref_freq: f64) -> Option<vpx_image> {
+        //get a frame index (frame_start = frame_end = frame)
+        let frame = match self.get_spectrum_range(frame, frame, ref_freq) {
+            Some((frame,_)) => frame,
+            None => {                
+                println!("error: an invalid spectrum range");
+                return None
+            },
+        };
+
+        println!("frame index = {}", frame);
+
+        let start = precise_time::precise_time_ns();
+
+        let w = self.width as u32 ;
+        let h = self.height as u32 ;
+        let align = 1 ;
+
+        let mut raw: vpx_image = unsafe { mem::uninitialized() };
+        let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };
+
+        if ret.is_null() {
+            println!("VP9 image frame error: image allocation failed");
+            return None ;
+        } ;
+
+        mem::forget(ret); // img and ret are the same        
+
+        let stride_u = raw.stride[1] ;
+        let stride_v = raw.stride[2] ;
+        let count = stride_u * stride_v ;        
+
+        let y : Vec<u8> = match self.data_to_luminance(frame) {
+            Some(y) => y,
+            None => vec![0; (w * h) as usize],
+        };
+        let u : &[u8] = &vec![128; count as usize];
+        let v : &[u8] = &vec![128; count as usize];
+
+        raw.planes[0] = unsafe { mem::transmute(y.as_ptr()) };
+        raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
+        raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
+
+        raw.stride[0] = w as i32 ;
+
+        let stop = precise_time::precise_time_ns();
+
+        println!("VP9 image frame preparation time: {} [ms]", (stop-start)/1000000); 
+
+        Some(raw)
     }
 
     fn make_vpx_image(&mut self) {
@@ -1867,7 +2505,7 @@ impl FITS {
         cfg.g_h = h;
         cfg.g_timebase.num = 1;
         cfg.g_timebase.den = 30;        
-        cfg.rc_target_bitrate = 512;// [kilobits per second]
+        cfg.rc_target_bitrate = 256;// [kilobits per second]
         cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
 
         ret = unsafe {
@@ -1883,9 +2521,7 @@ impl FITS {
         if ret != VPX_CODEC_OK {            
             println!("VP9 image frame error: codec init failed {:?}", ret);
 
-            unsafe {
-                vpx_img_free(&mut raw)
-            };  
+            unsafe { vpx_img_free(&mut raw) };  
 
             return ;
         }
@@ -1977,13 +2613,11 @@ impl FITS {
 
     pub fn get_spectrum(&self, x1: i32, y1: i32, x2: i32, y2: i32, beam: Beam, intensity: Intensity, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<Vec<f32>> {
         //spatial range checks
-        let x1 = x1.max(0) as usize ;
-        let y1 = y1.max(0) as usize ;
+        let x1 = num::clamp(x1, 0, self.width-1) as usize ;
+        let y1 = num::clamp(y1, 0, self.height-1) as usize ;
 
-        let x2 = x2.min(self.width-1) as usize ;//added -1 (see a comment below)
-        let y2 = y2.min(self.height-1) as usize ;//added -1 to prevent data access overflows
-
-        //if x2 < 0 from the Kalman Filter is passed, <let x2> results in a negative number, then overflows during a conversion to an unsigned usize... needs to be fixed
+        let x2 = num::clamp(x2, 0, self.width-1) as usize ;
+        let y2 = num::clamp(y2, 0, self.height-1) as usize ;
 
         let cdelt3 = {
             if self.has_velocity && self.depth > 1 {
@@ -2042,11 +2676,11 @@ impl FITS {
     }
 
     fn get_radial_spectrum_at(&self, frame: usize, x1: usize, x2: usize, y1: usize, y2: usize, cx: usize, cy: usize, r2: usize, mean: bool, cdelt3: f32) -> f32 {
-        match self.bitpix {
-            8 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
+        let mut sum : f32 = 0.0;
+        let mut count : i32 = 0; 
 
+        match self.bitpix {
+            8 => {                
                 //self.data_u8
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
@@ -2063,26 +2697,9 @@ impl FITS {
                             };
                         };                        
                     };
-                };
-                
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
+                };                                
             },
-            16 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-                
+            16 => {                
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
@@ -2098,26 +2715,9 @@ impl FITS {
                             };
                         };                        
                     };
-                };
-                
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
+                };                
             },
-            32 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-                
+            32 => {                
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
@@ -2134,25 +2734,8 @@ impl FITS {
                         };                        
                     };
                 };
-
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
             },
-            -32 => {                
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-
+            -32 => {                                
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
@@ -2171,25 +2754,8 @@ impl FITS {
                         };
                     };
                 };
-
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
             },
-            -64 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;                
-
+            -64 => {                               
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
@@ -2207,32 +2773,32 @@ impl FITS {
                             };
                         };
                     };
-                };
-                
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
+                };              
             },
-            _ => 0.0
-        }        
+            _ => println!("unsupported bitpix: {}", self.bitpix),         
+        };
+
+        if count > 0 {
+            if mean {
+                //mean intensity
+                sum / (count as f32)
+            }            
+            else {
+                //integrated intensity
+                sum * cdelt3
+            }
+        }
+        else {
+            0.0
+        }
     }
 
     fn get_square_spectrum_at(&self, frame: usize, x1: usize, x2: usize, y1: usize, y2: usize, mean: bool, cdelt3: f32) -> f32 {
-        match self.bitpix {
-            8 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
+        let mut sum : f32 = 0.0;
+        let mut count : i32 = 0;
 
+        match self.bitpix {
+            8 => {                
                 //self.data_u8
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
@@ -2245,26 +2811,9 @@ impl FITS {
                             count += 1 ;                            
                         };                        
                     };
-                };
-                
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
+                };                
             },
-            16 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-                
+            16 => {                
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
@@ -2276,26 +2825,9 @@ impl FITS {
                             count += 1 ;                            
                         };                        
                     };
-                };
-                
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
+                };                
             },
-            32 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-                
+            32 => {                
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
@@ -2308,25 +2840,8 @@ impl FITS {
                         };                        
                     };
                 };
-
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
             },
-            -32 => {                
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;
-
+            -32 => {                                
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
@@ -2341,25 +2856,8 @@ impl FITS {
                         };
                     };
                 };
-
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
             },
-            -64 => {
-                let mut sum : f32 = 0.0;
-                let mut count : i32 = 0;                
-
+            -64 => {                
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
@@ -2373,24 +2871,24 @@ impl FITS {
                             };
                         };
                     };
-                };
-                
-                if count > 0 {
-                    if mean {
-                        //mean intensity
-                        sum / (count as f32)
-                    }
-                    else {
-                        //integrated intensity
-                        sum * cdelt3
-                    }
-                }
-                else {
-                    0.0
-                }
+                };                                
             },
-            _ => 0.0
-        }        
+            _ => println!("unsupported bitpix: {}", self.bitpix),
+        };
+
+        if count > 0 {
+            if mean {
+                //mean intensity
+                sum / (count as f32)
+            }
+            else {
+                //integrated intensity
+                sum * cdelt3
+            }
+        }
+        else {
+            0.0
+        }
     }
 
     fn get_spectrum_range(&self, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<(usize, usize)> {
