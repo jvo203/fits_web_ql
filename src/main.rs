@@ -30,7 +30,7 @@ use bincode::serialize;
 
 use std::sync::Arc;
 use std::thread;
-use std::env;
+use std::{env,mem};
 use std::time::{SystemTime};
 use std::collections::BTreeMap;
 
@@ -72,26 +72,37 @@ pub struct WsSpectrum {
     pub ts: f32,
     pub seq_id: u32,
     pub msg_type: u32,
-    pub length: u32,
+    pub elapsed: f32,
     pub spectrum: Vec<f32>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WsFrame {
+    pub ts: f32,
+    pub seq_id: u32,
+    pub msg_type: u32,
+    pub elapsed: f32,
+    pub frame: Vec<u8>
 }
 
 struct WsSessionState {
     addr: Addr<Syn, server::SessionServer>,
 }
 
-#[derive(Debug)]
 struct UserSession {    
     dataset_id: String,
     session_id: Uuid,
+    cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
+    ctx: vpx_codec_ctx_t,//VP9 encoder context
 }
 
 impl UserSession {
     pub fn new(id: &String) -> UserSession {
         let session = UserSession {
-            dataset_id: id.clone(),
-            //session_id: String::from(""),
+            dataset_id: id.clone(),            
             session_id: Uuid::new_v4(),
+            cfg: unsafe { mem::uninitialized() },
+            ctx: unsafe { mem::uninitialized() },
         } ;
 
         println!("allocating a new websocket session for {}", id);
@@ -158,11 +169,68 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[init_video]") {
-                    println!("{}", text.replace("&"," "));                
+                    println!("{}", text.replace("&"," "));
+                    let fps = scan_fmt!(&text.replace("&"," "), "[init_video] fps={}", i32);
+
+                    let fps = match fps {
+                        Some(x) => x,
+                        _ => 10,//use 10 frames per second by default
+                    };
+
+                    //get a read lock to the dataset
+                    let datasets = DATASETS.read();
+
+                    let fits = match datasets.get(&self.dataset_id).unwrap().try_read() {
+                        Some(x) => x,
+                        None => {
+                            println!("[WS] cannot find {}", self.dataset_id);
+                            return;
+                        }
+                    };
+
+                    let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut self.cfg, 0) };
+
+                    if ret != VPX_CODEC_OK {
+                        println!("VP9: default configuration failed");
+                    }
+                    else {
+                        self.cfg.g_w = fits.width as u32;
+                        self.cfg.g_h = fits.height as u32;
+                        self.cfg.g_timebase.num = 1;
+                        self.cfg.g_timebase.den = fps;        
+                        self.cfg.rc_target_bitrate = 1024;// [kilobits per second]
+                        self.cfg.g_lag_in_frames = 0;
+                        //self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
+                        self.cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
+
+                        //initialise the encoder itself
+                        ret = unsafe {                            
+                            vpx_codec_enc_init_ver(
+                            &mut self.ctx,
+                            vpx_codec_vp9_cx(),
+                            &mut self.cfg,
+                            0,
+                            (14+4+5) as i32,//23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
+                            )
+                        };
+
+                        if ret != VPX_CODEC_OK {            
+                            println!("VP9: codec init failed {:?}", ret);
+                        }
+
+                        //VP9: -8 - slower, 8 - faster
+                        ret = unsafe {vpx_codec_control_(&mut self.ctx, vp8e_enc_control_id::VP8E_SET_CPUUSED as i32, 6) };
+
+                        if ret != VPX_CODEC_OK {            
+                            println!("VP9: error setting VP8E_SET_CPUUSED {:?}", ret);
+                        }
+                    };                    
                 }
 
                 if (&text).contains("[end_video]") {
                     println!("{}", text);
+
+                    unsafe { vpx_codec_destroy(&mut self.ctx) };
                 }
 
                 if (&text).contains("[spectrum]") {
@@ -273,7 +341,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     ts: timestamp as f32,
                                     seq_id: seq_id as u32,
                                     msg_type: 0,
-                                    length: spectrum.len() as u32,
+                                    //length: spectrum.len() as u32,
+                                    elapsed: 0.0,
                                     spectrum: spectrum
                                 };
 
@@ -384,11 +453,68 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
                                 //send a binary response
-                                print!("{:#?}", image);
+                                //print!("{:#?}", image);
 
-                                //encode_frame(image, keyframe)
+                                let start = precise_time::precise_time_ns();
+
+                                let mut flags = 0;
+                                if keyframe {
+                                    flags |= VPX_EFLAG_FORCE_KF;
+                                };                                                                
+
+                                //call encode_frame with a valid frame image
+                                let mut video_frame: Vec<u8> = Vec::new();
+
+                                match fits::encode_frame(self.ctx, image, 0, flags as i64, VPX_DL_REALTIME as u64) {
+                                    Ok(res) => match res {                                        
+                                        Some(res) => video_frame = res,
+                                    _ => {},
+                                    },
+                                    Err(err) => {
+                                        println!("codec error: {:?}", err);
+                                    }
+                                };
 
                                 unsafe { vpx_img_free(&mut image) };
+
+                                if keyframe {
+                                    //flush the encoder to signal the end    
+                                    match fits::flush_frame(self.ctx, VPX_DL_REALTIME as u64) {
+                                        Ok(res) => match res {
+                                            Some(res) => video_frame = res,
+                                            _ => {},
+                                        },
+                                        Err(err) => {
+                                            println!("codec error: {:?}", err);
+                                        }
+                                    }
+                                }
+
+                                let stop = precise_time::precise_time_ns();
+
+                                println!("VP9 video frame encode time: {} [ms], speed {} frames per second, frame length: {} bytes", (stop-start)/1000000, 1000000000/(stop-start), video_frame.len());
+
+                                if !video_frame.is_empty() {                                    
+                                    //println!("VP9 video frame length: {} bytes", video_frame.len());
+                                    //send a binary response message (serialize a structure to a binary stream)
+                                    let ws_frame = WsFrame {                                        
+                                        ts: timestamp as f32,
+                                        seq_id: seq_id as u32,
+                                        msg_type: 5,//a video frame
+                                        //length: video_frame.len() as u32,
+                                        elapsed: ( (stop-start)/1000000 ) as f32,
+                                        frame: video_frame
+                                    };
+
+                                    match serialize(&ws_frame) {                                        
+                                        Ok(bin) => {                      
+                                            println!("binary length: {}", bin.len());
+                                            //println!("{}", bin);
+                                            ctx.binary(bin);
+                                        },
+                                        Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                    }
+                                }                            
                             },
                             None => {},
                         };
@@ -418,7 +544,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 const SERVER_PORT: i32 = 8080;
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-static VERSION_STRING: &'static str = "SV2018-08-01.0";
+static VERSION_STRING: &'static str = "SV2018-08-02.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

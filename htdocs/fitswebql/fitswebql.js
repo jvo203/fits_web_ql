@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-01.0";
+    return "JS2018-08-02.1";
 }
 
 var generateUid = function ()
@@ -894,6 +894,108 @@ function process_image(w, h, bytes, stride, index)
 	{ }
 }
 
+function process_video(w, h, bytes, stride, index)
+{		
+	let image_bounding_dims = {x1: 0, y1: 0, width: w, height: h};
+	var pixel_range = image_pixel_range(bytes, w, h, stride) ;
+	console.log("min pixel:", pixel_range.min_pixel, "max pixel:", pixel_range.max_pixel) ;
+
+	let imageCanvas = document.createElement('canvas') ;
+    imageCanvas.style.visibility = "hidden";
+	var context = imageCanvas.getContext('2d');
+
+	imageCanvas.width = w ;
+	imageCanvas.height = h ;
+	console.log(imageCanvas.width, imageCanvas.height) ;
+
+	let imageData=context.createImageData(w,h);
+
+	apply_colourmap(imageData, colourmap, bytes, w, h, stride) ;
+	//apply_colourmap(imageData, 'greyscale', bytes, w, h, stride) ;
+	context.putImageData(imageData, 0, 0);
+
+	//next display the image
+	if(va_count == 1)
+	{
+	    //place the image onto the main canvas
+	    var c = document.getElementById('VideoCanvas');
+	    var width = c.width;
+	    var height = c.height;
+	    var ctx = c.getContext("2d");
+
+	    ctx.mozImageSmoothingEnabled = false;
+	    ctx.webkitImageSmoothingEnabled = false;
+	    ctx.msImageSmoothingEnabled = false;
+	    ctx.imageSmoothingEnabled = false;
+
+	    var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
+	    
+	    var img_width = scale*image_bounding_dims.width ;
+	    var img_height = scale*image_bounding_dims.height;
+	    
+	    ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);	   
+	}
+	else
+	{
+	    if(composite_view)
+		//add a channel to the RGB composite image
+	    {
+		if(compositeCanvas == null)
+		{
+		    compositeCanvas = document.createElement('canvas') ;
+		    compositeCanvas.style.visibility = "hidden";
+		    //compositeCanvas = document.getElementById('CompositeCanvas');
+		    
+		    compositeCanvas.width = imageCanvas.width ;
+		    compositeCanvas.height = imageCanvas.height ;		
+		}	    
+
+		if(compositeImageData == null)
+		{
+		    var ctx = compositeCanvas.getContext('2d');
+		    compositeImageData = ctx.createImageData(compositeCanvas.width,compositeCanvas.height);
+		}
+		
+		add_composite_channel(bytes, w, h, stride, compositeImageData, index-1) ;
+	    }
+	}
+
+	video_count++ ;
+
+	if(video_count == va_count)
+	{	    	    
+	    //display the composite image
+	    if(composite_view)	    
+	    {						
+		if(compositeCanvas != null && compositeImageData != null)
+		{
+		    var tmp = compositeCanvas.getContext('2d');
+		    tmp.putImageData(compositeImageData, 0, 0);
+		    
+		    //place the image onto the main canvas
+		    var c = document.getElementById('VideoCanvas');
+		    var width = c.width;
+		    var height = c.height;
+		    var ctx = c.getContext("2d");
+
+		    ctx.mozImageSmoothingEnabled = false;
+		    ctx.webkitImageSmoothingEnabled = false;
+		    ctx.msImageSmoothingEnabled = false;
+		    ctx.imageSmoothingEnabled = false;
+
+		    var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
+		    
+		    var img_width = scale*image_bounding_dims.width ;
+		    var img_height = scale*image_bounding_dims.height;
+		    
+		    ctx.drawImage(compositeCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
+		}
+	    }
+	    
+	}
+	
+}
+
 function process_image_event(image, index)
 {
     console.log("process_image_event #"+index) ;
@@ -1464,14 +1566,14 @@ function open_websocket_connection(datasetId, index)
 			
 			//spectrum
 			if(type == 0)
-			{						
-			    var length = dv.getUint32(12, endianness) ;			
+			{								
+			    computed = dv.getFloat32(12, endianness) ;
+								
+				var length = dv.getUint32(16, endianness) ;
 
-			    computed = dv.getFloat32(16, endianness) ;
-			    
-			    var spectrum = new Float32Array(received_msg, 20);
+			    var spectrum = new Float32Array(received_msg, 24);//16+8, extra 8 bytes for the length of the vector, added automatically by Rust
 
-			    //console.log("[ws] computed = " + computed.toFixed(1) + " [ms]") ;
+				//console.log("[ws] computed = " + computed.toFixed(1) + " [ms]" + " length: " + length + " spectrum length:" + spectrum.length + " spectrum: " + spectrum);
 
 			    //process_spectrum_event(spectrum) ;
 
@@ -1597,7 +1699,37 @@ function open_websocket_connection(datasetId, index)
 			    
 			    return ;
 			}
-		    }
+
+			//video
+			if(type == 5)
+			{								
+			    computed = dv.getFloat32(12, endianness) ;
+								
+				var length = dv.getUint32(16, endianness) ;
+
+			    var frame = new Uint8Array(received_msg, 24);//16+8, extra 8 bytes for the length of the vector, added automatically by Rust
+
+				console.log("[ws] computed = " + computed.toFixed(1) + " [ms]" + " length: " + length + " frame length:" + frame.length);
+
+				let decoder = wsConn[index-1].decoder ;
+
+				decoder.processFrame(frame, function () {
+					process_video(decoder.frameBuffer.format.displayWidth,
+						decoder.frameBuffer.format.displayHeight,
+						decoder.frameBuffer.y.bytes,
+						decoder.frameBuffer.y.stride,
+						index);
+				});
+
+			    /*if(!videoLeft)
+			    {
+					video_stack[index-1].push({frame: decoded, id: recv_seq_id}) ;
+					console.log("index:", index, "video_stack length:", video_stack[index-1].length) ;
+				} ;*/
+			    
+			    return ;
+			}
+		}
 
 		    if(typeof evt.data === "string")
 		    {				
@@ -5568,10 +5700,26 @@ function setup_axes()
 	.attr("opacity", 0.0)
 	.style('cursor','pointer')
 	.on("mouseleave", function () {
+		//clear the VideoCanvas
+		{
+			var c = document.getElementById('VideoCanvas') ;
+    		var ctx = c.getContext("2d");
+
+    		var width = c.width ;
+    		var height = c.height ;
+    
+			ctx.clearRect(0, 0, width, height);
+		}
+
 		//send an end_video command via WebSockets
+		videoLeft = true ;
+		video_stack = new Array(va_count) ;
+
 		for(let index=0;index<va_count;index++)
 		{
-			wsConn[index].send('[end_video]');
+			wsConn[index].decoder = null ;
+			wsConn[index].send('[end_video]');				    	    	
+			video_stack[index] = [] ;
 		};
 
 	    shortcut.remove("f");
@@ -5604,9 +5752,31 @@ function setup_axes()
 	})
 	.on("mouseenter", function () {
 		//send an init_video command via WebSockets
+		videoLeft = false ;
+		video_stack = new Array(va_count) ;	
+
+		//clear the VideoCanvas
+		{
+			var c = document.getElementById('VideoCanvas') ;
+    		var ctx = c.getContext("2d");
+
+    		var width = c.width ;
+    		var height = c.height ;
+    
+			ctx.clearRect(0, 0, width, height);
+		}
+	
 		for(let index=0;index<va_count;index++)
 		{
+			var decoder = new OGVDecoderVideoVP9();			
+			decoder.init(function () {console.log("streaming video decoder initiated");});
+			wsConn[index].decoder = decoder;
+
 			wsConn[index].send('[init_video] fps=' + vidFPS);
+	    	    	
+			video_stack[index] = [] ;
+
+			//requestAnimationFrame(update_video);
 		};
 
 	    hide_navigation_bar() ;
@@ -5724,6 +5894,17 @@ function setup_axes()
 	});
 }
 
+function update_video()
+{
+	if(!videoLeft)
+	    requestAnimationFrame(update_video);
+
+	//get decoded frames from the decoder for each websocket connection
+
+	//or
+	//let frame = video_stack.pop() ;
+}
+
 function x_axis_left()
 {
     var freq = round(get_line_frequency(),10) ;
@@ -5824,7 +6005,7 @@ function x_axis_move(offset)
     USER_SELFRQ = freq ;
     
     var checkbox = document.getElementById('restcheckbox');
-
+	
     try {
 	if(checkbox.checked)
 	{
@@ -5868,7 +6049,7 @@ function x_axis_move(offset)
 
 		now = performance.now() ;
 		elapsed = performance.now() - then ;
-
+		
 		if(elapsed > vidInterval)
 		{
 			then = now - (elapsed % vidInterval);
@@ -5876,11 +6057,13 @@ function x_axis_move(offset)
 			//for each dataset request a video frame via WebSockets
 			sent_vid_id++ ;
 
+			video_count = 0 ;
+
 			for(let index=0;index<va_count;index++)
 		    {
 				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id ;
 
-				wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());
+				wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
 			} ;
 		} ;
 	} ;
@@ -10824,13 +11007,14 @@ async*/ function mainRenderer()
 	last_seq_id = 0 ;
 
 	//video
-	vidFPS = 10 ;
+	vidFPS = 10 ;//10
 	recv_vid_id = 0 ;
 	sent_vid_id = 0 ;
 	last_vid_id = 0 ;
 
 	spectrum_stack = [] ;
 	image_stack = [] ;
+	video_stack = [] ;
 	zoom_location = 'lower' ;
 	zoom_scale = 25 ;
 	xradec = null ;
@@ -10932,11 +11116,14 @@ async*/ function mainRenderer()
 
 	spectrum_stack = new Array(va_count) ;
 	spectrum_scale = new Array(va_count) ;
+
+	video_stack = new Array(va_count) ;
 	
 	for(let i=0;i<va_count;i++)
 	{
 	    spectrum_stack[i] = [] ;
-	    spectrum_scale[i] = 1 ;
+		spectrum_scale[i] = 1 ;
+		video_stack[i] = [] ;
 	} ;
 	
 	if(va_count > 1)
@@ -10985,6 +11172,12 @@ async*/ function mainRenderer()
 	    .attr("width", width)
 	    .attr("height", height)
 	    .attr('style', 'position: fixed; left: 10px; top: 10px; z-index: ' + (va_count+1));
+
+	d3.select("#mainDiv").append("canvas")
+	    .attr("id", "VideoCanvas")
+	    .attr("width", width)
+	    .attr("height", height)
+	    .attr('style', 'position: fixed; left: 10px; top: 10px; z-index: 49');
 
 	d3.select("#mainDiv").append("canvas")
 	    .attr("id", "CompositeCanvas")

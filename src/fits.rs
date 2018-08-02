@@ -55,7 +55,7 @@ fn get_packets(mut ctx: vpx_codec_ctx_t) -> Option<Vec<u8>> {
     None
 }
 
-fn encode_frame(mut ctx: vpx_codec_ctx_t, mut img: vpx_image, frame: i64, flags: i64) -> Result<Option<Vec<u8>>, vpx_codec_err_t> {
+pub fn encode_frame(mut ctx: vpx_codec_ctx_t, mut img: vpx_image, frame: i64, flags: i64, deadline: u64) -> Result<Option<Vec<u8>>, vpx_codec_err_t> {
     let ret = unsafe {
              vpx_codec_encode(
                 &mut ctx,
@@ -63,7 +63,7 @@ fn encode_frame(mut ctx: vpx_codec_ctx_t, mut img: vpx_image, frame: i64, flags:
                 frame,
                 1,
                 flags,
-                VPX_DL_GOOD_QUALITY as u64,
+                deadline,
             )
     };
 
@@ -73,7 +73,7 @@ fn encode_frame(mut ctx: vpx_codec_ctx_t, mut img: vpx_image, frame: i64, flags:
     }    
 }
 
-fn flush_frame(mut ctx: vpx_codec_ctx_t) -> Result<Option<Vec<u8>>, vpx_codec_err_t> {
+pub fn flush_frame(mut ctx: vpx_codec_ctx_t, deadline: u64) -> Result<Option<Vec<u8>>, vpx_codec_err_t> {
     let ret = unsafe {                
         vpx_codec_encode(
         &mut ctx,
@@ -81,7 +81,7 @@ fn flush_frame(mut ctx: vpx_codec_ctx_t) -> Result<Option<Vec<u8>>, vpx_codec_er
         -1,
         1,
         0,
-        VPX_DL_GOOD_QUALITY as u64,
+        deadline,
         )
     };
 
@@ -137,8 +137,8 @@ pub struct FITS {
         bitpix: i32,
         naxis: i32,
         naxes: [i32; 4],    
-        width: i32,
-        height: i32,
+        pub width: i32,
+        pub height: i32,
         depth: i32,
         polarisation: i32,
         data_u8: Vec<Vec<u8>>,
@@ -2398,6 +2398,9 @@ impl FITS {
 
         raw.stride[0] = w as i32 ;
 
+        //flip the FITS image vertically
+        unsafe { vpx_img_flip(&mut raw) };
+
         let stop = precise_time::precise_time_ns();
 
         println!("VP9 image frame preparation time: {} [ms]", (stop-start)/1000000); 
@@ -2526,14 +2529,20 @@ impl FITS {
             return ;
         }
         
+        ret = unsafe {vpx_codec_control_(&mut ctx, vp8e_enc_control_id::VP8E_SET_CPUUSED as i32, 8) };
+
+        if ret != VPX_CODEC_OK {            
+            println!("VP9: error setting VP8E_SET_CPUUSED {:?}", ret);
+        }
+
         let mut flags = 0;
         flags |= VPX_EFLAG_FORCE_KF;
         
         //flip the FITS image vertically
         unsafe { vpx_img_flip(&mut raw) };
 
-         //call encode_frame with a valid image
-        match encode_frame(ctx, raw, 0, flags as i64) {            
+        //call encode_frame with a valid image
+        match encode_frame(ctx, raw, 0, flags as i64, VPX_DL_BEST_QUALITY as u64) {            
             Ok(res) => match res {                
                 Some(res) => image_frame = res,
                 _ => {},
@@ -2549,7 +2558,7 @@ impl FITS {
         }; 
 
         //flush the encoder to signal the end    
-        match flush_frame(ctx) {
+        match flush_frame(ctx, VPX_DL_BEST_QUALITY as u64) {
             Ok(res) => match res {
                 Some(res) => image_frame = res,
                 _ => {},
