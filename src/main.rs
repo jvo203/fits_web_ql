@@ -198,9 +198,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         self.cfg.g_h = fits.height as u32;
                         self.cfg.g_timebase.num = 1;
                         self.cfg.g_timebase.den = fps;        
-                        self.cfg.rc_target_bitrate = 1024;// [kilobits per second]
+                        self.cfg.rc_target_bitrate = 4096;// [kilobits per second]
                         self.cfg.g_lag_in_frames = 0;
-                        //self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
+                        self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
                         self.cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
 
                         //initialise the encoder itself
