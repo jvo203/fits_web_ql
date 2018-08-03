@@ -13,7 +13,7 @@ cd into the fits_web_ql directory and execute
 
 cargo run --release
 
-# How to run as a server (only at the Japanese Virtual Observatory)
+# How to run on the server (only at the Japanese Virtual Observatory)
 cd into the fits_web_ql directory and execute
 
 cargo run --features=server --release
