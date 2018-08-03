@@ -4,7 +4,7 @@ extern crate actix;
 extern crate actix_web;
 extern crate percent_encoding;
 extern crate itertools;
-
+extern crate curl;
 extern crate byteorder;
 extern crate chrono;
 extern crate half;
@@ -20,6 +20,9 @@ extern crate num_cpus;
 extern crate vpx_sys;
 extern crate num_rational;
 
+//extern crate rav1e;
+//use rav1e::*;
+
 #[macro_use]
 extern crate serde_derive;
 
@@ -30,7 +33,7 @@ use bincode::serialize;
 
 use std::sync::Arc;
 use std::thread;
-use std::{env,mem};
+use std::{env,ptr};
 use std::time::{SystemTime};
 use std::collections::BTreeMap;
 
@@ -57,8 +60,6 @@ extern crate parking_lot;
 use std::collections::HashMap;
 //use std::sync::RwLock;
 use parking_lot::RwLock;
-
-static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
 
 mod molecule;
 mod fits;
@@ -100,9 +101,19 @@ impl UserSession {
     pub fn new(id: &String) -> UserSession {
         let session = UserSession {
             dataset_id: id.clone(),            
-            session_id: Uuid::new_v4(),
-            cfg: unsafe { mem::uninitialized() },
-            ctx: unsafe { mem::uninitialized() },
+            session_id: Uuid::new_v4(),            
+            cfg: vpx_codec_enc_cfg::default(),            
+            ctx: vpx_codec_ctx_t {                
+                name: ptr::null(),
+                iface: ptr::null_mut(),
+                err: VPX_CODEC_OK,
+                err_detail: ptr::null(),
+                init_flags: 0,
+                config: vpx_codec_ctx__bindgen_ty_1 {                    
+                    enc: ptr::null(),                    
+                },
+                priv_: ptr::null_mut(),
+            },
         } ;
 
         println!("allocating a new websocket session for {}", id);
@@ -114,6 +125,8 @@ impl UserSession {
 impl Drop for UserSession {
     fn drop(&mut self) {
         println!("dropping a websocket session for {}", self.dataset_id);
+
+        unsafe { vpx_codec_destroy(&mut self.ctx) };
     }
 }
 
@@ -197,11 +210,17 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         self.cfg.g_w = fits.width as u32;
                         self.cfg.g_h = fits.height as u32;
                         self.cfg.g_timebase.num = 1;
-                        self.cfg.g_timebase.den = fps;        
+                        self.cfg.g_timebase.den = fps;
+
+                        self.cfg.rc_min_quantizer = 10 ;
+                        self.cfg.rc_max_quantizer = 42 ;
                         self.cfg.rc_target_bitrate = 4096;// [kilobits per second]
+
                         self.cfg.g_lag_in_frames = 0;
                         self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
                         self.cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
+
+                        self.cfg.g_profile = 0 ;
 
                         //initialise the encoder itself
                         ret = unsafe {                            
@@ -541,16 +560,20 @@ lazy_static! {
 
 #[cfg(not(feature = "server"))]
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
-const SERVER_PORT: i32 = 8080;
-//const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
+#[cfg(feature = "server")]
+static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-02.0";
+static VERSION_STRING: &'static str = "SV2018-08-03.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
 
 #[cfg(feature = "server")]
 static SERVER_MODE: &'static str = "SERVER";
+
+const SERVER_PORT: i32 = 8080;
+
+//const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
 fn fetch_molecules(freq_start: f32, freq_end: f32) -> String {
     //splatalogue sqlite db integration    
@@ -823,15 +846,6 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
         }
     };
 
-    /*let composite = match query.get("composite") {
-        Some(x) => { match bool::from_str(x) {
-                        Ok(b) => {b},
-                        Err(_) => {false}
-                        }
-                },
-        None => {false}
-    };*/
-
     let composite = match query.get("view") {
         Some(x) => { match x {
                         "composite" => {true},
@@ -854,11 +868,14 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
 
     println!("{}", resp);
 
-    //server
-    //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite)
+    //server version
+    //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite, &flux, &server)
+    #[cfg(feature = "server")]    
+    return execute_fits(&fitswebql_path, fits::FITSCACHE, "fits", &dataset_id, composite, &flux, &server);
 
+    //local (Personal Edition)
     #[cfg(not(feature = "server"))]
-    execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &flux, &server)
+    return execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &flux, &server);
 }
 
 
@@ -1081,7 +1098,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
     .responder()
 }
 
-#[cfg(not(feature = "server"))]
+//#[cfg(not(feature = "server"))]
 fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
 
     //get fits location    
@@ -1123,9 +1140,11 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
                 
                 DATASETS.write().insert(my_data_id.clone(), fits.clone());
 
-                thread::spawn(move || {
-                    fits.read().make_data_histogram(); 
-                });
+                if fits.read().has_data {
+                    thread::spawn(move || {
+                        fits.read().make_data_histogram();                
+                    });
+                };
             });
         }
         else {
@@ -1263,6 +1282,11 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
 }
 
 fn main() {
+    //an experimental AV1 part
+    //let config = EncoderConfig::default();
+    //println!("{:?}", config);
+    //end of AV1
+
     remove_symlinks();
 
     //splatalogue sqlite db integration

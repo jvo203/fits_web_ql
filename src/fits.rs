@@ -16,7 +16,8 @@ use num_cpus;
 use actix::*;
 use server;
 use rayon::prelude::*;
-
+use curl::easy::Easy;
+use std::error::Error;
 use std::cmp::Ordering::Equal;
 use num_integer::Integer;
 use num;
@@ -91,6 +92,7 @@ pub fn flush_frame(mut ctx: vpx_codec_ctx_t, deadline: u64) -> Result<Option<Vec
     } 
 }
 
+static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
@@ -386,9 +388,8 @@ impl FITS {
         return true;
     }
 
-    pub fn from_path(/*&mut self, */id: &String, flux: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
-        let mut fits = FITS::new(id, flux);    
-        //let mut fits = self;
+    pub fn from_path(id: &String, flux: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
+        let mut fits = FITS::new(id, flux);        
         fits.is_dummy = false;
 
         //load data from filepath
@@ -396,11 +397,17 @@ impl FITS {
             Ok(x) => x,
             Err(x) => {
                 println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
+
+                #[cfg(not(feature = "server"))]
                 return fits;
 
-                //a desperate attempt to download FITS using the ALMA URL (will fail for non-ALMA datasets)                        
-                /*let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
-                return FITS::from_url(&data_id, &url);*/
+                //a desperate attempt to download FITS using the ALMA URL (will fail for non-ALMA datasets)
+                #[cfg(feature = "server")]
+                {                    
+                    let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
+
+                    return FITS::from_url(&id, &flux, &url, &server);
+                }
             }
         } ;
 
@@ -594,10 +601,36 @@ impl FITS {
         fits
     }
 
-    fn from_url(id: &String, flux: &String, url: &String) -> FITS {
-        let fits = FITS::new(id, flux);                
+    fn from_url(id: &String, flux: &String, url: &String, server: &Addr<Syn, server::SessionServer>) -> FITS {
+        let mut fits = FITS::new(id, flux);
+        fits.is_dummy = false;
 
         println!("FITS::from_url({})", url);
+
+        let tmp = format!("{}/{}.fits.tmp", FITSCACHE, id);
+        
+        let mut cachefile = match File::create(&tmp) {
+                Err(ref e) => {
+                    println!("Could not create {} ({})!", tmp, e.description());
+                    return fits;
+                },
+                Ok(file) => file,
+            };
+
+        let mut easy = Easy::new();
+        easy.url(url).unwrap();
+
+        let mut transfer = easy.transfer();
+
+        transfer.write_function(|data| {         
+            cachefile.write_all(data).unwrap();
+            Ok(data.len())
+        }).unwrap();
+
+        transfer.perform().unwrap();
+
+        let filename = format!("{}/{}.fits", FITSCACHE, id);
+        let _ = std::fs::rename(tmp, filename);
 
         fits
     }
@@ -2371,7 +2404,7 @@ impl FITS {
         let h = self.height as u32 ;
         let align = 1 ;
 
-        let mut raw: vpx_image = unsafe { mem::uninitialized() };
+        let mut raw: vpx_image = vpx_image::default();
         let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };
 
         if ret.is_null() {
@@ -2432,8 +2465,18 @@ impl FITS {
         let w = self.width as u32 ;
         let h = self.height as u32 ;
 
-        let mut raw: vpx_image = unsafe { mem::uninitialized() };
-        let mut ctx = unsafe { mem::uninitialized() };
+        let mut raw: vpx_image = vpx_image::default();
+        let mut ctx = vpx_codec_ctx_t {               
+            name: ptr::null(),
+            iface: ptr::null_mut(),
+            err: VPX_CODEC_ERROR,
+            err_detail: ptr::null(),
+            init_flags: 0,
+            config: vpx_codec_ctx__bindgen_ty_1 {                    
+                enc: ptr::null(),                    
+            },
+            priv_: ptr::null_mut(),
+        };        
 
         let align = 1 ;
 
@@ -2490,7 +2533,7 @@ impl FITS {
             img.stride[i] = frame.buf.linesize(i).unwrap() as i32;
         }*/
 
-        let mut cfg = unsafe { mem::uninitialized() };
+        let mut cfg = vpx_codec_enc_cfg::default();
         let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut cfg, 0) };
 
         if ret != VPX_CODEC_OK {
@@ -2507,8 +2550,10 @@ impl FITS {
         cfg.g_w = w;
         cfg.g_h = h;
         cfg.g_timebase.num = 1;
-        cfg.g_timebase.den = 30;        
-        cfg.rc_target_bitrate = 256;// [kilobits per second]
+        cfg.g_timebase.den = 30;
+        cfg.rc_min_quantizer = 10 ;
+        cfg.rc_max_quantizer = 42 ;     
+        cfg.rc_target_bitrate = 4096;// [kilobits per second]
         cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
 
         ret = unsafe {

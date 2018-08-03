@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-02.1";
+    return "JS2018-08-03.1";
 }
 
 var generateUid = function ()
@@ -5331,7 +5331,14 @@ function getVelocityPrecision()
 	let dV = fitsData.CDELT3 / 1000 ;//[km/s]
 	//console.log("dV = ", dV, "decimal = ", decimalPlaces(dV)) ;
 	
-	return decimalPlaces(dV) ;
+	let dec = decimalPlaces(dV) ;
+	//return dec ;
+
+	//add an override, some Star Formation FITS files use too many decimal places in CDELT3
+	if(dec > 10)
+		return 2 ;
+	else
+		return dec ;
     } ;
 
     if(has_frequency_info)
@@ -5711,6 +5718,13 @@ function setup_axes()
 			ctx.clearRect(0, 0, width, height);
 		}
 
+		var elem = d3.select("#legend");
+
+		if(displayLegend)
+		    elem.attr("opacity",1);
+		else
+			elem.attr("opacity",0);
+
 		//send an end_video command via WebSockets
 		videoLeft = true ;
 		video_stack = new Array(va_count) ;
@@ -5766,6 +5780,8 @@ function setup_axes()
 			ctx.clearRect(0, 0, width, height);
 		}
 	
+		d3.select("#legend").attr("opacity",0);
+
 		for(let index=0;index<va_count;index++)
 		{
 			var decoder = new OGVDecoderVideoVP9();			
@@ -6018,7 +6034,7 @@ function x_axis_move(offset)
 	if(has_velocity_info)
 	    d3.select("#jvoText").text((freq/1.0e3).toFixed(getVelocityPrecision()) + " km/s");
 	
-	return ;
+	//return ;//commented out by Chris on 2018/08/03
     } ;
 
     console.log("RESTFRQ:", RESTFRQ) ;

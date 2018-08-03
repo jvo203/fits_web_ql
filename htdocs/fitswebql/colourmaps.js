@@ -148,6 +148,32 @@ function interpolate_colourmap(value, colourmap, alpha)
     return strValue ;
 } ;
 
+function apply_greyscale(image, bytes, w, h, stride)
+{
+    var start = performance.now() ;
+
+	let dst_offset = 0 ;
+
+	for(var j=0;j<h;j++)
+	{	  
+	  let offset = j * stride ;
+
+	  for(var i=0;i<w;i++)
+	    {			
+			let pixel = bytes[offset++] ;
+			
+			image.data[dst_offset++] = pixel ;
+			image.data[dst_offset++] = pixel ;
+			image.data[dst_offset++] = pixel ;
+			image.data[dst_offset++] = 255 ;//the alpha channel
+		}
+	}
+
+    var end = performance.now() ;
+    
+    console.log("greyscale: time taken " + (end-start).toFixed(1) + " [ms]") ;
+}
+
 function apply_colourmap(image, colourmap, bytes, w, h, stride)
 {
     var start = performance.now() ;
@@ -219,7 +245,7 @@ function apply_colourmap(image, colourmap, bytes, w, h, stride)
 	cmB = viridis_b ;
 	break ;
     default:
-	return ;
+	return apply_greyscale(image, bytes, w, h, stride);
     }
 
     var no_colours = 64 ;
