@@ -21,7 +21,6 @@ use std::error::Error;
 use std::cmp::Ordering::Equal;
 use num_integer::Integer;
 use num;
-use itertools::Itertools;
 
 use vpx_sys::*;
 
@@ -1329,19 +1328,19 @@ impl FITS {
             //build a local histogram using frame data            
             match self.bitpix {
                 8 => {
-                    for x in self.data_u8[frame as usize].iter().step(data_step) {
+                    for x in self.data_u8[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
                 },
                 16 => {
-                    for x in self.data_i16[frame as usize].iter().step(data_step) {
+                    for x in self.data_i16[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
                 },
                 32 => {
-                    for x in self.data_i32[frame as usize].iter().step(data_step) {
+                    for x in self.data_i32[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
@@ -1350,7 +1349,7 @@ impl FITS {
                     /*self.data_f16[frame as usize].iter()
                         .zip(self.mask.iter())
                             .for_each(|(x, m)| {*/
-                    for x in self.data_f16[frame as usize].iter().step(data_step) {
+                    for x in self.data_f16[frame as usize].iter().step_by(data_step) {
                         //            if *m {                            
                         let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
@@ -1358,7 +1357,7 @@ impl FITS {
                         //    })
                 },
                 -64 => {
-                    for x in self.data_f64[frame as usize].iter().step(data_step) {
+                    for x in self.data_f64[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
@@ -1414,32 +1413,32 @@ impl FITS {
             //build a local histogram using frame data            
             match self.bitpix {
                 8 => {
-                    for x in self.data_u8[frame as usize].iter().step(data_step) {
+                    for x in self.data_u8[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
                     }
                 },
                 16 => {
-                    for x in self.data_i16[frame as usize].iter().step(data_step) {
+                    for x in self.data_i16[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
                     }
                 },
                 32 => {
-                    for x in self.data_i32[frame as usize].iter().step(data_step) {
+                    for x in self.data_i32[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
                     }
                 },
                 -32 => {                                        
-                    for x in self.data_f16[frame as usize].iter().step(data_step) {
+                    for x in self.data_f16[frame as usize].iter().step_by(data_step) {
                         //            if *m {                            
                         let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
                     }                 
                 },
                 -64 => {
-                    for x in self.data_f64[frame as usize].iter().step(data_step) {
+                    for x in self.data_f64[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
                         update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
                     }
