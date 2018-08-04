@@ -87,7 +87,7 @@ pub struct WsFrame {
 }
 
 struct WsSessionState {
-    addr: Addr<Syn, server::SessionServer>,
+    addr: Addr<server::SessionServer>,
 }
 
 struct UserSession {    
@@ -136,7 +136,7 @@ impl Actor for UserSession {
     fn started(&mut self, ctx: &mut Self::Context) {
         println!("websocket connection started for {}", self.dataset_id);
 
-        let addr: Addr<Syn, _> = ctx.address();
+        let addr = ctx.address();
 
         ctx.state()
             .addr
@@ -1099,7 +1099,7 @@ fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
 }
 
 //#[cfg(not(feature = "server"))]
-fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<Syn, server::SessionServer>) -> HttpResponse {
+fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<server::SessionServer>) -> HttpResponse {
 
     //get fits location    
 
@@ -1302,7 +1302,7 @@ fn main() {
     let sys = actix::System::new("fits_web_ql");
 
     // Start the WebSocket message server actor in a separate thread
-    let server: Addr<Syn, _> = Arbiter::start(|_| server::SessionServer::default());    
+    let server = Arbiter::start(|_| server::SessionServer::default());    
     //let server: Addr<Syn, _> = SyncArbiter::start(32,|| server::SessionServer::default());//16 or 32 threads at most
 
     HttpServer::new(

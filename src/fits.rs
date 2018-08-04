@@ -285,7 +285,7 @@ impl FITS {
         fits
     }
 
-    fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<Syn, server::SessionServer>) -> bool {
+    fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<server::SessionServer>) -> bool {
         //mmap the half-float file
 
         //load data from filepath
@@ -388,7 +388,7 @@ impl FITS {
         return true;
     }
 
-    pub fn from_path(id: &String, flux: &String, filepath: &std::path::Path, server: &Addr<Syn, server::SessionServer>) -> FITS {
+    pub fn from_path(id: &String, flux: &String, filepath: &std::path::Path, server: &Addr<server::SessionServer>) -> FITS {
         let mut fits = FITS::new(id, flux);        
         fits.is_dummy = false;
 
@@ -601,7 +601,7 @@ impl FITS {
         fits
     }
 
-    fn from_url(id: &String, flux: &String, url: &String, server: &Addr<Syn, server::SessionServer>) -> FITS {
+    fn from_url(id: &String, flux: &String, url: &String, server: &Addr<server::SessionServer>) -> FITS {
         let mut fits = FITS::new(id, flux);
         fits.is_dummy = false;
 
@@ -635,14 +635,14 @@ impl FITS {
         fits
     }
 
-    fn notify_frequency_range(&self, server: &Addr<Syn, server::SessionServer>, freq_range: (f64, f64)) {
+    fn notify_frequency_range(&self, server: &Addr<server::SessionServer>, freq_range: (f64, f64)) {
         server.do_send(server::FrequencyRangeMessage {
             freq_range: freq_range,
             dataset_id: self.dataset_id.clone(),
         });
     }
 
-    fn send_progress_notification(&self, server: &Addr<Syn, server::SessionServer>, notification: &str, total: i32, running: i32) {
+    fn send_progress_notification(&self, server: &Addr<server::SessionServer>, notification: &str, total: i32, running: i32) {
         let msg = json!({
             "type" : "progress",
             "message" : notification,
