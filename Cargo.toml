@@ -9,8 +9,8 @@ server = []
 use-intrinsics = []
 
 [dependencies]
-actix = "*"
-actix-web = "*"
+actix = "0.7.3"
+actix-web = "0.7.3"
 serde_json = "*"
 chrono = "*"
 #half = {version = "*", features = ["use-intrinsics"]}//cannot be used with a non-nightly stable Rust?
