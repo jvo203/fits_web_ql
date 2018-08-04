@@ -741,7 +741,7 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
         .body(format!("{{\"location\": \"{}\", \"contents\": {} }}", path.display(), contents))
 }
 
-fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
+fn directory_handler(req: &HttpRequest<WsSessionState>) -> HttpResponse {
     let query = req.query();
 
     match query.get("dir") {
@@ -765,7 +765,7 @@ fn directory_handler(req: HttpRequest<WsSessionState>) -> HttpResponse {
     Ok(Box::new(result(ws::start(req, session))))
 }*/
 
-fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
+fn websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     //dataset_id needs to be URI-decoded
@@ -779,7 +779,7 @@ fn websocket_entry(req: HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     ws::start(req, session)
 }
 
-fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
+fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
     let fitswebql_path: String = req.match_info().query("path").unwrap();
     
     let state = req.state();
@@ -879,7 +879,7 @@ fn fitswebql_entry(req: HttpRequest<WsSessionState>) -> HttpResponse {
 }
 
 
-fn get_image(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
+fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
     let dataset_id = match req.query().get("datasetId") {
@@ -952,7 +952,7 @@ fn get_image(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, 
     .responder()
 }
 
-fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
+fn get_spectrum(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
     let dataset_id = match req.query().get("datasetId") {
@@ -1007,7 +1007,7 @@ fn get_spectrum(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespons
     .responder()
 }
 
-fn get_molecules(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
+fn get_molecules(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);    
 
     let dataset_id = match req.query().get("datasetId") {
