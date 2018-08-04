@@ -16,7 +16,7 @@ pub struct Message(pub String);
 #[derive(Message)]
 #[rtype(String)]
 pub struct Connect {
-    pub addr: Recipient<Syn, Message>,
+    pub addr: Recipient<Message>,
     pub dataset_id: String,
     pub id: Uuid,
 }
@@ -55,7 +55,7 @@ pub struct GetMolecules {
 
 /// `SessionServer` manages sending messages from the FITSWebQL host server to WebSocket clients
 pub struct SessionServer {
-    sessions: HashMap<Uuid, Recipient<Syn, Message>>,
+    sessions: HashMap<Uuid, Recipient<Message>>,
     datasets: HashMap<String, HashSet<Uuid>>,
     molecules: HashMap<String, String>,
     //splatalogue db
