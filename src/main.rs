@@ -818,7 +818,7 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
     let dataset = "datasetId" ;
 
     let dataset_id = match query.get(dataset) {
-        Some(x) => {vec![x]},
+        Some(x) => {vec![x.as_str()]},
         None => {
             //try to read multiple datasets or filename,
             //i.e. dataset1,dataset2,... or filename1,filename2,...
@@ -847,12 +847,13 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
     };
 
     let composite = match query.get("view") {
-        Some(x) => { match x {
-                        "composite" => {true},
-                        _ => {false}
-                        }
-                },
-        None => {false}
+        Some(x) => {
+            match x.as_ref() {
+                "composite" => true,
+                _ => false
+            }
+        },
+        None => false
     };
 
     let flux = match query.get("flux") {
@@ -882,7 +883,9 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
 fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
-    let dataset_id = match req.query().get("datasetId") {
+    let query = req.query() ;
+
+    let dataset_id = match query.get("datasetId") {
         Some(x) => {x},
         None => {            
             return result(Ok(HttpResponse::NotFound()
@@ -955,7 +958,9 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse,
 fn get_spectrum(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 
-    let dataset_id = match req.query().get("datasetId") {
+    let query = req.query() ;
+
+    let dataset_id = match query.get("datasetId") {
         Some(x) => {x},
         None => {            
             return result(Ok(HttpResponse::NotFound()
@@ -1010,7 +1015,9 @@ fn get_spectrum(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
 fn get_molecules(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);    
 
-    let dataset_id = match req.query().get("datasetId") {
+    let query = req.query() ;
+
+    let dataset_id = match query.get("datasetId") {
         Some(x) => {x},
         None => {            
             return result(Ok(HttpResponse::NotFound()
@@ -1021,7 +1028,7 @@ fn get_molecules(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespo
     };
 
     //freq_start
-    let freq_start = match req.query().get("freq_start") {
+    let freq_start = match query.get("freq_start") {
         Some(x) => {x},
         None => {            
             return result(Ok(HttpResponse::NotFound()
@@ -1037,7 +1044,7 @@ fn get_molecules(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespo
     };
 
     //freq_end
-    let freq_end = match req.query().get("freq_end") {
+    let freq_end = match query.get("freq_end") {
         Some(x) => {x},
         None => {            
             return result(Ok(HttpResponse::NotFound()
@@ -1319,7 +1326,7 @@ fn main() {
                 .resource("/{path}/get_image", |r| {r.method(http::Method::GET).f(get_image)})
                 .resource("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})
                 .resource("/{path}/get_molecules", |r| {r.method(http::Method::GET).f(get_molecules)})
-                .handler("/", fs::StaticFiles::new("htdocs").index_file(index_file))
+                .handler("/", fs::StaticFiles::new("htdocs").unwrap().index_file(index_file))
         })
         .bind(&format!("localhost:{}", SERVER_PORT)).expect(&format!("Cannot bind to localhost:{}", SERVER_PORT))        
         .start();
