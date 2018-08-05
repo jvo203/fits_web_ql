@@ -177,6 +177,7 @@ pub struct FITS {
         data_median: RwLock<f32>,
         data_mad_p: RwLock<f32>,
         data_mad_n: RwLock<f32>,
+        data_flux: String,
         pmin: f32,
         pmax: f32,
         hist: Vec<i32>,
@@ -261,6 +262,7 @@ impl FITS {
             data_median: RwLock::new(0.0),
             data_mad_p: RwLock::new(0.0),
             data_mad_n: RwLock::new(0.0),
+            data_flux: String::from("logistic"),
             pmin: std::f32::MIN,
             pmax: std::f32::MAX,
             hist: Vec::new(),
@@ -1716,7 +1718,7 @@ impl FITS {
         let white = self.dmax.min((*self.data_median.read()) + u * (*self.data_mad_p.read())) ;
         let sensitivity = 1.0 / (white - black) ;
 
-        match self.flux.as_ref() {            
+        match self.data_flux.as_ref() {            
             "linear" => {
                 let slope = 1.0 / (white - black) ;
 
