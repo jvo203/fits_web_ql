@@ -1718,7 +1718,7 @@ impl FITS {
         let white = self.dmax.min((*self.data_median.read()) + u * (*self.data_mad_p.read())) ;
         let sensitivity = 1.0 / (white - black) ;
 
-        match self.data_flux.as_ref() {            
+        match self.flux.as_ref() {            
             "linear" => {
                 let slope = 1.0 / (white - black) ;
 
