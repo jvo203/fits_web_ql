@@ -570,6 +570,12 @@ static SERVER_MODE: &'static str = "LOCAL";
 #[cfg(feature = "server")]
 static SERVER_MODE: &'static str = "SERVER";
 
+#[cfg(not(feature = "server"))]
+const SERVER_ADDRESS: &'static str = "localhost";
+
+#[cfg(feature = "server")]
+const SERVER_ADDRESS: &'static str = "0.0.0.0";
+
 const SERVER_PORT: i32 = 8080;
 
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
@@ -1327,7 +1333,7 @@ fn main() {
                 .resource("/{path}/get_molecules", |r| {r.method(http::Method::GET).f(get_molecules)})
                 .handler("/", fs::StaticFiles::new("htdocs").unwrap().index_file(index_file))
         })
-        .bind(&format!("localhost:{}", SERVER_PORT)).expect(&format!("Cannot bind to localhost:{}", SERVER_PORT))        
+        .bind(&format!("{}:{}", SERVER_ADDRESS, SERVER_PORT)).expect(&format!("Cannot bind to localhost:{}", SERVER_PORT))        
         .start();
 
     println!("detected number of CPUs: {}", num_cpus::get());
