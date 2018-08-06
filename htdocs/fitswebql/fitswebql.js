@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-06.1";
+    return "JS2018-08-06.2";
 }
 
 var generateUid = function ()
@@ -1755,13 +1755,15 @@ function open_websocket_connection(datasetId, index)
 
 				let decoder = wsConn[index-1].decoder ;
 
-				decoder.processFrame(frame, function () {
-					process_video(decoder.frameBuffer.format.displayWidth,
+				if(decoder != null) {
+					decoder.processFrame(frame, function () {
+						process_video(decoder.frameBuffer.format.displayWidth,
 						decoder.frameBuffer.format.displayHeight,
 						decoder.frameBuffer.y.bytes,
 						decoder.frameBuffer.y.stride,
 						index);
-				});
+					});
+				};
 
 			    /*if(!videoLeft)
 			    {
