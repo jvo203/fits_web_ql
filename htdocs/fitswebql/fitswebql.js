@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-06.0";
+    return "JS2018-08-06.1";
 }
 
 var generateUid = function ()
@@ -937,9 +937,9 @@ function process_video(w, h, bytes, stride, index)
 		
 		if(viewport_zoom_settings != null)
 		{
-			d3.select("#" + zoom_location).style("stroke", "Gray");
-	    	d3.select("#" + zoom_location + "Cross").attr("opacity", 0.75);
-	    	d3.select("#" + zoom_location + "Beam").attr("opacity", 0.75);
+			d3.select("#upper").style("stroke", "Gray");
+	    	d3.select("#upperCross").attr("opacity", 0.75);
+	    	d3.select("#upperBeam").attr("opacity", 0.75);
 
 			var c = document.getElementById("ZOOMCanvas");
     		var ctx = c.getContext("2d");
@@ -949,27 +949,30 @@ function process_video(w, h, bytes, stride, index)
     		ctx.msImageSmoothingEnabled = false;
     		ctx.imageSmoothingEnabled = false;
 
+			let px = emStrokeWidth ;
+			let py = emStrokeWidth ;
+
 			//and a zoomed viewport
 			if(zoom_shape == "square")
 			{
 		    	ctx.fillStyle = "rgba(0,0,0,0.3)";
-		    	ctx.fillRect(viewport_zoom_settings.px, viewport_zoom_settings.py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		    	ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		    
-		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, viewport_zoom_settings.px, viewport_zoom_settings.py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 			}
 
 			if(zoom_shape == "circle")
 			{					       
 		    	ctx.save() ;
 		    	ctx.beginPath();
-		    	ctx.arc(viewport_zoom_settings.px+viewport_zoom_settings.zoomed_size/2, viewport_zoom_settings.py+viewport_zoom_settings.zoomed_size/2, viewport_zoom_settings.zoomed_size/2, 0, 2*Math.PI, true) ;
+		    	ctx.arc(px+viewport_zoom_settings.zoomed_size/2, py+viewport_zoom_settings.zoomed_size/2, viewport_zoom_settings.zoomed_size/2, 0, 2*Math.PI, true) ;
 		    
 		    	ctx.fillStyle = "rgba(0,0,0,0.3)";
 		    	ctx.fill() ;
 
 		    	ctx.closePath() ;
 		    	ctx.clip() ;
-		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, viewport_zoom_settings.px, viewport_zoom_settings.py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		    	ctx.restore() ;
 			}
 		}
@@ -5746,7 +5749,7 @@ function setup_axes()
 	.attr("opacity", 0.0)
 	.style('cursor','pointer')
 	.on("mouseleave", function () {
-		//clear the VideoCanvas
+		//clear the VideoCanvas and the ZoomCanvas
 		{
 			var c = document.getElementById('VideoCanvas') ;
     		var ctx = c.getContext("2d");
@@ -5755,6 +5758,21 @@ function setup_axes()
     		var height = c.height ;
     
 			ctx.clearRect(0, 0, width, height);
+
+			//the zoomcanvas too
+			if(viewport_zoom_settings != null) {
+				d3.select("#upper").style("stroke", "transparent");
+	    		d3.select("#upperCross").attr("opacity", 0.0);
+				d3.select("#upperBeam").attr("opacity", 0.0);
+
+				var c = document.getElementById("ZOOMCanvas");
+				var ctx = c.getContext("2d");
+			
+				let px = emStrokeWidth ;
+				let py = emStrokeWidth ;
+
+				ctx.clearRect(0, 0, c.width, c.height);				
+			}
 		}
 
 		var elem = d3.select("#legend");
@@ -7144,15 +7162,15 @@ function setup_image_selection()
 	    if (!d3.event.shiftKey) {			
 			viewport_zoom_settings = null ;
 			zoom_element.attr("opacity", 0.0);
-
-	    	requestAnimationFrame( function () {
+		};
+	    requestAnimationFrame( function () {			
 			ctx.clearRect(0, 0, width, height);
-	    }) ;
+		});
 	    
 	    d3.select("#" + zoom_location).style("stroke", "transparent");
 	    d3.select("#" + zoom_location + "Cross").attr("opacity", 0.0);
 		d3.select("#" + zoom_location + "Beam").attr("opacity", 0.0);
-	}
+		
 	    d3.select("#pixel").text("").attr("opacity", 0.0);
 
 	    document.removeEventListener('copy', copy_coordinates) ;
@@ -7510,7 +7528,7 @@ function setup_image_selection()
 		//console.log(x-clipSize, y-clipSize, px, py, 2*clipSize, zoomed_size) ;		
 
 		image_stack.push({x: x, y: y, clipSize: clipSize, px: px, py: py, zoomed_size: zoomed_size}) ;
-		viewport_zoom_settings = {x: x, y: y, clipSize: clipSize, px: px, py: py, zoomed_size: zoomed_size} ;
+		viewport_zoom_settings = {x: x, y: y, clipSize: clipSize, zoomed_size: zoomed_size} ;
 	    }
 
 	    idleMouse = setTimeout(imageTimeout, 250) ;//was 250ms + latency
