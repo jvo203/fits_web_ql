@@ -3149,6 +3149,7 @@ impl FITS {
                 "white" : self.white,
                 "flux" : self.flux,
                 "histogram" : &self.hist,
+                "mask" : &self.mask,
         });
 
         value.to_string()
