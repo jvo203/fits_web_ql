@@ -352,15 +352,18 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     };
 
                     if fits.has_data {
+                        let start = precise_time::precise_time_ns(); 
                         match fits.get_spectrum(x1, y1, x2, y2, beam, intensity, frame_start, frame_end, ref_freq) {
                             Some(spectrum) => {
+                                let stop = precise_time::precise_time_ns(); 
+                                let elapsed = (stop-start)/1000000 ;
                                 //send a binary response message (serialize a structure to a binary stream)
                                 let ws_spectrum = WsSpectrum {
                                     ts: timestamp as f32,
                                     seq_id: seq_id as u32,
                                     msg_type: 0,
                                     //length: spectrum.len() as u32,
-                                    elapsed: 0.0,
+                                    elapsed: elapsed as f32,
                                     spectrum: spectrum
                                 };
 
@@ -562,7 +565,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-05.1";
+static VERSION_STRING: &'static str = "SV2018-08-06.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

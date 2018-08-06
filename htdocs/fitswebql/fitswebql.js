@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-03.1";
+    return "JS2018-08-06.0";
 }
 
 var generateUid = function ()
@@ -933,7 +933,46 @@ function process_video(w, h, bytes, stride, index)
 	    var img_width = scale*image_bounding_dims.width ;
 	    var img_height = scale*image_bounding_dims.height;
 	    
-	    ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);	   
+		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
+		
+		if(viewport_zoom_settings != null)
+		{
+			d3.select("#" + zoom_location).style("stroke", "Gray");
+	    	d3.select("#" + zoom_location + "Cross").attr("opacity", 0.75);
+	    	d3.select("#" + zoom_location + "Beam").attr("opacity", 0.75);
+
+			var c = document.getElementById("ZOOMCanvas");
+    		var ctx = c.getContext("2d");
+
+    		ctx.mozImageSmoothingEnabled = false;
+    		ctx.webkitImageSmoothingEnabled = false;
+    		ctx.msImageSmoothingEnabled = false;
+    		ctx.imageSmoothingEnabled = false;
+
+			//and a zoomed viewport
+			if(zoom_shape == "square")
+			{
+		    	ctx.fillStyle = "rgba(0,0,0,0.3)";
+		    	ctx.fillRect(viewport_zoom_settings.px, viewport_zoom_settings.py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		    
+		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, viewport_zoom_settings.px, viewport_zoom_settings.py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+			}
+
+			if(zoom_shape == "circle")
+			{					       
+		    	ctx.save() ;
+		    	ctx.beginPath();
+		    	ctx.arc(viewport_zoom_settings.px+viewport_zoom_settings.zoomed_size/2, viewport_zoom_settings.py+viewport_zoom_settings.zoomed_size/2, viewport_zoom_settings.zoomed_size/2, 0, 2*Math.PI, true) ;
+		    
+		    	ctx.fillStyle = "rgba(0,0,0,0.3)";
+		    	ctx.fill() ;
+
+		    	ctx.closePath() ;
+		    	ctx.clip() ;
+		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, viewport_zoom_settings.px, viewport_zoom_settings.py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		    	ctx.restore() ;
+			}
+		}
 	}
 	else
 	{
@@ -6000,6 +6039,8 @@ function x_axis_right()
 
 function x_axis_move(offset)
 {
+	clearTimeout(idleVideo) ;
+
     let strokeColour = 'white' ;
 
     if(theme == 'bright')	    
@@ -6082,6 +6123,8 @@ function x_axis_move(offset)
 				wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
 			} ;
 		} ;
+
+		idleVideo = setTimeout(videoTimeout, 250, freq) ;
 	} ;
 
     zoom_molecules(freq) ;
@@ -6275,7 +6318,7 @@ function setup_viewports()
 	    //.style("stroke-dasharray", ("1, 5, 1"))
 	    .style("stroke-width", emStrokeWidth/2)
 	    .attr("opacity", 1.0)
-	    .on("mouseover", function () { zoom_location = "lower" ; var elem = d3.select(this); elem.style("stroke", "transparent"); elem.moveToBack(); d3.select("#lower").moveToFront();});
+	    .on("mouseover", function () { /*if(windowLeft) return; else swap_viewports();*/ zoom_location = "lower" ; var elem = d3.select(this); elem.style("stroke", "transparent"); elem.moveToBack(); d3.select("#lower").moveToFront();});
 	
 	//lower zoom
 	svg.append("rect")
@@ -6289,7 +6332,7 @@ function setup_viewports()
 	    //.style("stroke-dasharray", ("1, 5, 1"))
 	    .style("stroke-width", emStrokeWidth/2)
 	    .attr("opacity", 1.0)
-	    .on("mouseover", function () { zoom_location = "upper" ; var elem = d3.select(this); elem.style("stroke", "transparent"); elem.moveToBack(); d3.select("#upper").moveToFront();});
+	    .on("mouseover", function () { /*if(windowLeft) return; else swap_viewports();*/ zoom_location = "upper" ; var elem = d3.select(this); elem.style("stroke", "transparent"); elem.moveToBack(); d3.select("#upper").moveToFront();});
     } ;
 
     if(zoom_shape == "circle")
@@ -6305,7 +6348,7 @@ function setup_viewports()
 	    //.style("stroke-dasharray", ("1, 5, 1"))
 	    .style("stroke-width", emStrokeWidth/2)
 	    .attr("opacity", 1.0)
-	    .on("mouseover", function () { zoom_location = "lower" ; var elem = d3.select(this); elem.style("stroke", "transparent"); elem.moveToBack(); d3.select("#lower").moveToFront();});
+	    .on("mouseover", function () { /*if(windowLeft) return; else swap_viewports();*/ zoom_location = "lower" ; var elem = d3.select(this); elem.style("stroke", "transparent"); elem.moveToBack(); d3.select("#lower").moveToFront();});
 	
 	//lower zoom
 	svg.append("circle")
@@ -6318,7 +6361,7 @@ function setup_viewports()
 	    //.style("stroke-dasharray", ("1, 5, 1"))
 	    .style("stroke-width", emStrokeWidth/2)
 	    .attr("opacity", 1.0)
-	    .on("mouseover", function () { zoom_location = "upper" ; var elem = d3.select(this); elem.style("stroke", "transparent"); elem.moveToBack(); d3.select("#upper").moveToFront();});
+		.on("mouseover", function () { /*if(windowLeft) return; else swap_viewports();*/ zoom_location = "upper" ; var elem = d3.select(this); elem.style("stroke", "transparent"); elem.moveToBack(); d3.select("#upper").moveToFront();});
     } ;
 
     var crossSize = 2.0*emFontSize ;
@@ -7065,6 +7108,7 @@ function setup_image_selection()
 		spectrum_stack[i] = [] ;
 		
 	    image_stack = [] ;
+		viewport_zoom_settings = null ;
 
 	    requestAnimationFrame(update_spectrum);	    
 
@@ -7088,7 +7132,7 @@ function setup_image_selection()
 	.on("mouseleave", function () {
 	    clearTimeout(idleMouse) ;
 
-	    if(!d3.event.shiftKey)
+	    //if(!d3.event.shiftKey)//commented-out by Chris on 2018/08/06
 		windowLeft = true ;
 	    
 	    spectrum_stack = new Array(va_count) ;	    
@@ -7097,16 +7141,18 @@ function setup_image_selection()
 	    
 	    image_stack = [] ;
 
-	    if (!d3.event.shiftKey)
-		zoom_element.attr("opacity", 0.0);
+	    if (!d3.event.shiftKey) {			
+			viewport_zoom_settings = null ;
+			zoom_element.attr("opacity", 0.0);
 
-	    requestAnimationFrame( function () {
-		ctx.clearRect(0, 0, width, height);
+	    	requestAnimationFrame( function () {
+			ctx.clearRect(0, 0, width, height);
 	    }) ;
 	    
 	    d3.select("#" + zoom_location).style("stroke", "transparent");
 	    d3.select("#" + zoom_location + "Cross").attr("opacity", 0.0);
-	    d3.select("#" + zoom_location + "Beam").attr("opacity", 0.0);
+		d3.select("#" + zoom_location + "Beam").attr("opacity", 0.0);
+	}
 	    d3.select("#pixel").text("").attr("opacity", 0.0);
 
 	    document.removeEventListener('copy', copy_coordinates) ;
@@ -7463,7 +7509,8 @@ function setup_image_selection()
 		
 		//console.log(x-clipSize, y-clipSize, px, py, 2*clipSize, zoomed_size) ;		
 
-		image_stack.push({x: x, y: y, clipSize: clipSize, px: px, py: py, zoomed_size: zoomed_size}) ;		
+		image_stack.push({x: x, y: y, clipSize: clipSize, px: px, py: py, zoomed_size: zoomed_size}) ;
+		viewport_zoom_settings = {x: x, y: y, clipSize: clipSize, px: px, py: py, zoomed_size: zoomed_size} ;
 	    }
 
 	    idleMouse = setTimeout(imageTimeout, 250) ;//was 250ms + latency
@@ -8007,6 +8054,22 @@ function scaled() {
         
     plot_spectrum(last_spectrum) ;
     replot_y_axis() ;
+}
+
+function videoTimeout(freq)
+{
+	console.log("video inactive event") ;
+
+	sent_vid_id++ ;
+
+	video_count = 0 ;
+
+	for(let index=0;index<va_count;index++)
+	{
+		let strRequest = 'frame=' + freq + '&key=true' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id ;
+
+		wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
+	} ;
 }
 
 function imageTimeout()
@@ -11008,6 +11071,7 @@ async*/ function mainRenderer()
 	windowLeft = false ;
 	mol_pos = -1 ;
 	idleMouse = -1 ;
+	idleVideo = -1 ;
 	moving = false ;
 	freqdrag = false ;
 	data_band_lo = 0 ;
@@ -11031,6 +11095,7 @@ async*/ function mainRenderer()
 	spectrum_stack = [] ;
 	image_stack = [] ;
 	video_stack = [] ;
+	viewport_zoom_settings = null ;
 	zoom_location = 'lower' ;
 	zoom_scale = 25 ;
 	xradec = null ;
