@@ -8,6 +8,9 @@ default = []
 server = []
 use-intrinsics = []
 
+[build-dependencies]
+bindgen = "*"
+
 [dependencies]
 actix = "*"
 actix-web = "*"

@@ -1,5 +1,11 @@
 #![recursion_limit="1024"]
 
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
 extern crate actix;
 extern crate actix_web;
 extern crate percent_encoding;
@@ -565,7 +571,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-07.2";
+static VERSION_STRING: &'static str = "SV2018-08-07.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

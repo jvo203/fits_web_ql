@@ -24,6 +24,11 @@ use num;
 
 use vpx_sys::*;
 
+use calculate_radial_spectrumF16;
+/*
+extern "C" { pub fn calculate_radial_spectrumF16 ( cubeData : * mut i16 , bzero : f32 , bscale : f32 , datamin : f32 , datamax : f32 , width : u32 , x1 : i32 , x2 : i32 , y1 : i32 , y2 : i32 , cx : i32 , cy : i32 , r2 : i32 , average : bool , cdelt3 : f32 ) -> f32 ; }
+*/
+
 fn get_packets(mut ctx: vpx_codec_ctx_t) -> Option<Vec<u8>> {    
     unsafe {
         let mut iter = mem::zeroed();
@@ -2833,7 +2838,7 @@ impl FITS {
                         println!("cx = {}, cy = {}, r = {}", cx, cy, r) ;
 
                         (start .. end+1).into_par_iter().map(|frame| {                            
-                            self.get_radial_spectrum_at(frame, x1, x2, y1, y2, cx, cy, r2, mean, cdelt3 as f32)                            
+                            self.get_radial_spectrum_at_ispc(frame, x1, x2, y1, y2, cx, cy, r2, mean, cdelt3 as f32)                            
                         }).collect()
                     },
                     _ => {                        
@@ -2856,6 +2861,33 @@ impl FITS {
                 None
             },
         }   
+    }
+
+    fn get_radial_spectrum_at_ispc(&self, frame: usize, x1: usize, x2: usize, y1: usize, y2: usize, cx: usize, cy: usize, r2: usize, mean: bool, cdelt3: f32) -> f32 {
+        match self.bitpix {
+            -32 => {
+                let vec = &self.data_f16[frame];
+                //let raw = vec.as_mut_ptr() as *mut i16;
+                                    
+                let ptr = vec.as_ptr() as *mut i16;
+                let len = vec.len() ;
+                let capacity = vec.capacity() ;
+
+                unsafe {
+                    let mut raw: Vec<i16> = Vec::from_raw_parts(ptr, len, capacity);
+
+                    let val = calculate_radial_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, cx as i32, cy as i32, r2 as i32, mean, cdelt3);
+
+                    mem::forget(raw);
+
+                    val
+                }
+            },
+            _ => {
+                println!("unsupported bitpix: {}", self.bitpix);
+                0.0
+            }
+        }
     }
 
     fn get_radial_spectrum_at(&self, frame: usize, x1: usize, x2: usize, y1: usize, y2: usize, cx: usize, cy: usize, r2: usize, mean: bool, cdelt3: f32) -> f32 {
