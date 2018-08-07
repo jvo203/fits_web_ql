@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-06.2";
+    return "JS2018-08-07.0";
 }
 
 var generateUid = function ()
