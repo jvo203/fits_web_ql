@@ -16,6 +16,5 @@ Cargo.lock
 *.db
 
 #fits library
-fits.h
-fits.o
-libfits.a
+fits.*
+*.a
