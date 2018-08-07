@@ -2929,8 +2929,7 @@ impl FITS {
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        //let float16 = vec[offset+x];
-                        let float16 = unsafe { vec.get_unchecked(offset+x) };
+                        let float16 = vec[offset+x];                        
                     //for float16 in &vec[(offset+x1)..(offset+x2)] {//there is no x                  
                         if float16.is_finite() {
                             let tmp = self.bzero + self.bscale * float16.to_f32();
