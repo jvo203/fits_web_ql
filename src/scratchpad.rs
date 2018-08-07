@@ -535,3 +535,54 @@ fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cde
     }
 
     //median of a data histogram: 0.1552124 at pos 279, mad_p = 1.4211754, mad_n = 0.785294
+
+    /*let (tx, rx) = mpsc::channel();               
+
+        transfer.progress_function(|dltotal, dlnow, ultotal, ulnow| {
+            println!("{}/{}", dlnow, dltotal);
+            
+            if (dltotal > 0.0) && (dlnow == dltotal) {
+                false
+            }
+            else {
+                true
+            }
+        }).unwrap();
+
+        transfer.header_function(|data| {
+            let header = String::from_utf8(data.to_vec()).unwrap();
+            println!(">{}", header);
+
+            true
+        }).unwrap();
+
+        transfer.write_function(move |data| {
+            println!("curl received {} bytes", data.len());
+
+            match cachefile.write_all(data) {
+                Ok(_) => {},
+                Err(err) => {
+                    println!("cannot append to the temporary FITS file: {}", err);                    
+                }
+            };
+
+            //send data for processing            
+            match tx.send(data.to_vec()) {
+                Ok(()) => {},
+                Err(err) => {
+                    println!("file download thread: {}", err);                    
+                }
+            };
+
+            Ok(data.len())
+        }).unwrap();
+
+        transfer.perform().unwrap();
+        
+        let mut buffer: Vec<u8> = Vec::new(); 
+
+        for data in rx {
+            for b in data {
+                buffer.push(b);
+            };
+        };*/   

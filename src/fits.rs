@@ -618,21 +618,153 @@ impl FITS {
                 Ok(file) => file,
             };
 
-        let mut easy = Easy::new();
+        /*let mut easy = Easy2::new(fits);
+        easy.get(true).unwrap();
         easy.url(url).unwrap();
+        easy.perform().unwrap();*/
 
-        let mut transfer = easy.transfer();
+        let mut buffer = Vec::new();
+        let mut easy = Easy::new();
 
-        transfer.write_function(|data| {         
-            cachefile.write_all(data).unwrap();
-            Ok(data.len())
-        }).unwrap();
+        let mut header: Vec<u8> = Vec::new();
+        let mut end: bool = false ;
+        let mut no_hu: i32 = 0 ;
+        let mut frame: i32 = 0;
+        let mut frame_size: usize = 0;
 
-        transfer.perform().unwrap();
+        let mut total = 0;
+        let mut cdelt3 = 0.0;
+
+        {
+            easy.url(url).unwrap();
+            easy.progress(true).unwrap();
+
+            let mut transfer = easy.transfer();
+
+            transfer.write_function(|data| {
+                //println!("curl received {} bytes", data.len());
+
+                match cachefile.write_all(data) {
+                    Ok(_) => {},
+                    Err(err) => {
+                        println!("cannot append to the temporary FITS file: {}", err);                    
+                    }
+                };
+
+                buffer.extend_from_slice(data);
+
+                //handle the header first
+                if !fits.has_header {
+                    if buffer.len() >= FITS_CHUNK_LENGTH {
+                        let chunk: Vec<u8> = buffer.drain(0..FITS_CHUNK_LENGTH).collect();
+
+                        no_hu = no_hu + 1;
+
+                        //parse a FITS header chunk
+                        end = fits.parse_fits_header_chunk(&chunk);
+                        header.extend_from_slice(&chunk);
+
+                        if end {
+                            //test for frequency/velocity
+                            fits.frame_reference_unit() ;
+                            fits.frame_reference_type() ;
+
+                            if fits.restfrq > 0.0 {
+                                fits.has_frequency = true ;
+                            }                
+
+                            fits.has_header = true ;
+
+                            println!("{}/#hu = {}, {:?}", id, no_hu, fits);
+
+                            fits.header = match String::from_utf8(header.clone()) {
+                                Ok(x) => x,
+                                Err(err) => {
+                                    println!("FITS HEADER UTF8: {}", err);
+                                    String::from("")
+                                }
+                            };
+
+                            let freq_range = fits.get_frequency_range();
+                            fits.notify_frequency_range(&server, freq_range);
+
+                            //prepare for reading the data HUD(s)   
+                            frame_size = fits.init_data_storage();
+
+                            println!("FITS cube frame size: {} bytes", frame_size);
+
+                            total = fits.depth;
+
+                            cdelt3 = {
+                                if fits.has_velocity && fits.depth > 1 {
+                                fits.cdelt3 * fits.frame_multiplier / 1000.0
+                                }                                
+                                else {
+                                    1.0
+                                }
+                            }                          
+                        }
+                    }
+                }
+                else {
+                    //then the data part
+                    if !fits.has_data {                        
+                        if buffer.len() >= frame_size {
+                            let data: Vec<u8> = buffer.drain(0..frame_size).collect();
+
+                            fits.process_cube_frame(&data, cdelt3 as f32, frame as usize);
+                            frame = frame + 1;
+                            fits.send_progress_notification(&server, &"downloading FITS".to_owned(), total, frame);
+
+                            if frame == fits.depth {
+                                //all data frames have been received
+                                fits.has_data = true;
+                            }
+                        }
+                    }
+                }                                
+
+                Ok(data.len())
+            }).unwrap();
+
+            transfer.perform().unwrap();
+        }
+
+        println!("{} bytes remaining in the libcurl download buffer; has_data: {}", buffer.len(), fits.has_data);
+
+        if fits.has_data {
+            if !fits.pixels.is_empty() {
+                //sort the pixels in parallel using rayon
+                let mut ord_pixels = fits.pixels.clone();
+                //println!("unordered pixels: {:?}", ord_pixels);
+
+                let start = precise_time::precise_time_ns();
+                ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
+                let stop = precise_time::precise_time_ns();
+
+                println!("[pixels] parallel sorting time: {} [ms]", (stop-start)/1000000);
+
+                fits.make_image_histogram(&ord_pixels);
+
+                if fits.flux == "" {
+                    fits.histogram_classifier();
+                };
+
+                fits.make_vpx_image();                    
+            };
+
+            fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
+            println!("{}: reading FITS data completed", id);
+        };
 
         let filename = format!("{}/{}.fits", FITSCACHE, id);
         let _ = std::fs::rename(tmp, filename);
 
+        //let fits = easy.get_ref();
+
+        //then clone fits to a new structure...
+
+        //FITS::new(id,flux)
         fits
     }
 
