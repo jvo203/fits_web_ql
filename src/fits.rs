@@ -2867,7 +2867,6 @@ impl FITS {
         match self.bitpix {
             -32 => {
                 let vec = &self.data_f16[frame];
-                //let raw = vec.as_mut_ptr() as *mut i16;
                                     
                 let ptr = vec.as_ptr() as *mut i16;
                 let len = vec.len() ;
@@ -2876,16 +2875,17 @@ impl FITS {
                 unsafe {
                     let mut raw: Vec<i16> = Vec::from_raw_parts(ptr, len, capacity);
 
-                    let val = calculate_radial_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, cx as i32, cy as i32, r2 as i32, mean, cdelt3);
+                    let spectrum = calculate_radial_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, cx as i32, cy as i32, r2 as i32, mean, cdelt3);
 
                     mem::forget(raw);
 
-                    val
+                    spectrum
                 }
             },
             _ => {
-                println!("unsupported bitpix: {}", self.bitpix);
-                0.0
+                println!("SIMD support for bitpix={} unavailable, switching to normal Rust", self.bitpix);
+                
+                self.get_radial_spectrum_at(frame, x1, x2, y1, y2, cx, cy, r2, mean, cdelt3)
             }
         }
     }
