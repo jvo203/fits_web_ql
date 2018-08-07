@@ -723,7 +723,7 @@ impl FITS {
                             }
                         }
                     }
-                }                                
+                };                            
 
                 Ok(data.len())
             }).unwrap();
@@ -754,18 +754,13 @@ impl FITS {
                 fits.make_vpx_image();                    
             };
 
-            fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
+            fits.send_progress_notification(&server, &"downloading FITS done".to_owned(), 0, 0);
             println!("{}: reading FITS data completed", id);
         };
 
         let filename = format!("{}/{}.fits", FITSCACHE, id);
         let _ = std::fs::rename(tmp, filename);
 
-        //let fits = easy.get_ref();
-
-        //then clone fits to a new structure...
-
-        //FITS::new(id,flux)
         fits
     }
 
@@ -2869,11 +2864,12 @@ impl FITS {
 
         match self.bitpix {
             8 => {                
-                //self.data_u8
+                let vec = &self.data_u8[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let int8 = self.data_u8[frame][offset+x];
+                        let int8 = vec[offset+x];
                         
                         let tmp = self.bzero + self.bscale * (int8 as f32);
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
@@ -2887,11 +2883,13 @@ impl FITS {
                     };
                 };                                
             },
-            16 => {                
+            16 => {          
+                let vec = &self.data_i16[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let int16 = self.data_i16[frame][offset+x];
+                        let int16 = vec[offset+x];
                         
                         let tmp = self.bzero + self.bscale * (int16 as f32);
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
@@ -2906,10 +2904,12 @@ impl FITS {
                 };                
             },
             32 => {                
+                let vec = &self.data_i32[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let int32 = self.data_i32[frame][offset+x];
+                        let int32 = vec[offset+x];
                         
                         let tmp = self.bzero + self.bscale * (int32 as f32);
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
@@ -2923,11 +2923,13 @@ impl FITS {
                     };
                 };
             },
-            -32 => {                                
+            -32 => {                    
+                let vec = &self.data_f16[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let float16 = self.data_f16[frame][offset+x];
+                        let float16 = vec[offset+x];
 
                         if float16.is_finite() {
                             let tmp = self.bzero + self.bscale * float16.to_f32();
@@ -2943,11 +2945,13 @@ impl FITS {
                     };
                 };
             },
-            -64 => {                               
+            -64 => {                    
+                let vec = &self.data_f64[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let float64 = self.data_f64[frame][offset+x];
+                        let float64 = vec[offset+x];
 
                         if float64.is_finite() {
                             let tmp = self.bzero + self.bscale * (float64 as f32);
@@ -2987,11 +2991,12 @@ impl FITS {
 
         match self.bitpix {
             8 => {                
-                //self.data_u8
+                let vec = &self.data_u8[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let int8 = self.data_u8[frame][offset+x];
+                        let int8 = vec[offset+x];
                         
                         let tmp = self.bzero + self.bscale * (int8 as f32);
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
@@ -3002,10 +3007,12 @@ impl FITS {
                 };                
             },
             16 => {                
+                let vec = &self.data_i16[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let int16 = self.data_i16[frame][offset+x];
+                        let int16 = vec[offset+x];
                         
                         let tmp = self.bzero + self.bscale * (int16 as f32);
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
@@ -3016,10 +3023,12 @@ impl FITS {
                 };                
             },
             32 => {                
+                let vec = &self.data_i32[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let int32 = self.data_i32[frame][offset+x];
+                        let int32 = vec[offset+x];
                         
                         let tmp = self.bzero + self.bscale * (int32 as f32);
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
@@ -3029,11 +3038,13 @@ impl FITS {
                     };
                 };
             },
-            -32 => {                                
+            -32 => {                    
+                let vec = &self.data_f16[frame];
+
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let float16 = self.data_f16[frame][offset+x];
+                        let float16 = vec[offset+x];
 
                         if float16.is_finite() {
                             let tmp = self.bzero + self.bscale * float16.to_f32();
@@ -3046,10 +3057,12 @@ impl FITS {
                 };
             },
             -64 => {                
+                let vec = &self.data_f64[frame];
+                
                 for y in y1..y2 {
                     let offset = y * self.width as usize ;
                     for x in x1..x2 {
-                        let float64 = self.data_f64[frame][offset+x];
+                        let float64 = vec[offset+x];
 
                         if float64.is_finite() {
                             let tmp = self.bzero + self.bscale * (float64 as f32);
