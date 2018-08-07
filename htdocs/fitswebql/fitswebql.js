@@ -7853,7 +7853,7 @@ function fetch_spectrum(datasetId, index, add_timestamp)
 	
 	if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
 	{
-	    //document.getElementById('welcome').style.display = "none";	    
+	    document.getElementById('welcome').style.display = "none";	    
 	    
 	    //console.log(xmlhttp.responseText) ;
 	    
