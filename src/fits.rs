@@ -643,6 +643,7 @@ impl FITS {
 
             transfer.write_function(|data| {
                 //println!("curl received {} bytes", data.len());
+                fits.filesize = fits.filesize + data.len() as u64;
 
                 match cachefile.write_all(data) {
                     Ok(_) => {},
