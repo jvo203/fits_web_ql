@@ -14,7 +14,3 @@ Cargo.lock
 
 #sqlite db files
 *.db
-
-#fits library
-fits.*
-*.a

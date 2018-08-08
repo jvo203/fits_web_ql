@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 fn main() {
     // Tell cargo to tell rustc to link the ISPC object file turned into a static library  
-    println!("cargo:rustc-link-search=native=.");
+    println!("cargo:rustc-link-search=native=native");
     println!("cargo:rustc-link-lib=static=fits");    
 
     // The bindgen::Builder is the main entry point

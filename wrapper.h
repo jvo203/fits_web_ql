@@ -1,3 +1,3 @@
 #include <stdbool.h>
 
-#include "fits.h"
+#include "native/fits.h"

@@ -1,4 +1,5 @@
 use std;
+use std::slice;
 //use std::sync::RwLock;
 use parking_lot::RwLock;
 use std::thread;
@@ -661,7 +662,7 @@ impl FITS {
 
                 //handle the header first
                 if !fits.has_header {
-                    if buffer.len() >= FITS_CHUNK_LENGTH {
+                    while buffer.len() >= FITS_CHUNK_LENGTH && !fits.has_header {
                         let chunk: Vec<u8> = buffer.drain(0..FITS_CHUNK_LENGTH).collect();
 
                         no_hu = no_hu + 1;
@@ -715,7 +716,7 @@ impl FITS {
                 else {
                     //then the data part
                     if !fits.has_data {                        
-                        if buffer.len() >= frame_size {
+                        while buffer.len() >= frame_size && !fits.has_data {
                             let data: Vec<u8> = buffer.drain(0..frame_size).collect();
 
                             fits.process_cube_frame(&data, cdelt3 as f32, frame as usize);
@@ -2867,17 +2868,13 @@ impl FITS {
         match self.bitpix {
             -32 => {
                 let vec = &self.data_f16[frame];
-                                    
                 let ptr = vec.as_ptr() as *mut i16;
-                let len = vec.len() ;
-                let capacity = vec.capacity() ;
+                let len = vec.len() ;                
 
-                unsafe {
-                    let mut raw: Vec<i16> = Vec::from_raw_parts(ptr, len, capacity);
+                unsafe {                    
+                    let mut raw = slice::from_raw_parts_mut(ptr, len);
 
-                    let spectrum = calculate_radial_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, cx as i32, cy as i32, r2 as i32, mean, cdelt3);
-
-                    mem::forget(raw);
+                    let spectrum = calculate_radial_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, cx as i32, cy as i32, r2 as i32, mean, cdelt3);                  
 
                     spectrum
                 }
@@ -3360,26 +3357,24 @@ impl Drop for FITS {
                     };
 
                     for frame in 0..self.depth as usize {
-                        let v16 = self.data_f16[frame].clone();                        
+                        let v16 = &self.data_f16[frame];                       
                         let ptr = v16.as_ptr() as *mut u8;
                         let len = v16.len() ;
-                        let capacity = self.data_f16[frame].capacity() ;
 
-                        unsafe {
-                            mem::forget(v16);
-
-                            let raw: Vec<u8> = Vec::from_raw_parts(ptr, 2*len, 2*capacity);
+                        unsafe {                            
+                            let raw = slice::from_raw_parts(ptr, 2*len);
                             
                             match buffer.write_all(&raw) {
-                                Ok(()) => {                                    
-                                },
+                                Ok(()) => {},
                                 Err(err) => {
                                     println!("binary cache write error: {}, removing the temporary file", err);
+
                                     let _ = std::fs::remove_file(tmp_filepath);
+
                                     return;
                                 }
-                            }
-                        };                                               
+                            };
+                        };
                     };                    
 
                     let _ = std::fs::rename(tmp_filepath, filepath);
