@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.9";
+    return "JS2018-08-08.10";
 }
 
 var generateUid = function ()
@@ -8416,6 +8416,9 @@ function updateKalman()
     //console.log("K:", K) ;
     //console.log("Kalman Filter X=", cur_x.elements[0], "Y=",cur_x.elements[1], "Vx=", cur_x.elements[2], "Vy=",cur_x.elements[3]) ;
     //console.log("Kalman Filter Vx=", cur_x.elements[0], "Vy=",cur_x.elements[1], "Ax=", cur_x.elements[2], "Ay=",cur_x.elements[3]) ;
+
+	let strLog = 'Kalman Filter: velX = ' + velX + ' velY = ' + velY + ' dt = ' + dt;
+	wsConn[0].send('[debug] ' + strLog);
 
     return ;
     
