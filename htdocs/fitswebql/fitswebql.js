@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-07.0";
+    return "JS2018-08-08.0";
 }
 
 var generateUid = function ()
@@ -1623,7 +1623,51 @@ function open_websocket_connection(datasetId, index)
 			    {
 				spectrum_stack[index-1].push({spectrum: spectrum, id: recv_seq_id}) ;
 				console.log("index:", index, "spectrum_stack length:", spectrum_stack[index-1].length) ;
-			    } ;
+				} ;
+				
+				//handle spectrum display here ??? (Safari had problems with the event loop)
+				try {
+					let go_ahead = true ;
+					let new_seq_id = 0 ;
+					
+					for(let index=0;index<va_count;index++)
+					{
+						let len = spectrum_stack[index].length ;
+						
+						if(len > 0)
+						{
+						let id = spectrum_stack[index][len-1].id ;			
+			
+						if(id <= last_seq_id)
+							go_ahead = false ;
+						else
+							new_seq_id = Math.max(new_seq_id, id) ;
+						}
+						else
+						go_ahead = false ;
+					}
+			
+					if(go_ahead)
+					{
+						last_seq_id = new_seq_id ;
+						console.log("last_seq_id:", last_seq_id) ;
+			
+						//pop all <va_count> spectrum stacks
+						var data = [] ;
+			
+						for(let index=0;index<va_count;index++)
+						data.push(spectrum_stack[index].pop().spectrum) ;
+						
+						plot_spectrum(data) ;
+						replot_y_axis() ;
+			
+						last_spectrum = data ;
+					}		
+					
+					}
+					catch (e) {
+					console.log(e) ;
+					}
 			    
 			    return ;
 			}
@@ -7032,7 +7076,7 @@ function setup_image_selection()
 	    }
 	    
 	    //spectrum
-	    try {
+	    /*try {
 		let go_ahead = true ;
 		let new_seq_id = 0 ;
 		
@@ -7070,6 +7114,11 @@ function setup_image_selection()
 		    last_spectrum = data ;
 		}		
 		
+	    }
+	    catch (e) {
+		console.log(e) ;
+		}*/
+		
 		/*let data = spectrum_stack.pop() ;
 
 		if(data.id > last_seq_id)
@@ -7077,10 +7126,6 @@ function setup_image_selection()
 		    process_spectrum_event(data.spectrum) ;
 		    last_seq_id = data.id ;
 		}*/
-	    }
-	    catch (e) {
-		console.log(e) ;
-	    }
 
 	}
     }
