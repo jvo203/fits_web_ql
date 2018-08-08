@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.0";
+    return "JS2018-08-08.1";
 }
 
 var generateUid = function ()
@@ -1626,7 +1626,7 @@ function open_websocket_connection(datasetId, index)
 				} ;
 				
 				//handle spectrum display here ??? (Safari had problems with the event loop)
-				try {
+				/*try {
 					let go_ahead = true ;
 					let new_seq_id = 0 ;
 					
@@ -1667,7 +1667,7 @@ function open_websocket_connection(datasetId, index)
 					}
 					catch (e) {
 					console.log(e) ;
-					}
+					}*/
 			    
 			    return ;
 			}
@@ -7076,7 +7076,7 @@ function setup_image_selection()
 	    }
 	    
 	    //spectrum
-	    /*try {
+	    try {
 		let go_ahead = true ;
 		let new_seq_id = 0 ;
 		
@@ -7117,7 +7117,7 @@ function setup_image_selection()
 	    }
 	    catch (e) {
 		console.log(e) ;
-		}*/
+		}
 		
 		/*let data = spectrum_stack.pop() ;
 
