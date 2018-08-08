@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.6";
+    return "JS2018-08-08.7";
 }
 
 var generateUid = function ()
@@ -7512,7 +7512,7 @@ function setup_image_selection()
 		clipSize = Math.round(clipSize) ;
 		
 		//console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
-		let strLog = 'active x = ' + x + ' y = '+ y + ' clipSize = ' + clipSize + ' fitsX = ' + fitsX + ' fitsY = ' + fitsY + ' fitsSize = ' + fitsSize + ' imageCanvas = ' + imageCanvas;
+		let strLog = 'active x = ' + x + ' y = '+ y + ' clipSize = ' + clipSize + ' fitsX = ' + fitsX + ' fitsY = ' + fitsY + ' fitsSize = ' + fitsSize + ' imageCanvas.width = ' + imageCanvas.width + ' imageCanvas.height = ' + imageCanvas.height + ' fitsData.width = ' + fitsData.width + ' fitsData.height = ' + fitsData.height + ' pred_x = ' + pred_x + ' pred_y = ' + pred_y;
 
 		wsConn[0].send('[debug] ' + strLog);
 
