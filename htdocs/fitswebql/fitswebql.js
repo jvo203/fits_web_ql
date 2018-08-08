@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.3";
+    return "JS2018-08-08.4";
 }
 
 var generateUid = function ()
@@ -7511,8 +7511,6 @@ function setup_image_selection()
 		y = Math.round(y) ;
 		clipSize = Math.round(clipSize) ;
 		
-		console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
-		
 		//send a spectrum request to the server
 		var x1 = Math.round(fitsX - fitsSize) ;
 		var y1 = Math.round( (fitsData.height-1) - (fitsY - fitsSize) ) ;
@@ -7521,6 +7519,8 @@ function setup_image_selection()
 
 		if(realtime && fitsData.depth > 1)
 		{
+			console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
+		
 		    sent_seq_id++ ;
 		    
 		    for(let index=0;index<va_count;index++)
