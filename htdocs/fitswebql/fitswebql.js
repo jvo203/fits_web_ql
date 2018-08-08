@@ -8369,7 +8369,11 @@ function updateKalman()
     cur_yPos = mouse_position.y ;
 
     var now = performance.now() ;
-    var dt = now - last_t ;
+	var dt = now - last_t ;
+	
+	if(dt == 0)
+		return ;
+
     last_t = now ;
 
     //update A and H to take into account dt
