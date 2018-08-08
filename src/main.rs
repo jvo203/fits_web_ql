@@ -181,7 +181,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
         match msg {
             ws::Message::Ping(msg) => ctx.pong(&msg),
-            ws::Message::Text(text) => {                               
+            ws::Message::Text(text) => {
+                if (&text).contains("[debug]") {
+                    println!("{}", text);
+                }
+
                 if (&text).contains("[heartbeat]") {
                     ctx.text(&text);       
                 }
@@ -571,7 +575,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-08.2";
+static VERSION_STRING: &'static str = "SV2018-08-08.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
