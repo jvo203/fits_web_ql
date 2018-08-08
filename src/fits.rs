@@ -349,14 +349,16 @@ impl FITS {
             //no mistake here, the initial ranges are supposed to be broken
             let mut frame_min = std::f32::MAX;
             let mut frame_max = std::f32::MIN;
-
-            let mut rdr = Cursor::new(data);
+                       
+            {
+                let mut rdr = Cursor::new(data); 
+                let vec = self.data_f16.get_mut(frame as usize).unwrap() ;
 
             for i in 0..len {                
                 match rdr.read_u16::<LittleEndian>() {                    
                     Ok(u16) => {                                              
                         let float16 = f16::from_bits(u16);
-                        self.data_f16[frame as usize].push(float16);
+                        vec.push(float16);
 
                         let tmp = self.bzero + self.bscale * float16.to_f32() ;
                         if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
@@ -372,6 +374,7 @@ impl FITS {
                     },
                     Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
                 }
+            }
             }
 
             self.dmin = self.dmin.min(frame_min);
