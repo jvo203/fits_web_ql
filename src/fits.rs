@@ -354,27 +354,27 @@ impl FITS {
                 let mut rdr = Cursor::new(data); 
                 let vec = self.data_f16.get_mut(frame as usize).unwrap() ;
 
-            for i in 0..len {                
-                match rdr.read_u16::<LittleEndian>() {                    
-                    Ok(u16) => {                                              
-                        let float16 = f16::from_bits(u16);
-                        vec.push(float16);
+                for i in 0..len {                
+                    match rdr.read_u16::<LittleEndian>() {                    
+                        Ok(u16) => {                                              
+                            let float16 = f16::from_bits(u16);
+                            vec.push(float16);
 
-                        let tmp = self.bzero + self.bscale * float16.to_f32() ;
-                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
-                            self.pixels[i as usize] += tmp * cdelt3;    
-                            self.mask[i as usize] = true ;
+                            let tmp = self.bzero + self.bscale * float16.to_f32() ;
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
+                                self.pixels[i as usize] += tmp * cdelt3;    
+                                self.mask[i as usize] = true ;
 
-                            frame_min = frame_min.min(tmp);
-                            frame_max = frame_max.max(tmp);
+                                frame_min = frame_min.min(tmp);
+                                frame_max = frame_max.max(tmp);
 
-                            sum += tmp ;
-                            count += 1 ;                                
+                                sum += tmp ;
+                                count += 1 ;                                
                             }
-                    },
-                    Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
+                        },
+                        Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
+                    }
                 }
-            }
             }
 
             self.dmin = self.dmin.min(frame_min);

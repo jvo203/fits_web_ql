@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.1";
+    return "JS2018-08-08.2";
 }
 
 var generateUid = function ()
@@ -7105,8 +7105,11 @@ function setup_image_selection()
 		    //pop all <va_count> spectrum stacks
 		    var data = [] ;
 
-		    for(let index=0;index<va_count;index++)
-			data.push(spectrum_stack[index].pop().spectrum) ;
+			for(let index=0;index<va_count;index++)
+			{
+				data.push(spectrum_stack[index].pop().spectrum) ;
+				spectrum_stack[index] = [];
+			}
 		    
 		    plot_spectrum(data) ;
 		    replot_y_axis() ;
