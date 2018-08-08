@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.11s";
+    return "JS2018-08-08.11";
 }
 
 var generateUid = function ()
@@ -7491,9 +7491,7 @@ function setup_image_selection()
 		//var pred_mouse_x = Math.round(mouse_position.x + last_x.elements[0] * latency + 0.5 * last_x.elements[2] * latency * latency) ;
 		//var pred_mouse_y = Math.round(mouse_position.y + last_x.elements[1] * latency + 0.5 * last_x.elements[3] * latency * latency) ;
 
-		//console.log("latency = ", latency.toFixed(1), "[ms]", "mx = ", mouse_position.x, "px = ", pred_mouse_x, "my = ", mouse_position.y, "py = ", pred_mouse_y) ;		
-
-		let strLog = 'active: ' + ' pred_mouse_x = ' + pred_mouse_x + ' pred_mouse_y = ' + pred_mouse_y + ' mouse_position.x = ' + mouse_position.x + ' mouse_position.y = ' + mouse_position.y + ' last_x.elements[2] = ' + last_x.elements[2] + ' last_x.elements[3] = ' + last_x.elements[3] + ' latency = ' + latency ;
+		//console.log("latency = ", latency.toFixed(1), "[ms]", "mx = ", mouse_position.x, "px = ", pred_mouse_x, "my = ", mouse_position.y, "py = ", pred_mouse_y) ;
 
 		var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x"))/d3.select(this).attr("width")*(image_bounding_dims.width-1);
 		var y = image_bounding_dims.y1 + (mouse_position.y - d3.select(this).attr("y"))/d3.select(this).attr("height")*(image_bounding_dims.height-1);
@@ -7515,8 +7513,6 @@ function setup_image_selection()
 		
 		//console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
 		//let strLog = 'active x = ' + x + ' y = '+ y + ' clipSize = ' + clipSize + ' fitsX = ' + fitsX + ' fitsY = ' + fitsY + ' fitsSize = ' + fitsSize + ' pred_x = ' + pred_x + ' pred_y = ' + pred_y + ' pred_mouse_x = ' + pred_mouse_x + ' pred_mouse_y = ' + pred_mouse_y ;
-
-		wsConn[0].send('[debug] ' + strLog);
 
 		//send a spectrum request to the server
 		var x1 = Math.round(fitsX - fitsSize) ;
@@ -8420,9 +8416,6 @@ function updateKalman()
     //console.log("K:", K) ;
     //console.log("Kalman Filter X=", cur_x.elements[0], "Y=",cur_x.elements[1], "Vx=", cur_x.elements[2], "Vy=",cur_x.elements[3]) ;
     //console.log("Kalman Filter Vx=", cur_x.elements[0], "Vy=",cur_x.elements[1], "Ax=", cur_x.elements[2], "Ay=",cur_x.elements[3]) ;
-
-	let strLog = 'Kalman Filter: velX = ' + velX + ' velY = ' + velY + ' dt = ' + dt;
-	wsConn[0].send('[debug] ' + strLog);
 
     return ;
     
