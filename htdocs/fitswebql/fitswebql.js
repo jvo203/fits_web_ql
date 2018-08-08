@@ -7511,6 +7511,8 @@ function setup_image_selection()
 		y = Math.round(y) ;
 		clipSize = Math.round(clipSize) ;
 		
+		//console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
+
 		//send a spectrum request to the server
 		var x1 = Math.round(fitsX - fitsSize) ;
 		var y1 = Math.round( (fitsData.height-1) - (fitsY - fitsSize) ) ;
@@ -7519,8 +7521,6 @@ function setup_image_selection()
 
 		if(realtime && fitsData.depth > 1)
 		{
-			console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
-		
 		    sent_seq_id++ ;
 		    
 		    for(let index=0;index<va_count;index++)
@@ -8167,7 +8167,6 @@ function imageTimeout()
     var height = parseFloat(svg.attr("height"));
 
     let fitsData = fitsContainer[va_count-1] ;
-    
     var image_bounding_dims = imageContainer[va_count-1].image_bounding_dims ;
     var imageCanvas = imageContainer[va_count-1].imageCanvas ;
     var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
