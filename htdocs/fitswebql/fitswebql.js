@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.5";
+    return "JS2018-08-08.6";
 }
 
 var generateUid = function ()
@@ -7512,7 +7512,7 @@ function setup_image_selection()
 		clipSize = Math.round(clipSize) ;
 		
 		//console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
-		let strLog = 'active x = ' + x + ' y = '+ y + ' clipSize = ' + clipSize + ' fitsX = ' + fitsX + ' fitsY = ' + fitsY + ' fitsSize = ' + fitsSize;
+		let strLog = 'active x = ' + x + ' y = '+ y + ' clipSize = ' + clipSize + ' fitsX = ' + fitsX + ' fitsY = ' + fitsY + ' fitsSize = ' + fitsSize + ' imageCanvas = ' + imageCanvas;
 
 		wsConn[0].send('[debug] ' + strLog);
 
