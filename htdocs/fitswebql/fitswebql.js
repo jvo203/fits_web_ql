@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.2";
+    return "JS2018-08-08.3";
 }
 
 var generateUid = function ()
@@ -7511,7 +7511,7 @@ function setup_image_selection()
 		y = Math.round(y) ;
 		clipSize = Math.round(clipSize) ;
 		
-		//console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
+		console.log('active', 'x = ', x, 'y = ', y, 'clipSize = ', clipSize, 'fitsX = ', fitsX, 'fitsY = ', fitsY, 'fitsSize = ', fitsSize) ;
 		
 		//send a spectrum request to the server
 		var x1 = Math.round(fitsX - fitsSize) ;
