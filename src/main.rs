@@ -258,7 +258,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[spectrum]") {
-                    //println!("{}", text.replace("&"," "));
+                    println!("{}", text.replace("&"," "));
                     let (x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt!(&text.replace("&"," "), "[spectrum] x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
 
                     let x1 = match x1 {
@@ -571,7 +571,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-08.1";
+static VERSION_STRING: &'static str = "SV2018-08-08.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
