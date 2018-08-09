@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-08.11";
+    return "JS2018-08-09.0";
 }
 
 var generateUid = function ()
@@ -5970,7 +5970,7 @@ function setup_axes()
 
     prev_scale = 1.0 ;    
     
-    var rect = group.append("rect")
+    group.append("rect")
 	.attr("id", "scaling")
 	.attr("x", 0)
 	.attr("y", range.yMin)
@@ -8086,7 +8086,10 @@ function shifted() {
     var shift = d3.event.dy * interval / height ;
 
     user_data_max += shift ;
-    user_data_min += shift ;
+	user_data_min += shift ;
+	
+	let log = 'user_data_min = ' + user_data_min + ' user_data_max = ' + user_data_max + ' windowLeft: ' + windowLeft;
+	wsConn[0].send('[debug] ' + log);
     
     plot_spectrum(last_spectrum) ;
     replot_y_axis() ;
