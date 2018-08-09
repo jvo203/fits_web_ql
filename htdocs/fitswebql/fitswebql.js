@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-09.2";
+    return "JS2018-08-09.3";
 }
 
 var generateUid = function ()
@@ -1801,7 +1801,7 @@ function open_websocket_connection(datasetId, index)
 
 				if(decoder != null) {
 					decoder.processFrame(frame, function () {
-						let log = 'decodeing time: ' + decoder.cpuTime + ' [ms]';
+						let log = 'VP9 video frame decode time: ' + decoder.cpuTime + ' [ms]';
 						wsConn[0].send('[debug] ' + log);
 
 						process_video(decoder.frameBuffer.format.displayWidth,
