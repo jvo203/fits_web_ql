@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-09.4";
+    return "JS2018-08-09.5";
 }
 
 var generateUid = function ()
@@ -1814,8 +1814,18 @@ function open_websocket_connection(datasetId, index)
 
 						let stop = performance.now() ;
 
-						let log = 'VP9 video frame decode time: ' + delta + ' [ms], process_video time: ' + (stop-start) + ' [ms]';
-						
+						let processing_time = delta + (stop-start);
+
+						let log = 'VP9 video frame decode time: ' + delta + ' [ms], process_video time: ' + (stop-start) + ' [ms], total: ' + processing_time + ' [ms]';
+
+						if(processing_time > vidInterval)
+						{
+							//halve the video FPS
+							vidFPS = vidFPS / 2;							
+						}
+
+						log += ' vidFPS = ' + vidFPS;
+
 						wsConn[0].send('[debug] ' + log);
 					});
 				};
@@ -11176,6 +11186,7 @@ async*/ function mainRenderer()
 
 	//video
 	vidFPS = 10 ;//10
+	vidInterval = 1000 / vidFPS ;
 	recv_vid_id = 0 ;
 	sent_vid_id = 0 ;
 	last_vid_id = 0 ;
