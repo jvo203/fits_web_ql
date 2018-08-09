@@ -1802,15 +1802,21 @@ function open_websocket_connection(datasetId, index)
 				if(decoder != null) {
 					decoder.processFrame(frame, function () {
 						let delta = decoder.cpuTime - cpuTime ;
-						cpuTime = decoder.cpuTime ;
-						let log = 'VP9 video frame decode time: ' + delta + ' [ms]';
-						wsConn[0].send('[debug] ' + log);
+						cpuTime = decoder.cpuTime ;						
+
+						let start = performance.now() ;
 
 						process_video(decoder.frameBuffer.format.displayWidth,
 						decoder.frameBuffer.format.displayHeight,
 						decoder.frameBuffer.y.bytes,
 						decoder.frameBuffer.y.stride,
 						index);
+
+						let stop = performance.now() ;
+
+						let log = 'VP9 video frame decode time: ' + delta + ' [ms], process_video time: ' + (stop-start) + ' [ms]';
+						
+						wsConn[0].send('[debug] ' + log);
 					});
 				};
 
