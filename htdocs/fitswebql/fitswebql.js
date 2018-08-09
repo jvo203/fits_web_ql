@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-09.1";
+    return "JS2018-08-09.2";
 }
 
 var generateUid = function ()
@@ -1801,6 +1801,9 @@ function open_websocket_connection(datasetId, index)
 
 				if(decoder != null) {
 					decoder.processFrame(frame, function () {
+						let log = 'decodeing time: ' + decoder.cpuTime + ' [ms]';
+						wsConn[0].send('[debug] ' + log);
+
 						process_video(decoder.frameBuffer.format.displayWidth,
 						decoder.frameBuffer.format.displayHeight,
 						decoder.frameBuffer.y.bytes,
@@ -7200,7 +7203,7 @@ function setup_image_selection()
 	.on("mouseleave", function () {
 	    clearTimeout(idleMouse) ;
 
-	    if(!d3.event.shiftKey)//commented-out by Chris on 2018/08/06
+	    if(!d3.event.shiftKey)
 			windowLeft = true ;
 	    
 	    spectrum_stack = new Array(va_count) ;	    
