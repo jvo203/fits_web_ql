@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-09.0";
+    return "JS2018-08-09.1";
 }
 
 var generateUid = function ()
@@ -7200,8 +7200,8 @@ function setup_image_selection()
 	.on("mouseleave", function () {
 	    clearTimeout(idleMouse) ;
 
-	    //if(!d3.event.shiftKey)//commented-out by Chris on 2018/08/06
-		windowLeft = true ;
+	    if(!d3.event.shiftKey)//commented-out by Chris on 2018/08/06
+			windowLeft = true ;
 	    
 	    spectrum_stack = new Array(va_count) ;	    
 	    for(let i=0;i<va_count;i++)
