@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-09.5";
+    return "JS2018-08-09.6";
 }
 
 var generateUid = function ()
@@ -1820,8 +1820,14 @@ function open_websocket_connection(datasetId, index)
 
 						if(processing_time > vidInterval)
 						{
-							//halve the video FPS
-							vidFPS = vidFPS / 2;							
+							//reduce the video FPS
+							vidFPS = Math.round(0.8*vidFPS);
+							vidFPS = Math.max(1, vidFPS);	
+						}
+						else {
+							//increase the video FPS
+							vidFPS = Math.round(1.2*vidFPS);
+							vidFPS = Math.min(30, vidFPS);
 						}
 
 						log += ' vidFPS = ' + vidFPS;
