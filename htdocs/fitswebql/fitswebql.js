@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-09.3";
+    return "JS2018-08-09.4";
 }
 
 var generateUid = function ()
@@ -1801,7 +1801,9 @@ function open_websocket_connection(datasetId, index)
 
 				if(decoder != null) {
 					decoder.processFrame(frame, function () {
-						let log = 'VP9 video frame decode time: ' + decoder.cpuTime + ' [ms]';
+						let delta = decoder.cpuTime - cpuTime ;
+						cpuTime = decoder.cpuTime ;
+						let log = 'VP9 video frame decode time: ' + delta + ' [ms]';
 						wsConn[0].send('[debug] ' + log);
 
 						process_video(decoder.frameBuffer.format.displayWidth,
@@ -11159,6 +11161,7 @@ async*/ function mainRenderer()
 	ping_latency = 0 ;
 	computed = 0 ;
 	processed = 0 ;
+	cpuTime = 0 ;
 
 	//image
 	recv_seq_id = 0 ;
