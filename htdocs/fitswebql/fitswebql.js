@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-09.6";
+    return "JS2018-08-10.2";
 }
 
 var generateUid = function ()
@@ -1833,6 +1833,8 @@ function open_websocket_connection(datasetId, index)
 						log += ' vidFPS = ' + vidFPS;
 
 						wsConn[0].send('[debug] ' + log);
+
+						d3.select("#fps").text('video: ' + vidFPS + ' fps');
 					});
 				};
 
@@ -1905,9 +1907,9 @@ function open_websocket_connection(datasetId, index)
 				.attr("opacity", 0.0);*/
 
 			    if(ping_latency >= 1)		    
-				d3.select("#latency").text('n/w latency: ' + ping_latency.toFixed() + ' ms' + ' fps: ' + fps.toFixed());
+				d3.select("#latency").text('n/w latency: ' + ping_latency.toFixed() + ' ms' + ' ws: ' + fps.toFixed() + 'fps');
 			    else
-				d3.select("#latency").text('n/w latency: ' + ping_latency.toFixed(1) + ' ms' + ' fps: ' + fps.toFixed());
+				d3.select("#latency").text('n/w latency: ' + ping_latency.toFixed(1) + ' ms' + ' ws: ' + fps.toFixed() + ' fps');
 				//d3.select("#latency").text('n/w latency: < 1 ms');			    
 			    
 			    return ;
@@ -4693,7 +4695,20 @@ function display_preferences(index)
 	.attr("stroke", "none")
 	.attr("opacity", 0.75)
 	.text("") ;
-    
+	
+	group.append("text")
+	.attr("id", "fps")
+	.attr("x", svgWidth)
+	.attr("y", offset)
+	.attr("font-family", "Inconsolata")
+	//.attr("font-weight", "bold")
+	.attr("font-size", "0.75em")//0.75 Helvetica
+	.attr("text-anchor", "end")
+	.attr("fill", fillColour)
+	.attr("stroke", "none")
+	.attr("opacity", 0.75)
+	.text("") ;
+
     var prefDropdown = d3.select("#prefDropdown");
     
     var htmlStr = autoscale ? '<span class="glyphicon glyphicon-check"></span> autoscale y-axis' : '<span class="glyphicon glyphicon-unchecked"></span> autoscale y-axis' ;
@@ -5855,6 +5870,8 @@ function setup_axes()
 		else
 			elem.attr("opacity",0);
 
+		d3.select("#fps").text("");
+
 		//send an end_video command via WebSockets
 		videoLeft = true ;
 		video_stack = new Array(va_count) ;
@@ -5914,7 +5931,8 @@ function setup_axes()
 
 		for(let index=0;index<va_count;index++)
 		{
-			var decoder = new OGVDecoderVideoVP9();			
+			//OGVDecoderVideoVP9 (asm.js) or OGVDecoderVideoVP9W (wasm)
+			var decoder = new OGVDecoderVideoVP9();
 			decoder.init(function () {console.log("streaming video decoder initiated");});
 			wsConn[index].decoder = decoder;
 
@@ -7879,6 +7897,7 @@ function fetch_image(datasetId, index, add_timestamp)
 				//var player = new OGVPlayer();
 				//console.log(player);
 
+				//OGVDecoderVideoVP9 (asm.js) or OGVDecoderVideoVP9W (wasm)
 				var decoder = new OGVDecoderVideoVP9();
 				console.log(decoder);				
 
@@ -8114,10 +8133,7 @@ function shifted() {
 
     user_data_max += shift ;
 	user_data_min += shift ;
-	
-	let log = 'user_data_min = ' + user_data_min + ' user_data_max = ' + user_data_max + ' windowLeft: ' + windowLeft;
-	wsConn[0].send('[debug] ' + log);
-    
+
     plot_spectrum(last_spectrum) ;
     replot_y_axis() ;
 }
