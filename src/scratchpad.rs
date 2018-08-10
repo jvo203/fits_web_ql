@@ -586,3 +586,63 @@ fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cde
                 buffer.push(b);
             };
         };*/   
+
+        //===========================================================
+
+
+#[cfg(feature = "server")]
+const GARBAGE_COLLECTION_TIMEOUT: u64 = 60;//[s]; a dataset inactivity timeout
+
+#[cfg(not(feature = "server"))]
+const GARBAGE_COLLECTION_TIMEOUT: u64 = 5;//[s]; a dataset inactivity timeout
+
+const DUMMY_DATASET_TIMEOUT: u64 = 24*60*60;//[s]; 24 hours
+
+fn garbage_collection(/*server: &Addr<server::SessionServer>*/) {
+    let datasets = DATASETS.read();
+
+    for key in datasets.keys() {        
+        let dataset = datasets.get(key).unwrap().read() ;
+
+        let now = SystemTime::now();
+        let elapsed = now.duration_since(*dataset.timestamp.read());
+
+        let timeout = if dataset.is_dummy {
+            std::time::Duration::new(DUMMY_DATASET_TIMEOUT, 0)
+        } else {
+            std::time::Duration::new(GARBAGE_COLLECTION_TIMEOUT, 0)
+        };
+
+        match elapsed {
+            Ok(elapsed) => {
+                println!("key: {}, elapsed time: {:?}", key, elapsed);
+
+                if elapsed > timeout {
+                    println!("{} marked as a candidate for deletion", key);
+
+                    //check if there are no active sessions
+                /*let _ = server.do_send(server::Remove {
+                    dataset_id: key.clone(),
+                });*/
+
+                    //a deadlock!!!
+                    DATASETS.write().remove(key);//a previous read lock is preventing a write lock
+                }
+            },
+            Err(err) => println!("SystemTime::duration_since failed: {}", err),
+        }
+    }
+
+    /*for dataset in datasets.values() {
+        println!("key: {}", dataset.read().dataset_id);
+    }*/
+}
+
+    //let addr = &server.clone();
+    /*thread::spawn(move ||{
+        loop {            
+            thread::sleep(time::Duration::from_secs(10));
+
+            garbage_collection();
+        }
+    });*/

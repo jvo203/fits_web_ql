@@ -210,6 +210,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
                     };
 
+                    *fits.timestamp.write() = SystemTime::now() ;
+
                     let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut self.cfg, 0) };
 
                     if ret != VPX_CODEC_OK {
@@ -361,6 +363,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
                     };
 
+                    *fits.timestamp.write() = SystemTime::now() ;
+
                     if fits.has_data {
                         let start = precise_time::precise_time_ns(); 
                         match fits.get_spectrum(x1, y1, x2, y2, beam, intensity, frame_start, frame_end, ref_freq) {
@@ -406,6 +410,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             return;
                         }
                     };
+
+                    *fits.timestamp.write() = SystemTime::now() ;
 
                     if fits.is_dummy {
                         let msg = json!({
@@ -478,6 +484,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             return;
                         }
                     };
+
+                    *fits.timestamp.write() = SystemTime::now() ;
 
                     if fits.has_data {
                         match fits.get_video_frame(frame, ref_freq) {                            
@@ -575,7 +583,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-10.1";
+static VERSION_STRING: &'static str = "SV2018-08-10.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -940,6 +948,8 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse,
             }
         };
 
+        *fits.timestamp.write() = SystemTime::now() ;
+
         //println!("[get_image] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
 
         if fits.is_dummy {
@@ -1006,6 +1016,8 @@ fn get_spectrum(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
                     .responder();
             }
         };
+
+        *fits.timestamp.write() = SystemTime::now() ;
 
         //println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
 

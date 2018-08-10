@@ -28,6 +28,12 @@ pub struct Disconnect {
     pub id: Uuid,    
 }
 
+//remove a dataset
+#[derive(Message)]
+pub struct Remove {
+    pub dataset_id: String,        
+}
+
 /// broadcast a message to a dataset
 #[derive(Message)]
 pub struct WsMessage {    
@@ -130,9 +136,19 @@ impl Handler<Disconnect> for SessionServer {
                 self.datasets.remove(&msg.dataset_id);
 
                 //do not remove the molecules here, wait for a delete request from the FITS dataset itself
-                //self.molecules.remove(&msg.dataset_id);
+                self.molecules.remove(&msg.dataset_id);
+                //DATASETS.write().remove(&msg.dataset_id);
             }
         }     
+    }
+}
+
+/// try to remove a given dataset
+impl Handler<Remove> for SessionServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: Remove, _: &mut Context<Self>) {        
+        println!("[SessionServer]: received a Remove request for '{}'", &msg.dataset_id);        
     }
 }
 
