@@ -170,7 +170,7 @@ impl Handler<Disconnect> for SessionServer {
                             false
                         },
                         None => {
-                            println!("[gargabe collection]: no active sessions found, {} will be removed from memory", &msg.dataset_id);
+                            println!("[gargabe collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);
                             true
                         }
                     };
