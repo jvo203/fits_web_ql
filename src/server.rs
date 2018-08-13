@@ -19,7 +19,7 @@ use DATASETS;
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 60;//[s]; a dataset inactivity timeout
 
 #[cfg(not(feature = "server"))]
-const GARBAGE_COLLECTION_TIMEOUT: i64 = 5;//[s]; a dataset inactivity timeout
+const GARBAGE_COLLECTION_TIMEOUT: i64 = 10;//[s]; a dataset inactivity timeout
 
 /// the server sends this messages to session
 #[derive(Message)]
@@ -165,20 +165,17 @@ impl Handler<Disconnect> for SessionServer {
                     println!("executing garbage collection for {}", &msg.dataset_id);
 
                     //check if there are no new active sessions
-                    let can_remove = match datasets.read().get(&msg.dataset_id) {                        
-                        Some(_) => {                               
-                            false
+                    match datasets.read().get(&msg.dataset_id) {                        
+                        Some(_) => {                            
+                            println!("[gargabe collection]: an active session has been found for {}, doing nothing", &msg.dataset_id);
                         },
                         None => {
                             println!("[gargabe collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);
-                            true
+
+                            molecules.write().remove(&msg.dataset_id);
+                            DATASETS.write().remove(&msg.dataset_id);
                         }
                     };
-                    
-                    if can_remove {                        
-                        molecules.write().remove(&msg.dataset_id);
-                        DATASETS.write().remove(&msg.dataset_id);
-                    }
                 }).ignore();
             }
         }     

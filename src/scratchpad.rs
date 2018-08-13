@@ -646,3 +646,20 @@ fn garbage_collection(/*server: &Addr<server::SessionServer>*/) {
             garbage_collection();
         }
     });*/
+
+
+                    if can_remove {                        
+                        //molecules.write().remove(&msg.dataset_id);
+                        //DATASETS.write().remove(&msg.dataset_id);
+
+                        /*let dataset = { DATASETS.write().remove(&msg.dataset_id); };
+
+                        match dataset {
+                            Some(_) => {
+                                println!("{} has been expunged from memory", &msg.dataset_id);
+                            },
+                            None => {
+                                println!("{} could not be removed from the HashMap", &msg.dataset_id);
+                            },
+                        };*/
+                    }
