@@ -1,5 +1,10 @@
 use std::path;
+use std::sync::Arc;
+use parking_lot::RwLock;
 use std::collections::{HashMap, HashSet};
+
+use chrono;
+use timer;
 
 use actix::*;
 use rusqlite;
@@ -7,6 +12,14 @@ use uuid::Uuid;
 
 use serde_json;
 use molecule::Molecule;
+
+use DATASETS;
+
+#[cfg(feature = "server")]
+const GARBAGE_COLLECTION_TIMEOUT: i64 = 60;//[s]; a dataset inactivity timeout
+
+#[cfg(not(feature = "server"))]
+const GARBAGE_COLLECTION_TIMEOUT: i64 = 5;//[s]; a dataset inactivity timeout
 
 /// the server sends this messages to session
 #[derive(Message)]
@@ -62,10 +75,12 @@ pub struct GetMolecules {
 /// `SessionServer` manages sending messages from the FITSWebQL host server to WebSocket clients
 pub struct SessionServer {
     sessions: HashMap<Uuid, Recipient<Message>>,
-    datasets: HashMap<String, HashSet<Uuid>>,
-    molecules: HashMap<String, String>,
+    datasets: Arc<RwLock<HashMap<String, HashSet<Uuid>>>>,
+    molecules: Arc<RwLock<HashMap<String, String>>>,
     //splatalogue db
     conn_res: rusqlite::Result<rusqlite::Connection>,
+    timer: timer::Timer,
+    //guard: timer::Guard,
 }
 
 impl Default for SessionServer {
@@ -73,11 +88,16 @@ impl Default for SessionServer {
         //let mut datasets = HashMap::new();
         //datasets.insert("all".to_owned(), HashSet::new());//for now group all connections together; in the future will be grouped by dataset_id
 
+        let timer = timer::Timer::new();
+        //let guard = timer.schedule_with_delay(chrono::Duration::seconds(0), move || { });
+
         SessionServer {
             sessions: HashMap::new(),
-            datasets: HashMap::new(),
-            molecules: HashMap::new(),
+            datasets: Arc::new(RwLock::new(HashMap::new())),
+            molecules: Arc::new(RwLock::new(HashMap::new())),
             conn_res: rusqlite::Connection::open(path::Path::new("splatalogue_v3.db")),
+            timer: timer,
+            //guard: guard,
         }
     }
 }
@@ -99,7 +119,7 @@ impl Handler<Connect> for SessionServer {
 
         println!("[SessionServer]: registering a new session {}/{}", msg.dataset_id, id); 
 
-        self.datasets.entry(msg.dataset_id).or_insert(HashSet::new()).insert(id);
+        self.datasets.write().entry(msg.dataset_id).or_insert(HashSet::new()).insert(id);
 
         // return the session id
         id.to_string()
@@ -118,7 +138,7 @@ impl Handler<Disconnect> for SessionServer {
             println!("[SessionServer]: removing a session {}/{}", &msg.dataset_id, id);
           
             let remove_entry = {
-                match self.datasets.get_mut(&msg.dataset_id) {
+                match self.datasets.write().get_mut(&msg.dataset_id) {
                     Some(dataset) => {                        
                         dataset.remove(&id);
                         dataset.is_empty()
@@ -133,11 +153,33 @@ impl Handler<Disconnect> for SessionServer {
             if remove_entry {
                 println!("[SessionServer]: unlinking a dataset {}", &msg.dataset_id);
 
-                self.datasets.remove(&msg.dataset_id);
+                self.datasets.write().remove(&msg.dataset_id);
 
-                //do not remove the molecules here, wait for a delete request from the FITS dataset itself
-                self.molecules.remove(&msg.dataset_id);
-                //DATASETS.write().remove(&msg.dataset_id);
+                //do not remove the molecules here, schedule a garbage collection call
+
+                let datasets = self.datasets.clone();
+                let molecules = self.molecules.clone();
+
+                self.timer.schedule_with_delay(chrono::Duration::seconds(GARBAGE_COLLECTION_TIMEOUT), move || {                    
+                    // This closure is executed on the scheduler thread
+                    println!("executing garbage collection for {}", &msg.dataset_id);
+
+                    //check if there are no new active sessions
+                    let can_remove = match datasets.read().get(&msg.dataset_id) {                        
+                        Some(_) => {                               
+                            false
+                        },
+                        None => {
+                            println!("[gargabe collection]: no active sessions found, {} will be removed from memory", &msg.dataset_id);
+                            true
+                        }
+                    };
+                    
+                    if can_remove {                        
+                        molecules.write().remove(&msg.dataset_id);
+                        DATASETS.write().remove(&msg.dataset_id);
+                    }
+                }).ignore();
             }
         }     
     }
@@ -159,7 +201,7 @@ impl Handler<WsMessage> for SessionServer {
     fn handle(&mut self, msg: WsMessage, _: &mut Context<Self>) {
         //println!("[SessionServer]: received a WsMessage '{}' bound for '{}'", &msg.msg, &msg.dataset_id);
 
-        match self.datasets.get(&msg.dataset_id) {
+        match self.datasets.read().get(&msg.dataset_id) {
             Some(dataset) => {
                 for id in dataset {                   
                     if let Some(addr) = self.sessions.get(id) {
@@ -179,7 +221,7 @@ impl Handler<GetMolecules> for SessionServer {
     type Result = String;
 
     fn handle(&mut self, msg: GetMolecules, _: &mut Context<Self>) -> Self::Result {        
-        match self.molecules.get(&msg.dataset_id) {            
+        match self.molecules.read().get(&msg.dataset_id) {            
             Some(contents) => contents.clone(),
             None => String::from("")
         }
@@ -197,7 +239,7 @@ impl Handler<FrequencyRangeMessage> for SessionServer {
 
         if freq_start == 0.0 || freq_end == 0.0 {
             //insert an empty JSON array into self.molecules
-            self.molecules.insert(msg.dataset_id, String::from("[]"));
+            self.molecules.write().insert(msg.dataset_id, String::from("[]"));
             return;
         }
 
@@ -239,6 +281,6 @@ impl Handler<FrequencyRangeMessage> for SessionServer {
         contents.push(']');
 
         //println!("{}", contents);
-        self.molecules.insert(msg.dataset_id, contents);
+        self.molecules.write().insert(msg.dataset_id, contents);
     }
 }

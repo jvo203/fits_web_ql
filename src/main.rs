@@ -21,7 +21,7 @@ extern crate time as precise_time;
 extern crate num_integer;
 extern crate num;
 extern crate num_cpus;
-
+extern crate timer;
 extern crate vpx_sys;
 extern crate num_rational;
 
@@ -210,7 +210,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
                     };
 
-                    *fits.timestamp.write() = SystemTime::now() ;
+                    { *fits.timestamp.write() = SystemTime::now() ; }
 
                     let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut self.cfg, 0) };
 
@@ -363,7 +363,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
                     };
 
-                    *fits.timestamp.write() = SystemTime::now() ;
+                    { *fits.timestamp.write() = SystemTime::now() ; }
 
                     if fits.has_data {
                         let start = precise_time::precise_time_ns(); 
@@ -411,7 +411,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
                     };
 
-                    *fits.timestamp.write() = SystemTime::now() ;
+                    { *fits.timestamp.write() = SystemTime::now() ; }
 
                     if fits.is_dummy {
                         let msg = json!({
@@ -485,7 +485,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
                     };
 
-                    *fits.timestamp.write() = SystemTime::now() ;
+                    { *fits.timestamp.write() = SystemTime::now() ; }
 
                     if fits.has_data {
                         match fits.get_video_frame(frame, ref_freq) {                            
@@ -583,7 +583,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-10.2";
+static VERSION_STRING: &'static str = "SV2018-08-13.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -948,7 +948,7 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse,
             }
         };
 
-        *fits.timestamp.write() = SystemTime::now() ;
+        { *fits.timestamp.write() = SystemTime::now() ; }
 
         //println!("[get_image] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
 
@@ -1017,7 +1017,7 @@ fn get_spectrum(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespon
             }
         };
 
-        *fits.timestamp.write() = SystemTime::now() ;
+        { *fits.timestamp.write() = SystemTime::now() ; }
 
         //println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
 
