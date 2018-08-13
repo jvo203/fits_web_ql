@@ -1,6 +1,8 @@
 #include <vpx/vpx_decoder.h>
 #include <vpx/vp8dx.h>
 
+#include <stdio.h> 
+
 //static vpx_codec_ctx_t    vpxContext;
 //static vpx_codec_iface_t *vpxDecoder = NULL ;
 
@@ -17,11 +19,11 @@ static void vpx_init() {
 
 static void vpx_destroy() {
 	if (vpx_codec_destroy(&codec))
-		printf(&codec, "Failed to destroy codec.\n");
+		printf("Failed to destroy codec.\n");
 }
 
-static void vpx_decode_frame(const char *data, size_t data_len) {
-	if (vpx_codec_decode(&codec, frame, (unsigned int)frame_size, NULL, 0))
+static void vpx_decode_frame(const unsigned char *data, size_t data_len) {
+	if (vpx_codec_decode(&codec, data, (unsigned int)data_len, NULL, 0))
     	printf("Failed to decode frame.\n");
 	else {		
 		vpx_image_t *img = NULL;
