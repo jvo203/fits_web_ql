@@ -155,7 +155,7 @@ impl Handler<Disconnect> for SessionServer {
 
                 self.datasets.write().remove(&msg.dataset_id);
 
-                //do not remove the molecules here, schedule a garbage collection call
+                //do not remove the molecules here, schedule a garbage collection call instead
 
                 let datasets = self.datasets.clone();
                 let molecules = self.molecules.clone();
@@ -167,10 +167,10 @@ impl Handler<Disconnect> for SessionServer {
                     //check if there are no new active sessions
                     match datasets.read().get(&msg.dataset_id) {                        
                         Some(_) => {                            
-                            println!("[gargabe collection]: an active session has been found for {}, doing nothing", &msg.dataset_id);
+                            println!("[garbage collection]: an active session has been found for {}, doing nothing", &msg.dataset_id);
                         },
                         None => {
-                            println!("[gargabe collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);
+                            println!("[garbage collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);
 
                             molecules.write().remove(&msg.dataset_id);
                             DATASETS.write().remove(&msg.dataset_id);
