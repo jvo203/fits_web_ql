@@ -39,7 +39,7 @@ use bincode::serialize;
 use std::sync::Arc;
 use std::thread;
 use std::{env,ptr};
-use std::time::{SystemTime};
+use std::time::SystemTime;
 use std::collections::BTreeMap;
 
 use actix::*;
@@ -573,8 +573,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 }*/
 
 lazy_static! {
-    static ref DATASETS: RwLock<HashMap<String, Arc<RwLock<Box<fits::FITS>>>>> = {
-        RwLock::new(HashMap::new())
+    static ref DATASETS: Arc<RwLock<HashMap<String, Arc<RwLock<Box<fits::FITS>>>>>> = {
+        Arc::new(RwLock::new(HashMap::new()))
     };
 }
 
@@ -583,7 +583,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-13.4";
+static VERSION_STRING: &'static str = "SV2018-08-14.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

@@ -5,6 +5,8 @@ use std::collections::{HashMap, HashSet};
 
 use chrono;
 use timer;
+use std::time::SystemTime;
+use std::time::Duration;
 
 use actix::*;
 use rusqlite;
@@ -16,10 +18,14 @@ use molecule::Molecule;
 use DATASETS;
 
 #[cfg(feature = "server")]
-const GARBAGE_COLLECTION_TIMEOUT: i64 = 60;//[s]; a dataset inactivity timeout
+const GARBAGE_COLLECTION_TIMEOUT: i64 = 60;//[s]; a dataset inactivity timeout//was 60
 
 #[cfg(not(feature = "server"))]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 10;//[s]; a dataset inactivity timeout
+
+const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 10*60;//[s]; a dataset inactivity timeout//was 60
+
+const DUMMY_DATASET_TIMEOUT: u64 = 24*60*60;//[s]; 24 hours, plenty of time for a local jvox download to complete (or fail)
 
 /// the server sends this messages to session
 #[derive(Message)]
@@ -80,7 +86,7 @@ pub struct SessionServer {
     //splatalogue db
     conn_res: rusqlite::Result<rusqlite::Connection>,
     timer: timer::Timer,
-    //guard: timer::Guard,
+    _guard: timer::Guard,
 }
 
 impl Default for SessionServer {
@@ -88,16 +94,87 @@ impl Default for SessionServer {
         //let mut datasets = HashMap::new();
         //datasets.insert("all".to_owned(), HashSet::new());//for now group all connections together; in the future will be grouped by dataset_id
 
+        let datasets = Arc::new(RwLock::new(HashMap::new()));
+        let molecules = Arc::new(RwLock::new(HashMap::new()));
+
+        let datasets_copy = datasets.clone();
+        let molecules_copy = molecules.clone();
+
         let timer = timer::Timer::new();
-        //let guard = timer.schedule_with_delay(chrono::Duration::seconds(0), move || { });
+        let guard = timer.schedule_repeating(chrono::Duration::seconds(ORPHAN_GARBAGE_COLLECTION_TIMEOUT), move || {
+            //println!("cleaning orphaned datasets");
+
+            let orphans: Vec<_> = {
+                let tmp = DATASETS.read();
+
+                tmp.iter().map(|(key, value)| {                    
+                    let dataset = value.read();
+
+                    let now = SystemTime::now();
+                    let elapsed = now.duration_since(*dataset.timestamp.read());
+
+                    let timeout = if dataset.is_dummy {
+                        Duration::new(DUMMY_DATASET_TIMEOUT, 0)
+                    } else {                    
+                        Duration::new(GARBAGE_COLLECTION_TIMEOUT as u64, 0)
+                    };
+
+                    match elapsed {                        
+                        Ok(elapsed) => {
+                            println!("[orphaned dataset cleanup]: key: {}, elapsed time: {:?}", key, elapsed);
+
+                            if elapsed > timeout {
+                                println!("{} marked as a candidate for deletion", key);
+
+                                //check if there are no new active sessions
+                                match datasets_copy.read().get(key) {                        
+                                    Some(_) => {                            
+                                        println!("[orphaned dataset cleanup]: an active session has been found for {}, doing nothing", key);
+                                        None
+                                    },
+                                    None => {
+                                        println!("[orphaned dataset cleanup]: no active sessions found, {} will be expunged from memory", key);
+                                        Some(key.clone()) 
+                                    }
+                                }
+                            }
+                            else {
+                                None
+                            }
+                        },
+                        Err(err) => {
+                            println!("SystemTime::duration_since failed: {}", err);
+                            None
+                        }
+                    }
+                    
+                }).collect()
+            };
+            
+            //println!("orphans: {:?}", orphans);
+
+            for key in orphans {
+                match key {
+                    Some(key) => {
+                        //println!("[orphaned dataset cleanup]: no active sessions found, {} will be expunged from memory", key);
+                        
+                        molecules_copy.write().remove(&key);                        
+                        DATASETS.write().remove(&key);//cannot get a lock!                        
+
+                        println!("[orphaned dataset cleanup]: {} has been expunged from memory", key);
+                    },
+                    None => {},
+                }  
+            }
+        });
 
         SessionServer {
             sessions: HashMap::new(),
-            datasets: Arc::new(RwLock::new(HashMap::new())),
-            molecules: Arc::new(RwLock::new(HashMap::new())),
+            datasets: datasets,
+            molecules: molecules,
             conn_res: rusqlite::Connection::open(path::Path::new("splatalogue_v3.db")),
             timer: timer,
-            //guard: guard,
+            _guard: guard,
         }
     }
 }
@@ -172,8 +249,20 @@ impl Handler<Disconnect> for SessionServer {
                         None => {
                             println!("[garbage collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);
 
-                            molecules.write().remove(&msg.dataset_id);
-                            DATASETS.write().remove(&msg.dataset_id);
+                            let is_dummy = {
+                                let tmp = DATASETS.read();
+                                let fits = tmp.get(&msg.dataset_id).unwrap().read() ;
+
+                                fits.is_dummy
+                            };
+
+                            //do not remove dummy datasets (loading progress etc)
+                            //they will be cleaned in a separate garbage collection thread
+                            //what about the molecules???
+                            if !is_dummy {
+                                molecules.write().remove(&msg.dataset_id);
+                                DATASETS.write().remove(&msg.dataset_id);
+                            }
                         }
                     };
                 }).ignore();
