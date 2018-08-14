@@ -767,8 +767,13 @@ impl FITS {
             println!("{}: reading FITS data completed", id);
         };
 
-        let filename = format!("{}/{}.fits", FITSCACHE, id);
-        let _ = std::fs::rename(tmp, filename);
+        if fits.filesize >= FITS_CHUNK_LENGTH as u64 {
+            let filename = format!("{}/{}.fits", FITSCACHE, id);
+            let _ = std::fs::rename(tmp, filename);
+        }
+        else {
+            fits.send_progress_notification(&server, &"error downloading FITS".to_owned(), 0, 0);
+        };
 
         fits
     }
