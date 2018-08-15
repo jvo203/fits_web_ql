@@ -311,12 +311,11 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
-        //at first fill-in the self.data_f16 vector in parallel
-        //then deal with processing the data
+        //at first fill-in the self.data_f16 vector in parallel        
         let gather_f16 : Vec<_> = (0 .. self.depth).into_par_iter().map(|frame| {            
             //frame is i32
             let offset = (frame as usize) * frame_size ;
-            let len = frame_size / 2 ;            
+            //let len = frame_size / 2 ;            
             
             let mut data_u8 : Vec<u8> = vec![0; frame_size];
 
@@ -374,7 +373,17 @@ impl FITS {
                     },
                     Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
                 }
-            };*/
+            };
+            
+            self.dmin = self.dmin.min(frame_min);
+            self.dmax = self.dmax.max(frame_max);
+
+            //mean and integrated intensities @ frame
+            if count > 0 {
+                self.mean_spectrum[frame as usize] = sum / (count as f32) ;
+                self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
+            }
+            */
 
             let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
             self.send_progress_notification(&server, &"processing FITS".to_owned(), total, previous_frame_count+1);            
@@ -388,8 +397,50 @@ impl FITS {
 
         println!("[read_from_cache_par] elapsed time: {} [ms]", (stop-start)/1000000);
 
+        //then deal with processing the data (sequentially for the time being)
+
+        for frame in 0..self.depth {
+            let mut sum : f32 = 0.0 ;
+            let mut count : i32 = 0 ;
+
+            //no mistake here, the initial ranges are supposed to be broken
+            let mut frame_min = std::f32::MAX;
+            let mut frame_max = std::f32::MIN;
+
+            let vec = &self.data_f16[frame as usize];
+
+            for i in 0..vec.len() {
+                let float16 = vec[i];
+
+                let tmp = self.bzero + self.bscale * float16.to_f32() ;
+                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
+                    self.pixels[i as usize] += tmp * cdelt3;    
+                    self.mask[i as usize] = true ;
+
+                    frame_min = frame_min.min(tmp);
+                    frame_max = frame_max.max(tmp);
+
+                    sum += tmp ;
+                    count += 1 ;                                
+                }
+            }
+
+            self.dmin = self.dmin.min(frame_min);
+            self.dmax = self.dmax.max(frame_max);
+
+            //mean and integrated intensities @ frame
+            if count > 0 {
+                self.mean_spectrum[frame as usize] = sum / (count as f32) ;
+                self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
+            }
+        }
+
+        let stop2 = precise_time::precise_time_ns();
+
+        println!("[read_from_cache_par] processing time: {} [ms]", (stop2-stop)/1000000);
+
         //for now returns false
-        false
+        true
     }
 
     fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<server::SessionServer>) -> bool {
