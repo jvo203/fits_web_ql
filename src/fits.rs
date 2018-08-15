@@ -385,8 +385,8 @@ impl FITS {
             }
             */
 
-            let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
-            //self.send_progress_notification(&server, &"processing FITS".to_owned(), total, previous_frame_count+1);            
+            /*let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
+            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, previous_frame_count+1);*/
 
             data_f16
         }).collect();
@@ -398,7 +398,7 @@ impl FITS {
         println!("[read_from_cache_par] elapsed time: {} [ms]", (stop-start)/1000000);
 
         //then deal with processing the data (sequentially for the time being)
-
+        //the serial version is too slow, will need to use ispc-accelerated parallel version
         for frame in 0..self.depth {
             let mut sum : f32 = 0.0 ;
             let mut count : i32 = 0 ;
