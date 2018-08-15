@@ -13,6 +13,7 @@ use byteorder::{LittleEndian, BigEndian, ReadBytesExt};
 use precise_time;
 use std::sync::mpsc;
 use num_cpus;
+use positioned_io::ReadAt;
 
 use actix::*;
 use server;
@@ -22,6 +23,8 @@ use std::error::Error;
 use std::cmp::Ordering::Equal;
 use num_integer::Integer;
 use num;
+
+use std::sync::atomic::{AtomicIsize,Ordering};
 
 use vpx_sys::*;
 
@@ -292,9 +295,104 @@ impl FITS {
         fits
     }
 
-    fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<server::SessionServer>) -> bool {
-        //mmap the half-float file
+    //a parallel multi-threaded read from the cache file
+    fn read_from_cache_par(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<server::SessionServer>) -> bool {
+        //load data from filepath
+        let f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(err) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, err);
+                return false;      
+            }
+        } ;
 
+        let total = self.depth;
+        static frame_count: AtomicIsize = AtomicIsize::new(0);
+
+        let start = precise_time::precise_time_ns();
+
+        //at first fill-in the self.data_f16 vector in parallel
+        //then deal with processing the data
+        let gather_f16 : Vec<_> = (0 .. self.depth).into_par_iter().map(|frame| {            
+            //frame is i32
+            let offset = (frame as usize) * frame_size ;
+            let len = frame_size / 2 ;            
+            
+            let mut data_u8 : Vec<u8> = vec![0; frame_size];
+
+            //parallel read at offset
+            let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
+                Ok(size) => size,
+                Err(err) => {
+                    print!("read_at error: {}", err);
+                    0
+                },
+            };
+
+            //println!("frame: {}, offset: {}, bytes read: {}", frame, offset, bytes_read);
+
+            if bytes_read != frame_size {
+                println!("CRITICAL ERROR {:?}: read {} bytes @ frame {}, requested {} bytes", filepath, bytes_read, frame, frame_size);                
+            };
+
+            //let mut data_f16 : Vec<f16> = Vec::with_capacity(len) ;
+
+            //need to mutate data_u8 into vec_f16
+            let ptr = data_u8.as_ptr() as *mut f16;
+            let len = data_u8.len() ;
+            let capacity = data_u8.capacity() ;
+
+            let data_f16 : Vec<f16> = unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) } ;
+            unsafe { mem::forget(data_u8) } ;
+
+            /*let mut rdr = Cursor::new(data_u8);
+
+            let mut sum : f32 = 0.0 ;
+            let mut count : i32 = 0 ;
+
+            //no mistake here, the initial ranges are supposed to be broken
+            let mut frame_min = std::f32::MAX;
+            let mut frame_max = std::f32::MIN;
+
+            for i in 0..len {                           
+                match rdr.read_u16::<LittleEndian>() {                    
+                    Ok(u16) => {                                              
+                        let float16 = f16::from_bits(u16);
+                        data_f16.push(float16);
+
+                        let tmp = self.bzero + self.bscale * float16.to_f32() ;
+                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
+                            //self.pixels[i as usize] += tmp * cdelt3;    
+                            //self.mask[i as usize] = true ;
+
+                            frame_min = frame_min.min(tmp);
+                            frame_max = frame_max.max(tmp);
+
+                            sum += tmp ;
+                            count += 1 ;                                
+                        }
+                    },
+                    Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
+                }
+            };*/
+
+            frame_count.fetch_add(1, Ordering::SeqCst) ;
+            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame_count.load(Ordering::Relaxed) as i32);            
+
+            data_f16
+        }).collect();
+
+        self.data_f16 = gather_f16 ;
+
+        let stop = precise_time::precise_time_ns();
+
+        println!("[read_from_cache_par] elapsed time: {} [ms]", (stop-start)/1000000);
+
+        //for now returns false
+        false
+    }
+
+    fn read_from_cache(&mut self, filepath: &std::path::Path, frame_size: usize, cdelt3: f32, server: &Addr<server::SessionServer>) -> bool {
         //load data from filepath
         let mut f = match File::open(filepath) {
             Ok(x) => x,
@@ -305,6 +403,8 @@ impl FITS {
         } ;
 
         let total = self.depth;        
+
+        let start = precise_time::precise_time_ns();
 
         let (tx, rx) = mpsc::channel();
 
@@ -351,8 +451,9 @@ impl FITS {
             let mut frame_max = std::f32::MIN;
                        
             {
-                let mut rdr = Cursor::new(data); 
-                let vec = self.data_f16.get_mut(frame as usize).unwrap() ;
+                let mut rdr = Cursor::new(data);                
+                //let vec = self.data_f16.get_mut(frame as usize).unwrap() ;
+                let mut vec : Vec<f16> = Vec::with_capacity(len);
 
                 for i in 0..len {                
                     match rdr.read_u16::<LittleEndian>() {                    
@@ -375,6 +476,8 @@ impl FITS {
                         Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
                     }
                 }
+
+                self.data_f16[frame as usize] = vec;
             }
 
             self.dmin = self.dmin.min(frame_min);
@@ -394,6 +497,10 @@ impl FITS {
             println!("CRITICAL ERROR not all FITS cube frames have been read: {}/{}", frame, total);
             return false;
         };
+
+        let stop = precise_time::precise_time_ns();
+
+        println!("[read_from_cache] elapsed time: {} [ms]", (stop-start)/1000000);
 
         return true;
     }
@@ -521,9 +628,13 @@ impl FITS {
         if fits.bitpix == -32 && filepath.exists() {                        
             println!("{}: reading half-float f16 data from cache", id);
 
-            if !fits.read_from_cache(filepath, frame_size/2, cdelt3 as f32, &server) {
-                println!("CRITICAL ERROR reading from half-float cache");
-                return fits;
+            if !fits.read_from_cache_par(filepath, frame_size/2, cdelt3 as f32, &server) {
+                println!("CRITICAL ERROR parallel reading from half-float cache");
+                
+                if !fits.read_from_cache(filepath, frame_size/2, cdelt3 as f32, &server) {
+                    println!("CRITICAL ERROR reading from half-float cache");
+                    return fits;
+                }
             }
         }
         else {            
@@ -816,7 +927,8 @@ impl FITS {
             8 => self.data_u8.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
             16 => self.data_i16.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
             32 => self.data_i32.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
-            -32 => self.data_f16.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+            //-32 => self.data_f16.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+            -32 => self.data_f16.resize(self.depth as usize, Vec::new()),
             -64 => self.data_f64.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
             _ => println!("unsupported bitpix: {}", self.bitpix)
         }
@@ -3364,8 +3476,7 @@ impl Drop for FITS {
                         }
                     };
 
-                    for frame in 0..self.depth as usize {
-                        let v16 = &self.data_f16[frame];                       
+                    for v16 in &self.data_f16 {
                         let ptr = v16.as_ptr() as *mut u8;
                         let len = v16.len() ;
 

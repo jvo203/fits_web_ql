@@ -39,4 +39,5 @@ serde_derive = "*"
 bincode = "*"
 curl = "*"
 timer = "*"
+positioned-io = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }

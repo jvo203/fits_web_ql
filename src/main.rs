@@ -24,6 +24,7 @@ extern crate num_cpus;
 extern crate timer;
 extern crate vpx_sys;
 extern crate num_rational;
+extern crate positioned_io;
 
 //extern crate rav1e;
 //use rav1e::*;
@@ -583,7 +584,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-15.0";
+static VERSION_STRING: &'static str = "SV2018-08-15.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
