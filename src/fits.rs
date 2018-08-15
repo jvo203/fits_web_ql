@@ -376,8 +376,8 @@ impl FITS {
                 }
             };*/
 
-            frame_count.fetch_add(1, Ordering::SeqCst) ;
-            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame_count.load(Ordering::Relaxed) as i32);            
+            let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
+            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, previous_frame_count+1);            
 
             data_f16
         }).collect();
