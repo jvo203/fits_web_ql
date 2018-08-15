@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-15.0";
+    return "JS2018-08-15.1";
 }
 
 var generateUid = function ()
@@ -1371,7 +1371,7 @@ function process_progress_event(data, index)
 	    if(notifications_completed == va_count)
 		document.getElementById('welcome').style.display = "none";
 
-		if(message.indexOf("error"))
+		if(message.indexOf("error") >= 0)
 			show_error();
 	}
     }
