@@ -251,14 +251,24 @@ impl Handler<Disconnect> for SessionServer {
 
                             let is_dummy = {
                                 let tmp = DATASETS.read();
-                                let fits = tmp.get(&msg.dataset_id).unwrap().read() ;
-
-                                fits.is_dummy
+                                let fits = tmp.get(&msg.dataset_id);
+                                                                
+                                match fits {
+                                    Some(lock) => {
+                                        let fits = lock.read();
+                                        fits.is_dummy
+                                    },
+                                    None => {
+                                        println!("[garbage collection]: error getting a value from a HashMap for {}", &msg.dataset_id);
+                                        return;
+                                    }
+                                }                        
                             };
 
                             //do not remove dummy datasets (loading progress etc)
                             //they will be cleaned in a separate garbage collection thread
                             //what about the molecules???
+                            //molecules will be taken care of later on in the orphan garbage collection
                             if !is_dummy {
                                 molecules.write().remove(&msg.dataset_id);
                                 DATASETS.write().remove(&msg.dataset_id);
