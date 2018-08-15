@@ -342,7 +342,7 @@ impl FITS {
             let capacity = data_u8.capacity() ;
 
             let data_f16 : Vec<f16> = unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) } ;
-            unsafe { mem::forget(data_u8) } ;
+            mem::forget(data_u8) ;
 
             /*let mut rdr = Cursor::new(data_u8);
 
@@ -386,7 +386,7 @@ impl FITS {
             */
 
             let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
-            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, previous_frame_count+1);            
+            //self.send_progress_notification(&server, &"processing FITS".to_owned(), total, previous_frame_count+1);            
 
             data_f16
         }).collect();
@@ -433,6 +433,8 @@ impl FITS {
                 self.mean_spectrum[frame as usize] = sum / (count as f32) ;
                 self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
             }
+
+            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
         }
 
         let stop2 = precise_time::precise_time_ns();
