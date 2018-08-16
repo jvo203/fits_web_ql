@@ -292,6 +292,53 @@ pub fn from_path_mmap(id: &String, flux: &String, filepath: &std::path::Path, se
         //calculate pixels, mask and *_spectrum in a separate loop
 }
 
+//then deal with processing the data (sequentially for the time being)
+        //the ispc-accelerated serial version (needs to be parallelised)
+        for frame in 0..self.depth {
+            //no mistake here, the initial ranges are supposed to be broken
+            let mut frame_min = std::f32::MAX;
+            let mut frame_max = std::f32::MIN;
+
+            let mut mean_spectrum = 0.0_f32;
+            let mut integrated_spectrum = 0.0_f32;
+
+            let vec = &self.data_f16[frame as usize];            
+
+            let mut references: [f32; 4] = [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+
+            let vec_ptr = vec.as_ptr() as *mut i16;
+            let vec_len = vec.len() ;
+
+            let mask_ptr = self.mask.as_ptr() as *mut u8;
+            let mask_len = self.mask.len() ;
+
+            unsafe {                    
+                let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                //make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, self.pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());  
+            }
+
+            frame_min = references[0] ;
+            frame_max = references[1] ;
+            mean_spectrum = references[2] ;
+            integrated_spectrum = references[3] ;
+
+            //println!("frame {}, references: {:?}", frame, references);
+
+            /*self.mean_spectrum[frame as usize] = mean_spectrum ;
+            self.integrated_spectrum[frame as usize] = integrated_spectrum ;
+            self.dmin = self.dmin.min(frame_min);
+            self.dmax = self.dmax.max(frame_max);*/
+
+            //self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
+        }
+
+        let stop2 = precise_time::precise_time_ns();
+
+        println!("[read_from_cache_par] processing time: {} [ms]", (stop2-stop)/1000000);
+
+
 fn get_molecules_lock(req: HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
 

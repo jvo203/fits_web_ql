@@ -1,6 +1,5 @@
 use std;
 use std::slice;
-//use std::sync::RwLock;
 use parking_lot::RwLock;
 use std::thread;
 use std::time::{SystemTime};
@@ -30,9 +29,10 @@ use std::sync::atomic::{AtomicIsize,Ordering};
 
 use vpx_sys::*;
 
+use make_image_spectrumF16_minmax;
+use join_pixels_masks;
 use calculate_radial_spectrumF16;
 use calculate_square_spectrumF16;
-use make_image_spectrumF16_minmax;
 
 /*
 extern "C" { pub fn calculate_radial_spectrumF16 ( cubeData : * mut i16 , bzero : f32 , bscale : f32 , datamin : f32 , datamax : f32 , width : u32 , x1 : i32 , x2 : i32 , y1 : i32 , y2 : i32 , cx : i32 , cy : i32 , r2 : i32 , average : bool , cdelt3 : f32 ) -> f32 ; }
@@ -345,6 +345,9 @@ impl FITS {
             thread_integrated_spectrum.push(atomic::Atomic::new(0.0));
         };
 
+        let thread_min = RwLock::new(std::f32::MAX);
+        let thread_max = RwLock::new(std::f32::MIN);
+
         //at first fill-in the self.data_f16 vector in parallel        
         let gather_f16 : Vec<_> = pool.install(|| (0 .. self.depth).into_par_iter().map(|frame| {
             //frame is i32
@@ -409,7 +412,18 @@ impl FITS {
             frame_max = references[1] ;
             mean_spectrum = references[2] ;
             integrated_spectrum = references[3] ;
-            //
+            
+            thread_mean_spectrum[frame as usize].store(mean_spectrum, Ordering::SeqCst) ;
+            thread_integrated_spectrum[frame as usize].store(integrated_spectrum, Ordering::SeqCst) ;
+
+            let current_min = { *thread_min.read() } ;
+            let current_max = { *thread_max.read() } ;
+
+            {
+                *(thread_min.write()) = frame_min.min(current_min) ;
+                *(thread_max.write()) = frame_max.max(current_max) ;
+            }
+            //end of parallel data processing
 
             let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
             self.send_progress_notification(&server, &"loading FITS".to_owned(), total, previous_frame_count+1);
@@ -420,58 +434,40 @@ impl FITS {
 
         self.data_f16 = gather_f16 ;
 
+        self.dmin = *thread_min.read() ;
+        self.dmax = *thread_max.read() ;
+
+        self.mean_spectrum = thread_mean_spectrum.iter().map(|x| {
+            x.load(Ordering::SeqCst)
+        }).collect();
+
+        self.integrated_spectrum = thread_integrated_spectrum.iter().map(|x| {
+            x.load(Ordering::SeqCst)
+        }).collect();
+
+        //then fuse self.pixels and self.mask with the local thread versions
+        for tid in 0..num_threads {
+            let mut pixels_tid = thread_pixels[tid].write();
+
+            let mask_tid = thread_mask[tid].read();
+            let mask_tid_ptr = mask_tid.as_ptr() as *mut u8;
+
+            let mask_ptr = self.mask.as_ptr() as *mut u8;
+
+            let total_size = self.pixels.len();
+
+            unsafe {
+                let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
+                let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
+
+                join_pixels_masks(self.pixels.as_mut_ptr(), pixels_tid.as_mut_ptr(), mask_raw.as_mut_ptr(), mask_tid_raw.as_mut_ptr(), cdelt3, total_size as u32);
+            }
+        }
+
         let stop = precise_time::precise_time_ns();
 
         println!("[read_from_cache_par] elapsed time: {} [ms]", (stop-start)/1000000);
 
-        //then deal with processing the data (sequentially for the time being)
-        //the ispc-accelerated serial version (needs to be parallelised)
-        for frame in 0..self.depth {
-            //no mistake here, the initial ranges are supposed to be broken
-            let mut frame_min = std::f32::MAX;
-            let mut frame_max = std::f32::MIN;
-
-            let mut mean_spectrum = 0.0_f32;
-            let mut integrated_spectrum = 0.0_f32;
-
-            let vec = &self.data_f16[frame as usize];            
-
-            let mut references: [f32; 4] = [frame_min, frame_max, mean_spectrum, integrated_spectrum];
-
-            let vec_ptr = vec.as_ptr() as *mut i16;
-            let vec_len = vec.len() ;
-
-            let mask_ptr = self.mask.as_ptr() as *mut u8;
-            let mask_len = self.mask.len() ;
-
-            unsafe {                    
-                let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
-                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-
-                make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, self.pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());  
-            }
-
-            frame_min = references[0] ;
-            frame_max = references[1] ;
-            mean_spectrum = references[2] ;
-            integrated_spectrum = references[3] ;
-
-            //println!("frame {}, references: {:?}", frame, references);
-
-            self.mean_spectrum[frame as usize] = mean_spectrum ;
-            self.integrated_spectrum[frame as usize] = integrated_spectrum ;
-
-            self.dmin = self.dmin.min(frame_min);
-            self.dmax = self.dmax.max(frame_max);
-
-            //self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
-        }
-
-        let stop2 = precise_time::precise_time_ns();
-
-        println!("[read_from_cache_par] processing time: {} [ms]", (stop2-stop)/1000000);
-
-        //for now returns false
         true
     }
 
