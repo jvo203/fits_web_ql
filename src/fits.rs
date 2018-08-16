@@ -29,6 +29,9 @@ use std::sync::atomic::{AtomicIsize,Ordering};
 use vpx_sys::*;
 
 use calculate_radial_spectrumF16;
+use calculate_square_spectrumF16;
+use make_image_spectrumF16_minmax;
+
 /*
 extern "C" { pub fn calculate_radial_spectrumF16 ( cubeData : * mut i16 , bzero : f32 , bscale : f32 , datamin : f32 , datamax : f32 , width : u32 , x1 : i32 , x2 : i32 , y1 : i32 , y2 : i32 , cx : i32 , cy : i32 , r2 : i32 , average : bool , cdelt3 : f32 ) -> f32 ; }
 */
@@ -407,32 +410,38 @@ impl FITS {
             let mut frame_min = std::f32::MAX;
             let mut frame_max = std::f32::MIN;
 
-            let vec = &self.data_f16[frame as usize];
+            let mut mean_spectrum = 0.0_f32;
+            let mut integrated_spectrum = 0.0_f32;
 
-            for i in 0..vec.len() {
-                let float16 = vec[i];
+            let vec = &self.data_f16[frame as usize];            
 
-                let tmp = self.bzero + self.bscale * float16.to_f32() ;
-                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
-                    self.pixels[i as usize] += tmp * cdelt3;    
-                    self.mask[i as usize] = true ;
+            let mut references: [f32; 4] = [frame_min, frame_max, mean_spectrum, integrated_spectrum];
 
-                    frame_min = frame_min.min(tmp);
-                    frame_max = frame_max.max(tmp);
+            let ptr = vec.as_ptr() as *mut i16;
+            let len = vec.len() ;
 
-                    sum += tmp ;
-                    count += 1 ;                                
-                }
+            let mask_ptr = self.mask.as_ptr() as *mut u8;
+            let mask_len = self.mask.len() ;
+
+            unsafe {                    
+                let mut raw = slice::from_raw_parts_mut(ptr, len);
+                let mut mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                make_image_spectrumF16_minmax( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, self.pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), len as u32, references.as_mut_ptr());  
             }
+
+            frame_min = references[0] ;
+            frame_max = references[1] ;
+            mean_spectrum = references[2] ;
+            integrated_spectrum = references[3] ;
+
+            //println!("frame {}, references: {:?}", frame, references);
+
+            self.mean_spectrum[frame as usize] = mean_spectrum ;
+            self.integrated_spectrum[frame as usize] = integrated_spectrum ;
 
             self.dmin = self.dmin.min(frame_min);
             self.dmax = self.dmax.max(frame_max);
-
-            //mean and integrated intensities @ frame
-            if count > 0 {
-                self.mean_spectrum[frame as usize] = sum / (count as f32) ;
-                self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
-            }
 
             self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
         }
@@ -3017,7 +3026,7 @@ impl FITS {
                     },
                     _ => {                        
                         (start .. end+1).into_par_iter().map(|frame| {
-                            self.get_square_spectrum_at(frame, x1, x2, y1, y2, mean, cdelt3 as f32)
+                            self.get_square_spectrum_at_ispc(frame, x1, x2, y1, y2, mean, cdelt3 as f32)
                         }).collect()
                     },
                 };                       
@@ -3184,6 +3193,29 @@ impl FITS {
         }
         else {
             0.0
+        }
+    }
+
+     fn get_square_spectrum_at_ispc(&self, frame: usize, x1: usize, x2: usize, y1: usize, y2: usize, mean: bool, cdelt3: f32) -> f32 {
+        match self.bitpix {
+            -32 => {
+                let vec = &self.data_f16[frame];
+                let ptr = vec.as_ptr() as *mut i16;
+                let len = vec.len() ;                
+
+                unsafe {                    
+                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+
+                    let spectrum = calculate_square_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, mean, cdelt3);                  
+
+                    spectrum
+                }
+            },
+            _ => {
+                println!("SIMD support for bitpix={} unavailable, switching to normal Rust", self.bitpix);
+                
+                self.get_square_spectrum_at(frame, x1, x2, y1, y2, mean, cdelt3)
+            }
         }
     }
 
