@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-15.1";
+    return "JS2018-08-16.0";
 }
 
 var generateUid = function ()
@@ -9267,10 +9267,6 @@ function show_welcome()
     if(!isLocal)
     {
 	ul.append("li")
-	    .attr("class", "list-group-item list-group-item-info")
-	    .html("<h4>after <em style=\"color:" + textColour + "\">60 minutes</em> of inactivity the session may time-out, requiring a manual page reload</h4>");
-
-	ul.append("li")
 	    .attr("class", "list-group-item list-group-item-success")
 	    .html("<h4>FITSWebQL Personal Edition (local version) download: <a href=\"http://jvo.nao.ac.jp/~chris/fitswebql.html\"><em>FITSWebQL installation instructions</em></a></h4>");
     }    
@@ -9298,7 +9294,7 @@ function show_welcome()
     footer.append("p")
 	//.style("color", "#a94442")
 	.attr("align","left")
-	.html('<label style="cursor: pointer"><input type="checkbox" value="" class="control-label" style="cursor: pointer" id="donotshowcheckbox" onchange="javascript:donotshow();">&nbsp;don\'t show this dialogue again</label>' + '&nbsp;&nbsp;&nbsp;<a style="color:red" href="' + href + '">page loading problems?</a>' + '<button type="submit" class="btn btn-danger btn-default pull-right" data-dismiss="modal"><span class="glyphicon glyphicon-remove"></span> Cancel</button>');        
+	.html('<label style="cursor: pointer"><input type="checkbox" value="" class="control-label" style="cursor: pointer" id="donotshowcheckbox" onchange="javascript:donotshow();">&nbsp;don\'t show this dialogue again</label>' + '&nbsp;&nbsp;&nbsp;<a style="color:red" href="' + href + '">page loading problems?</a>' + '<button type="submit" class="btn btn-danger btn-default pull-right" data-dismiss="modal"><span class="glyphicon glyphicon-remove"></span> Close</button>');        
     
     $('#welcomeScreen').modal('show');
 }
