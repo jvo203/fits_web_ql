@@ -317,8 +317,7 @@ impl FITS {
         //at first fill-in the self.data_f16 vector in parallel        
         let gather_f16 : Vec<_> = (0 .. self.depth).into_par_iter().map(|frame| {            
             //frame is i32
-            let offset = (frame as usize) * frame_size ;
-            //let len = frame_size / 2 ;            
+            let offset = (frame as usize) * frame_size ;      
             
             let mut data_u8 : Vec<u8> = vec![0; frame_size];
 
@@ -337,8 +336,6 @@ impl FITS {
                 println!("CRITICAL ERROR {:?}: read {} bytes @ frame {}, requested {} bytes", filepath, bytes_read, frame, frame_size);                
             };
 
-            //let mut data_f16 : Vec<f16> = Vec::with_capacity(len) ;
-
             //need to mutate data_u8 into vec_f16
             let ptr = data_u8.as_ptr() as *mut f16;
             let len = data_u8.len() ;
@@ -347,49 +344,8 @@ impl FITS {
             let data_f16 : Vec<f16> = unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) } ;
             mem::forget(data_u8) ;
 
-            /*let mut rdr = Cursor::new(data_u8);
-
-            let mut sum : f32 = 0.0 ;
-            let mut count : i32 = 0 ;
-
-            //no mistake here, the initial ranges are supposed to be broken
-            let mut frame_min = std::f32::MAX;
-            let mut frame_max = std::f32::MIN;
-
-            for i in 0..len {                           
-                match rdr.read_u16::<LittleEndian>() {                    
-                    Ok(u16) => {                                              
-                        let float16 = f16::from_bits(u16);
-                        data_f16.push(float16);
-
-                        let tmp = self.bzero + self.bscale * float16.to_f32() ;
-                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
-                            //self.pixels[i as usize] += tmp * cdelt3;    
-                            //self.mask[i as usize] = true ;
-
-                            frame_min = frame_min.min(tmp);
-                            frame_max = frame_max.max(tmp);
-
-                            sum += tmp ;
-                            count += 1 ;                                
-                        }
-                    },
-                    Err(err) => println!("LittleEndian --> LittleEndian u16 conversion error: {}", err)
-                }
-            };
-            
-            self.dmin = self.dmin.min(frame_min);
-            self.dmax = self.dmax.max(frame_max);
-
-            //mean and integrated intensities @ frame
-            if count > 0 {
-                self.mean_spectrum[frame as usize] = sum / (count as f32) ;
-                self.integrated_spectrum[frame as usize] = sum * cdelt3 ;
-            }
-            */
-
-            /*let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
-            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, previous_frame_count+1);*/
+            let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
+            self.send_progress_notification(&server, &"loading FITS".to_owned(), total, previous_frame_count+1);
 
             data_f16
         }).collect();
@@ -401,11 +357,8 @@ impl FITS {
         println!("[read_from_cache_par] elapsed time: {} [ms]", (stop-start)/1000000);
 
         //then deal with processing the data (sequentially for the time being)
-        //the serial version is too slow, will need to use ispc-accelerated parallel version
+        //the ispc-accelerated serial version (needs to be parallelised)
         for frame in 0..self.depth {
-            let mut sum : f32 = 0.0 ;
-            let mut count : i32 = 0 ;
-
             //no mistake here, the initial ranges are supposed to be broken
             let mut frame_min = std::f32::MAX;
             let mut frame_max = std::f32::MIN;
@@ -443,7 +396,7 @@ impl FITS {
             self.dmin = self.dmin.min(frame_min);
             self.dmax = self.dmax.max(frame_max);
 
-            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
+            //self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame+1);
         }
 
         let stop2 = precise_time::precise_time_ns();
