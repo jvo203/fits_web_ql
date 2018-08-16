@@ -40,4 +40,5 @@ bincode = "*"
 curl = "*"
 timer = "*"
 positioned-io = "*"
+atomic = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }

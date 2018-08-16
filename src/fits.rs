@@ -14,8 +14,10 @@ use precise_time;
 use std::sync::mpsc;
 use num_cpus;
 use positioned_io::ReadAt;
+use atomic;
 
 use actix::*;
+use rayon;
 use server;
 use rayon::prelude::*;
 use curl::easy::Easy;
@@ -314,8 +316,37 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
+        let num_threads = num_cpus::get();
+
+        let pool = match rayon::ThreadPoolBuilder::new().num_threads(num_threads).build() {
+            Ok(pool) => pool,
+            Err(err) => {
+                println!("{:?}, switching to a non-optimised function read_from_cache()",err);
+                return false;
+            }
+        };
+
+        println!("custom thread pool: {:?}", pool);
+
+        //set up thread-local vectors
+        let mut thread_pixels: Vec<RwLock<Vec<f32>>> = Vec::with_capacity(num_threads);
+        let mut thread_mask: Vec<RwLock<Vec<bool>>> = Vec::with_capacity(num_threads);
+
+        for _i in 0..num_threads {
+            thread_pixels.push(RwLock::new(vec![0.0; self.pixels.len()]));
+            thread_mask.push(RwLock::new(vec![false; self.mask.len()]));
+        };
+
+        let mut thread_mean_spectrum: Vec<atomic::Atomic<f32>> = Vec::with_capacity(self.depth as usize) ;
+        let mut thread_integrated_spectrum: Vec<atomic::Atomic<f32>> = Vec::with_capacity(self.depth as usize) ;
+        
+        for _i in 0..self.depth {
+            thread_mean_spectrum.push(atomic::Atomic::new(0.0));
+            thread_integrated_spectrum.push(atomic::Atomic::new(0.0));
+        };
+
         //at first fill-in the self.data_f16 vector in parallel        
-        let gather_f16 : Vec<_> = (0 .. self.depth).into_par_iter().map(|frame| {            
+        let gather_f16 : Vec<_> = pool.install(|| (0 .. self.depth).into_par_iter().map(|frame| {
             //frame is i32
             let offset = (frame as usize) * frame_size ;      
             
@@ -330,7 +361,12 @@ impl FITS {
                 },
             };
 
-            //println!("frame: {}, offset: {}, bytes read: {}", frame, offset, bytes_read);
+            let tid = match pool.current_thread_index() {
+                Some(tid) => tid,
+                None => 0,
+            };
+
+            //println!("tid: {}, frame: {}, offset: {}, bytes read: {}", tid, frame, offset, bytes_read);
 
             if bytes_read != frame_size {
                 println!("CRITICAL ERROR {:?}: read {} bytes @ frame {}, requested {} bytes", filepath, bytes_read, frame, frame_size);                
@@ -340,15 +376,47 @@ impl FITS {
             let ptr = data_u8.as_ptr() as *mut f16;
             let len = data_u8.len() ;
             let capacity = data_u8.capacity() ;
+            mem::forget(data_u8) ;
 
             let data_f16 : Vec<f16> = unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) } ;
-            mem::forget(data_u8) ;
+
+            //parallel data processing
+            let mut frame_min = std::f32::MAX;
+            let mut frame_max = std::f32::MIN;
+
+            let mut mean_spectrum = 0.0_f32;
+            let mut integrated_spectrum = 0.0_f32;            
+
+            let mut references: [f32; 4] = [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+            
+            let vec_ptr = data_f16.as_ptr() as *mut i16;
+            let vec_len = data_f16.len() ;
+
+            let mut pixels = thread_pixels[tid].write();            
+
+            let mask = thread_mask[tid].write();
+            let mask_ptr = mask.as_ptr() as *mut u8;
+            let mask_len = mask.len() ;
+
+            unsafe {                    
+                let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());  
+            }
+
+            frame_min = references[0] ;
+            frame_max = references[1] ;
+            mean_spectrum = references[2] ;
+            integrated_spectrum = references[3] ;
+            //
 
             let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
             self.send_progress_notification(&server, &"loading FITS".to_owned(), total, previous_frame_count+1);
 
             data_f16
-        }).collect();
+        }).collect()
+        );
 
         self.data_f16 = gather_f16 ;
 
@@ -370,17 +438,17 @@ impl FITS {
 
             let mut references: [f32; 4] = [frame_min, frame_max, mean_spectrum, integrated_spectrum];
 
-            let ptr = vec.as_ptr() as *mut i16;
-            let len = vec.len() ;
+            let vec_ptr = vec.as_ptr() as *mut i16;
+            let vec_len = vec.len() ;
 
             let mask_ptr = self.mask.as_ptr() as *mut u8;
             let mask_len = self.mask.len() ;
 
             unsafe {                    
-                let mut raw = slice::from_raw_parts_mut(ptr, len);
-                let mut mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                make_image_spectrumF16_minmax( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, self.pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), len as u32, references.as_mut_ptr());  
+                make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, self.pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());  
             }
 
             frame_min = references[0] ;
