@@ -1,28 +1,33 @@
+#include <emscripten.h>
+
 #include <vpx/vpx_decoder.h>
 #include <vpx/vp8dx.h>
 
 #include <stdio.h> 
 
-//static vpx_codec_ctx_t    vpxContext;
-//static vpx_codec_iface_t *vpxDecoder = NULL ;
-
 static vpx_codec_ctx_t codec;
 
+EMSCRIPTEN_KEEPALIVE
 static int vpx_version() {
-	return 0;
+	return VPX_DECODER_ABI_VERSION ;
 }
 
+EMSCRIPTEN_KEEPALIVE
 static void vpx_init() {
 	if (vpx_codec_dec_init(&codec, vpx_codec_vp9_dx(), NULL, 0))
     	printf("Failed to initialize decoder.\n");
 }
 
+EMSCRIPTEN_KEEPALIVE
 static void vpx_destroy() {
 	if (vpx_codec_destroy(&codec))
 		printf("Failed to destroy codec.\n");
 }
 
-static void vpx_decode_frame(const unsigned char *data, size_t data_len) {
+EMSCRIPTEN_KEEPALIVE
+static double vpx_decode_frame(const unsigned char *data, size_t data_len) {
+	double start = emscripten_get_now();
+
 	if (vpx_codec_decode(&codec, data, (unsigned int)data_len, NULL, 0))
     	printf("Failed to decode frame.\n");
 	else {		
@@ -38,6 +43,9 @@ static void vpx_decode_frame(const unsigned char *data, size_t data_len) {
 		}
 	};
 
+	double elapsed = emscripten_get_now() - start;
+
+	return elapsed ;
 	//vpx_codec_decode(&vpxContext, (const uint8_t *)data, data_len, NULL, 1);
 	// @todo check return value
 	//vpx_codec_decode(&vpxContext, NULL, 0, NULL, 1);

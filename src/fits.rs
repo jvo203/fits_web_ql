@@ -1828,10 +1828,6 @@ impl FITS {
 
         println!("median of an approximate all-data histogram: {} at pos {}, mad_p = {}, mad_n = {}", *self.data_median.read(), pos, *data_mad_p, *data_mad_n);
 
-        //artificial delay to test concurrency
-        /*let ten_secs = std::time::Duration::from_secs(10);
-        thread::sleep(ten_secs);*/
-
         let stop = precise_time::precise_time_ns();  
 
         println!("all-data histogram adaptive step {}, elapsed time {} [ms]", data_step, (stop-start)/1000000);

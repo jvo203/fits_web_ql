@@ -585,7 +585,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-17.1";
+static VERSION_STRING: &'static str = "SV2018-08-17.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1224,6 +1224,21 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     html.push_str("<script src=\"ogv-decoder-video-vp9.js\"></script>\n");
     //html.push_str("<script src=\"ogv-decoder-video-vp9-wasm.js\"></script>\n");
     //html.push_str("<script src=\"ogv.js\"></script>\n");
+
+    //custom vpx wasm
+    html.push_str("<script src=\"vpx.js\"></script>\n");
+    html.push_str("<script>
+        Module.onRuntimeInitialized = async _ => {
+            api = {
+                vpx_version: Module.cwrap('vpx_version', 'number', []),
+                vpx_init: Module.cwrap('vpx_init', '', []),
+                vpx_destroy: Module.cwrap('vpx_destroy', '', []),
+                vpx_decode_frame: Module.cwrap('vpx_decode_frame', 'number', ['number', 'number']),
+            };
+            console.log('VP9 libvpx decoder version:', api.vpx_version());
+            api.vpx_init();
+        };
+    </script>\n");
 
     //bootstrap
     html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1\">\n");

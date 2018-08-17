@@ -259,7 +259,7 @@ impl Handler<Disconnect> for SessionServer {
                                         fits.is_dummy
                                     },
                                     None => {
-                                        println!("[garbage collection]: error getting a value from a HashMap for {}", &msg.dataset_id);
+                                        println!("[garbage collection]: (warning) no value found in a HashMap for {}", &msg.dataset_id);
                                         return;
                                     }
                                 }                        

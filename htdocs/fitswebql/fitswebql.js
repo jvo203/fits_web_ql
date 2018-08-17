@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-16.0";
+    return "JS2018-08-17.1";
 }
 
 var generateUid = function ()
@@ -1840,6 +1840,19 @@ function open_websocket_connection(datasetId, index)
 						d3.select("#fps").text('video: ' + vidFPS + ' fps');
 					});
 				};
+
+				//test the wasm decoder
+				{
+					var len = frame.length ;
+					var ptr = Module._malloc(len);
+
+					Module.HEAPU8.set(frame, ptr);
+
+					let cpu_time = api.vpx_decode_frame(ptr, len);
+					console.log('wasm decoder elapsed time: ' + cpu_time + ' [ms]');
+
+					Module._free(ptr);
+				}
 
 			    /*if(!videoLeft)
 			    {
