@@ -1651,7 +1651,22 @@ impl FITS {
 
         //skip most of the data, take every nth value
         //this will produce an approximate all-data histogram
-        let data_step = 100 ;
+        let data_step = {
+            let total_size = (self.width * self.height) as usize ;
+
+            //an adaptive step based on the amount of data
+            if total_size >= 100*NBINS {
+                1000
+            } else if total_size >= 10*NBINS {
+                100
+            } else if total_size >= NBINS {
+                10
+            } else {
+                //take all data by default
+                1
+            }
+        };
+
 
         let start = precise_time::precise_time_ns();        
 
@@ -1819,7 +1834,7 @@ impl FITS {
 
         let stop = precise_time::precise_time_ns();  
 
-        println!("all-data histogram creation elapsed time {} [ms]", (stop-start)/1000000);
+        println!("all-data histogram adaptive step {}, elapsed time {} [ms]", data_step, (stop-start)/1000000);
     } 
 
     fn make_image_histogram(&mut self, ord_pixels: &Vec<f32>) {
