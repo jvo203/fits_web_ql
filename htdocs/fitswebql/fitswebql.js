@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-17.2";
+    return "JS2018-08-17.3";
 }
 
 var generateUid = function ()
@@ -1850,11 +1850,11 @@ function open_websocket_connection(datasetId, index)
 
 					Module.HEAPU8.set(frame, ptr);
 
-					let cpu_time = api.vpx_decode_frame(ptr, len);					
+					api.vpx_decode_frame(ptr, len);					
 
 					let delta = performance.now() - start;
 
-					console.log('wasm decoder elapsed time: ' + cpu_time + ' [ms]' + ', total: ' + delta + ' [ms]');
+					//console.log('wasm decoding total time: ' + delta + ' [ms]');
 
 					Module._free(ptr);
 				}

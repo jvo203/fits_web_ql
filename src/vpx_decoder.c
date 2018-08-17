@@ -27,6 +27,7 @@ static void vpx_destroy() {
 EMSCRIPTEN_KEEPALIVE
 static double vpx_decode_frame(const unsigned char *data, size_t data_len) {
 	double start = emscripten_get_now();
+	double stop = 0.0 ;
 
 	if (vpx_codec_decode(&codec, data, (unsigned int)data_len, NULL, 0))
     	printf("Failed to decode frame.\n");
@@ -35,7 +36,9 @@ static double vpx_decode_frame(const unsigned char *data, size_t data_len) {
   		vpx_codec_iter_t iter = NULL;
 
 		while ((img = vpx_codec_get_frame(&codec, &iter)) != NULL) {
-      		printf("decoded a %d x %d image\n", img->d_w, img->d_h) ;
+			stop = emscripten_get_now();
+
+      		printf("decoded a %d x %d image, elapsed time %5.2f [ms]\n", img->d_w, img->d_h, (stop-start)) ;
 
 			//call a JavaScript callback here?
 
@@ -43,7 +46,7 @@ static double vpx_decode_frame(const unsigned char *data, size_t data_len) {
 		}
 	};
 
-	double elapsed = emscripten_get_now() - start;
+	double elapsed = stop - start;
 
 	return elapsed ;
 	//vpx_codec_decode(&vpxContext, (const uint8_t *)data, data_len, NULL, 1);
