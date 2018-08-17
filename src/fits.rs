@@ -312,7 +312,7 @@ impl FITS {
         } ;
 
         let total = self.depth;
-        static frame_count: AtomicIsize = AtomicIsize::new(0);
+        let frame_count: AtomicIsize = AtomicIsize::new(0);
 
         let start = precise_time::precise_time_ns();
 
@@ -332,15 +332,15 @@ impl FITS {
         let mut thread_pixels: Vec<RwLock<Vec<f32>>> = Vec::with_capacity(num_threads);
         let mut thread_mask: Vec<RwLock<Vec<bool>>> = Vec::with_capacity(num_threads);
 
-        let mut tid_min: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
-        let mut tid_max: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
+        let mut thread_min: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
+        let mut thread_max: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
 
         for _ in 0..num_threads {
             thread_pixels.push(RwLock::new(vec![0.0; self.pixels.len()]));
             thread_mask.push(RwLock::new(vec![false; self.mask.len()]));
 
-            tid_min.push(atomic::Atomic::new(std::f32::MAX));
-            tid_max.push(atomic::Atomic::new(std::f32::MIN));
+            thread_min.push(atomic::Atomic::new(std::f32::MAX));
+            thread_max.push(atomic::Atomic::new(std::f32::MIN));
         };
 
         let mut thread_mean_spectrum: Vec<atomic::Atomic<f32>> = Vec::with_capacity(self.depth as usize) ;
@@ -350,9 +350,6 @@ impl FITS {
             thread_mean_spectrum.push(atomic::Atomic::new(0.0));
             thread_integrated_spectrum.push(atomic::Atomic::new(0.0));
         };
-
-        /*let thread_min = RwLock::new(std::f32::MAX);
-        let thread_max = RwLock::new(std::f32::MIN);*/
 
         //at first fill-in the self.data_f16 vector in parallel        
         let gather_f16 : Vec<_> = pool.install(|| (0 .. self.depth).into_par_iter().map(|frame| {
@@ -422,32 +419,22 @@ impl FITS {
             thread_mean_spectrum[frame as usize].store(mean_spectrum, Ordering::SeqCst) ;
             thread_integrated_spectrum[frame as usize].store(integrated_spectrum, Ordering::SeqCst) ;
 
-            let current_min = tid_min[tid].load(Ordering::SeqCst);
-            tid_min[tid].store(frame_min.min(current_min), Ordering::SeqCst);
+            let current_min = thread_min[tid].load(Ordering::SeqCst);
+            thread_min[tid].store(frame_min.min(current_min), Ordering::SeqCst);
 
-            let current_max = tid_max[tid].load(Ordering::SeqCst);
-            tid_max[tid].store(frame_max.max(current_max), Ordering::SeqCst);
-
-            /*let current_min = { *thread_min.read() } ;
-            let current_max = { *thread_max.read() } ;
-
-            {
-                *(thread_min.write()) = frame_min.min(current_min) ;
-                *(thread_max.write()) = frame_max.max(current_max) ;
-            }*/
+            let current_max = thread_max[tid].load(Ordering::SeqCst);
+            thread_max[tid].store(frame_max.max(current_max), Ordering::SeqCst);
             //end of parallel data processing
 
-            let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;             
-            self.send_progress_notification(&server, &"loading FITS".to_owned(), total, previous_frame_count+1);
+            let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;
+            let current_frame_count = previous_frame_count + 1;          
+            self.send_progress_notification(&server, &"loading FITS".to_owned(), total, current_frame_count);
 
             data_f16
         }).collect()
         );
 
         self.data_f16 = gather_f16 ;
-
-        /*self.dmin = *thread_min.read() ;
-        self.dmax = *thread_max.read() ;*/
 
         self.mean_spectrum = thread_mean_spectrum.iter().map(|x| {
             x.load(Ordering::SeqCst)
@@ -459,8 +446,8 @@ impl FITS {
 
         //then fuse self.pixels and self.mask with the local thread versions
         for tid in 0..num_threads {
-            self.dmin = self.dmin.min(tid_min[tid].load(Ordering::SeqCst));
-            self.dmax = self.dmax.max(tid_max[tid].load(Ordering::SeqCst));
+            self.dmin = self.dmin.min(thread_min[tid].load(Ordering::SeqCst));
+            self.dmax = self.dmax.max(thread_max[tid].load(Ordering::SeqCst));
 
             let mut pixels_tid = thread_pixels[tid].write();
 
