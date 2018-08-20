@@ -58,7 +58,7 @@ static double vpx_decode_frame(const unsigned char *data, size_t data_len, unsig
 		while ((img = vpx_codec_get_frame(&codec, &iter)) != NULL) {
 			stop = emscripten_get_now();
 
-      		printf("decoded a %d x %d image, elapsed time %5.2f [ms]\n", img->d_w, img->d_h, (stop-start)) ;
+      		printf("[wasm] decoded a %d x %d image, elapsed time %5.2f [ms]\n", img->d_w, img->d_h, (stop-start)) ;
 
 			//fill-in the canvas data here
 			int w = img->d_w ;
@@ -69,7 +69,7 @@ static double vpx_decode_frame(const unsigned char *data, size_t data_len, unsig
 			if(w == _w && h == _h)
 				apply_greyscale(canvas, luma, w, h, stride);
 			else
-				printf("canvas image dimensions %d x %d do not match the decoded image size, doing nothing\n", _w, _h);
+				printf("[wasm] canvas image dimensions %d x %d do not match the decoded image size, doing nothing\n", _w, _h);
 
 			vpx_img_free(img);
 		}

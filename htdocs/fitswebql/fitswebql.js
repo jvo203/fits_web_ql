@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.4";
+    return "JS2018-08-20.5";
 }
 
 var generateUid = function ()
@@ -721,7 +721,7 @@ function process_image(w, h, bytes, stride, index)
 	console.log(imageCanvas.width, imageCanvas.height) ;
 
 	let imageData=context.createImageData(w,h);
-	let imageFrame = {bytes:new Uint8ClampedArray(bytes), w:w, h:w, stride:stride};	
+	let imageFrame = {bytes:new Uint8ClampedArray(bytes), w:w, h:h, stride:stride};	
 
 	apply_colourmap(imageData, colourmap, bytes, w, h, stride) ;
 	context.putImageData(imageData, 0, 0);
