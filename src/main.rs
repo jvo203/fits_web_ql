@@ -1233,7 +1233,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
                 vpx_version: Module.cwrap('vpx_version', 'number', []),
                 vpx_init: Module.cwrap('vpx_init', '', []),
                 vpx_destroy: Module.cwrap('vpx_destroy', '', []),
-                vpx_decode_frame: Module.cwrap('vpx_decode_frame', 'number', ['number', 'number', 'number']),
+                vpx_decode_frame: Module.cwrap('vpx_decode_frame', 'number', ['number', 'number', 'number', 'number', 'number']),
             };
             console.log('VP9 libvpx decoder version:', api.vpx_version());
             api.vpx_init();

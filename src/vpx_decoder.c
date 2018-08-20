@@ -45,7 +45,7 @@ void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, in
 }
 
 EMSCRIPTEN_KEEPALIVE
-static double vpx_decode_frame(const unsigned char *data, size_t data_len, unsigned char* canvas) {
+static double vpx_decode_frame(const unsigned char *data, size_t data_len, unsigned char* canvas, unsigned int _w, unsigned int _h) {
 	double start = emscripten_get_now();
 	double stop = 0.0 ;
 
@@ -66,7 +66,10 @@ static double vpx_decode_frame(const unsigned char *data, size_t data_len, unsig
 			int stride = img->stride[0] ;
 			const unsigned char* luma = img->planes[0] ;
 
-			apply_greyscale(canvas, luma, w, h, stride);
+			if(w == _w && h == _h)
+				apply_greyscale(canvas, luma, w, h, stride);
+			else
+				printf("canvas image dimensions %d x %d do not match the decoded image size, doing nothing\n", _w, _h);
 
 			vpx_img_free(img);
 		}
