@@ -2000,16 +2000,10 @@ function open_websocket_connection(datasetId, index)
 
 						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height);
 
-						var imgLen = img.width * img.height * 4;
-						var data = new Uint8ClampedArray(Module.HEAPU8.buffer, videoFrame.ptr, imgLen);
-						videoFrame.img.data.set(data);
-
 						process_video(index);
 					}
 					else
-					{
 						api.vpx_decode_frame(ptr, len, null, 0, 0);
-					}
 
 					Module._free(ptr);
 
@@ -6162,8 +6156,8 @@ function setup_axes()
 				var len = imageFrame.w * imageFrame.h * 4;
 				var ptr = Module._malloc(len);
 
-				//var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
-				var img = new ImageData(new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len), imageFrame.w, imageFrame.h);
+				var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
+				var img = new ImageData(data, imageFrame.w, imageFrame.h);
 
 				console.log("Module._malloc ptr=", ptr, "ImageData=", img);
 
