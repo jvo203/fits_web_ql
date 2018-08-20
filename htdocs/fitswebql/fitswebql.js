@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.6";
+    return "JS2018-08-20.8";
 }
 
 var generateUid = function ()
@@ -6073,13 +6073,13 @@ function setup_axes()
 			video_stack[index] = [] ;
 		};
 
-		if(videoFrame != null)
+		/*if(videoFrame != null)
 		{
 			Module._free(videoFrame.ptr);
 			videoFrame.img = null;
 			videoFrame.ptr = null;
 			videoFrame = null;
-		}
+		}*/
 
 	    shortcut.remove("f");
 	    shortcut.remove("Left") ;
@@ -6127,6 +6127,23 @@ function setup_axes()
 	
 		d3.select("#legend").attr("opacity",0);
 
+		//pre-allocate a video memory
+		//get the dimensions from the imageFrame
+		if(videoFrame == null)
+		{
+			let imageFrame = imageContainer[0].imageFrame;
+			let len = imageFrame.w * imageFrame.h * 4;
+
+			var ptr = Module._malloc(len);
+			var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
+			var img = new ImageData(data, imageFrame.w, imageFrame.h);
+			
+			videoFrame = {
+				img: img,
+				ptr: ptr
+			};
+		}
+
 		for(let index=0;index<va_count;index++)
 		{
 			//OGVDecoderVideoVP9 (asm.js) or OGVDecoderVideoVP9W (wasm)
@@ -6140,23 +6157,6 @@ function setup_axes()
 
 			//requestAnimationFrame(update_video);
 		};
-
-		//pre-allocate a video memory
-		//get the dimensions from the imageFrame
-		let imageFrame = imageContainer[0].imageFrame;
-		let len = imageFrame.w * imageFrame.h * 4;
-
-		if(videoFrame == null)
-		{
-			var ptr = Module._malloc(len);
-			var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
-			var img = new ImageData(data, imageFrame.w, imageFrame.h);
-			
-			videoFrame = {
-				img: img,
-				ptr: ptr
-			};
-		}
 
 	    hide_navigation_bar() ;
 
