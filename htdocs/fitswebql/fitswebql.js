@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.8";
+    return "JS2018-08-20.9";
 }
 
 var generateUid = function ()
@@ -910,7 +910,7 @@ function process_video(index)
 
 	context.putImageData(imageData, 0, 0);
 
-	console.log(imageData.data);
+	console.log(imageData);
 
 	//next display the image
 	if(va_count == 1)
@@ -1725,6 +1725,8 @@ function open_websocket_connection(datasetId, index)
 			//request an image (if it is not in the browser cache)
 			//ALMAWS.send("[image]");
 
+			//ALMAWS.send('[init_video] fps=' + vidFPS);
+
 		    if(index == va_count)
 				send_ping() ;
 		});
@@ -2001,7 +2003,9 @@ function open_websocket_connection(datasetId, index)
 						process_video(index);
 					}
 					else
+					{
 						api.vpx_decode_frame(ptr, len, null, 0, 0);
+					}
 
 					Module._free(ptr);
 
@@ -6070,18 +6074,18 @@ function setup_axes()
 
 		for(let index=0;index<va_count;index++)
 		{
-			wsConn[index].decoder = null ;
-			wsConn[index].send('[end_video]');				    	    	
+			/*wsConn[index].decoder = null ;*/
+			wsConn[index].send('[end_video]');
 			video_stack[index] = [] ;
 		};
 
-		/*if(videoFrame != null)
+		if(videoFrame != null)
 		{
 			Module._free(videoFrame.ptr);
 			videoFrame.img = null;
 			videoFrame.ptr = null;
 			videoFrame = null;
-		}*/
+		}
 
 	    shortcut.remove("f");
 	    shortcut.remove("Left") ;
@@ -6129,6 +6133,21 @@ function setup_axes()
 	
 		d3.select("#legend").attr("opacity",0);
 
+		for(let index=0;index<va_count;index++)
+		{
+			//OGVDecoderVideoVP9 (asm.js) or OGVDecoderVideoVP9W (wasm)
+			/*var decoder = new OGVDecoderVideoVP9();
+			decoder.init(function () {console.log("streaming video decoder initiated");});
+			wsConn[index].decoder = decoder;*/
+
+			wsConn[index].send('[init_video] fps=' + vidFPS);
+	    	    	
+			video_stack[index] = [] ;
+
+			//requestAnimationFrame(update_video);
+		};
+
+		
 		//pre-allocate a video memory
 		//get the dimensions from the imageFrame
 		if(videoFrame == null)
@@ -6139,26 +6158,12 @@ function setup_axes()
 			var ptr = Module._malloc(len);
 			var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
 			var img = new ImageData(data, imageFrame.w, imageFrame.h);
-			
+
 			videoFrame = {
 				img: img,
 				ptr: ptr
 			};
 		}
-
-		for(let index=0;index<va_count;index++)
-		{
-			//OGVDecoderVideoVP9 (asm.js) or OGVDecoderVideoVP9W (wasm)
-			var decoder = new OGVDecoderVideoVP9();
-			decoder.init(function () {console.log("streaming video decoder initiated");});
-			wsConn[index].decoder = decoder;
-
-			wsConn[index].send('[init_video] fps=' + vidFPS);
-	    	    	
-			video_stack[index] = [] ;
-
-			//requestAnimationFrame(update_video);
-		};
 
 	    hide_navigation_bar() ;
 
@@ -6450,7 +6455,7 @@ function x_axis_move(offset)
 			} ;
 		} ;
 
-		idleVideo = setTimeout(videoTimeout, 250, freq) ;
+		//idleVideo = setTimeout(videoTimeout, 250, freq) ;
 	} ;
 
     zoom_molecules(freq) ;
