@@ -2000,6 +2000,11 @@ function open_websocket_connection(datasetId, index)
 
 						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height);
 
+						/*let imgLen = img.width * img.height * 4;
+						let data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, imgLen);
+						let newImg = new ImageData(data, img.width, img.height);
+						videoFrame.img = newImg;*/
+
 						process_video(index);
 					}
 					else
