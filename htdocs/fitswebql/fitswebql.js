@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.14";
+    return "JS2018-08-20.16";
 }
 
 var generateUid = function ()
@@ -1996,7 +1996,7 @@ function open_websocket_connection(datasetId, index)
 					{
 						var img = videoFrame.img;
 
-						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height);
+						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height, colourmap);
 						
 						if(img.data.length == 0)
 						{
@@ -2014,7 +2014,7 @@ function open_websocket_connection(datasetId, index)
 						process_video(index);
 					}
 					else
-						api.vpx_decode_frame(ptr, len, null, 0, 0);
+						api.vpx_decode_frame(ptr, len, null, 0, 0, 'greyscale');
 
 					Module._free(ptr);
 
@@ -9491,7 +9491,7 @@ function show_welcome()
 
 	ul.append("li")
 	.attr("class", "list-group-item list-group-item-success")
-	.html('<h4>Rust WebAssembly-accelerated HTML Canvas <a  href="https://github.com/rustwasm/team"><em>(rust-wasm)</em></a></h4>');
+	.html('<h4>WebAssembly-accelerated HTML Canvas</h4>');
 
     let textColour = 'yellow' ;
 
