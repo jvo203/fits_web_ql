@@ -910,8 +910,6 @@ function process_video(index)
 
 	context.putImageData(imageData, 0, 0);
 
-	console.log(imageData);
-
 	//next display the image
 	if(va_count == 1)
 	{
@@ -1999,6 +1997,9 @@ function open_websocket_connection(datasetId, index)
 						var img = videoFrame.img;
 
 						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height);
+
+						//handle detached data due to WASM memory growth
+						console.log("videoFrame.ImageData = ", img.data);
 
 						process_video(index);
 					}
