@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.11";
+    return "JS2018-08-20.12";
 }
 
 var generateUid = function ()
@@ -6151,18 +6151,23 @@ function setup_axes()
 		//get the dimensions from the imageFrame
 		if(videoFrame == null)
 		{
-			let imageFrame = imageContainer[0].imageFrame;
-			let len = imageFrame.w * imageFrame.h * 4;
+			let imageFrame = imageContainer[va_count-1].imageFrame;
 
-			var ptr = Module._malloc(len);
-			console.log("Module._malloc ptr=", ptr);
-			var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
-			var img = new ImageData(data, imageFrame.w, imageFrame.h);
+			if(imageFrame != null)
+			{
+				let len = imageFrame.w * imageFrame.h * 4;
+				var ptr = Module._malloc(len);
 
-			videoFrame = {
-				img: img,
-				ptr: ptr
-			};
+				var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
+				var img = new ImageData(data, imageFrame.w, imageFrame.h);
+
+				console.log("Module._malloc ptr=", ptr, "data=", data, "ImageData=", img);
+
+				videoFrame = {
+					img: img,
+					ptr: ptr
+				};
+			}
 		}
 
 	    hide_navigation_bar() ;
