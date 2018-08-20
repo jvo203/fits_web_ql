@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.13";
+    return "JS2018-08-20.14";
 }
 
 var generateUid = function ()
@@ -6159,13 +6159,13 @@ function setup_axes()
 
 			if(imageFrame != null)
 			{
-				let len = imageFrame.w * imageFrame.h * 4;
+				var len = imageFrame.w * imageFrame.h * 4;
 				var ptr = Module._malloc(len);
 
-				var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
-				var img = new ImageData(data, imageFrame.w, imageFrame.h);
+				//var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
+				var img = new ImageData(new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len), imageFrame.w, imageFrame.h);
 
-				console.log("Module._malloc ptr=", ptr, "data=", data, "ImageData=", img);
+				console.log("Module._malloc ptr=", ptr, "ImageData=", img);
 
 				videoFrame = {
 					img: img,
