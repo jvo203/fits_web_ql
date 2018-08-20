@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.5";
+    return "JS2018-08-20.6";
 }
 
 var generateUid = function ()
@@ -1993,13 +1993,15 @@ function open_websocket_connection(datasetId, index)
 					if(videoFrame != null)
 					{
 						let img = videoFrame.img;
+
 						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height);
+
+						process_video(index);
 					}
+					else
+						api.vpx_decode_frame(ptr, len, null, 0, 0);
 
 					Module._free(ptr);
-
-					if(videoFrame != null)
-						process_video(index);
 
 					let delta = performance.now() - start;
 
