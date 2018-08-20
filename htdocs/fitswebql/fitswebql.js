@@ -1997,9 +1997,19 @@ function open_websocket_connection(datasetId, index)
 						var img = videoFrame.img;
 
 						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height);
+						
+						if(img.data.length == 0)
+						{
+							//detect detached data due to WASM memory growth
+							console.log("detached WASM buffer detected, refreshing videoFrame.ImageData");
 
-						//handle detached data due to WASM memory growth
-						console.log("videoFrame.ImageData = ", img.data);
+							//WASM buffers have changed, need to refresh the ImageData.data buffer
+							var len = img.width * img.height * 4;
+							var data = new Uint8ClampedArray(Module.HEAPU8.buffer, videoFrame.ptr, len);
+							var img = new ImageData(data, img.width, img.height);
+
+							videoFrame.img = img;
+						}
 
 						process_video(index);
 					}
