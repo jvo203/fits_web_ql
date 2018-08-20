@@ -24,8 +24,28 @@ static void vpx_destroy() {
 		printf("Failed to destroy codec.\n");
 }
 
+void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride)
+{
+	size_t dst_offset = 0 ;
+
+	for(int j=0;j<h;j++)
+	{	  
+	  size_t offset = j * stride ;
+
+	  for(int i=0;i<w;i++)
+	    {			
+			unsigned char pixel = luma[offset++] ;
+			
+			canvas[dst_offset++] = pixel ;
+			canvas[dst_offset++] = pixel ;
+			canvas[dst_offset++] = pixel ;
+			canvas[dst_offset++] = 255 ;//the alpha channel
+		}
+	}
+}
+
 EMSCRIPTEN_KEEPALIVE
-static double vpx_decode_frame(const unsigned char *data, size_t data_len) {
+static double vpx_decode_frame(const unsigned char *data, size_t data_len, unsigned char* canvas) {
 	double start = emscripten_get_now();
 	double stop = 0.0 ;
 
@@ -40,7 +60,13 @@ static double vpx_decode_frame(const unsigned char *data, size_t data_len) {
 
       		printf("decoded a %d x %d image, elapsed time %5.2f [ms]\n", img->d_w, img->d_h, (stop-start)) ;
 
-			//call a JavaScript callback here?
+			//fill-in the canvas data here
+			int w = img->d_w ;
+			int h = img->d_h ;
+			int stride = img->stride[0] ;
+			const unsigned char* luma = img->planes[0] ;
+
+			apply_greyscale(canvas, luma, w, h, stride);
 
 			vpx_img_free(img);
 		}

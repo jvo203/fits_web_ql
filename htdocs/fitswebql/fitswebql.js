@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-17.3";
+    return "JS2018-08-20.3";
 }
 
 var generateUid = function ()
@@ -729,8 +729,6 @@ function process_image(w, h, bytes, stride, index)
 	imageContainer[index-1] = {imageCanvas:imageCanvas, imageFrame:imageFrame, imageData:imageData, newImageData:null, image_bounding_dims:image_bounding_dims, pixel_range:pixel_range} ;
 
 	//next display the image
-
-	
 	if(va_count == 1)
 	{
 	    //place the image onto the main canvas
@@ -894,7 +892,149 @@ function process_image(w, h, bytes, stride, index)
 	{ }
 }
 
-function process_video(w, h, bytes, stride, index)
+
+function process_video(index)
+{		
+	let image_bounding_dims = imageContainer[index-1].image_bounding_dims;
+	//{x1: 0, y1: 0, width: w, height: h};
+
+	let imageCanvas = document.createElement('canvas') ;
+    imageCanvas.style.visibility = "hidden";
+	var context = imageCanvas.getContext('2d');
+
+	let imageData = videoFrame.img;
+
+	imageCanvas.width = imageData.width ;
+	imageCanvas.height = imageData.height ;
+	console.log(imageCanvas.width, imageCanvas.height) ;
+
+	context.putImageData(imageData, 0, 0);
+
+	//next display the image
+	if(va_count == 1)
+	{
+	    //place the image onto the main canvas
+	    var c = document.getElementById('VideoCanvas');
+	    var width = c.width;
+	    var height = c.height;
+	    var ctx = c.getContext("2d");
+
+	    ctx.mozImageSmoothingEnabled = false;
+	    ctx.webkitImageSmoothingEnabled = false;
+	    ctx.msImageSmoothingEnabled = false;
+	    ctx.imageSmoothingEnabled = false;
+
+	    var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
+	    
+	    var img_width = scale*image_bounding_dims.width ;
+	    var img_height = scale*image_bounding_dims.height;
+	    
+		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
+		
+		if(viewport_zoom_settings != null)
+		{
+			d3.select("#upper").style("stroke", "Gray");
+	    	d3.select("#upperCross").attr("opacity", 0.75);
+	    	d3.select("#upperBeam").attr("opacity", 0.75);
+
+			var c = document.getElementById("ZOOMCanvas");
+    		var ctx = c.getContext("2d");
+
+    		ctx.mozImageSmoothingEnabled = false;
+    		ctx.webkitImageSmoothingEnabled = false;
+    		ctx.msImageSmoothingEnabled = false;
+    		ctx.imageSmoothingEnabled = false;
+
+			let px = emStrokeWidth ;
+			let py = emStrokeWidth ;
+
+			//and a zoomed viewport
+			if(zoom_shape == "square")
+			{
+		    	ctx.fillStyle = "rgba(0,0,0,0.3)";
+		    	ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		    
+		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+			}
+
+			if(zoom_shape == "circle")
+			{					       
+		    	ctx.save() ;
+		    	ctx.beginPath();
+		    	ctx.arc(px+viewport_zoom_settings.zoomed_size/2, py+viewport_zoom_settings.zoomed_size/2, viewport_zoom_settings.zoomed_size/2, 0, 2*Math.PI, true) ;
+		    
+		    	ctx.fillStyle = "rgba(0,0,0,0.3)";
+		    	ctx.fill() ;
+
+		    	ctx.closePath() ;
+		    	ctx.clip() ;
+		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		    	ctx.restore() ;
+			}
+		}
+	}
+	else
+	{
+	    if(composite_view)
+		//add a channel to the RGB composite image
+	    {
+		if(compositeCanvas == null)
+		{
+		    compositeCanvas = document.createElement('canvas') ;
+		    compositeCanvas.style.visibility = "hidden";
+		    //compositeCanvas = document.getElementById('CompositeCanvas');
+		    
+		    compositeCanvas.width = imageCanvas.width ;
+		    compositeCanvas.height = imageCanvas.height ;		
+		}	    
+
+		if(compositeImageData == null)
+		{
+		    var ctx = compositeCanvas.getContext('2d');
+		    compositeImageData = ctx.createImageData(compositeCanvas.width,compositeCanvas.height);
+		}
+		
+		add_composite_channel(bytes, w, h, stride, compositeImageData, index-1) ;
+	    }
+	}
+
+	video_count++ ;
+
+	if(video_count == va_count)
+	{	    	    
+	    //display the composite image
+	    if(composite_view)	    
+	    {						
+		if(compositeCanvas != null && compositeImageData != null)
+		{
+		    var tmp = compositeCanvas.getContext('2d');
+		    tmp.putImageData(compositeImageData, 0, 0);
+		    
+		    //place the image onto the main canvas
+		    var c = document.getElementById('VideoCanvas');
+		    var width = c.width;
+		    var height = c.height;
+		    var ctx = c.getContext("2d");
+
+		    ctx.mozImageSmoothingEnabled = false;
+		    ctx.webkitImageSmoothingEnabled = false;
+		    ctx.msImageSmoothingEnabled = false;
+		    ctx.imageSmoothingEnabled = false;
+
+		    var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
+		    
+		    var img_width = scale*image_bounding_dims.width ;
+		    var img_height = scale*image_bounding_dims.height;
+		    
+		    ctx.drawImage(compositeCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
+		}
+	    }
+	    
+	}
+	
+}
+
+function process_video_asm(w, h, bytes, stride, index)
 {		
 	let image_bounding_dims = {x1: 0, y1: 0, width: w, height: h};
 	var pixel_range = image_pixel_range(bytes, w, h, stride) ;
@@ -1800,7 +1940,7 @@ function open_websocket_connection(datasetId, index)
 
 				console.log("[ws] computed = " + computed.toFixed(1) + " [ms]" + " length: " + length + " frame length:" + frame.length);
 
-				let decoder = wsConn[index-1].decoder ;
+				/*let decoder = wsConn[index-1].decoder ;
 
 				if(decoder != null) {
 					decoder.processFrame(frame, function () {
@@ -1809,7 +1949,7 @@ function open_websocket_connection(datasetId, index)
 
 						let start = performance.now() ;
 
-						process_video(decoder.frameBuffer.format.displayWidth,
+						process_video_asm(decoder.frameBuffer.format.displayWidth,
 						decoder.frameBuffer.format.displayHeight,
 						decoder.frameBuffer.y.bytes,
 						decoder.frameBuffer.y.stride,
@@ -1839,7 +1979,7 @@ function open_websocket_connection(datasetId, index)
 
 						d3.select("#fps").text('video: ' + vidFPS + ' fps');
 					});
-				};
+				};*/
 
 				//test the wasm decoder
 				{
@@ -1850,13 +1990,37 @@ function open_websocket_connection(datasetId, index)
 
 					Module.HEAPU8.set(frame, ptr);
 
-					api.vpx_decode_frame(ptr, len);					
+					if(videoFrame != null)
+						api.vpx_decode_frame(ptr, len, videoFrame.ptr);			
+
+					Module._free(ptr);
+
+					if(videoFrame != null)
+						process_video(index);
 
 					let delta = performance.now() - start;
 
-					//console.log('wasm decoding total time: ' + delta + ' [ms]');
+					console.log('total decoding/processing/rendering time: ' + delta + ' [ms]');
+					
+					let log = 'VP9 video frame decoding/processing/rendering time: ' + delta + ' [ms]';
 
-					Module._free(ptr);
+					if(delta > 0.8*vidInterval)
+					{
+						//reduce the video FPS
+						vidFPS = Math.round(0.8*vidFPS);
+						vidFPS = Math.max(1, vidFPS);	
+					}
+					else {
+						//increase the video FPS
+						vidFPS = Math.round(1.2*vidFPS);
+						vidFPS = Math.min(30, vidFPS);
+					}
+
+					log += ' vidFPS = ' + vidFPS;
+
+					wsConn[0].send('[debug] ' + log);
+
+					d3.select("#fps").text('video: ' + vidFPS + ' fps');
 				}
 
 			    /*if(!videoLeft)
@@ -5904,6 +6068,14 @@ function setup_axes()
 			video_stack[index] = [] ;
 		};
 
+		if(videoFrame != null)
+		{
+			Module._free(videoFrame.ptr);
+			videoFrame.img = null;
+			videoFrame.ptr = null;
+			videoFrame = null;
+		}
+
 	    shortcut.remove("f");
 	    shortcut.remove("Left") ;
 	    shortcut.remove("Right") ;
@@ -5963,6 +6135,23 @@ function setup_axes()
 
 			//requestAnimationFrame(update_video);
 		};
+
+		//pre-allocate a video memory
+		//get the dimensions from the imageFrame
+		let imageFrame = imageContainer[0].imageFrame;
+		let len = imageFrame.w * imageFrame.h * 4;
+
+		if(videoFrame == null)
+		{
+			var ptr = Module._malloc(len);
+			var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
+			var img = new ImageData(data, imageFrame.w, imageFrame.h);
+			
+			videoFrame = {
+				img: img,
+				ptr: ptr
+			};
+		}
 
 	    hide_navigation_bar() ;
 
@@ -11229,6 +11418,7 @@ async*/ function mainRenderer()
 	recv_vid_id = 0 ;
 	sent_vid_id = 0 ;
 	last_vid_id = 0 ;
+	videoFrame = null ;
 
 	spectrum_stack = [] ;
 	image_stack = [] ;
