@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.12";
+    return "JS2018-08-20.13";
 }
 
 var generateUid = function ()
@@ -1996,14 +1996,13 @@ function open_websocket_connection(datasetId, index)
 
 					if(videoFrame != null)
 					{
-						let img = videoFrame.img;
+						var img = videoFrame.img;
 
 						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height);
 
-						/*let imgLen = img.width * img.height * 4;
-						let data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, imgLen);
-						let newImg = new ImageData(data, img.width, img.height);
-						videoFrame.img = newImg;*/
+						var imgLen = img.width * img.height * 4;
+						var data = new Uint8ClampedArray(Module.HEAPU8.buffer, videoFrame.ptr, imgLen);
+						videoFrame.img.data.set(data);
 
 						process_video(index);
 					}
