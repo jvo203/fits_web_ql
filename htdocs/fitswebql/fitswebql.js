@@ -910,6 +910,8 @@ function process_video(index)
 
 	context.putImageData(imageData, 0, 0);
 
+	console.log(imageData.data);
+
 	//next display the image
 	if(va_count == 1)
 	{
