@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.10";
+    return "JS2018-08-20.11";
 }
 
 var generateUid = function ()
@@ -6147,7 +6147,6 @@ function setup_axes()
 			//requestAnimationFrame(update_video);
 		};
 
-		
 		//pre-allocate a video memory
 		//get the dimensions from the imageFrame
 		if(videoFrame == null)
@@ -6156,6 +6155,7 @@ function setup_axes()
 			let len = imageFrame.w * imageFrame.h * 4;
 
 			var ptr = Module._malloc(len);
+			console.log("Module._malloc ptr=", ptr);
 			var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
 			var img = new ImageData(data, imageFrame.w, imageFrame.h);
 
