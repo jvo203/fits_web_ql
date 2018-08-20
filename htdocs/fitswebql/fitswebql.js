@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.9";
+    return "JS2018-08-20.10";
 }
 
 var generateUid = function ()
@@ -6455,7 +6455,8 @@ function x_axis_move(offset)
 			} ;
 		} ;
 
-		//idleVideo = setTimeout(videoTimeout, 250, freq) ;
+		if(videoFrame != null)
+			idleVideo = setTimeout(videoTimeout, 250, freq) ;
 	} ;
 
     zoom_molecules(freq) ;
