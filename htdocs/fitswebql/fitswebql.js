@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-20.16";
+    return "JS2018-08-21.0";
 }
 
 var generateUid = function ()
@@ -910,128 +910,66 @@ function process_video(index)
 
 	context.putImageData(imageData, 0, 0);
 
-	//next display the image
-	if(va_count == 1)
-	{
-	    //place the image onto the main canvas
-	    var c = document.getElementById('VideoCanvas');
-	    var width = c.width;
-	    var height = c.height;
-	    var ctx = c.getContext("2d");
+	//next display the video frame
+	//place the image onto the main canvas
+	var c = document.getElementById('VideoCanvas');
+	var width = c.width;
+	var height = c.height;
+	var ctx = c.getContext("2d");
 
-	    ctx.mozImageSmoothingEnabled = false;
-	    ctx.webkitImageSmoothingEnabled = false;
-	    ctx.msImageSmoothingEnabled = false;
-	    ctx.imageSmoothingEnabled = false;
+	ctx.mozImageSmoothingEnabled = false;
+	ctx.webkitImageSmoothingEnabled = false;
+	ctx.msImageSmoothingEnabled = false;
+	ctx.imageSmoothingEnabled = false;
 
-	    var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
+	var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
 	    
-	    var img_width = scale*image_bounding_dims.width ;
-	    var img_height = scale*image_bounding_dims.height;
+	var img_width = scale*image_bounding_dims.width ;
+	var img_height = scale*image_bounding_dims.height;
 	    
-		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
+	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
 		
-		if(viewport_zoom_settings != null)
-		{
-			d3.select("#upper").style("stroke", "Gray");
-	    	d3.select("#upperCross").attr("opacity", 0.75);
-	    	d3.select("#upperBeam").attr("opacity", 0.75);
-
-			var c = document.getElementById("ZOOMCanvas");
-    		var ctx = c.getContext("2d");
-
-    		ctx.mozImageSmoothingEnabled = false;
-    		ctx.webkitImageSmoothingEnabled = false;
-    		ctx.msImageSmoothingEnabled = false;
-    		ctx.imageSmoothingEnabled = false;
-
-			let px = emStrokeWidth ;
-			let py = emStrokeWidth ;
-
-			//and a zoomed viewport
-			if(zoom_shape == "square")
-			{
-		    	ctx.fillStyle = "rgba(0,0,0,0.3)";
-		    	ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-		    
-		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-			}
-
-			if(zoom_shape == "circle")
-			{					       
-		    	ctx.save() ;
-		    	ctx.beginPath();
-		    	ctx.arc(px+viewport_zoom_settings.zoomed_size/2, py+viewport_zoom_settings.zoomed_size/2, viewport_zoom_settings.zoomed_size/2, 0, 2*Math.PI, true) ;
-		    
-		    	ctx.fillStyle = "rgba(0,0,0,0.3)";
-		    	ctx.fill() ;
-
-		    	ctx.closePath() ;
-		    	ctx.clip() ;
-		    	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-		    	ctx.restore() ;
-			}
-		}
-	}
-	else
+	if(viewport_zoom_settings != null)
 	{
-	    if(composite_view)
-		//add a channel to the RGB composite image
-	    {
-		if(compositeCanvas == null)
-		{
-		    compositeCanvas = document.createElement('canvas') ;
-		    compositeCanvas.style.visibility = "hidden";
-		    //compositeCanvas = document.getElementById('CompositeCanvas');
-		    
-		    compositeCanvas.width = imageCanvas.width ;
-		    compositeCanvas.height = imageCanvas.height ;		
-		}	    
+		d3.select("#upper").style("stroke", "Gray");
+	   	d3.select("#upperCross").attr("opacity", 0.75);
+	   	d3.select("#upperBeam").attr("opacity", 0.75);
 
-		if(compositeImageData == null)
-		{
-		    var ctx = compositeCanvas.getContext('2d');
-		    compositeImageData = ctx.createImageData(compositeCanvas.width,compositeCanvas.height);
-		}
+		var c = document.getElementById("ZOOMCanvas");
+		var ctx = c.getContext("2d");
 		
-		add_composite_channel(bytes, w, h, stride, compositeImageData, index-1) ;
-	    }
-	}
+    	ctx.mozImageSmoothingEnabled = false;
+    	ctx.webkitImageSmoothingEnabled = false;
+    	ctx.msImageSmoothingEnabled = false;
+    	ctx.imageSmoothingEnabled = false;
 
-	video_count++ ;
+		let px = emStrokeWidth ;
+		let py = emStrokeWidth ;
 
-	if(video_count == va_count)
-	{	    	    
-	    //display the composite image
-	    if(composite_view)	    
-	    {						
-		if(compositeCanvas != null && compositeImageData != null)
+		//and a zoomed viewport
+		if(zoom_shape == "square")
 		{
-		    var tmp = compositeCanvas.getContext('2d');
-		    tmp.putImageData(compositeImageData, 0, 0);
-		    
-		    //place the image onto the main canvas
-		    var c = document.getElementById('VideoCanvas');
-		    var width = c.width;
-		    var height = c.height;
-		    var ctx = c.getContext("2d");
-
-		    ctx.mozImageSmoothingEnabled = false;
-		    ctx.webkitImageSmoothingEnabled = false;
-		    ctx.msImageSmoothingEnabled = false;
-		    ctx.imageSmoothingEnabled = false;
-
-		    var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
-		    
-		    var img_width = scale*image_bounding_dims.width ;
-		    var img_height = scale*image_bounding_dims.height;
-		    
-		    ctx.drawImage(compositeCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
+		   	ctx.fillStyle = "rgba(0,0,0,0.3)";
+		   	ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		   
+		   	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		}
-	    }
-	    
+
+		if(zoom_shape == "circle")
+		{					       
+		   	ctx.save() ;
+		   	ctx.beginPath();
+		   	ctx.arc(px+viewport_zoom_settings.zoomed_size/2, py+viewport_zoom_settings.zoomed_size/2, viewport_zoom_settings.zoomed_size/2, 0, 2*Math.PI, true) ;
+		    
+		   	ctx.fillStyle = "rgba(0,0,0,0.3)";
+		   	ctx.fill() ;
+
+		   	ctx.closePath() ;
+		   	ctx.clip() ;
+		   	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		   	ctx.restore() ;
+		}
 	}
-	
 }
 
 function process_video_asm(w, h, bytes, stride, index)
