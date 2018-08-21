@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-21.0";
+    return "JS2018-08-21.1";
 }
 
 var generateUid = function ()
@@ -1978,7 +1978,8 @@ function open_websocket_connection(datasetId, index)
 
 					wsConn[0].send('[debug] ' + log);
 
-					d3.select("#fps").text('video: ' + vidFPS + ' fps');
+					if(videoFrame != null)
+						d3.select("#fps").text('video: ' + vidFPS + ' fps');
 				}
 
 			    /*if(!videoLeft)
