@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-21.2";
+    return "JS2018-08-22.5";
 }
 
 var generateUid = function ()
@@ -1879,8 +1879,10 @@ function open_websocket_connection(datasetId, index)
 			    var frame = new Uint8Array(received_msg, 24);//16+8, extra 8 bytes for the length of the vector, added automatically by Rust
 
 				var latency = performance.now() - dv.getFloat32(0, endianness) ;
+				var transfer = (latency - computed)/1000 ;//[s]
+				var bandwidth = (received_msg.byteLength * 8 / 1000) / transfer;//[kilobits per s]
 
-				console.log("[ws] computed = " + computed.toFixed(1) + " [ms], latency = " + latency.toFixed(1) + "[ms]" + " length: " + length + " frame length:" + frame.length);
+				console.log("[ws] computed = " + computed.toFixed(1) + " [ms], latency = " + latency.toFixed(1) + "[ms], n/w transfer time = " + (1000*transfer).toFixed(1) + " [ms],  n/w bandwidth = " + Math.round(bandwidth) + " [Kbps], frame length: " + length + " frame length:" + frame.length);
 
 				/*let decoder = wsConn[index-1].decoder ;
 
@@ -1964,8 +1966,8 @@ function open_websocket_connection(datasetId, index)
 					
 					let log = 'VP9 video frame decoding/processing/rendering time: ' + delta + ' [ms]';
 
-					//computed or delta, take the greater
-					if(Math.max(computed,delta) > 0.8*vidInterval)
+					//latency > computed or delta, take the greater
+					if(Math.max(latency,delta) > 0.8*vidInterval)
 					{
 						//reduce the video FPS
 						vidFPS = Math.round(0.8*vidFPS);
