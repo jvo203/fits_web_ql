@@ -535,13 +535,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     { *fits.timestamp.write() = SystemTime::now() ; }
 
                     if fits.has_data {
+                        let start = precise_time::precise_time_ns();
                         match fits.get_video_frame(frame, ref_freq, self.width, self.height, &mut self.resizer, self.downscaling) {                            
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
                                 //send a binary response
                                 //print!("{:#?}", image);
 
-                                let start = precise_time::precise_time_ns();
+                                //let start = precise_time::precise_time_ns();
 
                                 let mut flags = 0;
                                 if keyframe {
@@ -578,7 +579,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                 let stop = precise_time::precise_time_ns();
 
-                                println!("VP9 video frame encode time: {} [ms], speed {} frames per second, frame length: {} bytes", (stop-start)/1000000, 1000000000/(stop-start), video_frame.len());
+                                println!("VP9 video frame prepare/encode time: {} [ms], speed {} frames per second, frame length: {} bytes", (stop-start)/1000000, 1000000000/(stop-start), video_frame.len());
 
                                 if !video_frame.is_empty() {                                    
                                     //println!("VP9 video frame length: {} bytes", video_frame.len());
@@ -630,7 +631,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-22.2";
+static VERSION_STRING: &'static str = "SV2018-08-22.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
