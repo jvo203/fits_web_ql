@@ -14,6 +14,11 @@ use std::sync::mpsc;
 use num_cpus;
 use positioned_io::ReadAt;
 use atomic;
+use resize;
+
+use resize::Resizer;
+use resize::Pixel::Gray8;
+use resize::Type::Lanczos3;
 
 use actix::*;
 use rayon;
@@ -109,6 +114,8 @@ static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
 static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
+
+pub const PIXEL_COUNT_LIMIT: u64 = 1280*720;
 
 const FITS_CHUNK_LENGTH: usize = 2880;
 const FITS_LINE_LENGTH: usize = 80;
@@ -2733,7 +2740,7 @@ impl FITS {
         }    
     }
 
-    pub fn get_video_frame(&self, frame: f64, ref_freq: f64) -> Option<vpx_image> {
+    pub fn get_video_frame(&self, frame: f64, ref_freq: f64, width: u32, height: u32, resizer: &mut Resizer<Gray8>, downscaling: bool) -> Option<vpx_image> {
         //get a frame index (frame_start = frame_end = frame)
         let frame = match self.get_spectrum_range(frame, frame, ref_freq) {
             Some((frame,_)) => frame,
@@ -2747,15 +2754,15 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
-        let w = self.width as u32 ;
-        let h = self.height as u32 ;
+        //let w = self.width as u32 ;
+        //let h = self.height as u32 ;
         let align = 1 ;
 
         let mut raw: vpx_image = vpx_image::default();
-        let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) };
+        let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, width, height, align) };
 
         if ret.is_null() {
-            println!("VP9 image frame error: image allocation failed");
+            println!("VP9 video frame error: image allocation failed");
             return None ;
         } ;
 
@@ -2765,10 +2772,19 @@ impl FITS {
         let stride_v = raw.stride[2] ;
         let count = stride_u * stride_v ;        
 
-        let y : Vec<u8> = match self.data_to_luminance(frame) {
+        let mut y : Vec<u8> = match self.data_to_luminance(frame) {
             Some(y) => y,
-            None => vec![0; (w * h) as usize],
+            None => vec![0; (width * height) as usize],
         };
+
+        //downsizing?
+        if downscaling {
+            let mut dst = vec![0; (width*height) as usize];
+
+            resizer.resize(&y, &mut dst);
+            y = dst;
+        }
+
         let u : &[u8] = &vec![128; count as usize];
         let v : &[u8] = &vec![128; count as usize];
 
@@ -2776,14 +2792,14 @@ impl FITS {
         raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
         raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
 
-        raw.stride[0] = w as i32 ;
+        raw.stride[0] = width as i32 ;
 
         //flip the FITS image vertically
         unsafe { vpx_img_flip(&mut raw) };
 
         let stop = precise_time::precise_time_ns();
 
-        println!("VP9 image frame preparation time: {} [ms]", (stop-start)/1000000); 
+        println!("VP9 video frame preparation time: {} [ms]", (stop-start)/1000000); 
 
         Some(raw)
     }
@@ -2809,8 +2825,17 @@ impl FITS {
 
         let mut image_frame : Vec<u8> = Vec::new() ;
 
-        let w = self.width as u32 ;
-        let h = self.height as u32 ;
+        let mut w = self.width as u32 ;
+        let mut h = self.height as u32 ;
+        let pixel_count = (w as u64) * (h as u64) ;
+
+        if pixel_count > PIXEL_COUNT_LIMIT {
+            let ratio: f32 = ( (pixel_count as f32) / (PIXEL_COUNT_LIMIT as f32) ).sqrt();
+            w = ( (w as f32) / ratio ) as u32 ;
+	        h = ( (h as f32) / ratio ) as u32 ;
+
+            println!("downscaling the image from {}x{} to {}x{}", self.width, self.height, w, h);
+        }
 
         let mut raw: vpx_image = vpx_image::default();
         let mut ctx = vpx_codec_ctx_t {               
@@ -2836,9 +2861,23 @@ impl FITS {
         mem::forget(ret); // img and ret are the same
         print!("{:#?}", raw);
 
-        //let pixel_count = w * h ;
+        let mut y : Vec<u8> = self.pixels_to_luminance();
 
-        let y : Vec<u8> = self.pixels_to_luminance();
+        if pixel_count > PIXEL_COUNT_LIMIT {
+            let start = precise_time::precise_time_ns();
+
+            let mut dst = vec![0; (w*h) as usize];
+
+            let mut resizer = resize::new(self.width as usize, self.height as usize, w as usize, h as usize, Gray8, Lanczos3);
+
+            resizer.resize(&y, &mut dst);
+            y = dst;
+
+            let stop = precise_time::precise_time_ns();
+
+            println!("VP9 image frame downscaling time: {} [ms]", (stop-start)/1000000);
+        }
+
         /*let u : Vec<u8> = {            
             self.mask.par_iter()
                 .map(|&m| if m {

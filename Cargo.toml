@@ -41,4 +41,5 @@ curl = "*"
 timer = "*"
 positioned-io = "*"
 atomic = "*"
+resize = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }

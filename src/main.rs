@@ -26,6 +26,7 @@ extern crate vpx_sys;
 extern crate num_rational;
 extern crate positioned_io;
 extern crate atomic;
+extern crate resize;
 
 //extern crate rav1e;
 //use rav1e::*;
@@ -50,6 +51,10 @@ use actix_web::server::HttpServer;
 use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 use uuid::Uuid;
+
+use resize::Resizer;
+use resize::Pixel::Gray8;
+use resize::Type::Triangle;
 
 use vpx_sys::*;
 
@@ -102,6 +107,10 @@ struct UserSession {
     session_id: Uuid,
     cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
     ctx: vpx_codec_ctx_t,//VP9 encoder context
+    downscaling: bool,
+    width: u32,
+    height: u32,
+    resizer: Resizer<Gray8>,
 }
 
 impl UserSession {
@@ -121,6 +130,10 @@ impl UserSession {
                 },
                 priv_: ptr::null_mut(),
             },
+            downscaling: false,
+            width: 0,
+            height: 0,
+            resizer: resize::new(0,0,0,0,Gray8,Triangle),
         } ;
 
         println!("allocating a new websocket session for {}", id);
@@ -220,17 +233,49 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         println!("VP9: default configuration failed");
                     }
                     else {
-                        self.cfg.g_w = fits.width as u32;
-                        self.cfg.g_h = fits.height as u32;
+                        let mut w = fits.width as u32 ;
+                        let mut h = fits.height as u32 ;
+                        let pixel_count = (w as u64) * (h as u64) ;
+
+                        if pixel_count > fits::PIXEL_COUNT_LIMIT {
+                            let ratio: f32 = ( (pixel_count as f32) / (fits::PIXEL_COUNT_LIMIT as f32) ).sqrt();
+                            w = ( (w as f32) / ratio ) as u32 ;
+	                        h = ( (h as f32) / ratio ) as u32 ;
+
+                            println!("downscaling the video from {}x{} to {}x{}", fits.width, fits.height, w, h);
+
+                            self.downscaling = true;
+                        }
+
+                        self.width = w ;
+                        self.height = h ;
+                        self.resizer = resize::new(fits.width as usize, fits.height as usize, w as usize, h as usize, Gray8, Triangle);
+
+                        self.cfg.g_w = w;
+                        self.cfg.g_h = h;
                         self.cfg.g_timebase.num = 1;
                         self.cfg.g_timebase.den = fps;
 
                         self.cfg.rc_min_quantizer = 10 ;
                         self.cfg.rc_max_quantizer = 42 ;
-                        self.cfg.rc_target_bitrate = 4096;// [kilobits per second]
+
+                        #[cfg(not(feature = "server"))]
+                        { self.cfg.rc_target_bitrate = 4096; }// [kilobits per second]
+
+                        #[cfg(feature = "server")]
+                        { self.cfg.rc_target_bitrate = 1024; }// [kilobits per second]
+
+                        #[cfg(feature = "server")]
+                        { self.cfg.rc_end_usage = vpx_rc_mode::VPX_CBR; }
+
+                        //internal frame downsampling
+                        /*self.cfg.rc_resize_allowed = 1;
+                        self.cfg.rc_scaled_width = self.cfg.g_w >> 2;
+                        self.cfg.rc_scaled_height = self.cfg.g_h >> 2;
+                        self.cfg.rc_resize_down_thresh = 30;*/
 
                         self.cfg.g_lag_in_frames = 0;
-                        self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
+                        //self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
                         self.cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
 
                         self.cfg.g_profile = 0 ;
@@ -490,7 +535,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     { *fits.timestamp.write() = SystemTime::now() ; }
 
                     if fits.has_data {
-                        match fits.get_video_frame(frame, ref_freq) {                            
+                        match fits.get_video_frame(frame, ref_freq, self.width, self.height, &mut self.resizer, self.downscaling) {                            
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
                                 //send a binary response
@@ -585,7 +630,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-20.1";
+static VERSION_STRING: &'static str = "SV2018-08-22.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
