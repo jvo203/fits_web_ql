@@ -140,3 +140,78 @@ export uniform float calculate_square_spectrumF16(uniform int16 cubeData[], unif
   else
     return 0.0f ;
 } ;
+
+export void data_to_luminance_f16_linear(uniform int16 cubeData[], uniform unsigned int8 mask[], uniform float bzero, uniform float bscale, uniform float black, uniform float slope, uniform unsigned int8 pixels[],  uniform unsigned int total_size)
+{
+  foreach(j=0 ... total_size)
+  {
+    cif(mask[j])
+    {
+      float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
+      float pixel = 255.0f / ( 1.0f + exp(-6.0f * (tmp - black) * slope) ) ;
+      pixels[j] = isnan(tmp) ? 0 : clamp((int) pixel, 0, 255) ;
+    }
+    else
+      pixels[j] = 0 ;
+  }
+} ;
+
+export void data_to_luminance_f16_logistic(uniform int16 cubeData[], uniform unsigned int8 mask[], uniform float bzero, uniform float bscale, uniform float median, uniform float sensitivity, uniform unsigned int8 pixels[],  uniform unsigned int total_size)
+{
+  foreach(j=0 ... total_size)
+  {
+    cif(mask[j])
+    {
+      float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
+      float pixel = 255.0f / ( 1.0f + exp(-6.0f * (tmp - median) * sensitivity) ) ;
+      pixels[j] = clamp( (int) pixel, 0, 255) ;
+    }
+    else
+      pixels[j] = 0 ;
+  }
+} ;
+
+export void data_to_luminance_f16_ratio(uniform int16 cubeData[], uniform unsigned int8 mask[], uniform float bzero, uniform float bscale, uniform float black, uniform float sensitivity, uniform unsigned int8 pixels[],  uniform unsigned int total_size)
+{
+  foreach(j=0 ... total_size)
+  {
+    cif(mask[j])
+    {
+      float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
+      float pixel = 5.0 * (tmp - black) * sensitivity ;
+      pixels[j] = pixel > 0.0f ? (int) (255.0f*pixel/(1.0f + pixel)) : 0 ;
+    }
+    else
+      pixels[j] = 0 ;
+  }
+} ;
+
+export void data_to_luminance_f16_square(uniform int16 cubeData[], uniform unsigned int8 mask[], uniform float bzero, uniform float bscale, uniform float black, uniform float sensitivity, uniform unsigned int8 pixels[],  uniform unsigned int total_size)
+{
+  foreach(j=0 ... total_size)
+  {
+    cif(mask[j])
+    {
+      float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
+      float pixel = (tmp - black) * sensitivity ;
+      pixels[j] = pixel > 0.0f ? clamp( (int) (255.0f*pixel*pixel), 0, 255) : 0 ;
+    }
+    else
+      pixels[j] = 0 ;
+  }
+} ;
+
+export void data_to_luminance_f16_legacy(uniform int16 cubeData[], uniform unsigned int8 mask[], uniform float bzero, uniform float bscale, uniform float dmin, uniform float dmax, uniform float lmin, uniform float lmax, uniform unsigned int8 pixels[],  uniform unsigned int total_size)
+{
+  foreach(j=0 ... total_size)
+  {
+    cif(mask[j])
+    {
+      float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
+      float pixel = 0.5f + (tmp - dmin) / (dmax - dmin) ;
+      pixels[j] = pixel > 0.0f ? clamp( (int) (255.0f * (log(pixel) - lmin) / (lmax - lmin)), 0, 255) : 0 ;
+    }
+    else
+      pixels[j] = 0 ;
+  }
+} ;

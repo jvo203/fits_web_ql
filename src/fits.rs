@@ -38,6 +38,11 @@ use make_image_spectrumF16_minmax;
 use join_pixels_masks;
 use calculate_radial_spectrumF16;
 use calculate_square_spectrumF16;
+use data_to_luminance_f16_linear;
+use data_to_luminance_f16_logistic;
+use data_to_luminance_f16_ratio;
+use data_to_luminance_f16_square;
+use data_to_luminance_f16_legacy;
 
 /*
 extern "C" { pub fn calculate_radial_spectrumF16 ( cubeData : * mut i16 , bzero : f32 , bscale : f32 , datamin : f32 , datamax : f32 , width : u32 , x1 : i32 , x2 : i32 , y1 : i32 , y2 : i32 , cx : i32 , cy : i32 , r2 : i32 , average : bool , cdelt3 : f32 ) -> f32 ; }
@@ -2411,107 +2416,67 @@ impl FITS {
         let white = self.dmax.min((*self.data_median.read()) + u * (*self.data_mad_p.read())) ;
         let sensitivity = 1.0 / (white - black) ;
 
+        //interfacing with Intel SPMD Program Compiler
+        let vec = &self.data_f16[frame];
+        let ptr = vec.as_ptr() as *mut i16;
+        let len = vec.len();
+
+        let mask_ptr = self.mask.as_ptr() as *mut u8;
+        let mask_len = self.mask.len() ;
+
+        let mut y: Vec<u8> = vec![0; len];
+        //end of interface
+
         match self.flux.as_ref() {            
             "linear" => {
                 let slope = 1.0 / (white - black) ;
 
-                self.data_f16[frame].par_iter()
-                    .zip(self.mask.par_iter())
-                        .map(|(x, m)| {
-                            if *m {                         
-                                let x = self.bzero + self.bscale * (*x).to_f32();       
-                                let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
-                                (255.0*pixel) as u8
-                            }                            
-                            else {
-                                0
-                            }
-                        })                        
-                        .collect()
+                unsafe {                    
+                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                    data_to_luminance_f16_linear( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, slope, y.as_mut_ptr(), len as u32);
+                }                            
             },
-            "logistic" => {                
-                self.data_f16[frame].par_iter()
-                    .zip(self.mask.par_iter())
-                        .map(|(x, m)| {
-                            if *m {                      
-                                let x = self.bzero + self.bscale * (*x).to_f32();          
-                                let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
-                                (255.0*pixel) as u8
-                            }                            
-                            else {
-                                0
-                            }
-                        })
-                        .collect()
+            "logistic" => {
+                unsafe {                    
+                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                    data_to_luminance_f16_logistic( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, median, sensitivity, y.as_mut_ptr(), len as u32);
+                }                                            
             },
             "ratio" => {
-                self.data_f16[frame].par_iter()
-                    .zip(self.mask.par_iter())
-                        .map(|(x, m)| {
-                            if *m {                                            
-                                let x = self.bzero + self.bscale * (*x).to_f32();                    
-                                let pixel = 5.0 * (x - black) * sensitivity;
-                                
-                                if pixel > 0.0 {
-                                    (255.0*pixel/(1.0 + pixel)) as u8
-                                }
-                                else {
-                                    0
-                                }                                
-                            }                            
-                            else {
-                                0
-                            }
-                        })
-                        .collect()
+                unsafe {                    
+                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                    data_to_luminance_f16_ratio( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, sensitivity, y.as_mut_ptr(), len as u32);
+                }                                    
             },
             "square" => {
-                self.data_f16[frame].par_iter()
-                    .zip(self.mask.par_iter())
-                        .map(|(x, m)| {
-                            if *m {                
-                                let x = self.bzero + self.bscale * (*x).to_f32();                     
-                                let pixel = (x - black) * sensitivity;
-                                
-                                if pixel > 0.0 {
-                                    (255.0*num::clamp(pixel*pixel, 0.0, 1.0)) as u8  
-                                }
-                                else {
-                                    0
-                                }                                
-                            }                            
-                            else {
-                                0
-                            }
-                        })
-                        .collect()
+                unsafe {                    
+                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                    data_to_luminance_f16_square( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, sensitivity, y.as_mut_ptr(), len as u32);
+                }                             
             },            
             //by default assume "legacy"
             _ => {
                 let lmin = (0.5f32).ln() ;
                 let lmax = (1.5f32).ln() ;
 
-                self.data_f16[frame].par_iter()
-                    .zip(self.mask.par_iter())
-                        .map(|(x, m)| {
-                            if *m {          
-                                let x = self.bzero + self.bscale * (*x).to_f32();               
-                                let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
-                                
-                                if pixel > 0.0 {
-                                    (255.0*num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0)) as u8  
-                                }
-                                else {
-                                    0
-                                }                                
-                            }                            
-                            else {
-                                0
-                            }
-                        })
-                        .collect()
+                unsafe {                    
+                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                    data_to_luminance_f16_legacy( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, self.dmin, self.dmax, lmin, lmax, y.as_mut_ptr(), len as u32);
+                }                         
             },
         }
+
+        y
     }
 
     fn data_to_luminance_f64(&self, frame: usize) -> Vec<u8> {
