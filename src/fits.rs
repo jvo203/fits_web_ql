@@ -43,6 +43,7 @@ use data_to_luminance_f16_logistic;
 use data_to_luminance_f16_ratio;
 use data_to_luminance_f16_square;
 use data_to_luminance_f16_legacy;
+use bilinear_resize;
 
 /*
 extern "C" { pub fn calculate_radial_spectrumF16 ( cubeData : * mut i16 , bzero : f32 , bscale : f32 , datamin : f32 , datamax : f32 , width : u32 , x1 : i32 , x2 : i32 , y1 : i32 , y2 : i32 , cx : i32 , cy : i32 , r2 : i32 , average : bool , cdelt3 : f32 ) -> f32 ; }
@@ -2747,6 +2748,8 @@ impl FITS {
             let mut dst = vec![0; (width*height) as usize];
 
             resizer.resize(&y, &mut dst);
+            //self.custom_resize(&y, &mut dst, width, height);
+
             y = dst;
         }
 
@@ -2767,6 +2770,64 @@ impl FITS {
         println!("VP9 video frame preparation time: {} [ms]", (stop-start)/1000000); 
 
         Some(raw)
+    }
+
+    fn custom_resize(&self, src: &Vec<u8>, dst: &mut Vec<u8>, width: u32, height: u32) {
+        let src_width = self.width as f32 ;
+        let src_height = self.height as f32 ;
+        let scale_factor: f32 = (src_width as f32) / (width as f32) ;
+        let filter_width = scale_factor * 1.0f32 ;
+        let delta = filter_width;//.round();
+
+        let len = src.len();
+
+        println!("[custom_resize]: scale_factor = {}, filter_width = {}, delta = {}", scale_factor, filter_width, delta);
+
+        let src_ptr = src.as_ptr() as *mut i8;
+        let src_len = src.len() ;
+
+        let dst_ptr = dst.as_ptr() as *mut i8;
+        let dst_len = dst.len() ;
+
+        unsafe {
+            let src_raw = slice::from_raw_parts_mut(src_ptr, src_len);
+            let dst_raw = slice::from_raw_parts_mut(dst_ptr, dst_len);
+
+            bilinear_resize(src_raw.as_mut_ptr(), src_len as i32, dst_raw.as_mut_ptr(), dst_len as i32, src_width as i32, src_height as i32, width, height, scale_factor, filter_width) ;
+        }
+
+        //for each new downsized pixel
+        /*for dst_y in 0..height {
+            for dst_x in 0..width {
+                let orig_x = scale_factor * (dst_x as f32) ;
+                let orig_y = scale_factor * (dst_y as f32) ;
+
+                let mut accum = 0.0f32;
+                let mut pixel = 0.0f32;
+
+                let mut src_x = orig_x - delta ;
+                let mut src_y = orig_y - delta ;
+
+                while src_x <= orig_x + delta {
+                    while src_y <= orig_y + delta {
+                        let coeff_x = 1.0 - (orig_x - src_x).abs()/scale_factor;
+                        let coeff_y = 1.0 - (orig_y - src_y).abs()/scale_factor;
+                        let coeff = coeff_x * coeff_y ;
+
+                        let src_index = src_y.round() * (src_width) + src_x.round() ;
+                        let src_index: usize = num::clamp(src_index as usize, 0, len-1) as usize;
+
+                        pixel += (src[src_index] as f32) * coeff ;
+                        accum += coeff ;
+                        src_y += 1.0f32;//delta ;
+                    }
+                    src_x += 1.0f32;//delta ;
+                }
+
+                dst[(dst_y*width + dst_x) as usize] = num::clamp( (pixel / accum).round() as i32, 0, 255) as u8;
+            }
+        }*/
+
     }
 
     fn make_vpx_image(&mut self) {
@@ -2796,8 +2857,8 @@ impl FITS {
 
         if pixel_count > PIXEL_COUNT_LIMIT {
             let ratio: f32 = ( (pixel_count as f32) / (PIXEL_COUNT_LIMIT as f32) ).sqrt();
-            w = ( (w as f32) / ratio ) as u32 ;
-	        h = ( (h as f32) / ratio ) as u32 ;
+            w = ( (w as f32) / ratio.sqrt() ) as u32 ;
+	        h = ( (h as f32) / ratio.sqrt() ) as u32 ;
 
             println!("downscaling the image from {}x{} to {}x{}", self.width, self.height, w, h);
         }

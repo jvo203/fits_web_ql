@@ -118,7 +118,7 @@ impl UserSession {
         let session = UserSession {
             dataset_id: id.clone(),            
             session_id: Uuid::new_v4(),            
-            cfg: vpx_codec_enc_cfg::default(),            
+            cfg: vpx_codec_enc_cfg::default(),       
             ctx: vpx_codec_ctx_t {                
                 name: ptr::null(),
                 iface: ptr::null_mut(),
@@ -239,8 +239,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                         if pixel_count > fits::PIXEL_COUNT_LIMIT {
                             let ratio: f32 = ( (pixel_count as f32) / (fits::PIXEL_COUNT_LIMIT as f32) ).sqrt();
-                            w = ( (w as f32) / ratio ) as u32 ;
-	                        h = ( (h as f32) / ratio ) as u32 ;
+                            w = ( (w as f32) / ratio.sqrt() ) as u32 ;
+	                        h = ( (h as f32) / ratio.sqrt() ) as u32 ;
 
                             println!("downscaling the video from {}x{} to {}x{}", fits.width, fits.height, w, h);
 
@@ -631,7 +631,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-23.0";
+static VERSION_STRING: &'static str = "SV2018-08-24.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

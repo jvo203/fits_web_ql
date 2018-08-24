@@ -215,3 +215,36 @@ export void data_to_luminance_f16_legacy(uniform int16 cubeData[], uniform unsig
       pixels[j] = 0 ;
   }
 } ;
+
+export void bilinear_resize(uniform int8 src[], uniform int src_len, uniform int8 dst[], uniform int dst_len, uniform int src_width, uniform int src_height, uniform unsigned int dst_width, uniform unsigned int dst_height, uniform float scale_factor, uniform float filter_width)
+{
+  foreach(dst_y=0 ... dst_height, dst_x=0 ... dst_width)
+  {
+    float pixel = 0.0f ;
+    float accum = 0.0f ;
+
+    float orig_x = scale_factor * dst_x ;
+    float orig_y = scale_factor * dst_y ;
+
+    for(float dx = -filter_width; dx <= filter_width; dx += 1)//use epsilon test!!!
+      for(float dy = -filter_width; dy <= filter_width; dy += 1)//use epsilon test!!!
+      {
+        float coeff_x = 1.0f - abs(dx)/scale_factor;
+        float coeff_y = 1.0f - abs(dy)/scale_factor;
+        float coeff = coeff_x * coeff_y ;
+
+        float src_x = orig_x + dx ;
+        float src_y = orig_y + dy ;
+
+        int src_index = clamp((int)round(src_y), 0, src_height-1) * src_width + clamp( (int)round(src_x), 0, src_width-1) ;
+        src_index = clamp(src_index, 0, src_len-1);
+
+        pixel += src[src_index] * coeff ;
+        accum += coeff ;
+      }
+
+    int dst_index = dst_y * dst_width + dst_x ;
+    dst_index = clamp(dst_index, 0, dst_len-1);
+    dst[dst_index] = clamp( (int)round(pixel / accum), 0, 255) ;
+  }
+} ;
