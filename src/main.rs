@@ -631,7 +631,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-27.1";
+static VERSION_STRING: &'static str = "SV2018-08-27.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1386,6 +1386,19 @@ fn main() {
     //println!("{:?}", config);
     //end of AV1
 
+    let mut server_port = SERVER_PORT ;
+
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() > 2 {
+        let key = &args[1];
+        let value = &args[2];
+
+        if key == "--port" {
+            server_port = value.parse::<i32>().unwrap();
+        }
+    }
+
     remove_symlinks();
 
     //splatalogue sqlite db integration
@@ -1420,7 +1433,7 @@ fn main() {
                 .resource("/{path}/get_molecules", |r| {r.method(http::Method::GET).f(get_molecules)})
                 .handler("/", fs::StaticFiles::new("htdocs").unwrap().index_file(index_file))
         })
-        .bind(&format!("{}:{}", SERVER_ADDRESS, SERVER_PORT)).expect(&format!("Cannot bind to localhost:{}", SERVER_PORT))        
+        .bind(&format!("{}:{}", SERVER_ADDRESS, server_port)).expect(&format!("Cannot bind to localhost:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_port))        
         .start();
 
     println!("detected number of CPUs: {}", num_cpus::get());
