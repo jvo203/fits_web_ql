@@ -53,7 +53,8 @@ cd into the fits_web_ql directory and execute
 
 cargo run --features=server --release
 
-#WARNING
+# WARNING
+
 on some systems, i.e. CentOS 6, the executing the command below may be needed as otherwise Rust's cargo will not find the local version of the libvpx
 
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
