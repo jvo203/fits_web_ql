@@ -28,6 +28,21 @@ make
 
 sudo make install
 
+#
+install Google's libvpx
+
+git clone https://github.com/webmproject/libvpx
+
+cd libvpx
+
+./configure --enable-pic
+
+make
+
+sudo make install
+
+(when compiling from source enforce -fPIC by means of the configure flag --enable-pic)
+
 # How to run a local version (Personal Edition)
 cd into the fits_web_ql directory and execute
 
