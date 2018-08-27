@@ -92,6 +92,10 @@ cd into the fits_web_ql directory and execute
 
 cargo run --features=server --release
 
+or if you need to specify an alternative HTTP port
+
+cargo run --features=server --release -- --port 8000
+
 # WARNING
 
 on some systems, i.e. CentOS 6, the executing the command below may be needed as otherwise Rust's cargo will not find the local version of the libvpx
