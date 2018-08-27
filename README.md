@@ -22,7 +22,7 @@ mkdir -p build
 
 cd build
 
-cmake ..
+cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
 
 make
 
