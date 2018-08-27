@@ -13,11 +13,17 @@ install a free open-source Intel SPMD compiler (ispc) and then execute "make" fr
 
 # 
 install a libyuv library (YUV rescaling/image inversion):
+
 git clone https://github.com/lemenkov/libyuv
+
 cd libyuv
+
 mkdir -p build
+
 cd build
+
 cmake ..
+
 sudo make install
 
 # How to run a local version (Personal Edition)
