@@ -11,6 +11,11 @@ and placed inside the fits_web_ql directory.
 # Prerequisites
 install a free open-source Intel SPMD compiler (ispc) and then execute "make" from within the fits_webql_ql directory
 
+#
+install clang, i.e. for CentOS 7 please go to
+
+https://copr.fedorainfracloud.org/coprs/alonid/llvm-3.9.0/
+
 # 
 install a libyuv library (YUV rescaling/image inversion):
 
