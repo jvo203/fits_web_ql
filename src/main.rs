@@ -253,8 +253,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                         self.cfg.g_w = w;
                         self.cfg.g_h = h;
-                        self.cfg.g_timebase.num = 1;
-                        self.cfg.g_timebase.den = fps;
+                        /*self.cfg.g_timebase.num = 1;
+                        self.cfg.g_timebase.den = fps;*/
 
                         self.cfg.rc_min_quantizer = 10 ;
                         self.cfg.rc_max_quantizer = 42 ;
@@ -269,16 +269,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         { self.cfg.rc_end_usage = vpx_rc_mode::VPX_CBR; }
 
                         //internal frame downsampling
-                        /*self.cfg.rc_resize_allowed = 1;
+                        self.cfg.rc_resize_allowed = 1;
                         self.cfg.rc_scaled_width = self.cfg.g_w >> 2;
                         self.cfg.rc_scaled_height = self.cfg.g_h >> 2;
-                        self.cfg.rc_resize_down_thresh = 30;*/
+                        self.cfg.rc_resize_down_thresh = 30;
 
                         self.cfg.g_lag_in_frames = 0;
-                        //self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
+                        self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
                         self.cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
 
-                        self.cfg.g_profile = 0 ;
+                        //self.cfg.g_profile = 0 ;
 
                         //initialise the encoder itself
                         ret = unsafe {                            
@@ -631,7 +631,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-24.2";
+static VERSION_STRING: &'static str = "SV2018-08-27.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

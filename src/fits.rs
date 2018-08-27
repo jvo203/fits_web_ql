@@ -44,6 +44,12 @@ use data_to_luminance_f16_ratio;
 use data_to_luminance_f16_square;
 use data_to_luminance_f16_legacy;
 use bilinear_resize;
+use ScalePlane;
+use FilterMode_kFilterNone;
+use FilterMode_kFilterLinear;
+use FilterMode_kFilterBilinear;
+use FilterMode_kFilterBox;
+
 
 /*
 extern "C" { pub fn calculate_radial_spectrumF16 ( cubeData : * mut i16 , bzero : f32 , bscale : f32 , datamin : f32 , datamax : f32 , width : u32 , x1 : i32 , x2 : i32 , y1 : i32 , y2 : i32 , cx : i32 , cy : i32 , r2 : i32 , average : bool , cdelt3 : f32 ) -> f32 ; }
@@ -2744,11 +2750,11 @@ impl FITS {
         };
 
         //downsizing?
-        if downscaling {
+        /*if downscaling*/ {
             let mut dst = vec![0; (width*height) as usize];
 
-            resizer.resize(&y, &mut dst);
-            //self.custom_resize(&y, &mut dst, width, height);
+            //resizer.resize(&y, &mut dst);
+            self.resize_and_invert(&mut y, &mut dst, width, height);
 
             y = dst;
         }
@@ -2763,7 +2769,8 @@ impl FITS {
         raw.stride[0] = width as i32 ;
 
         //flip the FITS image vertically
-        unsafe { vpx_img_flip(&mut raw) };
+        //unsafe { vpx_img_flip(&mut raw) };
+        //no need to use libvpx to invert the image, libyuv does it for us
 
         let stop = precise_time::precise_time_ns();
 
@@ -2772,8 +2779,8 @@ impl FITS {
         Some(raw)
     }
 
-    fn custom_resize(&self, src: &Vec<u8>, dst: &mut Vec<u8>, width: u32, height: u32) {
-        let src_width = self.width as f32 ;
+    fn resize_and_invert(&self, src: &mut Vec<u8>, dst: &mut Vec<u8>, width: u32, height: u32) {
+        /*let src_width = self.width as f32 ;
         let src_height = self.height as f32 ;
         let scale_factor: f32 = (src_width as f32) / (width as f32) ;
         let filter_width = scale_factor * 1.0f32 ;
@@ -2781,9 +2788,18 @@ impl FITS {
 
         let len = src.len();
 
-        println!("[custom_resize]: scale_factor = {}, filter_width = {}, delta = {}", scale_factor, filter_width, delta);
+        println!("[custom_resize]: scale_factor = {}, filter_width = {}, delta = {}", scale_factor, filter_width, delta);*/
 
-        let src_ptr = src.as_ptr() as *mut i8;
+        //try the libyuv library
+        unsafe {
+            ScalePlane(src.as_mut_ptr(), self.width,
+                self.width, -self.height,
+                dst.as_mut_ptr(), width as i32,
+                width as i32, height as i32,
+                /*3*/ FilterMode_kFilterBox);
+        };
+
+        /*let src_ptr = src.as_ptr() as *mut i8;
         let src_len = src.len() ;
 
         let dst_ptr = dst.as_ptr() as *mut i8;
@@ -2794,7 +2810,7 @@ impl FITS {
             let dst_raw = slice::from_raw_parts_mut(dst_ptr, dst_len);
 
             bilinear_resize(src_raw.as_mut_ptr(), src_len as i32, dst_raw.as_mut_ptr(), dst_len as i32, src_width as i32, src_height as i32, width, height, scale_factor, filter_width) ;
-        }
+        }*/
 
         //for each new downsized pixel
         /*for dst_y in 0..height {
@@ -2961,11 +2977,17 @@ impl FITS {
 
         cfg.g_w = w;
         cfg.g_h = h;
-        cfg.g_timebase.num = 1;
-        cfg.g_timebase.den = 30;
+
+        //internal frame downsampling
+        cfg.rc_resize_allowed = 1;
+        cfg.rc_scaled_width = cfg.g_w >> 2;
+        cfg.rc_scaled_height = cfg.g_h >> 2;
+        cfg.rc_resize_down_thresh = 30;
+        
         cfg.rc_min_quantizer = 10 ;
         cfg.rc_max_quantizer = 42 ;     
         cfg.rc_target_bitrate = 4096;// [kilobits per second]
+        cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
         cfg.g_threads = num_cpus::get().min(4) as u32 ;//set the upper limit on the number of threads to 4
 
         ret = unsafe {
