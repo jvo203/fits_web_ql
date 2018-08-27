@@ -24,6 +24,8 @@ cd build
 
 cmake ..
 
+make
+
 sudo make install
 
 # How to run a local version (Personal Edition)
