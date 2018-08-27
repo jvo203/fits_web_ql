@@ -29,7 +29,7 @@ make
 sudo make install
 
 #
-install Google's libvpx
+install Google's libvpx from for example https://www.webmproject.org/code/
 
 git clone https://github.com/webmproject/libvpx
 
