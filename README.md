@@ -19,23 +19,36 @@ https://copr.fedorainfracloud.org/coprs/alonid/llvm-3.9.0/
 as root add the following contents to /etc/yum.repos.d/epel.repo
 
 [alonid-llvm-3.9.0]
+
 name=Copr repo for llvm-3.9.0 owned by alonid
+
 baseurl=https://copr-be.cloud.fedoraproject.org/results/alonid/llvm-3.9.0/epel-7-$basearch/
+
 type=rpm-md
+
 skip_if_unavailable=True
+
 gpgcheck=1
+
 gpgkey=https://copr-be.cloud.fedoraproject.org/results/alonid/llvm-3.9.0/pubkey.gpg
+
 repo_gpgcheck=0
+
 enabled=1
+
 enabled_metadata=1
 
-then execute
+, then execute
 
 sudo yum install clang-3.9.0
 
 and add /opt/llvm-3.9.0/bin to your $PATH
 
-and LIBCLANG_PATH as well if rust complains
+and set LIBCLANG_PATH as well:
+
+export PATH=/opt/llvm-3.9.0/bin:$PATH
+
+export LIBCLANG_PATH=/opt/llvm-3.9.0/lib64
 
 # 
 install a libyuv library (YUV rescaling/image inversion):
