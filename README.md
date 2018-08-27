@@ -35,6 +35,8 @@ sudo yum install clang-3.9.0
 
 and add /opt/llvm-3.9.0/bin to your $PATH
 
+and LIBCLANG_PATH as well if rust complains
+
 # 
 install a libyuv library (YUV rescaling/image inversion):
 
