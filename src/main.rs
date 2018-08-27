@@ -1440,13 +1440,13 @@ fn main() {
 
     #[cfg(not(feature = "server"))]
     {
-        println!("started a local FITSWebQL server; point your browser to http://localhost:{}", SERVER_PORT);
+        println!("started a local FITSWebQL server; point your browser to http://localhost:{}", server_port);
         println!("press CTRL+C to exit");
     }    
 
     #[cfg(feature = "server")]
     {
-        println!("started a fits_web_ql server process on port {}", SERVER_PORT);
+        println!("started a fits_web_ql server process on port {}", server_port);
         println!("send SIGINT to shutdown, i.e. killall -s SIGINT fits_web_ql");
     }
 
