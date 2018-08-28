@@ -1386,30 +1386,21 @@ fn main() {
     //println!("{:?}", config);
     //end of AV1
 
-    //let mut server_port = SERVER_PORT ;
+    let mut server_port = SERVER_PORT ;
 
     let args: Vec<String> = env::args().collect();
 
-    let server_port = if args.len() > 2 {
+    if args.len() > 2 {
         let key = &args[1];
         let value = &args[2];
 
         if key == "--port" {
             match value.parse::<i32>() {
-                Ok(port) => port,
-                Err(err) => {
-                    println!("error parsing the port value: {}, using the default port value {}", err, SERVER_PORT);
-                    SERVER_PORT
-                },
+                Ok(port) => server_port = port,
+                Err(err) => println!("error parsing the port number: {}, defaulting to {}", err, server_port),
             }
         }
-        else {
-            SERVER_PORT
-        }
     }
-    else {
-        SERVER_PORT
-    };
 
     remove_symlinks();
 
