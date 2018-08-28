@@ -2905,19 +2905,21 @@ impl FITS {
 
         let mut y : Vec<u8> = self.pixels_to_luminance();
 
-        if pixel_count > PIXEL_COUNT_LIMIT {
+        /*if pixel_count > PIXEL_COUNT_LIMIT*/ {
             let start = precise_time::precise_time_ns();
 
             let mut dst = vec![0; (w*h) as usize];
 
             let mut resizer = resize::new(self.width as usize, self.height as usize, w as usize, h as usize, Gray8, Lanczos3);
 
-            resizer.resize(&y, &mut dst);
+            //resizer.resize(&y, &mut dst);
+            self.resize_and_invert(&mut y, &mut dst, w, h);
+
             y = dst;
 
             let stop = precise_time::precise_time_ns();
 
-            println!("VP9 image frame downscaling time: {} [ms]", (stop-start)/1000000);
+            println!("VP9 image frame inverting/downscaling time: {} [ms]", (stop-start)/1000000);
         }
 
         /*let u : Vec<u8> = {            
@@ -3018,7 +3020,7 @@ impl FITS {
         flags |= VPX_EFLAG_FORCE_KF;
         
         //flip the FITS image vertically
-        unsafe { vpx_img_flip(&mut raw) };
+        //unsafe { vpx_img_flip(&mut raw) };//disabled, libyuv will handle it
 
         //call encode_frame with a valid image
         match encode_frame(ctx, raw, 0, flags as i64, VPX_DL_BEST_QUALITY as u64) {            

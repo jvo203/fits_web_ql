@@ -2,5 +2,5 @@
 
 #include "native/fits.h"
 
-#include "libyuv/scale.h"
+#include "/usr/local/include/libyuv/scale.h"
 

@@ -7,7 +7,7 @@ fn main() {
     // Tell cargo to tell rustc to link the ISPC object file turned into a static library  
     println!("cargo:rustc-link-search=native=native");
     println!("cargo:rustc-link-lib=static=fits");
-    println!("cargo:rustc-link-lib=static=thorenc");
+    //println!("cargo:rustc-link-lib=static=thorenc");
 
     println!("cargo:rustc-link-search=native=/usr/local/lib");
     println!("cargo:rustc-link-lib=static=yuv");
