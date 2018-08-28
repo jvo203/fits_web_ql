@@ -631,7 +631,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-27.2";
+static VERSION_STRING: &'static str = "SV2018-08-28.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1386,18 +1386,30 @@ fn main() {
     //println!("{:?}", config);
     //end of AV1
 
-    let mut server_port = SERVER_PORT ;
+    //let mut server_port = SERVER_PORT ;
 
     let args: Vec<String> = env::args().collect();
 
-    if args.len() > 2 {
+    let server_port = if args.len() > 2 {
         let key = &args[1];
         let value = &args[2];
 
         if key == "--port" {
-            server_port = value.parse::<i32>().unwrap();
+            match value.parse::<i32>() {
+                Ok(port) => port,
+                Err(err) => {
+                    println!("error parsing the port value: {}, using the default port value {}", err, SERVER_PORT);
+                    SERVER_PORT
+                },
+            }
+        }
+        else {
+            SERVER_PORT
         }
     }
+    else {
+        SERVER_PORT
+    };
 
     remove_symlinks();
 

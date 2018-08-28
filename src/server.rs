@@ -243,8 +243,8 @@ impl Handler<Disconnect> for SessionServer {
 
                     //check if there are no new active sessions
                     match datasets.read().get(&msg.dataset_id) {                        
-                        Some(_) => {                            
-                            println!("[garbage collection]: an active session has been found for {}, doing nothing", &msg.dataset_id);
+                        Some(session) => {                            
+                            println!("[garbage collection]: active sessions {:?} have been found for {}, doing nothing", session, &msg.dataset_id);
                         },
                         None => {
                             println!("[garbage collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);

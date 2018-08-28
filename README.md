@@ -8,10 +8,11 @@ http://jvo.nao.ac.jp/~chris/splatalogue_v3.db
 
 and placed inside the fits_web_ql directory.
 
-# Prerequisites
+# How to Build
+## Prerequisites
 install a free open-source Intel SPMD compiler (ispc) and then execute "make" from within the fits_webql_ql directory
 
-#
+##
 install clang, i.e. for CentOS 7 please go to
 
 https://copr.fedorainfracloud.org/coprs/alonid/llvm-3.9.0/
@@ -50,7 +51,7 @@ export PATH=/opt/llvm-3.9.0/bin:$PATH
 
 export LIBCLANG_PATH=/opt/llvm-3.9.0/lib64
 
-# 
+##
 install a libyuv library (YUV rescaling/image inversion):
 
 git clone https://github.com/lemenkov/libyuv
@@ -67,7 +68,7 @@ make
 
 sudo make install
 
-#
+##
 install Google's libvpx from for example https://www.webmproject.org/code/
 
 git clone https://github.com/webmproject/libvpx
@@ -82,6 +83,11 @@ sudo make install
 
 (when compiling from source enforce -fPIC by means of the configure flag --enable-pic)
 
+## WARNING
+some systems, for example CentOS 6 and 7, need the following environment variable to be set before running fits_web_ql
+
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
 # How to run a local version (Personal Edition)
 cd into the fits_web_ql directory and execute
 
@@ -95,9 +101,3 @@ cargo run --features=server --release
 or if you need to specify an alternative HTTP port
 
 cargo run --features=server --release -- --port 8000
-
-# WARNING
-
-on some systems, i.e. CentOS 6, the executing the command below may be needed as otherwise Rust's cargo will not find the local version of the libvpx
-
-export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
