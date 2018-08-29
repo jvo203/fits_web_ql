@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-29.1";
+    return "JS2018-08-29.7";
 }
 
 var generateUid = function ()
@@ -924,10 +924,10 @@ function process_video(index)
 
 	var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height) ;
 	    
-	var img_width = scale*image_bounding_dims.width ;
+	var img_width = scale*image_bounding_dims.width;
 	var img_height = scale*image_bounding_dims.height;
 	    
-	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width, img_height);
+	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width-img_width)/2, (height-img_height)/2, img_width*videoFrame.scaleX, img_height*videoFrame.scaleY);
 		
 	if(viewport_zoom_settings != null)
 	{
@@ -952,7 +952,7 @@ function process_video(index)
 		   	ctx.fillStyle = "rgba(0,0,0,0.3)";
 		   	ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		   
-		   	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		   	ctx.drawImage(imageCanvas, (viewport_zoom_settings.x-viewport_zoom_settings.clipSize), (viewport_zoom_settings.y-viewport_zoom_settings.clipSize), videoFrame.scaleX*2*viewport_zoom_settings.clipSize+1, videoFrame.scaleY*2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		}
 
 		if(zoom_shape == "circle")
@@ -1925,7 +1925,7 @@ function open_websocket_connection(datasetId, index)
 					});
 				};*/
 
-				//test the wasm decoder
+				//call the wasm decoder
 				{
 					let start = performance.now() ;
 
@@ -2077,6 +2077,35 @@ function open_websocket_connection(datasetId, index)
 					{
 						console.log("Server not ready, long-polling the image again after 100 ms.") ;
 						setTimeout(function () {ALMAWS.send("[image]");}, 100) ;
+					}
+				}
+
+				if(data.type == "resolution")
+				{
+					var width = data.width;
+					var height = data.height;
+				
+					if(videoFrame == null)
+					{					
+						let imageFrame = imageContainer[va_count-1].imageFrame;
+
+						if(imageFrame != null)
+						{
+							var len = width * height * 4;
+							var ptr = Module._malloc(len);
+
+							var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
+							var img = new ImageData(data, width, height);
+
+							console.log("Module._malloc ptr=", ptr, "ImageData=", img);
+
+							videoFrame = {
+								img: img,
+								ptr: ptr,
+								scaleX: imageFrame.w / width,
+								scaleY: imageFrame.h / height,
+							}
+						}					
 					}
 				}
 
@@ -6102,7 +6131,7 @@ function setup_axes()
 
 		//pre-allocate a video memory
 		//get the dimensions from the imageFrame
-		if(videoFrame == null)
+		/*if(videoFrame == null)
 		{
 			let imageFrame = imageContainer[va_count-1].imageFrame;
 
@@ -6121,7 +6150,7 @@ function setup_axes()
 					ptr: ptr
 				};
 			}
-		}
+		}*/
 
 	    hide_navigation_bar() ;
 

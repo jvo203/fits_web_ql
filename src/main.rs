@@ -270,8 +270,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         let mut h = fits.height as u32 ;
                         let pixel_count = (w as u64) * (h as u64) ;
 
-                        if pixel_count > fits::PIXEL_COUNT_LIMIT {
-                            let ratio: f32 = ( (pixel_count as f32) / (fits::PIXEL_COUNT_LIMIT as f32) ).sqrt();
+                        if pixel_count > fits::VIDEO_PIXEL_COUNT_LIMIT {
+                            let ratio: f32 = ( (pixel_count as f32) / (fits::VIDEO_PIXEL_COUNT_LIMIT as f32) ).sqrt();
                             w = ( (w as f32) / ratio.sqrt() ) as u32 ;
 	                        h = ( (h as f32) / ratio.sqrt() ) as u32 ;
 
@@ -279,6 +279,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                             self.downscaling = true;
                         }
+
+                        //send the video size as JSON
+                        let resolution = json!({
+                            "type" : "resolution",
+                            "width" : w,
+                            "height" : h,
+                        });
+                        
+                        ctx.text(resolution.to_string());
 
                         self.width = w ;
                         self.height = h ;
@@ -667,7 +676,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-29.2";
+static VERSION_STRING: &'static str = "SV2018-08-29.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

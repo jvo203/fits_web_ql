@@ -127,8 +127,8 @@ static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
 
-pub const PIXEL_COUNT_LIMIT: u64 = 720*480;//480p
-//pub const PIXEL_COUNT_LIMIT: u64 = 1280*720;//720p
+pub const IMAGE_PIXEL_COUNT_LIMIT: u64 = 1280*720;
+pub const VIDEO_PIXEL_COUNT_LIMIT: u64 = 720*480;
 
 const FITS_CHUNK_LENGTH: usize = 2880;
 const FITS_LINE_LENGTH: usize = 80;
@@ -2872,8 +2872,8 @@ impl FITS {
         let mut h = self.height as u32 ;
         let pixel_count = (w as u64) * (h as u64) ;
 
-        if pixel_count > PIXEL_COUNT_LIMIT {
-            let ratio: f32 = ( (pixel_count as f32) / (PIXEL_COUNT_LIMIT as f32) ).sqrt();
+        if pixel_count > IMAGE_PIXEL_COUNT_LIMIT {
+            let ratio: f32 = ( (pixel_count as f32) / (IMAGE_PIXEL_COUNT_LIMIT as f32) ).sqrt();
             w = ( (w as f32) / ratio.sqrt() ) as u32 ;
 	        h = ( (h as f32) / ratio.sqrt() ) as u32 ;
 
