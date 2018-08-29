@@ -83,9 +83,11 @@ sudo make install
 (when compiling from source enforce -fPIC by means of the configure flag --enable-pic)
 
 ## WARNING
-some systems, for example CentOS 6 and 7, need the following environment variable to be set before running fits_web_ql
+many systems, for example Ubuntu, CentOS 6 and 7, need the following environment variable to be set before running fits_web_ql
 
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
+it is best to append this line into your .bashrc
 
 # How to run a local version (Personal Edition)
 cd into the fits_web_ql directory and execute
