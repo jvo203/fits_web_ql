@@ -127,7 +127,8 @@ static JVO_FITS_DB: &'static str = "alma";
 pub static FITSCACHE: &'static str = "FITSCACHE";
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
 
-pub const PIXEL_COUNT_LIMIT: u64 = 1280*720;
+pub const PIXEL_COUNT_LIMIT: u64 = 720*480;//480p
+//pub const PIXEL_COUNT_LIMIT: u64 = 1280*720;//720p
 
 const FITS_CHUNK_LENGTH: usize = 2880;
 const FITS_LINE_LENGTH: usize = 80;
