@@ -42,4 +42,7 @@ timer = "*"
 positioned-io = "*"
 atomic = "*"
 resize = "*"
+env_logger = "*"
+#log = "*"
+#log4rs = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }

@@ -128,8 +128,8 @@ impl Default for SessionServer {
 
                                 //check if there are no new active sessions
                                 match datasets_copy.read().get(key) {                        
-                                    Some(_) => {                            
-                                        println!("[orphaned dataset cleanup]: an active session has been found for {}, doing nothing", key);
+                                    Some(session) => {                            
+                                        println!("[orphaned dataset cleanup]: active sessions {:?} has been found for {}, doing nothing", session, key);
                                         None
                                     },
                                     None => {

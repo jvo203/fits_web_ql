@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-22.6";
+    return "JS2018-08-29.0";
 }
 
 var generateUid = function ()
@@ -1962,9 +1962,9 @@ function open_websocket_connection(datasetId, index)
 
 					let delta = performance.now() - start;
 
-					console.log('total decoding/processing/rendering time: ' + delta + ' [ms]');
+					console.log('total decoding/processing/rendering time: ' + delta.toFixed() + ' [ms]');
 					
-					let log = 'VP9 video frame decoding/processing/rendering time: ' + delta + ' [ms], bandwith: ' + Math.round(bandwidth) + " [Kbps]";
+					let log = 'VP9 video frame decoding/processing/rendering time: ' + delta.toFixed() + ' [ms], bandwidth: ' + Math.round(bandwidth) + " [Kbps], latency: " + latency.toFixed() + ' [ms]';
 
 					//latency > computed or delta, take the greater
 					if(Math.max(latency,delta) > 0.8*vidInterval)

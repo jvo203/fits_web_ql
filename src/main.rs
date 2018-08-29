@@ -8,6 +8,12 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 extern crate actix;
 extern crate actix_web;
+extern crate env_logger;
+
+/*#[macro_use]
+extern crate log;
+extern crate log4rs;*/
+
 extern crate percent_encoding;
 extern crate curl;
 extern crate byteorder;
@@ -44,10 +50,15 @@ use std::thread;
 use std::{env,ptr};
 use std::time::SystemTime;
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::Write;
+use chrono::Local;
 
 use actix::*;
 use actix_web::*;
+use actix_web::middleware::Logger;
 use actix_web::server::HttpServer;
+use actix_web::http::header::HeaderValue;
 use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 use uuid::Uuid;
@@ -105,6 +116,7 @@ struct WsSessionState {
 struct UserSession {    
     dataset_id: String,
     session_id: Uuid,
+    log: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
     ctx: vpx_codec_ctx_t,//VP9 encoder context
     downscaling: bool,
@@ -115,9 +127,20 @@ struct UserSession {
 
 impl UserSession {
     pub fn new(id: &String) -> UserSession {
+        let uuid = Uuid::new_v4();
+
+        #[cfg(not(feature = "server"))]
+        let filename = format!("/dev/null/{}", uuid);
+
+        #[cfg(feature = "server")]
+        let filename = format!("{}/{}_{}", LOG_DIRECTORY, id.replace("/","_"), uuid);
+
+        let log = File::create(filename);
+
         let session = UserSession {
             dataset_id: id.clone(),            
-            session_id: Uuid::new_v4(),            
+            session_id: uuid,
+            log: log,          
             cfg: vpx_codec_enc_cfg::default(),       
             ctx: vpx_codec_ctx_t {                
                 name: ptr::null(),
@@ -198,11 +221,21 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
             ws::Message::Ping(msg) => ctx.pong(&msg),
             ws::Message::Text(text) => {
                 if (&text).contains("[debug]") {
-                    println!("{}", text);
+                    println!("{}", text);                    
                 }
 
                 if (&text).contains("[heartbeat]") {
                     ctx.text(&text);       
+                }
+                else {
+                    match self.log {
+                        Ok(ref mut file) => {
+                            let timestamp = Local::now();
+                            let log_entry = format!("{}\t{}\n", timestamp.format("%Y-%m-%d %H:%M:%S"), text);
+                            let _ = file.write_all(log_entry.as_bytes());
+                        },
+                        Err(_) => {},
+                    };
                 }
 
                 if (&text).contains("[init_video]") {
@@ -626,12 +659,15 @@ lazy_static! {
     };
 }
 
+#[cfg(feature = "server")]
+static LOG_DIRECTORY: &'static str = "LOGS";
+
 #[cfg(not(feature = "server"))]
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-28.1";
+static VERSION_STRING: &'static str = "SV2018-08-29.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -847,10 +883,18 @@ fn websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpResponse> {
         Ok(x) => x.into_owned(),
         Err(_) => dataset_id_orig.clone(),
     };
+    
+    let empty_agent = HeaderValue::from_static("");
 
-    let session = UserSession::new(&dataset_id);
+    let headers = req.headers();
+    let user_agent = match headers.get("user-agent") {
+        Some(agent) => agent,
+        None => &empty_agent,
+    };
 
-    ws::start(req, session)
+    println!("new websocket request user agent: {:?}", user_agent);
+
+    ws::start(req, UserSession::new(&dataset_id))
 }
 
 fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
@@ -1386,6 +1430,13 @@ fn main() {
     //println!("{:?}", config);
     //end of AV1
 
+    std::env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
+
+    /*#[cfg(feature = "server")]
+    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+    info!("booting up");*/
+
     let mut server_port = SERVER_PORT ;
 
     let args: Vec<String> = env::args().collect();
@@ -1427,7 +1478,9 @@ fn main() {
                 addr: server.clone(),                    
             };            
         
-            App::with_state(state)            
+            App::with_state(state)
+                .middleware(Logger::default())
+                //.middleware(Logger::new("%a %{User-Agent}i"))
                 .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
                 .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
                 .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
