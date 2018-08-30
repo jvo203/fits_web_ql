@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-30.2";
+    return "JS2018-08-30.4";
 }
 
 var generateUid = function ()
@@ -1972,21 +1972,21 @@ function open_websocket_connection(datasetId, index)
 					if(Math.max(latency,delta) > 0.8*vidInterval)
 					{
 						//reduce the video FPS
-						vidFPS = Math.round(0.8*vidFPS);
+						vidFPS = 0.8*vidFPS;
 						vidFPS = Math.max(1, vidFPS);	
 					}
 					else {
 						//increase the video FPS
-						vidFPS = Math.round(1.2*vidFPS);
+						vidFPS = 1.2*vidFPS;
 						vidFPS = Math.min(30, vidFPS);
 					}
 
-					log += ' vidFPS = ' + vidFPS;
+					log += ' vidFPS = ' + Math.round(vidFPS);
 
 					wsConn[0].send('[debug] ' + log);
 
 					if(videoFrame != null)
-						d3.select("#fps").text('video: ' + vidFPS + ' fps');
+						d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps');
 				}
 
 			    /*if(!videoLeft)
@@ -11415,7 +11415,7 @@ async*/ function mainRenderer()
 	last_seq_id = 0 ;
 
 	//video
-	vidFPS = 10 ;//10
+	vidFPS = 5 ;//10
 	vidInterval = 1000 / vidFPS ;
 	recv_vid_id = 0 ;
 	sent_vid_id = 0 ;
