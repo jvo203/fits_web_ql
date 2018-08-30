@@ -8,7 +8,12 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 extern crate actix;
 extern crate actix_web;
-extern crate env_logger;
+//extern crate env_logger;
+
+#[macro_use]
+extern crate log;
+extern crate flexi_logger;
+
 extern crate percent_encoding;
 extern crate curl;
 extern crate byteorder;
@@ -662,7 +667,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-30.1";
+static VERSION_STRING: &'static str = "SV2018-08-30.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1433,8 +1438,18 @@ fn main() {
     //println!("{:?}", config);
     //end of AV1
 
+    //std::env::set_var("RUST_LOG", "info");
     std::env::set_var("RUST_LOG", "actix_web=info");
-    env_logger::init();
+
+    #[cfg(feature = "server")]
+    flexi_logger::Logger::with_env_or_str("fits_web_ql=info")
+        .log_to_file()
+        .directory(LOG_DIRECTORY)
+        //.format(flexi_logger::opt_format)
+        .start()
+        .unwrap_or_else(|e| panic!("Logger initialization failed with {}", e));
+
+    info!("{} main()", SERVER_STRING);
 
     let mut server_port = SERVER_PORT ;
 
@@ -1478,8 +1493,8 @@ fn main() {
             };            
         
             App::with_state(state)
-                .middleware(Logger::default())
-                //.middleware(Logger::new("%a %{User-Agent}i"))
+                //.middleware(Logger::default())
+                .middleware(Logger::new("%t %a %{User-Agent}i %r"))
                 .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
                 .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
                 .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})

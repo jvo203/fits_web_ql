@@ -41,5 +41,6 @@ curl = "*"
 timer = "*"
 positioned-io = "*"
 atomic = "*"
-env_logger = "*"
+log = "*"
+flexi_logger = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }

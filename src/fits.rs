@@ -38,11 +38,11 @@ use data_to_luminance_f16_logistic;
 use data_to_luminance_f16_ratio;
 use data_to_luminance_f16_square;
 use data_to_luminance_f16_legacy;
-use bilinear_resize;
+
 use ScalePlane;
-use FilterMode_kFilterNone;
-use FilterMode_kFilterLinear;
-use FilterMode_kFilterBilinear;
+//use FilterMode_kFilterNone;
+//use FilterMode_kFilterLinear;
+//use FilterMode_kFilterBilinear;
 use FilterMode_kFilterBox;
 
 
@@ -2896,15 +2896,17 @@ impl FITS {
 
         let mut y : Vec<u8> = self.pixels_to_luminance();
 
-        let start = precise_time::precise_time_ns();
+        {   
+            let start = precise_time::precise_time_ns();
 
-        let mut dst = vec![0; (w*h) as usize];            
-        self.resize_and_invert(&mut y, &mut dst, w, h);
-        y = dst;
+            let mut dst = vec![0; (w*h) as usize];            
+            self.resize_and_invert(&mut y, &mut dst, w, h);
+            y = dst;
 
-        let stop = precise_time::precise_time_ns();
+            let stop = precise_time::precise_time_ns();
 
-        println!("VP9 image frame inverting/downscaling time: {} [ms]", (stop-start)/1000000);       
+            println!("VP9 image frame inverting/downscaling time: {} [ms]", (stop-start)/1000000);
+        }
 
         /*let u : Vec<u8> = {            
             self.mask.par_iter()
