@@ -1358,7 +1358,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     html.push_str("<script>
         const golden_ratio = 1.6180339887;
         var ALMAWS = null ;
-        wsConn = null ;
+        var wsConn = null ;
         var firstTime = true ;
         var has_image = false ;         
         var PROGRESS_VARIABLE = 0.0 ;
