@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-29.7";
+    return "JS2018-08-30.2";
 }
 
 var generateUid = function ()
@@ -952,7 +952,7 @@ function process_video(index)
 		   	ctx.fillStyle = "rgba(0,0,0,0.3)";
 		   	ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		   
-		   	ctx.drawImage(imageCanvas, (viewport_zoom_settings.x-viewport_zoom_settings.clipSize), (viewport_zoom_settings.y-viewport_zoom_settings.clipSize), videoFrame.scaleX*2*viewport_zoom_settings.clipSize+1, videoFrame.scaleY*2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		   	ctx.drawImage(imageCanvas, (viewport_zoom_settings.x-viewport_zoom_settings.clipSize)/videoFrame.scaleX, (viewport_zoom_settings.y-viewport_zoom_settings.clipSize)/videoFrame.scaleY, (2*viewport_zoom_settings.clipSize+1)/videoFrame.scaleX, (2*viewport_zoom_settings.clipSize+1)/videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		}
 
 		if(zoom_shape == "circle")
@@ -966,7 +966,7 @@ function process_video(index)
 
 		   	ctx.closePath() ;
 		   	ctx.clip() ;
-		   	ctx.drawImage(imageCanvas, viewport_zoom_settings.x-viewport_zoom_settings.clipSize, viewport_zoom_settings.y-viewport_zoom_settings.clipSize, 2*viewport_zoom_settings.clipSize+1, 2*viewport_zoom_settings.clipSize+1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x-viewport_zoom_settings.clipSize)/videoFrame.scaleX, (viewport_zoom_settings.y-viewport_zoom_settings.clipSize)/videoFrame.scaleY, (2*viewport_zoom_settings.clipSize+1)/videoFrame.scaleX, (2*viewport_zoom_settings.clipSize+1)/videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		   	ctx.restore() ;
 		}
 	}
@@ -1675,6 +1675,8 @@ function open_websocket_connection(datasetId, index)
 		    
 		    d3.select("#latency").text('websocket conn. error');
 		}) ;
+
+		ALMAWS.addEventListener("close", function(evt) {}) ;
 		
 		ALMAWS.addEventListener("message", function (evt) {
 		    var t = performance.now() ;

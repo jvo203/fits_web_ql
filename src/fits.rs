@@ -14,11 +14,6 @@ use std::sync::mpsc;
 use num_cpus;
 use positioned_io::ReadAt;
 use atomic;
-use resize;
-
-use resize::Resizer;
-use resize::Pixel::Gray8;
-use resize::Type::Lanczos3;
 
 use actix::*;
 use rayon;
@@ -2713,7 +2708,7 @@ impl FITS {
         }    
     }
 
-    pub fn get_video_frame(&self, frame: f64, ref_freq: f64, width: u32, height: u32, resizer: &mut Resizer<Gray8>, downscaling: bool) -> Option<vpx_image> {
+    pub fn get_video_frame(&self, frame: f64, ref_freq: f64, width: u32, height: u32) -> Option<vpx_image> {
         //get a frame index (frame_start = frame_end = frame)
         let frame = match self.get_spectrum_range(frame, frame, ref_freq) {
             Some((frame,_)) => frame,
@@ -2750,15 +2745,10 @@ impl FITS {
             None => vec![0; (width * height) as usize],
         };
 
-        //downsizing?
-        /*if downscaling*/ {
-            let mut dst = vec![0; (width*height) as usize];
-
-            //resizer.resize(&y, &mut dst);
-            self.resize_and_invert(&mut y, &mut dst, width, height);
-
-            y = dst;
-        }
+        //invert and downscale        
+        let mut dst = vec![0; (width*height) as usize];       
+        self.resize_and_invert(&mut y, &mut dst, width, height);
+        y = dst;
 
         let u : &[u8] = &vec![128; count as usize];
         let v : &[u8] = &vec![128; count as usize];
@@ -2906,22 +2896,15 @@ impl FITS {
 
         let mut y : Vec<u8> = self.pixels_to_luminance();
 
-        /*if pixel_count > PIXEL_COUNT_LIMIT*/ {
-            let start = precise_time::precise_time_ns();
+        let start = precise_time::precise_time_ns();
 
-            let mut dst = vec![0; (w*h) as usize];
+        let mut dst = vec![0; (w*h) as usize];            
+        self.resize_and_invert(&mut y, &mut dst, w, h);
+        y = dst;
 
-            let mut resizer = resize::new(self.width as usize, self.height as usize, w as usize, h as usize, Gray8, Lanczos3);
+        let stop = precise_time::precise_time_ns();
 
-            //resizer.resize(&y, &mut dst);
-            self.resize_and_invert(&mut y, &mut dst, w, h);
-
-            y = dst;
-
-            let stop = precise_time::precise_time_ns();
-
-            println!("VP9 image frame inverting/downscaling time: {} [ms]", (stop-start)/1000000);
-        }
+        println!("VP9 image frame inverting/downscaling time: {} [ms]", (stop-start)/1000000);       
 
         /*let u : Vec<u8> = {            
             self.mask.par_iter()

@@ -9,11 +9,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 extern crate actix;
 extern crate actix_web;
 extern crate env_logger;
-
-/*#[macro_use]
-extern crate log;
-extern crate log4rs;*/
-
 extern crate percent_encoding;
 extern crate curl;
 extern crate byteorder;
@@ -32,7 +27,6 @@ extern crate vpx_sys;
 extern crate num_rational;
 extern crate positioned_io;
 extern crate atomic;
-extern crate resize;
 
 //extern crate rav1e;
 //use rav1e::*;
@@ -62,10 +56,6 @@ use actix_web::http::header::HeaderValue;
 use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 use uuid::Uuid;
-
-use resize::Resizer;
-use resize::Pixel::Gray8;
-use resize::Type::Triangle;
 
 use vpx_sys::*;
 
@@ -121,8 +111,7 @@ struct UserSession {
     ctx: vpx_codec_ctx_t,//VP9 encoder context
     downscaling: bool,
     width: u32,
-    height: u32,
-    resizer: Resizer<Gray8>,
+    height: u32,    
 }
 
 impl UserSession {
@@ -156,7 +145,6 @@ impl UserSession {
             downscaling: false,
             width: 0,
             height: 0,
-            resizer: resize::new(0,0,0,0,Gray8,Triangle),
         } ;
 
         println!("allocating a new websocket session for {}", id);
@@ -290,9 +278,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         ctx.text(resolution.to_string());
 
                         self.width = w ;
-                        self.height = h ;
-                        self.resizer = resize::new(fits.width as usize, fits.height as usize, w as usize, h as usize, Gray8, Triangle);
-
+                        self.height = h ;                        
                         self.cfg.g_w = w;
                         self.cfg.g_h = h;
                         /*self.cfg.g_timebase.num = 1;
@@ -578,7 +564,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     if fits.has_data {
                         let start = precise_time::precise_time_ns();
-                        match fits.get_video_frame(frame, ref_freq, self.width, self.height, &mut self.resizer, self.downscaling) {                            
+                        match fits.get_video_frame(frame, ref_freq, self.width, self.height) {                            
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
                                 //send a binary response
@@ -676,7 +662,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-29.3";
+static VERSION_STRING: &'static str = "SV2018-08-30.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1372,6 +1358,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     html.push_str("<script>
         const golden_ratio = 1.6180339887;
         var ALMAWS = null ;
+        wsConn = null ;
         var firstTime = true ;
         var has_image = false ;         
         var PROGRESS_VARIABLE = 0.0 ;
@@ -1383,6 +1370,13 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
         mainRenderer();
         var idleResize = -1;
         window.onresize = resizeMe;
+        window.onbeforeunload = function() {            
+            if(wsConn != null)
+            {
+                for(let i=0;i<va_count;i++)
+                    wsConn[i].close();
+            }
+        };
     </script>\n");
 
     //Google Analytics
@@ -1441,10 +1435,6 @@ fn main() {
 
     std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
-
-    /*#[cfg(feature = "server")]
-    log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
-    info!("booting up");*/
 
     let mut server_port = SERVER_PORT ;
 
