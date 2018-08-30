@@ -1494,7 +1494,11 @@ fn main() {
         
             App::with_state(state)
                 //.middleware(Logger::default())
-                .middleware(Logger::new("%t %a %{User-Agent}i %r"))
+                .middleware(Logger::new("%t %a %{User-Agent}i %r")
+                    .exclude("/fitswebql/get_molecules")
+                    .exclude("/fitswebql/get_image")
+                    .exclude("/fitswebql/get_spectrum")
+                )
                 .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
                 .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
                 .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
