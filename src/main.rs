@@ -1366,8 +1366,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
         var RESTFRQ = 0.0 ;
         var USER_SELFRQ = 0.0 ;
         var USER_DELTAV = 0.0 ;
-        var ROOT_PATH = \"/fitswebql/\" ;
-        mainRenderer();
+        var ROOT_PATH = \"/fitswebql/\" ;        
         var idleResize = -1;
         window.onresize = resizeMe;
         window.onbeforeunload = function() {            
@@ -1377,6 +1376,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
                     wsConn[i].close();
             }
         };
+        mainRenderer();
     </script>\n");
 
     //Google Analytics
