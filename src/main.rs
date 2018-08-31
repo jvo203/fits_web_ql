@@ -583,7 +583,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 //let start = precise_time::precise_time_ns();
 
                                 //variable rate control
-                                //disabled due to bugs in libvpx
+                                //disabled due to bugs in libvpx, re-test it
                                 self.cfg.rc_target_bitrate = target_bitrate as u32;
 
                                 let ret = unsafe { vpx_codec_enc_config_set( &mut self.ctx, &mut self.cfg ) };
