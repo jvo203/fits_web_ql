@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-31.0";
+    return "JS2018-08-31.2";
 }
 
 var generateUid = function ()
@@ -1884,6 +1884,12 @@ function open_websocket_connection(datasetId, index)
 				var transfer = (latency - computed)/1000 ;//[s]
 				var bandwidth = (received_msg.byteLength * 8 / 1000) / transfer;//[kilobits per s]
 
+				//bitrate tracking (variance-tracking Kalman Filter)
+				//eta = (variance - bitrate*bitrate) / (1 + Math.cosh(bitrate));
+				bitrate = (1 - eta)*bitrate + eta * bandwidth;
+				//variance = (1 - eta)*variance + eta * bandwidth*bandwidth;
+				target_bitrate = 0.8*bitrate ;
+
 				console.log("[ws] computed = " + computed.toFixed(1) + " [ms], latency = " + latency.toFixed(1) + "[ms], n/w transfer time = " + (1000*transfer).toFixed(1) + " [ms],  n/w bandwidth = " + Math.round(bandwidth) + " [kbps], frame length: " + length + " frame length:" + frame.length);
 
 				/*let decoder = wsConn[index-1].decoder ;
@@ -1986,7 +1992,7 @@ function open_websocket_connection(datasetId, index)
 					wsConn[0].send('[debug] ' + log);
 
 					if(videoFrame != null)
-						d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps');
+						d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps, bitrate: ' + Math.round(bitrate) + ' [kbps]');//, η: ' + eta.toFixed(4) + ' var: ' + variance
 				}
 
 			    /*if(!videoLeft)
@@ -6438,7 +6444,7 @@ function x_axis_move(offset)
 
 			for(let index=0;index<va_count;index++)
 		    {
-				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id ;
+				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
 
 				wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
 			} ;
@@ -8394,7 +8400,7 @@ function videoTimeout(freq)
 
 	for(let index=0;index<va_count;index++)
 	{
-		let strRequest = 'frame=' + freq + '&key=true' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id ;
+		let strRequest = 'frame=' + freq + '&key=true' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
 
 		wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
 	} ;
@@ -11415,8 +11421,15 @@ async*/ function mainRenderer()
 	last_seq_id = 0 ;
 
 	//video
-	vidFPS = 5 ;//10
+	vidFPS = 5 ;//10	
 	vidInterval = 1000 / vidFPS ;
+
+	//track the bitrate with a Kalman Filter
+	target_bitrate = 1024 ;
+	bitrate = target_bitrate ;
+	eta = 0.1 ;
+	variance = 0.0 ;
+
 	recv_vid_id = 0 ;
 	sent_vid_id = 0 ;
 	last_vid_id = 0 ;

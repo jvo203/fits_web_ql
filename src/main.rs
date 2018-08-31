@@ -512,7 +512,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[video]") {
                     //println!("{}", text.replace("&"," "));
-                    let (frame, key, ref_freq, seq_id, timestamp) = scan_fmt!(&text.replace("&"," "), "[video] frame={} key={} ref_freq={} seq_id={} timestamp={}", String, bool,String, i32, String);
+                    let (frame, key, ref_freq, seq_id, target_bitrate, timestamp) = scan_fmt!(&text.replace("&"," "), "[video] frame={} key={} ref_freq={} seq_id={} bitrate={} timestamp={}", String, bool,String, i32, i32, String);
 
                     let frame = match frame {
                         Some(s) => match s.parse::<f64>() {                            
@@ -540,6 +540,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         _ => 0,
                     };
 
+                    let target_bitrate = match target_bitrate {
+                        Some(x) => x,
+                        _ => 1024,
+                    };
+
                     let timestamp = match timestamp {
                         Some(s) => match s.parse::<f64>() { 
                             Ok(x) => x,
@@ -548,7 +553,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         _ => 0.0,
                     };
 
-                    println!("frame:{} keyframe:{} ref_freq:{} seq_id:{} timestamp:{}", frame, keyframe, ref_freq, seq_id, timestamp);
+                    println!("frame:{} keyframe:{} ref_freq:{} seq_id:{} target_bitrate:{} timestamp:{}", frame, keyframe, ref_freq, seq_id, target_bitrate, timestamp);
 
                     let datasets = DATASETS.read();
 
@@ -576,6 +581,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 //print!("{:#?}", image);
 
                                 //let start = precise_time::precise_time_ns();
+
+                                //variable rate control
+                                self.cfg.rc_target_bitrate = target_bitrate as u32;
+
+                                let ret = unsafe { vpx_codec_enc_config_set( &mut self.ctx, &mut self.cfg ) };
+
+                                if ret != VPX_CODEC_OK {            
+                                    println!("VP9: vpx_codec_enc_config_set error {:?}", ret);
+                                }
 
                                 let mut flags = 0;
                                 if keyframe {
@@ -667,7 +681,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-31.0";
+static VERSION_STRING: &'static str = "SV2018-08-31.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
