@@ -584,13 +584,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                 //variable rate control
                                 //disabled due to bugs in libvpx
-                                /*self.cfg.rc_target_bitrate = target_bitrate as u32;
+                                self.cfg.rc_target_bitrate = target_bitrate as u32;
 
                                 let ret = unsafe { vpx_codec_enc_config_set( &mut self.ctx, &mut self.cfg ) };
 
                                 if ret != VPX_CODEC_OK {            
                                     println!("VP9: vpx_codec_enc_config_set error {:?}", ret);
-                                }*/
+                                }
 
                                 let mut flags = 0;
                                 if keyframe {
@@ -682,7 +682,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-08-31.3";
+static VERSION_STRING: &'static str = "SV2018-08-31.4";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
