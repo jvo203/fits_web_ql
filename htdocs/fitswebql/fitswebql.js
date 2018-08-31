@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-30.4";
+    return "JS2018-08-31.0";
 }
 
 var generateUid = function ()
@@ -1884,7 +1884,7 @@ function open_websocket_connection(datasetId, index)
 				var transfer = (latency - computed)/1000 ;//[s]
 				var bandwidth = (received_msg.byteLength * 8 / 1000) / transfer;//[kilobits per s]
 
-				console.log("[ws] computed = " + computed.toFixed(1) + " [ms], latency = " + latency.toFixed(1) + "[ms], n/w transfer time = " + (1000*transfer).toFixed(1) + " [ms],  n/w bandwidth = " + Math.round(bandwidth) + " [Kbps], frame length: " + length + " frame length:" + frame.length);
+				console.log("[ws] computed = " + computed.toFixed(1) + " [ms], latency = " + latency.toFixed(1) + "[ms], n/w transfer time = " + (1000*transfer).toFixed(1) + " [ms],  n/w bandwidth = " + Math.round(bandwidth) + " [kbps], frame length: " + length + " frame length:" + frame.length);
 
 				/*let decoder = wsConn[index-1].decoder ;
 
@@ -1966,7 +1966,7 @@ function open_websocket_connection(datasetId, index)
 
 					console.log('total decoding/processing/rendering time: ' + delta.toFixed() + ' [ms]');
 					
-					let log = 'VP9 video frame length ' + len + ' bytes, decoding/processing/rendering time: ' + delta.toFixed() + ' [ms], bandwidth: ' + Math.round(bandwidth) + " [Kbps], request latency: " + latency.toFixed() + ' [ms]';
+					let log = 'VP9 video frame length ' + len + ' bytes, decoding/processing/rendering time: ' + delta.toFixed() + ' [ms], bandwidth: ' + Math.round(bandwidth) + " [kbps], request latency: " + latency.toFixed() + ' [ms]';
 
 					//latency > computed or delta, take the greater
 					if(Math.max(latency,delta) > 0.8*vidInterval)
@@ -2058,9 +2058,9 @@ function open_websocket_connection(datasetId, index)
 				.attr("opacity", 0.0);*/
 
 			    if(ping_latency >= 1)		    
-				d3.select("#latency").text('n/w latency: ' + ping_latency.toFixed() + ' ms' + ' ws: ' + fps.toFixed() + 'fps');
+					d3.select("#latency").text('n/w latency: ' + ping_latency.toFixed() + ' ms' + ' ws: ' + fps.toFixed() + ' fps');
 			    else
-				d3.select("#latency").text('n/w latency: ' + ping_latency.toFixed(1) + ' ms' + ' ws: ' + fps.toFixed() + ' fps');
+					d3.select("#latency").text('n/w latency: ' + ping_latency.toFixed(1) + ' ms' + ' ws: ' + fps.toFixed() + ' fps');
 				//d3.select("#latency").text('n/w latency: < 1 ms');			    
 			    
 			    return ;

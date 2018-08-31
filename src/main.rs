@@ -1495,7 +1495,6 @@ fn main() {
             App::with_state(state)
                 //.middleware(Logger::default())
                 .middleware(Logger::new("%t %a %{User-Agent}i %r")                    
-                    .exclude("/fitswebql/websocket")
                     .exclude("/fitswebql/get_molecules")
                     .exclude("/fitswebql/get_image")
                     .exclude("/fitswebql/get_spectrum")
