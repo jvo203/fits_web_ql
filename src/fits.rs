@@ -29,21 +29,21 @@ use std::sync::atomic::{AtomicIsize,Ordering};
 
 use vpx_sys::*;
 
-use make_image_spectrumF16_minmax;
-use join_pixels_masks;
-use calculate_radial_spectrumF16;
-use calculate_square_spectrumF16;
-use data_to_luminance_f16_linear;
-use data_to_luminance_f16_logistic;
-use data_to_luminance_f16_ratio;
-use data_to_luminance_f16_square;
-use data_to_luminance_f16_legacy;
+use ispc_make_image_spectrumF16_minmax;
+use ispc_join_pixels_masks;
+use ispc_calculate_radial_spectrumF16;
+use ispc_calculate_square_spectrumF16;
+use ispc_data_to_luminance_f16_linear;
+use ispc_data_to_luminance_f16_logistic;
+use ispc_data_to_luminance_f16_ratio;
+use ispc_data_to_luminance_f16_square;
+use ispc_data_to_luminance_f16_legacy;
 
-use ScalePlane;
+use libyuv_ScalePlane;
 //use FilterMode_kFilterNone;
 //use FilterMode_kFilterLinear;
 //use FilterMode_kFilterBilinear;
-use FilterMode_kFilterBox;
+use libyuv_FilterMode_kFilterBox;
 
 
 /*
@@ -423,7 +423,7 @@ impl FITS {
                 let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
                 let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());  
+                ispc_make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());  
             }
 
             frame_min = references[0] ;
@@ -477,7 +477,7 @@ impl FITS {
                 let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
                 let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
 
-                join_pixels_masks(self.pixels.as_mut_ptr(), pixels_tid.as_mut_ptr(), mask_raw.as_mut_ptr(), mask_tid_raw.as_mut_ptr(), cdelt3, total_size as u32);
+                ispc_join_pixels_masks(self.pixels.as_mut_ptr(), pixels_tid.as_mut_ptr(), mask_raw.as_mut_ptr(), mask_tid_raw.as_mut_ptr(), cdelt3, total_size as u32);
             }
         }
 
@@ -2438,7 +2438,7 @@ impl FITS {
                     let mut raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                    data_to_luminance_f16_linear( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, slope, y.as_mut_ptr(), len as u32);
+                    ispc_data_to_luminance_f16_linear( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, slope, y.as_mut_ptr(), len as u32);
                 }                            
             },
             "logistic" => {
@@ -2446,7 +2446,7 @@ impl FITS {
                     let mut raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                    data_to_luminance_f16_logistic( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, median, sensitivity, y.as_mut_ptr(), len as u32);
+                    ispc_data_to_luminance_f16_logistic( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, median, sensitivity, y.as_mut_ptr(), len as u32);
                 }                                            
             },
             "ratio" => {
@@ -2454,7 +2454,7 @@ impl FITS {
                     let mut raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                    data_to_luminance_f16_ratio( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, sensitivity, y.as_mut_ptr(), len as u32);
+                    ispc_data_to_luminance_f16_ratio( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, sensitivity, y.as_mut_ptr(), len as u32);
                 }                                    
             },
             "square" => {
@@ -2462,7 +2462,7 @@ impl FITS {
                     let mut raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                    data_to_luminance_f16_square( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, sensitivity, y.as_mut_ptr(), len as u32);
+                    ispc_data_to_luminance_f16_square( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, black, sensitivity, y.as_mut_ptr(), len as u32);
                 }                             
             },            
             //by default assume "legacy"
@@ -2474,7 +2474,7 @@ impl FITS {
                     let mut raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                    data_to_luminance_f16_legacy( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, self.dmin, self.dmax, lmin, lmax, y.as_mut_ptr(), len as u32);
+                    ispc_data_to_luminance_f16_legacy( raw.as_mut_ptr(), mask_raw.as_mut_ptr(), self.bzero, self.bscale, self.dmin, self.dmax, lmin, lmax, y.as_mut_ptr(), len as u32);
                 }                         
             },
         }
@@ -2783,11 +2783,11 @@ impl FITS {
 
         //try the libyuv library
         unsafe {
-            ScalePlane(src.as_mut_ptr(), self.width,
+            libyuv_ScalePlane(src.as_mut_ptr(), self.width,
                 self.width, -self.height,
                 dst.as_mut_ptr(), width as i32,
                 width as i32, height as i32,
-                /*3*/ FilterMode_kFilterBox);
+                /*3*/ libyuv_FilterMode_kFilterBox);
         };
 
         /*let src_ptr = src.as_ptr() as *mut i8;
@@ -3161,7 +3161,7 @@ impl FITS {
                 unsafe {                    
                     let mut raw = slice::from_raw_parts_mut(ptr, len);
 
-                    let spectrum = calculate_radial_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, cx as i32, cy as i32, r2 as i32, mean, cdelt3);                  
+                    let spectrum = ispc_calculate_radial_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, cx as i32, cy as i32, r2 as i32, mean, cdelt3);                  
 
                     spectrum
                 }
@@ -3311,7 +3311,7 @@ impl FITS {
                 unsafe {                    
                     let mut raw = slice::from_raw_parts_mut(ptr, len);
 
-                    let spectrum = calculate_square_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, mean, cdelt3);                  
+                    let spectrum = ispc_calculate_square_spectrumF16 ( raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, self.width as u32, x1 as i32, x2 as i32, y1 as i32, y2 as i32, mean, cdelt3);                  
 
                     spectrum
                 }

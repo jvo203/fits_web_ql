@@ -11,6 +11,10 @@ fn main() {
 
     println!("cargo:rustc-link-search=native=/usr/local/lib");
     println!("cargo:rustc-link-lib=static=yuv");
+    println!("cargo:rustc-link-lib=static=x265");
+
+    println!("cargo:rustc-link-lib=static=stdc++");
+    println!("cargo:rustc-link-lib=static=numa");
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
@@ -19,6 +23,7 @@ fn main() {
         // The input header we would like to generate
         // bindings for.
         .header("wrapper.h")
+        .clang_args(["-x", "c++", "-std=c++11"].iter())
         //.enable_cxx_namespaces()
         // Finish the builder and generate the bindings.
         .generate()

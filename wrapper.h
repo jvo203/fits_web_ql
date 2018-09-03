@@ -4,3 +4,4 @@
 
 #include "/usr/local/include/libyuv/scale.h"
 
+#include <x265.h>

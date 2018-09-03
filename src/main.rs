@@ -114,9 +114,10 @@ struct UserSession {
     log: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
     ctx: vpx_codec_ctx_t,//VP9 encoder context
+    hevc_param: *mut x265_param,//HEVC param
     downscaling: bool,
     width: u32,
-    height: u32,    
+    height: u32, 
 }
 
 impl UserSession {
@@ -130,6 +131,9 @@ impl UserSession {
         let filename = format!("{}/{}_{}", LOG_DIRECTORY, id.replace("/","_"), uuid);
 
         let log = File::create(filename);
+
+        //let hevc_api: x265_api = x265_api_get_160(8);
+        //let param: *mut x265_param = unsafe{ x265_param_alloc() };
 
         let session = UserSession {
             dataset_id: id.clone(),            
@@ -147,6 +151,7 @@ impl UserSession {
                 },
                 priv_: ptr::null_mut(),
             },
+            hevc_param: ptr::null_mut(),
             downscaling: false,
             width: 0,
             height: 0,
@@ -682,7 +687,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-03.0";
+static VERSION_STRING: &'static str = "SV2018-09-03.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
