@@ -51,6 +51,7 @@ use std::time::SystemTime;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write;
+use std::ffi::CString;
 use chrono::Local;
 
 use actix::*;
@@ -114,7 +115,9 @@ struct UserSession {
     log: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
     ctx: vpx_codec_ctx_t,//VP9 encoder context
-    hevc_param: *mut x265_param,//HEVC param
+    param: *mut x265_param,//HEVC param
+    enc: *mut x265_encoder,
+    pic: *mut x265_picture,
     downscaling: bool,
     width: u32,
     height: u32, 
@@ -130,10 +133,7 @@ impl UserSession {
         #[cfg(feature = "server")]
         let filename = format!("{}/{}_{}", LOG_DIRECTORY, id.replace("/","_"), uuid);
 
-        let log = File::create(filename);
-
-        //let hevc_api: x265_api = x265_api_get_160(8);
-        //let param: *mut x265_param = unsafe{ x265_param_alloc() };
+        let log = File::create(filename); 
 
         let session = UserSession {
             dataset_id: id.clone(),            
@@ -151,7 +151,9 @@ impl UserSession {
                 },
                 priv_: ptr::null_mut(),
             },
-            hevc_param: ptr::null_mut(),
+            param: ptr::null_mut(),
+            enc: ptr::null_mut(),
+            pic: ptr::null_mut(),
             downscaling: false,
             width: 0,
             height: 0,
@@ -168,6 +170,20 @@ impl Drop for UserSession {
         println!("dropping a websocket session for {}", self.dataset_id);
 
         unsafe { vpx_codec_destroy(&mut self.ctx) };
+
+        unsafe {
+            if !self.param.is_null() {
+                    x265_param_free(self.param);
+            }
+
+            if !self.enc.is_null() {
+                x265_encoder_close(self.enc);
+            }
+
+            if !self.pic.is_null() {
+                x265_picture_free(self.pic);
+            }
+        }       
     }
 }
 
@@ -258,9 +274,21 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     { *fits.timestamp.write() = SystemTime::now() ; }
 
+                    //alloc HEVC params
+                    if self.param.is_null() {                        
+                        self.param = unsafe{ x265_param_alloc() };
+                        unsafe{
+                            x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("fastdecode").unwrap().as_ptr());
+                            //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
+
+                            (*self.param).fpsNum = fps as u32;
+                            (*self.param).fpsDenom = 1;
+                        };
+                    }
+
                     let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut self.cfg, 0) };
 
-                    if ret != VPX_CODEC_OK {
+                    if ret != VPX_CODEC_OK || self.param.is_null() {
                         println!("VP9: default configuration failed");
                     }
                     else {
@@ -286,6 +314,28 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         });
                         
                         ctx.text(resolution.to_string());
+
+                        //HEVC config
+                        unsafe {                          
+                            (*self.param).bRepeatHeaders=1;  
+                            (*self.param).internalCsp = X265_CSP_I400 as i32;
+                            (*self.param).internalBitDepth = 8 ;
+                            (*self.param).sourceWidth = w as i32;
+                            (*self.param).sourceHeight = h as i32;
+
+                            //constant bitrate
+                            (*self.param).rc.rateControlMode = X265_RC_METHODS_X265_RC_CRF as i32;
+                            (*self.param).rc.bitrate = 1024;
+                        };
+
+                        if self.pic.is_null() {
+                            self.pic = unsafe{ x265_picture_alloc() } ;
+                        }
+
+                        if self.enc.is_null() {
+                            self.enc = unsafe{ x265_encoder_open_160(self.param) };
+                            unsafe{ x265_picture_init(self.param, self.pic) };
+                        }                        
 
                         self.width = w ;
                         self.height = h ;                        
@@ -346,6 +396,23 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     println!("{}", text);
 
                     unsafe { vpx_codec_destroy(&mut self.ctx) };
+
+                    unsafe {
+                        if !self.param.is_null() {
+                            x265_param_free(self.param);
+                            self.param = ptr::null_mut();
+                        }
+
+                        if !self.enc.is_null() {
+                            x265_encoder_close(self.enc);
+                            self.enc = ptr::null_mut();
+                        }
+
+                        if !self.pic.is_null() {                    
+                            x265_picture_free(self.pic);
+                            self.pic = ptr::null_mut();
+                        }
+                    }
                 }
 
                 if (&text).contains("[spectrum]") {
@@ -577,8 +644,109 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     { *fits.timestamp.write() = SystemTime::now() ; }
 
-                    if fits.has_data {
+                    if fits.has_data && !self.pic.is_null() {
                         let start = precise_time::precise_time_ns();
+                        //HEVC (x265)
+                        match fits.get_video_plane(frame, ref_freq, self.width, self.height) {
+                            Some(mut y) => {
+                                unsafe {
+                                    (*self.pic).stride[0] = self.width as i32;
+                                    (*self.pic).planes[0] = y.as_mut_ptr() as *mut std::os::raw::c_void;
+                                }
+
+                                let mut nal_count: u32 = 0 ;
+                                let mut p_nal: *mut x265_nal = ptr::null_mut();
+
+                                //encode
+                                let x265_start = precise_time::precise_time_ns();
+
+                                let ret = unsafe{ x265_encoder_encode(self.enc, &mut p_nal, &mut nal_count, self.pic, ptr::null_mut()) };
+
+                                let x265_stop = precise_time::precise_time_ns();
+
+                                println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (x265_stop-start)/1000000, 1000000000/(x265_stop-start), ret, nal_count);
+
+                                //y falls out of scope
+                                unsafe {
+                                    (*self.pic).stride[0] = 0 as i32;
+                                    (*self.pic).planes[0] = ptr::null_mut();
+                                }
+
+                                let elapsed = (x265_stop-start)/1000000 ;
+
+                                //process all NAL units one by one
+                                if nal_count > 0 {                                    
+                                    let nal_units = unsafe{ std::slice::from_raw_parts(p_nal, nal_count as usize) };
+
+                                    for unit in nal_units {
+                                        println!("NAL unit type: {}, size: {}", unit.type_, unit.sizeBytes);
+                                        
+                                        let payload = unsafe{ std::slice::from_raw_parts(unit.payload, unit.sizeBytes as usize) };
+
+                                        let ws_frame = WsFrame {                                        
+                                            ts: timestamp as f32,
+                                            seq_id: seq_id as u32,
+                                            msg_type: 6,//an hevc video frame
+                                            //length: video_frame.len() as u32,
+                                            elapsed: elapsed as f32,
+                                            frame: payload.to_vec()
+                                        };
+
+                                        match serialize(&ws_frame) {  
+                                            Ok(bin) => {                      
+                                                println!("WsFrame binary length: {}", bin.len());
+                                                //println!("{}", bin);
+                                                ctx.binary(bin);
+                                            },
+                                            Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                        }                             
+                                    }
+                                }
+
+                                if keyframe {
+                                    //flush the encoder to signal the end
+                                    loop {
+                                        let ret = unsafe{ x265_encoder_encode(self.enc, &mut p_nal, &mut nal_count, ptr::null_mut() , ptr::null_mut()) };
+
+                                        if ret > 0 {
+                                            println!("flushing the encoder, residual nal_count = {}", nal_count);
+
+                                            let nal_units = unsafe{ std::slice::from_raw_parts(p_nal, nal_count as usize) };
+
+                                            for unit in nal_units {
+                                                println!("NAL unit type: {}, size: {}", unit.type_, unit.sizeBytes);
+
+                                                let payload = unsafe{ std::slice::from_raw_parts(unit.payload, unit.sizeBytes as usize) };
+
+                                                let ws_frame = WsFrame {      
+                                                    ts: timestamp as f32,
+                                                    seq_id: seq_id as u32,
+                                                    msg_type: 6,//an hevc video frame
+                                                    //length: video_frame.len() as u32,
+                                                    elapsed: elapsed as f32,
+                                                    frame: payload.to_vec()
+                                                };
+
+                                                match serialize(&ws_frame) {  
+                                                    Ok(bin) => {                      
+                                                    println!("WsFrame binary length: {}", bin.len());
+                                                    //println!("{}", bin);
+                                                    ctx.binary(bin);
+                                                    },
+                                                    Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                                }
+                                            }
+                                        }
+                                        else {
+                                            break;
+                                        }
+                                    }
+                                }                                                           
+                            },
+                            None => {},
+                        }
+
+                        //VP9 (libvpx)
                         match fits.get_video_frame(frame, ref_freq, self.width, self.height) {                            
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
@@ -640,7 +808,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     let ws_frame = WsFrame {                                        
                                         ts: timestamp as f32,
                                         seq_id: seq_id as u32,
-                                        msg_type: 5,//a video frame
+                                        msg_type: 5,//a VP9 video frame
                                         //length: video_frame.len() as u32,
                                         elapsed: ( (stop-start)/1000000 ) as f32,
                                         frame: video_frame
@@ -648,7 +816,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                     match serialize(&ws_frame) {                                        
                                         Ok(bin) => {                      
-                                            println!("binary length: {}", bin.len());
+                                            println!("WsFrame binary length: {}", bin.len());
                                             //println!("{}", bin);
                                             ctx.binary(bin);
                                         },
@@ -687,7 +855,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-03.1";
+static VERSION_STRING: &'static str = "SV2018-09-04.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1550,4 +1718,6 @@ fn main() {
     remove_symlinks();
 
     println!("FITSWebQL: clean shutdown completed.");
+
+    unsafe{ x265_cleanup() };
 }

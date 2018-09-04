@@ -19,8 +19,13 @@ use actix::*;
 use rayon;
 use server;
 use rayon::prelude::*;
+
+#[cfg(feature = "server")]
 use curl::easy::Easy;
+
+#[cfg(feature = "server")]
 use std::error::Error;
+
 use std::cmp::Ordering::Equal;
 use num_integer::Integer;
 use num;
@@ -117,8 +122,12 @@ pub fn flush_frame(mut ctx: vpx_codec_ctx_t, deadline: u64) -> Result<Option<Vec
     } 
 }
 
+#[cfg(feature = "server")]
 static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
+
+#[cfg(feature = "server")]
 static JVO_FITS_DB: &'static str = "alma";
+
 pub static FITSCACHE: &'static str = "FITSCACHE";
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
 
@@ -818,6 +827,7 @@ impl FITS {
         fits
     }
 
+    #[cfg(feature = "server")]
     fn from_url(id: &String, flux: &String, url: &String, server: &Addr<server::SessionServer>) -> FITS {
         let mut fits = FITS::new(id, flux);
         fits.is_dummy = false;
@@ -2706,6 +2716,36 @@ impl FITS {
                         .collect()
             },
         }    
+    }
+
+    pub fn get_video_plane(&self, frame: f64, ref_freq: f64, width: u32, height: u32) -> Option<Vec<u8>> {
+        //get a frame index (frame_start = frame_end = frame)
+        let frame = match self.get_spectrum_range(frame, frame, ref_freq) {
+            Some((frame,_)) => frame,
+            None => {                
+                println!("error: an invalid spectrum range");
+                return None
+            },
+        };
+
+        println!("frame index = {}", frame);
+
+        let start = precise_time::precise_time_ns();          
+
+        let mut y : Vec<u8> = match self.data_to_luminance(frame) {
+            Some(y) => y,
+            None => vec![0; (width * height) as usize],
+        };
+
+        //invert and downscale        
+        let mut dst = vec![0; (width*height) as usize];       
+        self.resize_and_invert(&mut y, &mut dst, width, height);        
+
+        let stop = precise_time::precise_time_ns();
+
+        println!("Y video plane preparation time: {} [ms]", (stop-start)/1000000); 
+
+        Some(dst)
     }
 
     pub fn get_video_frame(&self, frame: f64, ref_freq: f64, width: u32, height: u32) -> Option<vpx_image> {
