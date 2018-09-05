@@ -113,6 +113,7 @@ struct UserSession {
     dataset_id: String,
     session_id: Uuid,
     log: std::io::Result<File>,
+    hevc: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
     ctx: vpx_codec_ctx_t,//VP9 encoder context
     param: *mut x265_param,//HEVC param
@@ -128,17 +129,23 @@ impl UserSession {
         let uuid = Uuid::new_v4();
 
         #[cfg(not(feature = "server"))]
-        let filename = format!("/dev/null/{}", uuid);
+        let filename = format!("/dev/null", uuid);
 
         #[cfg(feature = "server")]
-        let filename = format!("{}/{}_{}", LOG_DIRECTORY, id.replace("/","_"), uuid);
+        let filename = format!("{}/{}_{}.log", LOG_DIRECTORY, id.replace("/","_"), uuid);
 
-        let log = File::create(filename); 
+        let log = File::create(filename);        
+
+        #[cfg(feature = "server")]
+        let filename = format!("{}/{}_{}.hevc", LOG_DIRECTORY, id.replace("/","_"), uuid);
+
+        let hevc = File::create(filename);
 
         let session = UserSession {
             dataset_id: id.clone(),            
             session_id: uuid,
-            log: log,          
+            log: log,
+            hevc: hevc,      
             cfg: vpx_codec_enc_cfg::default(),       
             ctx: vpx_codec_ctx_t {                
                 name: ptr::null(),
@@ -699,7 +706,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 ctx.binary(bin);
                                             },
                                             Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
-                                        }                             
+                                        }
+
+                                        match self.hevc {
+                                            Ok(ref mut file) => {   
+                                                let _ = file.write_all(payload);
+                                            },
+                                            Err(_) => {},
+                                        }                          
                                     }
                                 }
 
@@ -734,6 +748,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     ctx.binary(bin);
                                                     },
                                                     Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                                }
+
+                                                match self.hevc {
+                                                    Ok(ref mut file) => {   
+                                                        let _ = file.write_all(payload);
+                                                    },
+                                                    Err(_) => {},
                                                 }
                                             }
                                         }
@@ -855,7 +876,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-04.0";
+static VERSION_STRING: &'static str = "SV2018-09-05.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
