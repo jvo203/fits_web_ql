@@ -8,7 +8,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 extern crate actix;
 extern crate actix_web;
-//extern crate env_logger;
 
 #[macro_use]
 extern crate log;
@@ -119,7 +118,8 @@ struct UserSession {
     param: *mut x265_param,//HEVC param
     enc: *mut x265_encoder,
     pic: *mut x265_picture,
-    downscaling: bool,
+    //config: EncoderConfig,
+    //downscaling: bool,
     width: u32,
     height: u32, 
 }
@@ -161,7 +161,8 @@ impl UserSession {
             param: ptr::null_mut(),
             enc: ptr::null_mut(),
             pic: ptr::null_mut(),
-            downscaling: false,
+            //config: EncoderConfig::default(),
+            //downscaling: false,
             width: 0,
             height: 0,
         } ;
@@ -310,7 +311,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                             println!("downscaling the video from {}x{} to {}x{}", fits.width, fits.height, w, h);
 
-                            self.downscaling = true;
+                            //self.downscaling = true;
                         }
 
                         //send the video size as JSON
@@ -332,7 +333,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                             //constant bitrate
                             (*self.param).rc.rateControlMode = X265_RC_METHODS_X265_RC_CRF as i32;
-                            (*self.param).rc.bitrate = 1024;
+                            (*self.param).rc.bitrate = 1000;
                         };
 
                         if self.pic.is_null() {
@@ -355,10 +356,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         self.cfg.rc_max_quantizer = 42 ;
 
                         #[cfg(not(feature = "server"))]
-                        { self.cfg.rc_target_bitrate = 4096; }// [kilobits per second]
+                        { self.cfg.rc_target_bitrate = 4000; }// [kilobits per second]
 
                         #[cfg(feature = "server")]
-                        { self.cfg.rc_target_bitrate = 1024; }// [kilobits per second]
+                        { self.cfg.rc_target_bitrate = 1000; }// [kilobits per second]
 
                         #[cfg(feature = "server")]
                         { self.cfg.rc_end_usage = vpx_rc_mode::VPX_CBR; }
@@ -621,7 +622,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     let target_bitrate = match target_bitrate {
                         Some(x) => x,
-                        _ => 1024,
+                        _ => 1000,
                     };
 
                     let timestamp = match timestamp {
@@ -659,6 +660,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 unsafe {
                                     (*self.pic).stride[0] = self.width as i32;
                                     (*self.pic).planes[0] = y.as_mut_ptr() as *mut std::os::raw::c_void;
+
+                                    //adaptive bitrate
+                                    (*self.param).rc.bitrate = target_bitrate.min(10000) ;
+                                }                                
+
+                                let ret = unsafe{ x265_encoder_reconfig(self.enc, self.param) };
+
+                                if ret < 0 {
+                                    println!("x265: error changing the bitrate");
                                 }
 
                                 let mut nal_count: u32 = 0 ;
@@ -876,7 +886,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-05.0";
+static VERSION_STRING: &'static str = "SV2018-09-06.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1642,11 +1652,6 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
 }
 
 fn main() {
-    //an experimental AV1 part
-    //let config = EncoderConfig::default();
-    //println!("{:?}", config);
-    //end of AV1
-
     //std::env::set_var("RUST_LOG", "info");
     std::env::set_var("RUST_LOG", "actix_web=info");
 

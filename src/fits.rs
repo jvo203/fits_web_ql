@@ -50,11 +50,6 @@ use libyuv_ScalePlane;
 //use FilterMode_kFilterBilinear;
 use libyuv_FilterMode_kFilterBox;
 
-
-/*
-extern "C" { pub fn calculate_radial_spectrumF16 ( cubeData : * mut i16 , bzero : f32 , bscale : f32 , datamin : f32 , datamax : f32 , width : u32 , x1 : i32 , x2 : i32 , y1 : i32 , y2 : i32 , cx : i32 , cy : i32 , r2 : i32 , average : bool , cdelt3 : f32 ) -> f32 ; }
-*/
-
 fn get_packets(mut ctx: vpx_codec_ctx_t) -> Option<Vec<u8>> {    
     unsafe {
         let mut iter = mem::zeroed();
