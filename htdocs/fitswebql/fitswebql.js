@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-08-31.2";
+    return "JS2018-09-07.0";
 }
 
 var generateUid = function ()
@@ -1946,7 +1946,11 @@ function open_websocket_connection(datasetId, index)
 					{
 						var img = videoFrame.img;
 
-						api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height, colourmap);
+						//VP9
+						//api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height, colourmap);
+
+						//HEVC
+						api.hevc_decode_nal_unit(ptr, len);
 						
 						if(img.data.length == 0)
 						{
@@ -1964,7 +1968,13 @@ function open_websocket_connection(datasetId, index)
 						process_video(index);
 					}
 					else
-						api.vpx_decode_frame(ptr, len, null, 0, 0, 'greyscale');
+					{
+						//VP9
+						//api.vpx_decode_frame(ptr, len, null, 0, 0, 'greyscale');
+
+						//HEVC
+						api.hevc_decode_nal_unit(ptr, len);
+					}
 
 					Module._free(ptr);
 

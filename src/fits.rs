@@ -14,6 +14,7 @@ use std::sync::mpsc;
 use num_cpus;
 use positioned_io::ReadAt;
 use atomic;
+use regex::Regex;
 
 use actix::*;
 use rayon;
@@ -1099,9 +1100,11 @@ impl FITS {
             }
 
             if line.contains("OBJECT  = ") {
-                self.obj_name = match scan_fmt!(line, "OBJECT  = {}", String) {
-                    Some(x) => x.replace("'", ""),
-                    _ => String::from("")
+                self.obj_name = match Regex::new(r"'(.*?)'").unwrap().find(line) {
+                    Some(obj_name) => {                        
+                        String::from(obj_name.as_str()).replace("'", "")
+                    },
+                    None => String::from("")
                 }
             }
 

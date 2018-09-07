@@ -12,7 +12,7 @@ extern crate actix_web;
 #[macro_use]
 extern crate log;
 extern crate flexi_logger;
-
+extern crate regex;
 extern crate percent_encoding;
 extern crate curl;
 extern crate byteorder;
@@ -703,7 +703,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         let ws_frame = WsFrame {                                        
                                             ts: timestamp as f32,
                                             seq_id: seq_id as u32,
-                                            msg_type: 6,//an hevc video frame
+                                            msg_type: 5,//an hevc video frame
                                             //length: video_frame.len() as u32,
                                             elapsed: elapsed as f32,
                                             frame: payload.to_vec()
@@ -745,7 +745,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 let ws_frame = WsFrame {      
                                                     ts: timestamp as f32,
                                                     seq_id: seq_id as u32,
-                                                    msg_type: 6,//an hevc video frame
+                                                    msg_type: 5,//an hevc video frame
                                                     //length: video_frame.len() as u32,
                                                     elapsed: elapsed as f32,
                                                     frame: payload.to_vec()
@@ -778,7 +778,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         //VP9 (libvpx)
-                        match fits.get_video_frame(frame, ref_freq, self.width, self.height) {                            
+                        /*match fits.get_video_frame(frame, ref_freq, self.width, self.height) {                            
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
                                 //send a binary response
@@ -856,7 +856,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }                            
                             },
                             None => {},
-                        };
+                        };*/
                     };
                 }
             },                
@@ -886,7 +886,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-06.0";
+static VERSION_STRING: &'static str = "SV2018-09-07.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1534,8 +1534,8 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     //html.push_str("<script src=\"ogv-decoder-video-vp9-wasm.js\"></script>\n");
     //html.push_str("<script src=\"ogv.js\"></script>\n");
 
-    //custom vpx wasm
-    html.push_str("<script src=\"vpx.js\"></script>\n");
+    //custom vpx wasm decoder
+    /*html.push_str("<script src=\"vpx.js\"></script>\n");
     html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {
@@ -1546,6 +1546,18 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
             };
             console.log('VP9 libvpx decoder version:', api.vpx_version());
             api.vpx_init();
+        };
+    </script>\n");*/
+
+    //custom hevc wasm decoder
+    html.push_str("<script src=\"hevc.js\"></script>\n");
+    html.push_str("<script>
+        Module.onRuntimeInitialized = async _ => {
+            api = {                
+                hevc_init: Module.cwrap('hevc_init', '', []),                
+                hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number']),
+            };            
+            api.hevc_init();
         };
     </script>\n");
 

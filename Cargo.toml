@@ -43,4 +43,5 @@ positioned-io = "*"
 atomic = "*"
 log = "*"
 flexi_logger = "*"
+regex = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }
