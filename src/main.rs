@@ -621,7 +621,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     };
 
                     let target_bitrate = match target_bitrate {
-                        Some(x) => x,
+                        Some(x) => x.min(10000),
                         _ => 1000,
                     };
 
@@ -654,15 +654,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     if fits.has_data && !self.pic.is_null() {
                         let start = precise_time::precise_time_ns();
+
                         //HEVC (x265)
-                        match fits.get_video_plane(frame, ref_freq, self.width, self.height) {
+                        /*match fits.get_video_plane(frame, ref_freq, self.width, self.height) {
                             Some(mut y) => {
                                 unsafe {
                                     (*self.pic).stride[0] = self.width as i32;
                                     (*self.pic).planes[0] = y.as_mut_ptr() as *mut std::os::raw::c_void;
 
                                     //adaptive bitrate
-                                    (*self.param).rc.bitrate = target_bitrate.min(10000) ;
+                                    (*self.param).rc.bitrate = target_bitrate ;
                                 }                                
 
                                 let ret = unsafe{ x265_encoder_reconfig(self.enc, self.param) };
@@ -775,10 +776,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }                                                           
                             },
                             None => {},
-                        }
+                        }*/
 
                         //VP9 (libvpx)
-                        /*match fits.get_video_frame(frame, ref_freq, self.width, self.height) {                            
+                        match fits.get_video_frame(frame, ref_freq, self.width, self.height) {                            
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
                                 //send a binary response
@@ -787,7 +788,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 //let start = precise_time::precise_time_ns();
 
                                 //variable rate control
-                                //disabled due to bugs in libvpx, re-test it
+                                //disabled due to bugs in libvpx, needs to be tested again and again
                                 self.cfg.rc_target_bitrate = target_bitrate as u32;
 
                                 let ret = unsafe { vpx_codec_enc_config_set( &mut self.ctx, &mut self.cfg ) };
@@ -856,7 +857,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }                            
                             },
                             None => {},
-                        };*/
+                        };
                     };
                 }
             },                
@@ -886,7 +887,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-07.2";
+static VERSION_STRING: &'static str = "SV2018-09-09.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1535,7 +1536,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     //html.push_str("<script src=\"ogv.js\"></script>\n");
 
     //custom vpx wasm decoder
-    /*html.push_str("<script src=\"vpx.js\"></script>\n");
+    html.push_str("<script src=\"vpx.js\"></script>\n");
     html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {
@@ -1547,10 +1548,10 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
             console.log('VP9 libvpx decoder version:', api.vpx_version());
             api.vpx_init();
         };
-    </script>\n");*/
+    </script>\n");
 
     //custom hevc wasm decoder
-    html.push_str("<script src=\"hevc.js\"></script>\n");
+    /*html.push_str("<script src=\"hevc.js\"></script>\n");
     html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {                
@@ -1559,7 +1560,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
             };            
             api.hevc_init();
         };
-    </script>\n");
+    </script>\n");*/
 
     //bootstrap
     html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1\">\n");
