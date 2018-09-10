@@ -148,10 +148,11 @@ function interpolate_colourmap(value, colourmap, alpha)
     return strValue ;
 } ;
 
-function apply_greyscale(image, bytes, w, h, stride)
+function apply_greyscale(image, bytes, w, h, stride, alpha)
 {
     var start = performance.now() ;
 
+	let src_offset = 0 ;
 	let dst_offset = 0 ;
 
 	for(var j=0;j<h;j++)
@@ -165,7 +166,7 @@ function apply_greyscale(image, bytes, w, h, stride)
 			image.data[dst_offset++] = pixel ;
 			image.data[dst_offset++] = pixel ;
 			image.data[dst_offset++] = pixel ;
-			image.data[dst_offset++] = 255 ;//the alpha channel
+			image.data[dst_offset++] = alpha[src_offset++] ;//the alpha channel
 		}
 	}
 
@@ -174,7 +175,7 @@ function apply_greyscale(image, bytes, w, h, stride)
     console.log("greyscale: time taken " + (end-start).toFixed(1) + " [ms]") ;
 }
 
-function apply_colourmap(image, colourmap, bytes, w, h, stride)
+function apply_colourmap(image, colourmap, bytes, w, h, stride, alpha)
 {
     var start = performance.now() ;
 
@@ -245,12 +246,13 @@ function apply_colourmap(image, colourmap, bytes, w, h, stride)
 	cmB = viridis_b ;
 	break ;
     default:
-	return apply_greyscale(image, bytes, w, h, stride);
+	return apply_greyscale(image, bytes, w, h, stride, alpha);
     }
 
     var no_colours = 64 ;
     var interp_factor = no_colours / 256.0 ;
 	
+	let src_offset = 0 ;
 	let dst_offset = 0 ;
 
 	for(var j=0;j<h;j++)
@@ -273,7 +275,7 @@ function apply_colourmap(image, colourmap, bytes, w, h, stride)
 			image.data[dst_offset++] = r ;
 			image.data[dst_offset++] = g ;
 			image.data[dst_offset++] = b ;
-			image.data[dst_offset++] = 255 ;//the alpha channel
+			image.data[dst_offset++] = alpha[src_offset++] ;//the alpha channel
 		}
 	}
 
@@ -282,7 +284,7 @@ function apply_colourmap(image, colourmap, bytes, w, h, stride)
     console.log("colourmap: time taken " + (end-start).toFixed(1) + " [ms]") ;
 }
 
-function add_composite_channel(bytes, w, h, stride, destImageData, channel)
+function add_composite_channel(bytes, w, h, stride, alpha, destImageData, channel)
 {    
     if(destImageData == null)
 	return ;
@@ -290,6 +292,7 @@ function add_composite_channel(bytes, w, h, stride, destImageData, channel)
     if(channel >= 3)
 	return ;
 	
+	let src_offset = 0 ;
 	let dst_offset = 0 ;
 
 	for(var j=0;j<h;j++)
@@ -301,7 +304,7 @@ function add_composite_channel(bytes, w, h, stride, destImageData, channel)
 			let pixel = bytes[offset++] ;
 			
 			destImageData.data[dst_offset+channel] = pixel ;
-			destImageData.data[dst_offset+3] = 255 ;//the alpha channel
+			destImageData.data[dst_offset+3] = alpha[src_offset++] ;//the alpha channel
 			dst_offset += 4 ;//move to the next RGBA position
 		}		
 	}

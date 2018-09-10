@@ -13,7 +13,6 @@ fn main() {
     println!("cargo:rustc-link-lib=yuv");
     println!("cargo:rustc-link-lib=x265");
 
-    //println!("cargo:rustc-link-search=native=/usr/lib64");
     println!("cargo:rustc-link-lib=stdc++");
     println!("cargo:rustc-link-lib=numa");
 

@@ -44,4 +44,5 @@ atomic = "*"
 log = "*"
 flexi_logger = "*"
 regex = "*"
+lz4-compress = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }

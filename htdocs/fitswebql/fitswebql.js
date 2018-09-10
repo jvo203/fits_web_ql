@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-09.0";
+    return "JS2018-09-10.1";
 }
 
 var generateUid = function ()
@@ -706,9 +706,10 @@ function replot_y_axis()
     d3.select("#ylabel").text(yLabel + ' ' + fitsData.BTYPE.trim() + " [" + bunit + "]");
 }
 
-function process_image(w, h, bytes, stride, index)
+function process_image(w, h, bytes, stride, alpha, index)
 {		
-	let image_bounding_dims = {x1: 0, y1: 0, width: w, height: h};
+	//let image_bounding_dims = {x1: 0, y1: 0, width: w, height: h};
+	let image_bounding_dims = true_image_dimensions(alpha, w, h);
 	var pixel_range = image_pixel_range(bytes, w, h, stride) ;
 	console.log("min pixel:", pixel_range.min_pixel, "max pixel:", pixel_range.max_pixel) ;
 
@@ -723,10 +724,10 @@ function process_image(w, h, bytes, stride, index)
 	let imageData=context.createImageData(w,h);
 	let imageFrame = {bytes:new Uint8ClampedArray(bytes), w:w, h:h, stride:stride};	
 
-	apply_colourmap(imageData, colourmap, bytes, w, h, stride) ;
+	apply_colourmap(imageData, colourmap, bytes, w, h, stride, alpha) ;
 	context.putImageData(imageData, 0, 0);
 
-	imageContainer[index-1] = {imageCanvas:imageCanvas, imageFrame:imageFrame, imageData:imageData, newImageData:null, image_bounding_dims:image_bounding_dims, pixel_range:pixel_range} ;
+	imageContainer[index-1] = {imageCanvas:imageCanvas, imageFrame:imageFrame, imageData:imageData, alpha: alpha, newImageData:null, image_bounding_dims:image_bounding_dims, pixel_range:pixel_range} ;
 
 	//next display the image
 	if(va_count == 1)
@@ -2222,11 +2223,12 @@ function image_pixel_range(bytes, w, h, stride)
     return {min_pixel: min_pixel, max_pixel: max_pixel} ;
 }
 
-function true_image_dimensions(image)
+function true_image_dimensions(alpha, width, height)
 {
-    var width = image.width|0 ;
-    var height = image.height|0 ;
-    var linesize = (4 * width)|0 ;
+    var width = width|0 ;
+    var height = height|0 ;
+    var linesize = width|0 ;
+	var length = (width*height)|0 ;
 
     var x,y,offset ;
     var found_data ;
@@ -2237,9 +2239,9 @@ function true_image_dimensions(image)
     var x2 = 0|0 ;
 
     //find y1
-    for(var i=0|0;i<image.data.length;i=(i+4)|0)
+    for(var i=0|0;i<length;i=(i+1)|0)
     {
-	if(image.data[i+3] > 0)
+	if(alpha[i] > 0)
 	{
 	    y1 = (i / linesize) | 0 ;
 	    break ;
@@ -2247,9 +2249,9 @@ function true_image_dimensions(image)
     }
 
     //find y2
-    for(var i=image.data.length-4;i>=0;i=(i-4)|0)
+    for(var i=length-1;i>=0;i=(i-1)|0)
     {
-	if(image.data[i+3] > 0)
+	if(alpha[i] > 0)
 	{
 	    y2 = (i / linesize) | 0 ;
 	    break ;
@@ -2262,7 +2264,7 @@ function true_image_dimensions(image)
     {
 	for(var y=y1;y<=y2;y=(y+1)|0)
 	{
-	    if(image.data[y*linesize+x*4+3] > 0)
+	    if(alpha[y*linesize+x] > 0)
 	    {
 		x1 = x|0 ;
 		found_data = true ;
@@ -2280,7 +2282,7 @@ function true_image_dimensions(image)
     {
 	for(var y=y1;y<=y2;y=(y+1)|0)
 	{
-	    if(image.data[y*linesize+x*4+3] > 0)
+	    if(alpha[y*linesize+x] > 0)
 	    {		
 		x2 = x|0 ;
 		found_data = true ;
@@ -7663,10 +7665,11 @@ function setup_image_selection()
 		var max_pixel = pixel_range.max_pixel ;
 		var imageFrame = imageContainer[index-1].imageFrame ;
 		
-		var pixel_coord = Math.round(y) * imageFrame.stride + Math.round(x) ;		
+		var pixel_coord = Math.round(y) * imageFrame.stride + Math.round(x) ;
+		var alpha_coord = Math.round(y) * imageFrame.w + Math.round(x) ;
 
 		var pixel = imageFrame.bytes[pixel_coord] ;
-		var alpha = 255;//imageDataCopy[pixel_coord+3] ;		
+		var alpha = imageContainer[index-1].alpha[alpha_coord] ;
 		var pixelVal = get_pixel_flux(pixel, index) ;
 		var prefix = "" ;		
 
@@ -8125,11 +8128,23 @@ function fetch_image(datasetId, index, add_timestamp)
 
 	    	if(received_msg instanceof ArrayBuffer)
 	    	{
-				/*var dv = new DataView(received_msg) ;
-				console.log("image dataview: ", dv);*/
+				var dv = new DataView(received_msg) ;
+				console.log("FITSImage dataview byte length: ", dv.byteLength);
 
-				var frame = new Uint8Array(received_msg);				
-				//console.log("image frame: ", frame);
+				var width = dv.getUint32(0, endianness) ;
+				var height = dv.getUint32(4, endianness) ;
+				var image_length = dv.getUint32(8, endianness) ;
+				var frame = new Uint8Array(received_msg, 16, image_length) ;//offset by 8 bytes
+				var alpha_length = dv.getUint32(16+image_length, endianness) ;
+				var alpha = new Uint8Array(received_msg, 16+image_length+8) ;
+				console.log("image frame width:", width, "height:", height, "compressed alpha length:", alpha.length);
+
+				var Buffer = require('buffer').Buffer ;
+				var LZ4 = require('lz4') ;
+	
+				var uncompressed = new Buffer(width*height) ;
+				uncompressedSize = LZ4.decodeBlock(new Buffer(alpha), uncompressed) ;
+				alpha = uncompressed.slice(0, uncompressedSize) ;
 
 				//var player = new OGVPlayer();
 				//console.log(player);
@@ -8144,6 +8159,7 @@ function fetch_image(datasetId, index, add_timestamp)
 						decoder.frameBuffer.format.displayHeight,
 						decoder.frameBuffer.y.bytes,
 						decoder.frameBuffer.y.stride,
+						alpha,						
 						index);
 				});
 			}

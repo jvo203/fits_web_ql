@@ -16,6 +16,9 @@ use positioned_io::ReadAt;
 use atomic;
 use regex::Regex;
 
+use lz4_compress;
+use bincode::serialize;
+
 use actix::*;
 use rayon;
 use server;
@@ -46,9 +49,9 @@ use ispc_data_to_luminance_f16_square;
 use ispc_data_to_luminance_f16_legacy;
 
 use libyuv_ScalePlane;
-//use FilterMode_kFilterNone;
-//use FilterMode_kFilterLinear;
-//use FilterMode_kFilterBilinear;
+use libyuv_FilterMode_kFilterNone;
+//use libyuv_FilterMode_kFilterLinear;
+//use libyuv_FilterMode_kFilterBilinear;
 use libyuv_FilterMode_kFilterBox;
 
 fn get_packets(mut ctx: vpx_codec_ctx_t) -> Option<Vec<u8>> {    
@@ -185,7 +188,7 @@ pub struct FITS {
         header: String,        
         mean_spectrum: Vec<f32>,
         integrated_spectrum: Vec<f32>,
-        pub mask: Vec<bool>,
+        pub mask: Vec<u8>,
         pub pixels: Vec<f32>,        
         bscale: f32,
         bzero: f32,
@@ -230,6 +233,14 @@ pub struct FITS {
         pub has_data: bool,           
         pub timestamp: RwLock<SystemTime>,//last access time
         pub is_dummy: bool,
+}
+
+#[derive(Serialize,Debug)]
+struct FITSImage {
+    width: u32,
+    height: u32,
+    image: Vec<u8>,//VP9 compressed frame
+    alpha: Vec<u8>,//lz4-compressed alpha channels
 }
 
 impl FITS {
@@ -350,14 +361,14 @@ impl FITS {
 
         //set up thread-local vectors
         let mut thread_pixels: Vec<RwLock<Vec<f32>>> = Vec::with_capacity(num_threads);
-        let mut thread_mask: Vec<RwLock<Vec<bool>>> = Vec::with_capacity(num_threads);
+        let mut thread_mask: Vec<RwLock<Vec<u8>>> = Vec::with_capacity(num_threads);
 
         let mut thread_min: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
         let mut thread_max: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
 
         for _ in 0..num_threads {
             thread_pixels.push(RwLock::new(vec![0.0; self.pixels.len()]));
-            thread_mask.push(RwLock::new(vec![false; self.mask.len()]));
+            thread_mask.push(RwLock::new(vec![0; self.mask.len()]));
 
             thread_min.push(atomic::Atomic::new(std::f32::MAX));
             thread_max.push(atomic::Atomic::new(std::f32::MIN));
@@ -565,7 +576,7 @@ impl FITS {
                             let tmp = self.bzero + self.bscale * float16.to_f32() ;
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {            
                                 self.pixels[i as usize] += tmp * cdelt3;    
-                                self.mask[i as usize] = true ;
+                                self.mask[i as usize] = 255 ;
 
                                 frame_min = frame_min.min(tmp);
                                 frame_max = frame_max.max(tmp);
@@ -1019,7 +1030,7 @@ impl FITS {
 
         let capacity = self.width * self.height ;
 
-        self.mask.resize(capacity as usize, false);
+        self.mask.resize(capacity as usize, 0);
         self.pixels.resize(capacity as usize, 0.0);
 
         self.mean_spectrum.resize(self.depth as usize, 0.0);
@@ -1526,7 +1537,7 @@ impl FITS {
                     let tmp = self.bzero + self.bscale * (buf[i as usize] as f32) ;
                     if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {    
                         self.pixels[i as usize] += tmp * cdelt3 ;                                
-                        self.mask[i as usize] = true ;
+                        self.mask[i as usize] = 255 ;
 
                         frame_min = frame_min.min(tmp);
                         frame_max = frame_max.max(tmp);
@@ -1546,7 +1557,7 @@ impl FITS {
                             let tmp = self.bzero + self.bscale * (int16 as f32) ;
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
                                 self.pixels[i as usize] += tmp * cdelt3;                                
-                                self.mask[i as usize] = true ;
+                                self.mask[i as usize] = 255 ;
 
                                 frame_min = frame_min.min(tmp);
                                 frame_max = frame_max.max(tmp);
@@ -1569,7 +1580,7 @@ impl FITS {
                             let tmp = self.bzero + self.bscale * (int32 as f32) ;
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
                                 self.pixels[i as usize] += tmp * cdelt3;                                
-                                self.mask[i as usize] = true ;
+                                self.mask[i as usize] = 255 ;
 
                                 frame_min = frame_min.min(tmp);
                                 frame_max = frame_max.max(tmp);
@@ -1594,7 +1605,7 @@ impl FITS {
                             let tmp = self.bzero + self.bscale * float32;
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
                                 self.pixels[i as usize] += tmp * cdelt3;                                
-                                self.mask[i as usize] = true ;
+                                self.mask[i as usize] = 255 ;
 
                                 frame_min = frame_min.min(tmp);
                                 frame_max = frame_max.max(tmp);
@@ -1617,7 +1628,7 @@ impl FITS {
                             let tmp = self.bzero + self.bscale * (float64 as f32);
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
                                 self.pixels[i as usize] += tmp * cdelt3;                                
-                                self.mask[i as usize] = true ;
+                                self.mask[i as usize] = 255 ;
 
                                 frame_min = frame_min.min(tmp);
                                 frame_max = frame_max.max(tmp);
@@ -1958,7 +1969,7 @@ impl FITS {
         let start = precise_time::precise_time_ns();
 
         for i in 0..len {
-            if self.mask[i] {
+            if self.mask[i] > 0 {
                 let x = self.pixels[i] ;
 
                 mad += (x - median).abs() ;
@@ -2094,7 +2105,7 @@ impl FITS {
                 self.data_u8[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                         
+                            if *m > 0 {                         
                                 let x = self.bzero + self.bscale * (*x as f32);       
                                 let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
                                 (255.0*pixel) as u8
@@ -2109,7 +2120,7 @@ impl FITS {
                 self.data_u8[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                      
+                            if *m > 0 {                      
                                 let x = self.bzero + self.bscale * (*x as f32);          
                                 let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
                                 (255.0*pixel) as u8
@@ -2124,7 +2135,7 @@ impl FITS {
                 self.data_u8[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                                            
+                            if *m > 0 {                                            
                                 let x = self.bzero + self.bscale * (*x as f32);                    
                                 let pixel = 5.0 * (x - black) * sensitivity;
                                 
@@ -2145,7 +2156,7 @@ impl FITS {
                 self.data_u8[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                
+                            if *m > 0 {                
                                 let x = self.bzero + self.bscale * (*x as f32);                     
                                 let pixel = (x - black) * sensitivity;
                                 
@@ -2170,7 +2181,7 @@ impl FITS {
                 self.data_u8[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {          
+                            if *m > 0 {          
                                 let x = self.bzero + self.bscale * (*x as f32);               
                                 let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
                                 
@@ -2207,7 +2218,7 @@ impl FITS {
                 self.data_i16[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                         
+                            if *m > 0 {                         
                                 let x = self.bzero + self.bscale * (*x as f32);       
                                 let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
                                 (255.0*pixel) as u8
@@ -2222,7 +2233,7 @@ impl FITS {
                 self.data_i16[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                      
+                            if *m > 0 {                      
                                 let x = self.bzero + self.bscale * (*x as f32);          
                                 let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
                                 (255.0*pixel) as u8
@@ -2237,7 +2248,7 @@ impl FITS {
                 self.data_i16[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                                            
+                            if *m > 0 {                                            
                                 let x = self.bzero + self.bscale * (*x as f32);                    
                                 let pixel = 5.0 * (x - black) * sensitivity;
                                 
@@ -2258,7 +2269,7 @@ impl FITS {
                 self.data_i16[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                
+                            if *m > 0 {                
                                 let x = self.bzero + self.bscale * (*x as f32);                     
                                 let pixel = (x - black) * sensitivity;
                                 
@@ -2283,7 +2294,7 @@ impl FITS {
                 self.data_i16[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {          
+                            if *m > 0 {          
                                 let x = self.bzero + self.bscale * (*x as f32);               
                                 let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
                                 
@@ -2320,7 +2331,7 @@ impl FITS {
                 self.data_i32[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                         
+                            if *m > 0 {                         
                                 let x = self.bzero + self.bscale * (*x as f32);       
                                 let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
                                 (255.0*pixel) as u8
@@ -2335,7 +2346,7 @@ impl FITS {
                 self.data_i32[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                      
+                            if *m > 0 {                      
                                 let x = self.bzero + self.bscale * (*x as f32);          
                                 let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
                                 (255.0*pixel) as u8
@@ -2350,7 +2361,7 @@ impl FITS {
                 self.data_i32[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                                            
+                            if *m > 0 {                                            
                                 let x = self.bzero + self.bscale * (*x as f32);                    
                                 let pixel = 5.0 * (x - black) * sensitivity;
                                 
@@ -2371,7 +2382,7 @@ impl FITS {
                 self.data_i32[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                
+                            if *m > 0 {                
                                 let x = self.bzero + self.bscale * (*x as f32);                     
                                 let pixel = (x - black) * sensitivity;
                                 
@@ -2396,7 +2407,7 @@ impl FITS {
                 self.data_i32[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {          
+                            if *m > 0 {          
                                 let x = self.bzero + self.bscale * (*x as f32);               
                                 let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
                                 
@@ -2507,7 +2518,7 @@ impl FITS {
                 self.data_f64[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                         
+                            if *m > 0 {                         
                                 let x = self.bzero + self.bscale * (*x as f32);       
                                 let pixel = num::clamp( (x - black) * slope, 0.0, 1.0);
                                 (255.0*pixel) as u8
@@ -2522,7 +2533,7 @@ impl FITS {
                 self.data_f64[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                      
+                            if *m > 0 {                      
                                 let x = self.bzero + self.bscale * (*x as f32);          
                                 let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - median) * sensitivity).exp() ), 0.0, 1.0);
                                 (255.0*pixel) as u8
@@ -2537,7 +2548,7 @@ impl FITS {
                 self.data_f64[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                                            
+                            if *m > 0 {                                            
                                 let x = self.bzero + self.bscale * (*x as f32);                    
                                 let pixel = 5.0 * (x - black) * sensitivity;
                                 
@@ -2558,7 +2569,7 @@ impl FITS {
                 self.data_f64[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                
+                            if *m > 0 {                
                                 let x = self.bzero + self.bscale * (*x as f32);                     
                                 let pixel = (x - black) * sensitivity;
                                 
@@ -2583,7 +2594,7 @@ impl FITS {
                 self.data_f64[frame].par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {          
+                            if *m > 0 {          
                                 let x = self.bzero + self.bscale * (*x as f32);               
                                 let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin) ;
                                 
@@ -2625,7 +2636,7 @@ impl FITS {
                 self.pixels.par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                                
+                            if *m > 0 {                                
                                 let pixel = num::clamp( (x - self.black) * slope, 0.0, 1.0);
                                 (255.0*pixel) as u8
                             }                            
@@ -2639,7 +2650,7 @@ impl FITS {
                 self.pixels.par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                                
+                            if *m > 0 {                                
                                 let pixel = num::clamp( 1.0/( 1.0 + (-6.0 * (x - self.median) * self.sensitivity).exp() ), 0.0, 1.0);
                                 (255.0*pixel) as u8
                             }                            
@@ -2653,7 +2664,7 @@ impl FITS {
                 self.pixels.par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                                                                
+                            if *m > 0 {                                                                
                                 let pixel = 5.0 * (x - self.black) * self.sensitivity;
                                 
                                 if pixel > 0.0 {
@@ -2673,7 +2684,7 @@ impl FITS {
                 self.pixels.par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                                                                
+                            if *m > 0 {                                                                
                                 let pixel = (x - self.black) * self.sensitivity;
                                 
                                 if pixel > 0.0 {
@@ -2697,7 +2708,7 @@ impl FITS {
                 self.pixels.par_iter()
                     .zip(self.mask.par_iter())
                         .map(|(x, m)| {
-                            if *m {                         
+                            if *m > 0 {                         
                                 let pixel = 0.5 + (x - self.pmin) / (self.pmax - self.pmin) ;
                                 
                                 if pixel > 0.0 {
@@ -2730,14 +2741,14 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();          
 
-        let mut y : Vec<u8> = match self.data_to_luminance(frame) {
+        let y : Vec<u8> = match self.data_to_luminance(frame) {
             Some(y) => y,
             None => vec![0; (width * height) as usize],
         };
 
         //invert and downscale        
         let mut dst = vec![0; (width*height) as usize];       
-        self.resize_and_invert(&mut y, &mut dst, width, height);        
+        self.resize_and_invert(&y, &mut dst, width, height, libyuv_FilterMode_kFilterBox);        
 
         let stop = precise_time::precise_time_ns();
 
@@ -2785,7 +2796,7 @@ impl FITS {
 
         //invert and downscale        
         let mut dst = vec![0; (width*height) as usize];       
-        self.resize_and_invert(&mut y, &mut dst, width, height);
+        self.resize_and_invert(&y, &mut dst, width, height, libyuv_FilterMode_kFilterBox);
         y = dst;
 
         let u : &[u8] = &vec![128; count as usize];
@@ -2808,7 +2819,7 @@ impl FITS {
         Some(raw)
     }
 
-    fn resize_and_invert(&self, src: &mut Vec<u8>, dst: &mut Vec<u8>, width: u32, height: u32) {
+    fn resize_and_invert(&self, src: &Vec<u8>, dst: &mut Vec<u8>, width: u32, height: u32, filter: u32) {
         /*let src_width = self.width as f32 ;
         let src_height = self.height as f32 ;
         let scale_factor: f32 = (src_width as f32) / (width as f32) ;
@@ -2821,11 +2832,11 @@ impl FITS {
 
         //try the libyuv library
         unsafe {
-            libyuv_ScalePlane(src.as_mut_ptr(), self.width,
+            libyuv_ScalePlane(src.as_ptr(), self.width,
                 self.width, -self.height,
                 dst.as_mut_ptr(), width as i32,
                 width as i32, height as i32,
-                /*3*/ libyuv_FilterMode_kFilterBox);
+                filter);
         };
 
         /*let src_ptr = src.as_ptr() as *mut i8;
@@ -2938,13 +2949,31 @@ impl FITS {
             let start = precise_time::precise_time_ns();
 
             let mut dst = vec![0; (w*h) as usize];            
-            self.resize_and_invert(&mut y, &mut dst, w, h);
+            self.resize_and_invert(&y, &mut dst, w, h, libyuv_FilterMode_kFilterBox);
             y = dst;
 
             let stop = precise_time::precise_time_ns();
 
             println!("VP9 image frame inverting/downscaling time: {} [ms]", (stop-start)/1000000);
         }
+
+        let alpha_frame = {             
+            let start = precise_time::precise_time_ns();
+
+            //invert/downscale the mask (alpha channel) without interpolation
+            let mut alpha = vec![0; (w*h) as usize];
+
+            self.resize_and_invert(&self.mask, &mut alpha, w, h, libyuv_FilterMode_kFilterNone);
+
+            let compressed_alpha = lz4_compress::compress(&alpha);
+
+            let stop = precise_time::precise_time_ns();
+
+            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]", alpha.len(), compressed_alpha.len(), (stop-start)/1000000);
+
+            compressed_alpha
+        };
+        
 
         /*let u : Vec<u8> = {            
             self.mask.par_iter()
@@ -3112,17 +3141,30 @@ impl FITS {
             }
         };
 
-        match buffer.write_all(&image_frame) {
-            Ok(()) => {                                    
-            },
-            Err(err) => {
-                println!("image cache write error: {}, removing the temporary file", err);
-                let _ = std::fs::remove_file(tmp_filepath);
-                return;
-            }
+        let image_frame = FITSImage {
+            width: w,
+            height: h,
+            image: image_frame,
+            alpha: alpha_frame,
         };
 
-        let _ = std::fs::rename(tmp_filepath, filepath);
+        match serialize(&image_frame) {
+            Ok(bin) => {                
+                println!("FITSImage binary length: {}", bin.len());
+                
+                match buffer.write_all(&bin) {                    
+                    Ok(()) => {
+                    //remove (rename) the temporary file
+                    let _ = std::fs::rename(tmp_filepath, filepath);    
+                    },
+                    Err(err) => {
+                        println!("image cache write error: {}, removing the temporary file", err);
+                        let _ = std::fs::remove_file(tmp_filepath);                
+                    }
+                }
+            },
+            Err(err) => println!("error serializing a FITSImage structure: {}", err)
+        }           
     }
 
     pub fn get_spectrum(&self, x1: i32, y1: i32, x2: i32, y2: i32, beam: Beam, intensity: Intensity, frame_start: f64, frame_end: f64, ref_freq: f64) -> Option<Vec<f32>> {
@@ -3672,7 +3714,7 @@ impl FITS {
                 "white" : self.white,
                 "flux" : self.flux,
                 "histogram" : &self.hist,
-                "mask" : &self.mask,
+                //"mask" : &self.mask,
         });
 
         value.to_string()

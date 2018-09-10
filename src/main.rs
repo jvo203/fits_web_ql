@@ -8,6 +8,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 extern crate actix;
 extern crate actix_web;
+extern crate lz4_compress;
 
 #[macro_use]
 extern crate log;
@@ -86,7 +87,7 @@ mod server;
 
 use molecule::Molecule;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct WsSpectrum {
     pub ts: f32,
     pub seq_id: u32,
@@ -95,7 +96,7 @@ pub struct WsSpectrum {
     pub spectrum: Vec<f32>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct WsFrame {
     pub ts: f32,
     pub seq_id: u32,
@@ -887,7 +888,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-09.0";
+static VERSION_STRING: &'static str = "SV2018-09-10.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1526,7 +1527,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     html.push_str("<script src=\"sylvester.js\"></script>\n");
     html.push_str("<script src=\"shortcut.js\"></script>\n");
     html.push_str("<script src=\"colourmaps.js\"></script>\n");
-    //html.push_str("<script src=\"lz4.min.js\"></script>\n");
+    html.push_str("<script src=\"lz4.min.js\"></script>\n");
     html.push_str("<script src=\"marchingsquares-isocontours.min.js\"></script>\n");
     html.push_str("<script src=\"marchingsquares-isobands.min.js\"></script>\n");    
 

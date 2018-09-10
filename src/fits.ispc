@@ -31,7 +31,7 @@ export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform floa
       bool nan = isnan(tmp) || isinf(tmp) || (tmp < datamin) || (tmp > datamax) ;
       
       /*pixels[j] += nan ? 0.0f : tmp ;
-      mask[j] = nan ? mask[j] : 1 ;//boolean mask in Rust
+      mask[j] = nan ? mask[j] : 255 ;
       partial_sum += nan ? 0.0f : tmp ;
       partial_count += nan ? 0 : 1 ;
       partial_min = nan ? partial_min : min(partial_min, tmp);
@@ -41,7 +41,7 @@ export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform floa
       cif (!nan)
       {
         pixels[j] += tmp ;
-        mask[j] = 1 ;//boolean mask in Rust
+        mask[j] = 255 ;
         partial_sum += tmp ;
         partial_count += 1 ;
         partial_min = min(partial_min, tmp);
@@ -145,7 +145,7 @@ export void data_to_luminance_f16_linear(uniform int16 cubeData[], uniform unsig
 {
   foreach(j=0 ... total_size)
   {
-    cif(mask[j])
+    cif(mask[j] > 0)
     {
       float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
       float pixel = 255.0f / ( 1.0f + exp(-6.0f * (tmp - black) * slope) ) ;
@@ -160,7 +160,7 @@ export void data_to_luminance_f16_logistic(uniform int16 cubeData[], uniform uns
 {
   foreach(j=0 ... total_size)
   {
-    cif(mask[j])
+    cif(mask[j] > 0)
     {
       float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
       float pixel = 255.0f / ( 1.0f + exp(-6.0f * (tmp - median) * sensitivity) ) ;
@@ -175,7 +175,7 @@ export void data_to_luminance_f16_ratio(uniform int16 cubeData[], uniform unsign
 {
   foreach(j=0 ... total_size)
   {
-    cif(mask[j])
+    cif(mask[j] > 0)
     {
       float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
       float pixel = 5.0 * (tmp - black) * sensitivity ;
@@ -190,7 +190,7 @@ export void data_to_luminance_f16_square(uniform int16 cubeData[], uniform unsig
 {
   foreach(j=0 ... total_size)
   {
-    cif(mask[j])
+    cif(mask[j] > 0)
     {
       float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
       float pixel = (tmp - black) * sensitivity ;
@@ -205,7 +205,7 @@ export void data_to_luminance_f16_legacy(uniform int16 cubeData[], uniform unsig
 {
   foreach(j=0 ... total_size)
   {
-    cif(mask[j])
+    cif(mask[j] > 0)
     {
       float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
       float pixel = 0.5f + (tmp - dmin) / (dmax - dmin) ;
