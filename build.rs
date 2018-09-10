@@ -4,6 +4,9 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    println!("cargo:rustc-link-lib=static=stdc++");
+    println!("cargo:rustc-link-lib=static=numa");
+    
     // Tell cargo to tell rustc to link the ISPC object file turned into a static library  
     println!("cargo:rustc-link-search=native=native");
     println!("cargo:rustc-link-lib=static=fits");
@@ -11,10 +14,7 @@ fn main() {
 
     println!("cargo:rustc-link-search=native=/usr/local/lib");
     println!("cargo:rustc-link-lib=static=yuv");
-    println!("cargo:rustc-link-lib=static=x265");
-
-    println!("cargo:rustc-link-lib=static=stdc++");
-    println!("cargo:rustc-link-lib=static=numa");
+    println!("cargo:rustc-link-lib=static=x265");    
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
