@@ -2126,7 +2126,7 @@ function open_websocket_connection(datasetId, index)
 					{					
 						let imageFrame = imageContainer[va_count-1].imageFrame;
 
-						var image_bounding_dims = true_image_dimensions(alpha, w, h);
+						var image_bounding_dims = true_image_dimensions(alpha, width, height);
 
 						if(imageFrame != null)
 						{
