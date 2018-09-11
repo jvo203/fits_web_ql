@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-11.3";
+    return "JS2018-09-11.4";
 }
 
 var generateUid = function ()
@@ -896,7 +896,7 @@ function process_image(w, h, bytes, stride, alpha, index)
 
 function process_video(index)
 {		
-	let image_bounding_dims = imageContainer[index-1].image_bounding_dims;
+	//let image_bounding_dims = imageContainer[index-1].image_bounding_dims;
 	//{x1: 0, y1: 0, width: w, height: h};
 
 	let imageCanvas = document.createElement('canvas') ;
@@ -904,6 +904,7 @@ function process_video(index)
 	var context = imageCanvas.getContext('2d');
 
 	let imageData = videoFrame.img;
+	let image_bounding_dims = videoFrame.image_bounding_dims;
 
 	imageCanvas.width = imageData.width ;
 	imageCanvas.height = imageData.height ;
@@ -2113,7 +2114,7 @@ function open_websocket_connection(datasetId, index)
 					var width = data.width;
 					var height = data.height;
 					var alpha = data.alpha;
-
+					
 					var Buffer = require('buffer').Buffer ;
 					var LZ4 = require('lz4') ;
 	
@@ -2124,6 +2125,8 @@ function open_websocket_connection(datasetId, index)
 					if(videoFrame == null)
 					{					
 						let imageFrame = imageContainer[va_count-1].imageFrame;
+
+						var image_bounding_dims = true_image_dimensions(alpha, w, h);
 
 						if(imageFrame != null)
 						{
@@ -2144,6 +2147,7 @@ function open_websocket_connection(datasetId, index)
 								alpha: alpha_ptr,
 								scaleX: imageFrame.w / width,
 								scaleY: imageFrame.h / height,
+								image_bounding_dims: image_bounding_dims,
 							}
 						}					
 					}
