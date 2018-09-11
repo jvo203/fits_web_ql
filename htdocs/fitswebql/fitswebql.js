@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-11.4";
+    return "JS2018-09-11.5";
 }
 
 var generateUid = function ()
@@ -708,8 +708,8 @@ function replot_y_axis()
 
 function process_image(w, h, bytes, stride, alpha, index)
 {		
-	//let image_bounding_dims = {x1: 0, y1: 0, width: w, height: h};
-	let image_bounding_dims = true_image_dimensions(alpha, w, h);
+	let image_bounding_dims = {x1: 0, y1: 0, width: w, height: h};
+	//let image_bounding_dims = true_image_dimensions(alpha, w, h);
 	var pixel_range = image_pixel_range(bytes, w, h, stride) ;
 	console.log("min pixel:", pixel_range.min_pixel, "max pixel:", pixel_range.max_pixel) ;
 
@@ -896,7 +896,7 @@ function process_image(w, h, bytes, stride, alpha, index)
 
 function process_video(index)
 {		
-	//let image_bounding_dims = imageContainer[index-1].image_bounding_dims;
+	let image_bounding_dims = imageContainer[index-1].image_bounding_dims;
 	//{x1: 0, y1: 0, width: w, height: h};
 
 	let imageCanvas = document.createElement('canvas') ;
@@ -904,7 +904,7 @@ function process_video(index)
 	var context = imageCanvas.getContext('2d');
 
 	let imageData = videoFrame.img;
-	let image_bounding_dims = videoFrame.image_bounding_dims;
+	//let image_bounding_dims = videoFrame.image_bounding_dims;
 
 	imageCanvas.width = imageData.width ;
 	imageCanvas.height = imageData.height ;
