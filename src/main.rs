@@ -298,7 +298,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut self.cfg, 0) };
 
                     if ret != VPX_CODEC_OK || self.param.is_null() {
-                        println!("VP9: default configuration failed");
+                        println!("video codec default configuration failed");
                     }
                     else {
                         let mut w = fits.width as u32 ;
@@ -315,11 +315,30 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             //self.downscaling = true;
                         }
 
-                        //send the video size as JSON
+                        //get the alpha channel
+                        let alpha_frame = {             
+                            let start = precise_time::precise_time_ns();
+
+                            //invert/downscale the mask (alpha channel) without interpolation
+                            let mut alpha = vec![0; (w*h) as usize];
+
+                            fits.resize_and_invert(&fits.mask, &mut alpha, w, h, libyuv_FilterMode_kFilterNone);
+
+                            let compressed_alpha = lz4_compress::compress(&alpha);
+
+                            let stop = precise_time::precise_time_ns();
+
+                            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]", alpha.len(), compressed_alpha.len(), (stop-start)/1000000);
+
+                            compressed_alpha
+                        };
+
+                        //send the video size + alpha channel as JSON
                         let resolution = json!({
-                            "type" : "resolution",
+                            "type" : "init_video",
                             "width" : w,
                             "height" : h,
+                            "alpha" : alpha_frame,
                         });
                         
                         ctx.text(resolution.to_string());
@@ -888,7 +907,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-10.1";
+static VERSION_STRING: &'static str = "SV2018-09-11.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1544,7 +1563,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
                 vpx_version: Module.cwrap('vpx_version', 'number', []),
                 vpx_init: Module.cwrap('vpx_init', '', []),
                 vpx_destroy: Module.cwrap('vpx_destroy', '', []),
-                vpx_decode_frame: Module.cwrap('vpx_decode_frame', 'number', ['number', 'number', 'number', 'number', 'number', 'string']),
+                vpx_decode_frame: Module.cwrap('vpx_decode_frame', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'string']),
             };
             console.log('VP9 libvpx decoder version:', api.vpx_version());
             api.vpx_init();

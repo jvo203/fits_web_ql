@@ -3,19 +3,20 @@
 #include <stdio.h>
 #include <math.h>
 
-void apply_colourmap(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, bool invert, const float* r, const float* g, const float* b)
+void apply_colourmap(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, bool invert, const float* r, const float* g, const float* b, const unsigned char* alpha)
 {
+	size_t src_offset = 0 ;
 	size_t dst_offset = 0 ;
 
 	int no_colours = 64 ;
-    float interp_factor = no_colours / 256.0f ;
+  float interp_factor = no_colours / 256.0f ;
 
 	for(int j=0;j<h;j++)
 	{	  
 	  size_t offset = j * stride ;
 
 	  for(int i=0;i<w;i++)
-	    {			
+	  {			
 			unsigned char pixel = luma[offset++] ;
 			pixel = invert ? (255 - pixel) : pixel ;
 			
@@ -30,13 +31,14 @@ void apply_colourmap(unsigned char* canvas, const unsigned char* luma, int w, in
 			canvas[dst_offset++] = r_pixel ;
 			canvas[dst_offset++] = g_pixel ;
 			canvas[dst_offset++] = b_pixel ;
-			canvas[dst_offset++] = 255 ;//the alpha channel
+			canvas[dst_offset++] = alpha[src_offset++] ;//the alpha channel
 		}
 	}
 }
 
-void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride)
+void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, const unsigned char* alpha)
 {
+	size_t src_offset = 0 ;
 	size_t dst_offset = 0 ;
 
 	for(int j=0;j<h;j++)
@@ -44,13 +46,13 @@ void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, in
 	  size_t offset = j * stride ;
 
 	  for(int i=0;i<w;i++)
-	    {			
+	  {			
 			unsigned char pixel = luma[offset++] ;
 			
 			canvas[dst_offset++] = pixel ;
 			canvas[dst_offset++] = pixel ;
 			canvas[dst_offset++] = pixel ;
-			canvas[dst_offset++] = 255 ;//the alpha channel
+			canvas[dst_offset++] = alpha[src_offset++] ;//the alpha channel
 		}
 	}
 }

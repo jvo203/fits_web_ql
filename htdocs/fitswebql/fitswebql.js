@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-10.1";
+    return "JS2018-09-11.3";
 }
 
 var generateUid = function ()
@@ -1949,7 +1949,7 @@ function open_websocket_connection(datasetId, index)
 
 						try {
 							//VP9
-							api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height, colourmap);
+							api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height, videoFrame.alpha, colourmap);
 						} catch (e) {};
 
 
@@ -1977,7 +1977,7 @@ function open_websocket_connection(datasetId, index)
 					{
 						try {
 							//VP9
-							api.vpx_decode_frame(ptr, len, null, 0, 0, 'greyscale');
+							api.vpx_decode_frame(ptr, len, null, 0, 0, null, 'greyscale');
 						} catch (e) {};
 
 						try {
@@ -2108,10 +2108,18 @@ function open_websocket_connection(datasetId, index)
 					}
 				}
 
-				if(data.type == "resolution")
+				if(data.type == "init_video")
 				{
 					var width = data.width;
 					var height = data.height;
+					var alpha = data.alpha;
+
+					var Buffer = require('buffer').Buffer ;
+					var LZ4 = require('lz4') ;
+	
+					var uncompressed = new Buffer(width*height) ;
+					uncompressedSize = LZ4.decodeBlock(new Buffer(alpha), uncompressed) ;
+					alpha = uncompressed.slice(0, uncompressedSize) ;
 				
 					if(videoFrame == null)
 					{					
@@ -2125,11 +2133,15 @@ function open_websocket_connection(datasetId, index)
 							var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
 							var img = new ImageData(data, width, height);
 
-							console.log("Module._malloc ptr=", ptr, "ImageData=", img);
+							var alpha_ptr = Module._malloc(width * height);
+							Module.HEAPU8.set(alpha, alpha_ptr);
+
+							console.log("Module._malloc ptr=", ptr, "ImageData=", img, "alpha_ptr=", alpha_ptr);
 
 							videoFrame = {
 								img: img,
-								ptr: ptr,
+								ptr: ptr,								
+								alpha: alpha_ptr,
 								scaleX: imageFrame.w / width,
 								scaleY: imageFrame.h / height,
 							}
@@ -6093,8 +6105,10 @@ function setup_axes()
 		if(videoFrame != null)
 		{
 			Module._free(videoFrame.ptr);
+			Module._free(videoFrame.alpha_ptr);
 			videoFrame.img = null;
 			videoFrame.ptr = null;
+			videoFrame.alpha_ptr = null;
 			videoFrame = null;
 		}
 

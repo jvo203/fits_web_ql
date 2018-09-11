@@ -2819,7 +2819,7 @@ impl FITS {
         Some(raw)
     }
 
-    fn resize_and_invert(&self, src: &Vec<u8>, dst: &mut Vec<u8>, width: u32, height: u32, filter: u32) {
+    pub fn resize_and_invert(&self, src: &Vec<u8>, dst: &mut Vec<u8>, width: u32, height: u32, filter: u32) {
         /*let src_width = self.width as f32 ;
         let src_height = self.height as f32 ;
         let scale_factor: f32 = (src_width as f32) / (width as f32) ;

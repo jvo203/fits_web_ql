@@ -18,12 +18,12 @@ use molecule::Molecule;
 use DATASETS;
 
 #[cfg(feature = "server")]
-const GARBAGE_COLLECTION_TIMEOUT: i64 = 60;//[s]; a dataset inactivity timeout//was 60
+const GARBAGE_COLLECTION_TIMEOUT: i64 = 60*60;//[s]; a dataset inactivity timeout//was 60
 
 #[cfg(not(feature = "server"))]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 10;//[s]; a dataset inactivity timeout
 
-const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 10*60;//[s]; a dataset inactivity timeout//was 60
+const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60*60;//[s]; a dataset inactivity timeout//was 60
 
 const DUMMY_DATASET_TIMEOUT: u64 = 24*60*60;//[s]; 24 hours, plenty of time for a local jvox download to complete (or fail)
 
