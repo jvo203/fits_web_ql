@@ -1,6 +1,7 @@
 #include <emscripten.h>
 
-#include <libavcodec/hevc_ps.h>
+#include <libavcodec/hevc_parse.h>
+
 #include <libavutil/common.h>
 
 #include <string.h>
@@ -15,9 +16,16 @@ static AVFrame *frame;*/
 //extern AVCodec ff_hevc_decoder;
 
 static HEVCParamSets params;
+static HEVCSEI sei;
+
+static int is_nalff;
+static int nal_length_size;
 
 EMSCRIPTEN_KEEPALIVE
 static void hevc_init() {
+    is_nalff = 1 ;
+    nal_length_size = 0 ;
+
     /*codec = &ff_hevc_decoder;
     frame = NULL;
 
@@ -58,11 +66,16 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len) {
     double start = emscripten_get_now();
     double stop = 0.0 ;
 
-    printf("HEVC: decoding a NAL unit of length %zu bytes\n", data_len);    
+    printf("HEVC: decoding a NAL unit of length %zu bytes\n", data_len);
+    
+    int err_recognition = 0;
+    int apply_defdispwin = 0;
+
+    int ret = ff_hevc_decode_extradata(data, data_len, &params, &sei, &is_nalff, &nal_length_size, err_recognition, apply_defdispwin, stdout);
 
     stop = emscripten_get_now();
 
-    printf("[wasm hevc] elapsed time %5.2f [ms]\n", (stop-start)) ;
+    printf("[wasm hevc] ret = %d, elapsed time %5.2f [ms]\n", ret, (stop-start)) ;
 
     double elapsed = stop - start;
 
