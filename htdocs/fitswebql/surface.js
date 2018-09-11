@@ -1,5 +1,5 @@
 // standard global variables
-var container, scene, camera, renderer, controls, stats;
+var container, scene, camera, renderer, controls;//, stats;
 var keyboard = new THREEx.KeyboardState();
 var clock = new THREE.Clock();
 var resize, fullscreen ;
@@ -10,6 +10,7 @@ var is_active ;
 
 //get z from imageDataCopy r,g,b
 function meshFunction(x,y)
+//function meshFunction(u,v,p0)
 {    
     /*var x = Math.round(x * (imageCanvas.width-1)) ;
     var y = Math.round(y * (imageCanvas.height-1)) ;
@@ -20,22 +21,36 @@ function meshFunction(x,y)
     var pixel = 4 * (ycoord * imageCanvas.width + (imageCanvas.width-1 - xcoord)) ;*/
 
     let imageCanvas = imageContainer[va_count-1].imageCanvas ;
-    let imageDataCopy = imageContainer[va_count-1].imageDataCopy ;
+    let imageFrame = imageContainer[va_count-1].imageFrame ;
     let image_bounding_dims = imageContainer[va_count-1].image_bounding_dims ;
+    
+    //var x = Math.round(u * (imageCanvas.width-1));
+    //var y = Math.round(v * (imageCanvas.width-1));
+
+    var xcoord = Math.round(image_bounding_dims.x1 + (1-x) * (image_bounding_dims.width-1)) ;
+    var ycoord = Math.round(image_bounding_dims.y1 + y * (image_bounding_dims.height-1)) ;    
+
+    var z ;
 
     if(composite_view)
     {
 	imageCanvas = compositeCanvas ;
-	imageDataCopy = compositeImageData.data ;	
-    }
+    imageDataCopy = compositeImageData.data ;	
     
-    var xcoord = Math.round(image_bounding_dims.x1 + (1-x) * (image_bounding_dims.width-1)) ;
-    var ycoord = Math.round(image_bounding_dims.y1 + y * (image_bounding_dims.height-1)) ;
     var pixel = 4 * (ycoord * imageCanvas.width + xcoord) ;
-    
-    var z = imageDataCopy[pixel] - 127;
+    z = imageDataCopy[pixel] - 127;
+    }
+    else
+    {   
+        var pixel = ycoord * imageFrame.stride + xcoord ;
+        z = imageFrame.bytes[pixel] - 127;
+    }
 
     var aspect = image_bounding_dims.height / image_bounding_dims.width ;
+
+    //p0.set(x - 0.5, (y - 0.5)*aspect, z/2048);
+    //p0.set(x - imageCanvas.width/2, (y - imageCanvas.height/2)*aspect, z/127);
+
     return new THREE.Vector3(x - 0.5, (y - 0.5)*aspect, z/2048);
     //return new THREE.Vector3(x - imageCanvas.width/2, y - imageCanvas.height/2, z);
 }
@@ -109,7 +124,7 @@ function init_surface()
 	    camera = null ;
 	    renderer = null ;
 	    controls = null ;
-	    stats = null ;
+	    //stats = null ;
 	    /*keyboard = null ;
 	    clock = null ;*/
 	})
@@ -166,11 +181,11 @@ function init_graph()
     controls = new THREE.TrackballControls( camera, renderer.domElement );
 
     // STATS
-    stats = new Stats();
+    /*stats = new Stats();
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.bottom = '0px';
     stats.domElement.style.zIndex = 100;
-    container.appendChild( stats.domElement );
+    container.appendChild( stats.domElement );*/
 
     // LIGHT
     /*var light = new THREE.PointLight(0xffffff);    
@@ -205,7 +220,8 @@ function init_graph()
 	}
     }
     
-    wireTexture = new THREE.ImageUtils.loadTexture( ROOT_PATH + 'square.png' );
+    wireTexture = new THREE.ImageUtils.loadTexture( ROOT_PATH + 'square.png' );//deprecated
+    //wireTexture = new THREE.TextureLoader().load( ROOT_PATH + 'square.png' );
     wireTexture.wrapS = wireTexture.wrapT = THREE.RepeatWrapping; 
     wireTexture.repeat.set( segments, segments );
     
@@ -243,13 +259,13 @@ function animate_surface()
 
 function update()
 {
-    if ( keyboard.pressed("z") ) 
+    /*if ( keyboard.pressed("z") ) 
     { 
 	// do something
-    }
+    }*/
 	
     controls.update();
-    stats.update();
+    //stats.update();
 }
 
 function render() 

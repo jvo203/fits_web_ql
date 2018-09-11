@@ -10991,45 +10991,88 @@ function enable_3d_view()
 
 	(function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-	    po.src = 'http://stemkoski.github.io/Three.js/js/Three.js';
+		//po.src = 'http://stemkoski.github.io/Three.js/js/Three.js';
+		po.src = 'stemkoski/Three.js';
 	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 	})();
 
 	(function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-	    po.src = 'http://stemkoski.github.io/Three.js/js/Detector.js';
+		//po.src = 'http://stemkoski.github.io/Three.js/js/Detector.js';
+		po.src = 'stemkoski/Detector.js';
 	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 	})();
 
 	(function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-	    po.src = 'http://stemkoski.github.io/Three.js/js/Stats.js';
+		//po.src = 'http://stemkoski.github.io/Three.js/js/Stats.js';
+		po.src = 'stemkoski/Stats.js';
 	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 	})();
 
 	(function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-	    po.src = 'http://stemkoski.github.io/Three.js/js/TrackballControls.js';
+		//po.src = 'http://stemkoski.github.io/Three.js/js/TrackballControls.js';
+		po.src = 'stemkoski/TrackballControls.js';
 	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 	})();
 
 	(function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-	    po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.KeyboardState.js';
+		//po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.KeyboardState.js';
+		po.src = 'stemkoski/THREEx.KeyboardState.js';
 	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 	})();
 
 	(function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-	    po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.FullScreen.js';
+		//po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.FullScreen.js';
+		po.src = 'stemkoski/THREEx.FullScreen.js';
 	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 	})();
 
 	(function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-	    po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.WindowResize.js';
+		//po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.WindowResize.js';
+		po.src = 'stemkoski/THREEx.WindowResize.js';
 	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 	})();
+
+	/*(function() {
+	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+	    po.src = 'three.min.js' + '?' + encodeURIComponent(get_js_version());
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+	})();
+
+	(function() {
+	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+	    po.src = 'Detector.js' + '?' + encodeURIComponent(get_js_version());
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+	})();
+
+	(function() {
+	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+	    po.src = 'threex.keyboardstate.js' + '?' + encodeURIComponent(get_js_version());
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+	})();
+
+	(function() {
+	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+	    po.src = 'threex.windowresize.js' + '?' + encodeURIComponent(get_js_version());
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+	})();
+
+	(function() {
+	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+	    po.src = 'THREEx.FullScreen.js' + '?' + encodeURIComponent(get_js_version());
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+	})();
+
+	(function() {
+	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+	    po.src = 'TrackballControls.js' + '?' + encodeURIComponent(get_js_version());
+	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+	})();*/
 
 	(function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
