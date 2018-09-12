@@ -287,8 +287,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     if self.param.is_null() {                        
                         self.param = unsafe{ x265_param_alloc() };
                         unsafe{
-                            x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("fastdecode").unwrap().as_ptr());
-                            //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
+                            //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("fastdecode").unwrap().as_ptr());
+                            x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
 
                             (*self.param).fpsNum = fps as u32;
                             (*self.param).fpsDenom = 1;
@@ -676,7 +676,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         let start = precise_time::precise_time_ns();
 
                         //HEVC (x265)
-                        /*match fits.get_video_plane(frame, ref_freq, self.width, self.height) {
+                        #[cfg(feature = "hevc")]
+                        match fits.get_video_plane(frame, ref_freq, self.width, self.height) {
                             Some(mut y) => {
                                 unsafe {
                                     (*self.pic).stride[0] = self.width as i32;
@@ -796,9 +797,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }                                                           
                             },
                             None => {},
-                        }*/
+                        }
 
                         //VP9 (libvpx)
+                        #[cfg(feature = "vpx")]
                         match fits.get_video_frame(frame, ref_freq, self.width, self.height) {                            
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
@@ -907,7 +909,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-11.1";
+static VERSION_STRING: &'static str = "SV2018-09-12.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1556,8 +1558,10 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     //html.push_str("<script src=\"ogv.js\"></script>\n");
 
     //custom vpx wasm decoder
-    html.push_str("<script src=\"vpx.js\"></script>\n");
-    html.push_str("<script>
+    #[cfg(feature = "vpx")]
+    {
+        html.push_str("<script src=\"vpx.js\"></script>\n");
+        html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {
                 vpx_version: Module.cwrap('vpx_version', 'number', []),
@@ -1568,11 +1572,14 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
             console.log('VP9 libvpx decoder version:', api.vpx_version());
             api.vpx_init();
         };
-    </script>\n");
+        </script>\n");
+    }
 
     //custom hevc wasm decoder
-    /*html.push_str("<script src=\"hevc.js\"></script>\n");
-    html.push_str("<script>
+    #[cfg(feature = "hevc")]
+    {
+        html.push_str("<script src=\"hevc.js\"></script>\n");
+        html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {                
                 hevc_init: Module.cwrap('hevc_init', '', []),                
@@ -1580,7 +1587,8 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
             };            
             api.hevc_init();
         };
-    </script>\n");*/
+        </script>\n");
+    }
 
     //bootstrap
     html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1\">\n");

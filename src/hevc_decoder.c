@@ -68,14 +68,14 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len) {
 
     printf("HEVC: decoding a NAL unit of length %zu bytes\n", data_len);
     
-    int err_recognition = 0;
+    int err_recognition = 1;
     int apply_defdispwin = 0;
 
     int ret = ff_hevc_decode_extradata(data, data_len, &params, &sei, &is_nalff, &nal_length_size, err_recognition, apply_defdispwin, stdout);
 
     stop = emscripten_get_now();
 
-    printf("[wasm hevc] ret = %d, elapsed time %5.2f [ms]\n", ret, (stop-start)) ;
+    printf("[wasm hevc] ret = %d, is_nalff = %d, elapsed time %5.2f [ms]\n", ret, is_nalff, (stop-start)) ;
 
     double elapsed = stop - start;
 
