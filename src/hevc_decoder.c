@@ -9,11 +9,12 @@
 //colourmaps
 #include "colourmap.h"
 
-/*static AVCodec *codec;
+static AVCodec *codec;
 static AVCodecContext *avctx;
-static AVFrame *frame;*/
+static AVCodecParserContext *s;
+static AVFrame *frame;
 
-//extern AVCodec ff_hevc_decoder;
+extern AVCodec ff_hevc_decoder;
 
 static HEVCParamSets params;
 static HEVCSEI sei;
@@ -26,7 +27,8 @@ static void hevc_init() {
     is_nalff = 1 ;
     nal_length_size = 0 ;
 
-    /*codec = &ff_hevc_decoder;
+    //the "standard" way
+    codec = &ff_hevc_decoder;
     frame = NULL;
 
     avctx = avcodec_alloc_context3(codec);
@@ -48,17 +50,18 @@ static void hevc_init() {
     avctx->err_recognition |= AV_EF_CRCCHECK;     
     if (avcodec_open2(avctx, codec, NULL) < 0)
     {
+        printf("Failed to open the HEVC coded.\n");
         av_frame_free(&frame);        
-    }*/
+    }
 }
 
 EMSCRIPTEN_KEEPALIVE
 static void hevc_destroy() {
-    /*if (frame != NULL)
+    if (frame != NULL)
         av_frame_free(&frame);
 
     if (avctx != NULL)
-        avcodec_free_context(&avctx);*/
+        avcodec_free_context(&avctx);
 }
 
 EMSCRIPTEN_KEEPALIVE

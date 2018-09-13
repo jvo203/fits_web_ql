@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-12.0";
+    return "JS2018-09-13.0";
 }
 
 var generateUid = function ()
@@ -6115,6 +6115,10 @@ function setup_axes()
 			videoFrame.alpha_ptr = null;
 			videoFrame = null;
 		}
+
+		try {
+			api.hevc_destroy();
+		} catch (e) {};
 
 	    shortcut.remove("f");
 	    shortcut.remove("Left") ;

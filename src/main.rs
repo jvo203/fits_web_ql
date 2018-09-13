@@ -1608,7 +1608,8 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
         html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {                
-                hevc_init: Module.cwrap('hevc_init', '', []),                
+                hevc_init: Module.cwrap('hevc_init', '', []), 
+                hevc_destroy: Module.cwrap('hevc_destroy', '', []),               
                 hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number']),
             };            
             api.hevc_init();
