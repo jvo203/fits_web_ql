@@ -307,12 +307,38 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                         if pixel_count > fits::VIDEO_PIXEL_COUNT_LIMIT {
                             let ratio: f32 = ( (pixel_count as f32) / (fits::VIDEO_PIXEL_COUNT_LIMIT as f32) ).sqrt();
-                            w = ( (w as f32) / ratio.sqrt() ) as u32 ;
-	                        h = ( (h as f32) / ratio.sqrt() ) as u32 ;
 
-                            println!("downscaling the video from {}x{} to {}x{}", fits.width, fits.height, w, h);
+                            if ratio > 4.5 {
+                                //default scaling, no optimisations
+                                w = ( (w as f32) / ratio ) as u32 ;
+	                            h = ( (h as f32) / ratio ) as u32 ;
 
-                            //self.downscaling = true;
+                                println!("downscaling the video from {}x{} to {}x{}, default ratio: {}", fits.width, fits.height, w, h, ratio);
+                            } else if ratio > 3.0 {
+                                // 1/4
+                                w = w / 4 ;
+                                h = h / 4 ;
+
+                                println!("downscaling the video from {}x{} to {}x{} (1/4)", fits.width, fits.height, w, h);
+                            } else if ratio > 2.25 {
+                                // 3/8
+                                w = 3 * w / 8 ;
+                                h = (h * 3 + 7) / 8 ;
+
+                                println!("downscaling the video from {}x{} to {}x{} (3/8)", fits.width, fits.height, w, h);
+                            } else if ratio > 1.5 {
+                                // 1/2
+                                w = w / 2 ;
+                                h = h / 2 ;
+
+                                println!("downscaling the video from {}x{} to {}x{} (1/2)", fits.width, fits.height, w, h);
+                            } else if ratio > 1.0 {
+                                // 3/4
+                                w = 3 * w / 4 ;
+                                h = 3 * h / 4 ;
+
+                                println!("downscaling the video from {}x{} to {}x{} (3/4)", fits.width, fits.height, w, h);
+                            }
                         }
 
                         //get the alpha channel
@@ -800,7 +826,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         //VP9 (libvpx)
-                        #[cfg(feature = "vpx")]
+                        #[cfg(feature = "vp9")]
                         match fits.get_video_frame(frame, ref_freq, self.width, self.height) {                            
                             Some(mut image) => {
                                 //serialize a video response with seq_id, timestamp
@@ -909,7 +935,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-12.0";
+static VERSION_STRING: &'static str = "SV2018-09-13.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1558,7 +1584,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     //html.push_str("<script src=\"ogv.js\"></script>\n");
 
     //custom vpx wasm decoder
-    #[cfg(feature = "vpx")]
+    #[cfg(feature = "vp9")]
     {
         html.push_str("<script src=\"vpx.js\"></script>\n");
         html.push_str("<script>

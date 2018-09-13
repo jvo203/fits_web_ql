@@ -2913,10 +2913,38 @@ impl FITS {
 
         if pixel_count > IMAGE_PIXEL_COUNT_LIMIT {
             let ratio: f32 = ( (pixel_count as f32) / (IMAGE_PIXEL_COUNT_LIMIT as f32) ).sqrt();
-            w = ( (w as f32) / ratio.sqrt() ) as u32 ;
-	        h = ( (h as f32) / ratio.sqrt() ) as u32 ;
 
-            println!("downscaling the image from {}x{} to {}x{}", self.width, self.height, w, h);
+            if ratio > 4.5 {                
+                //default scaling, no optimisations
+                w = ( (w as f32) / ratio ) as u32 ;
+	            h = ( (h as f32) / ratio ) as u32 ;
+
+                println!("downscaling the image from {}x{} to {}x{}, default ratio: {}", self.width, self.height, w, h, ratio);
+            } else if ratio > 3.0 {
+                // 1/4
+                w = w / 4 ;
+                h = h / 4 ;
+
+                println!("downscaling the image from {}x{} to {}x{} (1/4)", self.width, self.height, w, h);
+            } else if ratio > 2.25 {
+                // 3/8
+                w = 3 * w / 8 ;
+                h = (h * 3 + 7) / 8 ;
+
+                println!("downscaling the image from {}x{} to {}x{} (3/8)", self.width, self.height, w, h);
+            } else if ratio > 1.5 {
+                // 1/2
+                w = w / 2 ;
+                h = h / 2 ;
+
+                println!("downscaling the image from {}x{} to {}x{} (1/2)", self.width, self.height, w, h);
+            } else if ratio > 1.0 {
+                // 3/4
+                w = 3 * w / 4 ;
+                h = 3 * h / 4 ;
+
+                println!("downscaling the image from {}x{} to {}x{} (3/4)", self.width, self.height, w, h);
+            }
         }
 
         let mut raw: vpx_image = vpx_image::default();
