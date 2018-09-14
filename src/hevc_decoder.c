@@ -11,22 +11,12 @@
 
 static AVCodec *codec;
 static AVCodecContext *avctx;
-static AVCodecParserContext *s;
 static AVFrame *frame;
 
 extern AVCodec ff_hevc_decoder;
 
-static HEVCParamSets params;
-static HEVCSEI sei;
-
-static int is_nalff;
-static int nal_length_size;
-
 EMSCRIPTEN_KEEPALIVE
 static void hevc_init() {
-    is_nalff = 1 ;
-    nal_length_size = 0 ;
-
     //the "standard" way
     codec = &ff_hevc_decoder;
     frame = NULL;
@@ -71,14 +61,48 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len) {
 
     printf("HEVC: decoding a NAL unit of length %zu bytes\n", data_len);
     
-    int err_recognition = 1;
-    int apply_defdispwin = 0;
+    uint8_t* buf = realloc((void*)data, data_len + AV_INPUT_BUFFER_PADDING_SIZE);
+    memset(buf + data_len, 0, AV_INPUT_BUFFER_PADDING_SIZE);
 
-    int ret = ff_hevc_decode_extradata(data, data_len, &params, &sei, &is_nalff, &nal_length_size, err_recognition, apply_defdispwin, stdout);
+    AVPacket avpkt;    
+
+    av_init_packet(&avpkt);
+    avpkt.data = (uint8_t *)buf;
+    avpkt.size = data_len;
+
+    int ret = avcodec_send_packet(avctx, &avpkt);
 
     stop = emscripten_get_now();
 
-    printf("[wasm hevc] ret = %d, is_nalff = %d, elapsed time %5.2f [ms]\n", ret, is_nalff, (stop-start)) ;
+    printf("[wasm hevc] ret = %d, elapsed time %5.2f [ms]\n", ret, (stop-start)) ;
+
+    if( ret == AVERROR(EAGAIN) )
+        printf("avcodec_receive_frame() is needed to remove decoded video frames\n");
+
+    if( ret == AVERROR_EOF )
+        printf("the decoder has been flushed\n");
+
+    if( ret == AVERROR(EINVAL) )
+        printf("codec not opened or requires flush\n");
+
+    if( ret == AVERROR(ENOMEM) )
+        printf("failed to add packet to internal queue etc.\n");
+
+    bool has_frame = false ;
+
+    //if( ret == AVERROR(EAGAIN) )
+    {
+        while( (ret = avcodec_receive_frame(avctx, frame)) == 0)
+        {
+            has_frame = true ;
+
+            printf("decoded an HEVC frame\n");
+        }
+
+        printf("avcodec_receive_frame returned = %d\n", ret);
+    }
+
+    av_frame_unref(frame);
 
     double elapsed = stop - start;
 
