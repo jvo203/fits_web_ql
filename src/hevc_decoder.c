@@ -97,12 +97,14 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len) {
             has_frame = true ;
 
             printf("decoded an HEVC frame\n");
+
+            //apply a colourmap etc.
+
+            av_frame_unref(frame);
         }
 
         printf("avcodec_receive_frame returned = %d\n", ret);
     }
-
-    av_frame_unref(frame);
 
     double elapsed = stop - start;
 
