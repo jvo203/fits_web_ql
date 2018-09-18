@@ -32,6 +32,7 @@ extern crate vpx_sys;
 extern crate num_rational;
 extern crate positioned_io;
 extern crate atomic;
+extern crate dirs;
 
 //extern crate rav1e;
 //use rav1e::*;
@@ -130,12 +131,15 @@ impl UserSession {
         let uuid = Uuid::new_v4();
 
         #[cfg(not(feature = "server"))]
-        let filename = format!("/dev/null", uuid);
+        let filename = format!("/dev/null");
 
         #[cfg(feature = "server")]
         let filename = format!("{}/{}_{}.log", LOG_DIRECTORY, id.replace("/","_"), uuid);
 
         let log = File::create(filename);        
+
+        #[cfg(not(feature = "server"))]
+        let filename = format!("/dev/null");
 
         #[cfg(feature = "server")]
         let filename = format!("{}/{}_{}.hevc", LOG_DIRECTORY, id.replace("/","_"), uuid);
@@ -935,7 +939,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-13.0";
+static VERSION_STRING: &'static str = "SV2018-09-18.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1018,7 +1022,7 @@ fn remove_symlinks() {
 }
 
 fn get_home_directory() -> HttpResponse {
-    match env::home_dir() {
+    match dirs::home_dir() {
         Some(path_buf) => get_directory(path_buf),
         None => HttpResponse::NotFound()
                     .content_type("text/html")
@@ -1609,10 +1613,9 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
         Module.onRuntimeInitialized = async _ => {
             api = {                
                 hevc_init: Module.cwrap('hevc_init', '', []), 
-                hevc_destroy: Module.cwrap('hevc_destroy', '', []),               
-                hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number']),
+                hevc_destroy: Module.cwrap('hevc_destroy', '', []),                
+                hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'string']),
             };            
-            api.hevc_init();
         };
         </script>\n");
     }

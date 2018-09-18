@@ -18,6 +18,7 @@ actix = "*"
 actix-web = "*"
 serde_json = "*"
 chrono = "*"
+dirs = "*"
 #//cannot be used with a non-nightly stable Rust?
 #half = { version = "*", features = ["use-intrinsics"] }
 half = "*"

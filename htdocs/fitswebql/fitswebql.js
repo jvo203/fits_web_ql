@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-13.0";
+    return "JS2018-09-18.2";
 }
 
 var generateUid = function ()
@@ -1913,7 +1913,7 @@ function open_websocket_connection(datasetId, index)
 
 						let processing_time = delta + (stop-start);
 
-						let log = 'VP9 video frame decode time: ' + delta + ' [ms], process_video time: ' + (stop-start) + ' [ms], total: ' + processing_time + ' [ms]';
+						let log = 'video frame decode time: ' + delta + ' [ms], process_video time: ' + (stop-start) + ' [ms], total: ' + processing_time + ' [ms]';
 
 						if(processing_time > vidInterval)
 						{
@@ -1956,7 +1956,7 @@ function open_websocket_connection(datasetId, index)
 
 						try {
 							//HEVC
-							api.hevc_decode_nal_unit(ptr, len);
+							api.hevc_decode_nal_unit(ptr, len, videoFrame.ptr, img.width, img.height, videoFrame.alpha, colourmap);
 						} catch (e) {};
 						
 						if(img.data.length == 0)
@@ -1983,7 +1983,7 @@ function open_websocket_connection(datasetId, index)
 
 						try {
 							//HEVC
-							api.hevc_decode_nal_unit(ptr, len);
+							api.hevc_decode_nal_unit(ptr, len, null, 0, 0, null, 'greyscale');
 						} catch {};
 					}
 
@@ -1993,7 +1993,7 @@ function open_websocket_connection(datasetId, index)
 
 					console.log('total decoding/processing/rendering time: ' + delta.toFixed() + ' [ms]');
 					
-					let log = 'VP9 video frame length ' + len + ' bytes, decoding/processing/rendering time: ' + delta.toFixed() + ' [ms], bandwidth: ' + Math.round(bandwidth) + " [kbps], request latency: " + latency.toFixed() + ' [ms]';
+					let log = 'video frame length ' + len + ' bytes, decoding/processing/rendering time: ' + delta.toFixed() + ' [ms], bandwidth: ' + Math.round(bandwidth) + " [kbps], request latency: " + latency.toFixed() + ' [ms]';
 
 					//latency > computed or delta, take the greater
 					if(Math.max(latency,delta) > 0.8*vidInterval)
@@ -6179,6 +6179,11 @@ function setup_axes()
 
 			//requestAnimationFrame(update_video);
 		};
+
+		try {
+			//init the HEVC encoder		
+			api.hevc_init();
+		} catch (e) {};
 
 		//pre-allocate a video memory
 		//get the dimensions from the imageFrame
