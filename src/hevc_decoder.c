@@ -87,6 +87,9 @@ static void hevc_destroy() {
 
 EMSCRIPTEN_KEEPALIVE
 static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, unsigned char* canvas, unsigned int _w, unsigned int _h, const unsigned char* alpha, const char* colourmap) {
+    if(avctx == NULL || avpkt == NULL || avframe == NULL)
+        return 0.0;
+
     double start = emscripten_get_now();
     double stop = 0.0 ;
 

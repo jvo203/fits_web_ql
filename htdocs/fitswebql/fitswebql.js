@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-18.2";
+    return "JS2018-09-18.3";
 }
 
 var generateUid = function ()
@@ -6106,6 +6106,10 @@ function setup_axes()
 			video_stack[index] = [] ;
 		};
 
+		try {
+			api.hevc_destroy();
+		} catch (e) {};
+
 		if(videoFrame != null)
 		{
 			Module._free(videoFrame.ptr);
@@ -6114,11 +6118,7 @@ function setup_axes()
 			videoFrame.ptr = null;
 			videoFrame.alpha_ptr = null;
 			videoFrame = null;
-		}
-
-		try {
-			api.hevc_destroy();
-		} catch (e) {};
+		}		
 
 	    shortcut.remove("f");
 	    shortcut.remove("Left") ;
