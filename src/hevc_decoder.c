@@ -56,7 +56,7 @@ static void hevc_init() {
     avctx->err_recognition |= AV_EF_CRCCHECK;     
     if (avcodec_open2(avctx, codec, NULL) < 0)
     {
-        printf("Failed to open the HEVC coded.\n");        
+        printf("Failed to open the HEVC codec.\n");        
     }
 }
 

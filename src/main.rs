@@ -113,6 +113,8 @@ struct WsSessionState {
 struct UserSession {    
     dataset_id: String,
     session_id: Uuid,
+    timer: timer::Timer,
+    guard: timer::Guard,
     log: std::io::Result<File>,
     hevc: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
@@ -146,9 +148,14 @@ impl UserSession {
 
         let hevc = File::create(filename);
 
+        let timer = timer::Timer::new();
+        let guard = timer.schedule_with_delay(chrono::Duration::seconds(0), move || { });
+
         let session = UserSession {
             dataset_id: id.clone(),            
             session_id: uuid,
+            timer: timer,
+            guard: guard,
             log: log,
             hevc: hevc,      
             cfg: vpx_codec_enc_cfg::default(),       
@@ -242,7 +249,7 @@ impl Handler<server::Message> for UserSession {
 // Handler for ws::Message messages
 impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
-        //println!("WEBSOCKET MESSAGE: {:?}", msg);
+        //println!("WEBSOCKET MESSAGE: {:?}", msg);        
 
         match msg {
             ws::Message::Ping(msg) => ctx.pong(&msg),
@@ -255,6 +262,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     ctx.text(&text);       
                 }
                 else {
+                    /*let addr = ctx.address();
+
+                    self.guard = self.timer.schedule_with_delay(chrono::Duration::seconds(10), move || { println!("timeout: sending a close command to the websocket connection");
+                    //&ctx.text("[close]");
+                    });*/
+
                     match self.log {
                         Ok(ref mut file) => {
                             let timestamp = Local::now();
@@ -939,7 +952,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-18.2";
+static VERSION_STRING: &'static str = "SV2018-09-18.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
