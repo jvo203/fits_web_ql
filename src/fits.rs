@@ -2727,7 +2727,8 @@ impl FITS {
         }    
     }
 
-    pub fn get_video_plane(&self, frame: f64, ref_freq: f64, width: u32, height: u32) -> Option<Vec<u8>> {
+    #[cfg(feature = "hevc")]
+    pub fn get_video_frame(&self, frame: f64, ref_freq: f64, width: u32, height: u32) -> Option<Vec<u8>> {
         //get a frame index (frame_start = frame_end = frame)
         let frame = match self.get_spectrum_range(frame, frame, ref_freq) {
             Some((frame,_)) => frame,
@@ -2757,6 +2758,7 @@ impl FITS {
         Some(dst)
     }
 
+    #[cfg(feature = "vp9")]
     pub fn get_video_frame(&self, frame: f64, ref_freq: f64, width: u32, height: u32) -> Option<vpx_image> {
         //get a frame index (frame_start = frame_end = frame)
         let frame = match self.get_spectrum_range(frame, frame, ref_freq) {

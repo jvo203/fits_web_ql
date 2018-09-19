@@ -113,8 +113,7 @@ struct WsSessionState {
 struct UserSession {    
     dataset_id: String,
     session_id: Uuid,
-    timer: timer::Timer,
-    guard: timer::Guard,
+    timeout: SpawnHandle,
     log: std::io::Result<File>,
     hevc: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
@@ -148,14 +147,10 @@ impl UserSession {
 
         let hevc = File::create(filename);
 
-        let timer = timer::Timer::new();
-        let guard = timer.schedule_with_delay(chrono::Duration::seconds(0), move || { });
-
         let session = UserSession {
             dataset_id: id.clone(),            
             session_id: uuid,
-            timer: timer,
-            guard: guard,
+            timeout: SpawnHandle::default(),    
             log: log,
             hevc: hevc,      
             cfg: vpx_codec_enc_cfg::default(),       
@@ -222,6 +217,13 @@ impl Actor for UserSession {
                 dataset_id: self.dataset_id.clone(),
                 id: self.session_id,
             });
+
+        self.timeout = ctx.run_later(std::time::Duration::new(WEBSOCKET_TIMEOUT,0), |act, ctx| {            
+            println!("websocket inactivity timeout for {}", act.dataset_id);
+
+            ctx.text("[close]");
+            ctx.stop();
+        });
     }
 
     fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
@@ -261,12 +263,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 if (&text).contains("[heartbeat]") {
                     ctx.text(&text);       
                 }
-                else {
-                    /*let addr = ctx.address();
+                else {         
+                    ctx.cancel_future(self.timeout);
 
-                    self.guard = self.timer.schedule_with_delay(chrono::Duration::seconds(10), move || { println!("timeout: sending a close command to the websocket connection");
-                    //&ctx.text("[close]");
-                    });*/
+                    self.timeout = ctx.run_later(std::time::Duration::new(WEBSOCKET_TIMEOUT,0), |act, ctx| {
+                        println!("websocket inactivity timeout for {}", act.dataset_id);
+
+                        ctx.text("[close]");
+                        ctx.stop();
+                    });
 
                     match self.log {
                         Ok(ref mut file) => {
@@ -720,7 +725,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                         //HEVC (x265)
                         #[cfg(feature = "hevc")]
-                        match fits.get_video_plane(frame, ref_freq, self.width, self.height) {
+                        match fits.get_video_frame(frame, ref_freq, self.width, self.height) {
                             Some(mut y) => {
                                 unsafe {
                                     (*self.pic).stride[0] = self.width as i32;
@@ -739,14 +744,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 let mut nal_count: u32 = 0 ;
                                 let mut p_nal: *mut x265_nal = ptr::null_mut();
 
-                                //encode
-                                let x265_start = precise_time::precise_time_ns();
-
+                                //encode                                
                                 let ret = unsafe{ x265_encoder_encode(self.enc, &mut p_nal, &mut nal_count, self.pic, ptr::null_mut()) };
 
-                                let x265_stop = precise_time::precise_time_ns();
+                                let stop = precise_time::precise_time_ns();
 
-                                println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (x265_stop-start)/1000000, 1000000000/(x265_stop-start), ret, nal_count);
+                                println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (stop-start)/1000000, 1000000000/(stop-start), ret, nal_count);
 
                                 //y falls out of scope
                                 unsafe {
@@ -754,7 +757,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     (*self.pic).planes[0] = ptr::null_mut();
                                 }
 
-                                let elapsed = (x265_stop-start)/1000000 ;
+                                let elapsed = (stop-start)/1000000 ;
 
                                 //process all NAL units one by one
                                 if nal_count > 0 {                                    
@@ -952,7 +955,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-18.3";
+static VERSION_STRING: &'static str = "SV2018-09-19.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -967,6 +970,8 @@ const SERVER_ADDRESS: &'static str = "localhost";
 const SERVER_ADDRESS: &'static str = "0.0.0.0";
 
 const SERVER_PORT: i32 = 8080;
+
+const WEBSOCKET_TIMEOUT: u64 = 60*60;//[s]; a websocket inactivity timeout
 
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
