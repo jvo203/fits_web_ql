@@ -9,6 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 extern crate actix;
 extern crate actix_web;
 extern crate lz4_compress;
+extern crate postgres;
 
 #[macro_use]
 extern crate log;
@@ -33,6 +34,17 @@ extern crate num_rational;
 extern crate positioned_io;
 extern crate atomic;
 extern crate dirs;
+
+#[macro_use]
+extern crate scan_fmt;
+
+#[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+extern crate serde_json;
+
+extern crate parking_lot;
 
 //extern crate rav1e;
 //use rav1e::*;
@@ -64,22 +76,14 @@ use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 use uuid::Uuid;
 
+use postgres::{Connection, TlsMode};
+
 use vpx_sys::*;
-
-#[macro_use]
-extern crate scan_fmt;
-
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
-extern crate serde_json;
-
-extern crate parking_lot;
 
 use std::collections::HashMap;
 //use std::sync::RwLock;
 use parking_lot::RwLock;
+//use parking_lot::Mutex;
 
 mod molecule;
 mod fits;
@@ -939,11 +943,19 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
     };
 }*/
 
+//FITS datasets
 lazy_static! {
     static ref DATASETS: Arc<RwLock<HashMap<String, Arc<RwLock<Box<fits::FITS>>>>>> = {
         Arc::new(RwLock::new(HashMap::new()))
     };
 }
+
+//PostgreSQL connections
+/*lazy_static! {
+    static ref DBCONNS: Arc<RwLock<HashMap<String, Arc<Mutex<Connection>>>>> = {
+        Arc::new(RwLock::new(HashMap::new()))
+    };
+}*/
 
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
@@ -953,7 +965,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-19.5";
+static VERSION_STRING: &'static str = "SV2018-09-19.6";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -966,6 +978,12 @@ const SERVER_ADDRESS: &'static str = "localhost";
 
 #[cfg(feature = "server")]
 const SERVER_ADDRESS: &'static str = "0.0.0.0";
+
+#[cfg(feature = "server")]
+const JVO_USER: &'static str = "jvo";
+
+#[cfg(feature = "server")]
+const JVO_HOST: &'static str = "localhost";
 
 const SERVER_PORT: i32 = 8080;
 
@@ -1277,14 +1295,13 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
 
     //server version
     //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite, &flux, &server)
-    #[cfg(feature = "server")]    
-    return execute_fits(&fitswebql_path, fits::FITSCACHE, "fits", &dataset_id, composite, &flux, &server);
+    #[cfg(feature = "server")]
+    return execute_fits(&fitswebql_path, &db, &table, fits::FITSCACHE, "fits", &dataset_id, composite, &flux, &server);
 
     //local (Personal Edition)
     #[cfg(not(feature = "server"))]
     return execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &flux, &server);
 }
-
 
 fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
     //println!("{:?}", req);
@@ -1515,8 +1532,28 @@ fn get_molecules(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespo
     .responder()
 }
 
-//#[cfg(not(feature = "server"))]
-fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<server::SessionServer>) -> HttpResponse {
+#[cfg(feature = "server")]
+fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> String
+{
+    //data_id: if db is alma append _00_00_00
+    let data_id = match db {
+        "alma" => format!("{}_00_00_00", dataset_id),
+        _ => dataset_id.clone(),
+    };
+
+    let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
+
+    println!("PostgreSQL connection URL: {}", connection_url);
+    
+    match Connection::connect(connection_url, TlsMode::None) {
+        Ok(_) => println!("connected to PostgreSQL"),
+        Err(err) => print!("error connecting to PostgreSQL: {}", err),
+    }
+
+    return String::from(fits::FITSCACHE) ;
+}
+
+fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<server::SessionServer>) -> HttpResponse {
 
     //get fits location    
 
@@ -1536,6 +1573,10 @@ fn execute_fits(fitswebql_path: &String, dir: &str, ext: &str, dataset_id: &Vec<
         //if it does not exist set has_fits to false and load the FITS data
         if !has_entry {
             has_fits = false ;            
+
+            //try to read a directory from the PostgreSQL database
+            #[cfg(feature = "server")]
+            let dir = get_jvo_path(&data_id.to_string(), &db, &table);
 
             let my_dir = dir.to_string();
             let my_data_id = data_id.to_string();
