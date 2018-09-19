@@ -237,10 +237,11 @@ pub struct FITS {
 
 #[derive(Serialize,Debug)]
 struct FITSImage {
+    identifier: String,
     width: u32,
     height: u32,
-    image: Vec<u8>,//VP9 compressed frame
-    alpha: Vec<u8>,//lz4-compressed alpha channels
+    image: Vec<u8>,//image/video codec-compressed luma
+    alpha: Vec<u8>,//lz4-compressed alpha channel
 }
 
 impl FITS {
@@ -2889,9 +2890,9 @@ impl FITS {
     }
 
     fn make_vpx_image(&mut self) {
-        //check if the .vp9 file is already in the IMAGECACHE
+        //check if the .img binary image file is already in the IMAGECACHE
 
-        let filename = format!("{}/{}.vp9", IMAGECACHE, self.dataset_id.replace("/","_"));
+        let filename = format!("{}/{}.img", IMAGECACHE, self.dataset_id.replace("/","_"));
         let filepath = std::path::Path::new(&filename);
 
         if filepath.exists() {
@@ -3160,7 +3161,7 @@ impl FITS {
         unsafe { vpx_img_free(&mut raw) };
         unsafe { vpx_codec_destroy(&mut ctx) };
 
-        let tmp_filename = format!("{}/{}.vp9.tmp", IMAGECACHE, self.dataset_id.replace("/","_"));
+        let tmp_filename = format!("{}/{}.img.tmp", IMAGECACHE, self.dataset_id.replace("/","_"));
         let tmp_filepath = std::path::Path::new(&tmp_filename);
 
         let mut buffer = match File::create(tmp_filepath) {            
@@ -3172,6 +3173,7 @@ impl FITS {
         };
 
         let image_frame = FITSImage {
+            identifier: String::from("VP9"),
             width: w,
             height: h,
             image: image_frame,

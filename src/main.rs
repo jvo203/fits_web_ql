@@ -953,7 +953,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-19.3";
+static VERSION_STRING: &'static str = "SV2018-09-19.4";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1304,7 +1304,7 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse,
     //println!("[get_image] http request for {}", dataset_id);    
 
     //check the IMAGECACHE first
-    let filename = format!("{}/{}.vp9", fits::IMAGECACHE, dataset_id.replace("/","_"));
+    let filename = format!("{}/{}.img", fits::IMAGECACHE, dataset_id.replace("/","_"));
     let filepath = std::path::Path::new(&filename);
 
     if filepath.exists() {
@@ -1341,7 +1341,7 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse,
 
         if fits.has_data {
             //send the binary image data from IMAGECACHE                       
-            let filename = format!("{}/{}.vp9", fits::IMAGECACHE, dataset_id.replace("/","_"));
+            let filename = format!("{}/{}.img", fits::IMAGECACHE, dataset_id.replace("/","_"));
             let filepath = std::path::Path::new(&filename);
 
             if filepath.exists() {

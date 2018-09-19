@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-19.0";
+    return "JS2018-09-19.1";
 }
 
 var generateUid = function ()
@@ -8158,13 +8158,31 @@ function fetch_image(datasetId, index, add_timestamp)
 				var dv = new DataView(received_msg) ;
 				console.log("FITSImage dataview byte length: ", dv.byteLength);
 
-				var width = dv.getUint32(0, endianness) ;
-				var height = dv.getUint32(4, endianness) ;
-				var image_length = dv.getUint32(8, endianness) ;
-				var frame = new Uint8Array(received_msg, 16, image_length) ;//offset by 8 bytes
-				var alpha_length = dv.getUint32(16+image_length, endianness) ;
-				var alpha = new Uint8Array(received_msg, 16+image_length+8) ;
-				console.log("image frame width:", width, "height:", height, "compressed alpha length:", alpha.length);
+				var offset = 0;
+				var id_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
+
+				var identifier = new Uint8Array(received_msg, offset, id_length) ;
+				identifier = new TextDecoder("utf-8").decode(identifier);
+				offset += id_length;
+
+				var width = dv.getUint32(offset, endianness) ;
+				offset += 4;
+
+				var height = dv.getUint32(offset, endianness) ;
+				offset += 4;
+
+				var image_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
+
+				var frame = new Uint8Array(received_msg, offset, image_length) ;//offset by 8 bytes
+				offset += image_length;
+
+				var alpha_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
+
+				var alpha = new Uint8Array(received_msg, offset) ;
+				console.log("image frame identifier: ", identifier, "width:", width, "height:", height, "compressed alpha length:", alpha.length);
 
 				var Buffer = require('buffer').Buffer ;
 				var LZ4 = require('lz4') ;
@@ -8172,23 +8190,24 @@ function fetch_image(datasetId, index, add_timestamp)
 				var uncompressed = new Buffer(width*height) ;
 				uncompressedSize = LZ4.decodeBlock(new Buffer(alpha), uncompressed) ;
 				alpha = uncompressed.slice(0, uncompressedSize) ;
+				
+				//the decoder part
 
-				//var player = new OGVPlayer();
-				//console.log(player);
+				if(identifier == 'VP9')
+				{
+					var decoder = new OGVDecoderVideoVP9();
+					console.log(decoder);				
 
-				//OGVDecoderVideoVP9 (asm.js) or OGVDecoderVideoVP9W (wasm)
-				var decoder = new OGVDecoderVideoVP9();
-				console.log(decoder);				
-
-				decoder.init(function () {console.log("init callback done");});
-				decoder.processFrame(frame, function () {
-					process_image(decoder.frameBuffer.format.displayWidth,
-						decoder.frameBuffer.format.displayHeight,
-						decoder.frameBuffer.y.bytes,
-						decoder.frameBuffer.y.stride,
-						alpha,						
-						index);
-				});
+					decoder.init(function () {console.log("init callback done");});
+					decoder.processFrame(frame, function () {
+						process_image(decoder.frameBuffer.format.displayWidth,
+							decoder.frameBuffer.format.displayHeight,
+							decoder.frameBuffer.y.bytes,
+							decoder.frameBuffer.y.stride,
+							alpha,						
+							index);
+					});
+				}
 			}
 		}
 	}
