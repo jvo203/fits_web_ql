@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-18.3";
+    return "JS2018-09-19.0";
 }
 
 var generateUid = function ()
@@ -9526,7 +9526,7 @@ function show_welcome()
 
     ul.append("li")
 	.attr("class", "list-group-item list-group-item-success")
-	.html('<h4>Google VP9 Image/Video Encoding <a  href="https://en.wikipedia.org/wiki/VP9"><em>(see Wikipedia)</em></a></h4>');
+	.html('<h4>real-time HEVC streaming video for FITS data cubes <a  href="https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding"><em>(see Wikipedia)</em></a></h4>');
 
 	ul.append("li")
 	.attr("class", "list-group-item list-group-item-success")
