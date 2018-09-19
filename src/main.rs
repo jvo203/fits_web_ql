@@ -306,9 +306,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         unsafe{
                             //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("fastdecode").unwrap().as_ptr());
 
-                            x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
+                            //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
 
-                            //x265_param_default_preset(self.param, CString::new("veryfast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
+                            x265_param_default_preset(self.param, CString::new("superfast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
 
                             (*self.param).fpsNum = fps as u32;
                             (*self.param).fpsDenom = 1;
@@ -953,7 +953,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-19.2";
+static VERSION_STRING: &'static str = "SV2018-09-19.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
