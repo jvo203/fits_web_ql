@@ -431,10 +431,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         { self.cfg.rc_end_usage = vpx_rc_mode::VPX_CBR; }
 
                         //internal frame downsampling
-                        self.cfg.rc_resize_allowed = 1;
+                        /*self.cfg.rc_resize_allowed = 1;
                         self.cfg.rc_scaled_width = self.cfg.g_w >> 2;
                         self.cfg.rc_scaled_height = self.cfg.g_h >> 2;
-                        self.cfg.rc_resize_down_thresh = 30;
+                        self.cfg.rc_resize_down_thresh = 30;*/
 
                         self.cfg.g_lag_in_frames = 0;
                         self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
@@ -953,7 +953,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-19.4";
+static VERSION_STRING: &'static str = "SV2018-09-19.5";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

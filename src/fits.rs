@@ -3063,12 +3063,6 @@ impl FITS {
 
         cfg.g_w = w;
         cfg.g_h = h;
-
-        //internal frame downsampling
-        cfg.rc_resize_allowed = 1;
-        cfg.rc_scaled_width = cfg.g_w >> 2;
-        cfg.rc_scaled_height = cfg.g_h >> 2;
-        cfg.rc_resize_down_thresh = 30;
         
         cfg.rc_min_quantizer = 10 ;
         cfg.rc_max_quantizer = 42 ;     
