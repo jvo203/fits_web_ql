@@ -306,9 +306,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         unsafe{
                             //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("fastdecode").unwrap().as_ptr());
 
-                            //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
+                            x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
 
-                            x265_param_default_preset(self.param, CString::new("veryfast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
+                            //x265_param_default_preset(self.param, CString::new("veryfast").unwrap().as_ptr(), CString::new("zerolatency").unwrap().as_ptr());
 
                             (*self.param).fpsNum = fps as u32;
                             (*self.param).fpsDenom = 1;
