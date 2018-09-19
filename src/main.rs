@@ -113,7 +113,7 @@ struct WsSessionState {
 struct UserSession {    
     dataset_id: String,
     session_id: Uuid,
-    timeout: SpawnHandle,
+    timestamp: std::time::Instant,
     log: std::io::Result<File>,
     hevc: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t,//VP9 encoder config
@@ -150,7 +150,7 @@ impl UserSession {
         let session = UserSession {
             dataset_id: id.clone(),            
             session_id: uuid,
-            timeout: SpawnHandle::default(),    
+            timestamp: std::time::Instant::now(),//SpawnHandle::default(),    
             log: log,
             hevc: hevc,      
             cfg: vpx_codec_enc_cfg::default(),       
@@ -218,11 +218,13 @@ impl Actor for UserSession {
                 id: self.session_id,
             });
 
-        self.timeout = ctx.run_later(std::time::Duration::new(WEBSOCKET_TIMEOUT,0), |act, ctx| {            
-            println!("websocket inactivity timeout for {}", act.dataset_id);
+        ctx.run_interval(std::time::Duration::new(10,0), |act, ctx| {
+            if std::time::Instant::now().duration_since(act.timestamp) > std::time::Duration::new(WEBSOCKET_TIMEOUT,0) {        
+                println!("websocket inactivity timeout for {}", act.dataset_id);
 
-            ctx.text("[close]");
-            ctx.stop();
+                ctx.text("[close]");
+                ctx.stop();
+            }
         });
     }
 
@@ -264,14 +266,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     ctx.text(&text);       
                 }
                 else {         
-                    ctx.cancel_future(self.timeout);
-
-                    self.timeout = ctx.run_later(std::time::Duration::new(WEBSOCKET_TIMEOUT,0), |act, ctx| {
-                        println!("websocket inactivity timeout for {}", act.dataset_id);
-
-                        ctx.text("[close]");
-                        ctx.stop();
-                    });
+                    self.timestamp = std::time::Instant::now();                    
 
                     match self.log {
                         Ok(ref mut file) => {
@@ -955,7 +950,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-19.0";
+static VERSION_STRING: &'static str = "SV2018-09-19.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
