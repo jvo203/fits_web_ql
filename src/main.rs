@@ -139,7 +139,7 @@ impl VideoSession {
         let filename = format!("/dev/null");
 
         #[cfg(feature = "server")]
-        let filename = format!("{}/{}_{}.log", LOG_DIRECTORY, id.replace("/","_"), uuid);
+        let filename = format!("{}/{}.log", LOG_DIRECTORY, uuid);
 
         let log = File::create(filename);        
 
@@ -147,7 +147,7 @@ impl VideoSession {
         let filename = format!("/dev/null");
 
         #[cfg(feature = "server")]
-        let filename = format!("{}/{}_{}.hevc", LOG_DIRECTORY, id.replace("/","_"), uuid);
+        let filename = format!("{}/{}.hevc", LOG_DIRECTORY, uuid);
 
         let hevc = File::create(filename);
 
