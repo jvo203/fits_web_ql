@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-19.1";
+    return "JS2018-09-20.0";
 }
 
 var generateUid = function ()
@@ -815,7 +815,7 @@ function process_image(w, h, bytes, stride, alpha, index)
 		    compositeImageData = ctx.createImageData(compositeCanvas.width,compositeCanvas.height);
 		}
 		
-		add_composite_channel(bytes, w, h, stride, compositeImageData, index-1) ;
+		add_composite_channel(bytes, w, h, stride, alpha, compositeImageData, index-1) ;
 	    }
 	}
 

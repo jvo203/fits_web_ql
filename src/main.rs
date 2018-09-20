@@ -9,6 +9,8 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 extern crate actix;
 extern crate actix_web;
 extern crate lz4_compress;
+
+#[cfg(feature = "server")]
 extern crate postgres;
 
 #[macro_use]
@@ -76,6 +78,7 @@ use futures::future::{Future,result};
 use percent_encoding::percent_decode;
 use uuid::Uuid;
 
+#[cfg(feature = "server")]
 use postgres::{Connection, TlsMode};
 
 use vpx_sys::*;
@@ -1300,7 +1303,7 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
 
     //local (Personal Edition)
     #[cfg(not(feature = "server"))]
-    return execute_fits(&fitswebql_path, &dir, &ext, &dataset_id, composite, &flux, &server);
+    return execute_fits(&fitswebql_path, "", "", &dir, &ext, &dataset_id, composite, &flux, &server);
 }
 
 fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpResponse, Error=Error>> {
@@ -1581,7 +1584,7 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
     return None ;
 }
 
-fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<server::SessionServer>) -> HttpResponse {
+fn execute_fits(fitswebql_path: &String, _db: &str, _table: &str, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<server::SessionServer>) -> HttpResponse {
 
     //get fits location    
 
@@ -1602,8 +1605,12 @@ fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: 
         if !has_entry {
             has_fits = false ;        
 
-            let my_db = db.to_string();
-            let my_table = table.to_string();
+            #[cfg(feature = "server")]
+            let my_db = _db.to_string();
+
+            #[cfg(feature = "server")]
+            let my_table = _table.to_string();
+
             let my_dir = dir.to_string();
             let my_data_id = data_id.to_string();
             let my_ext = ext.to_string();
@@ -1616,7 +1623,7 @@ fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: 
             thread::spawn(move || {
                 #[cfg(not(feature = "server"))]
                 let filepath = std::path::PathBuf::from(&format!("{}/{}.{}", my_dir, my_data_id, my_ext));
-                
+
                 #[cfg(feature = "server")]
                 let filepath = {
                     //try to read a directory from the PostgreSQL database
