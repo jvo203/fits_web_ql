@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-20.2";
+    return "JS2018-09-20.3";
 }
 
 var generateUid = function ()
@@ -6516,11 +6516,12 @@ function x_axis_move(offset)
 
 			video_count = 0 ;
 
-			for(let index=0;index<va_count;index++)
+			if(va_count == 1)
+			//for(let index=0;index<va_count;index++)
 		    {
 				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
-
-				wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
+				
+				wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
 			} ;
 		} ;
 
@@ -8505,11 +8506,12 @@ function videoTimeout(freq)
 
 	video_count = 0 ;
 
-	for(let index=0;index<va_count;index++)
+	if(va_count == 1)
+	//for(let index=0;index<va_count;index++)
 	{
 		let strRequest = 'frame=' + freq + '&key=true' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
 
-		wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
+		wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
 	} ;
 }
 
@@ -11161,284 +11163,6 @@ function enable_3d_view()
 	console.log("WebGL not supported by your browser") ;
 }
 
-function init_h265_video()
-{
-    var player = null ;
-    var looping = false ;
-
-    //var VIDEO_URL = ROOT_PATH + "spreedmovie.hevc";
-    //var VIDEO_URL = ROOT_PATH + "cuc_ieschool.h265";
-    var VIDEO_URL = encodeURI("VIDEOCACHE/" + datasetId + ".hevc" + "&" + votable.getAttribute('data-server-string')) ;
-    
-    var div = d3.select("body").append("div")
-	.attr("id", "HEVC")
-	.attr("class", "threejs") ;
-
-    div.append("span")
-	.attr("id", "closeHEVC")
-	.attr("class", "close myclose")
-	.on("click", function() {
-	    looping = false ;
-	    
-	    //stop the video player
-	    if(player)
-		player.stop();
-	    
-	    d3.select("#HEVC").remove() ;	    	    
-	})
-	.text("×") ;
-
-    div.append("canvas")
-	.attr("id", "video")
-	.attr("class", "video");
-	/*.attr("width", 208)
-	.attr("height", 208);*/
-
-    div.append("span")
-	.attr("id", "status")
-	.html("init_video");
-
-    var video = document.getElementById("video");
-    var status = document.getElementById("status");    
-        
-    console.log("Playing with libde265", libde265.de265_get_version());
-    
-    player = new libde265.RawPlayer(video);
-    
-    player.set_status_callback(function(msg, fps) {
-        player.disable_filters(false);//false for better image quality
-        switch (msg) {
-        case "loading":
-            status.innerHTML = "Loading movie...";
-            break;
-        case "initializing":
-            status.innerHTML = "Initializing...";
-            break;
-        case "playing":
-            status.innerHTML = "Playing...";
-	    looping = true ;//it is safe to turn on looping
-            break;
-        case "stopped":
-            status.innerHTML = "Stopped";
-	    /*d3.select("#HEVC").remove() ;
-
-	    if(looping)
-		init_h265_video();*/
-            break;
-        case "fps":
-            status.innerHTML = Number(fps).toFixed(2) + " fps";
-            break;
-        default:
-            status.innerHTML = msg;
-        }
-    });
-    player.playback(VIDEO_URL);
-    
-}
-
-function play_video()
-{
-    var node = document.getElementById("video");
-    var broadway = new Broadway(node);
-    //broadway.play();   
-}
-
-function init_h264_media()
-{    
-    //var VIDEO_URL = encodeURI("VIDEOCACHE/" + datasetId + ".mp4" + "&" + votable.getAttribute('data-server-string')) ;
-    var VIDEO_URL = "fixed_scale_y_axis.mp4" ;
-    
-    var div = d3.select("body").append("div")
-	.attr("id", "MP4")
-	.attr("class", "threejs") ;
-
-    div.append("span")
-	.attr("id", "closeMP4")
-	.attr("class", "close myclose")
-	.on("click", function() {	    
-	    d3.select("#MP4").remove() ;	    	    
-	})
-	.text("×") ;
-    
-    div.append("video")
-	.attr("id", "video")
-	.attr("controls", "")
-	.attr("class", "video");
-	/*.attr("width", 208)
-	.attr("height", 208);*/        
-
-    div.append("span")
-	.attr("id", "status")
-	.html("init_video");
-
-    var video = document.getElementById("video");
-    var status = document.getElementById("status");
-
-    //var mimeCodec = 'video/mp4;codecs="avc1.42E01E, mp4a.40.2"';
-    var mimeCodec = 'video/mp4; codecs="avc1.640033"; profiles="isom,iso2,avc1,mp41"';
-
-    if ('MediaSource' in window && MediaSource.isTypeSupported(mimeCodec)) {
-	var mediaSource = new MediaSource();
-	//console.log(mediaSource.readyState); // closed
-	video.src = URL.createObjectURL(mediaSource);
-	mediaSource.addEventListener('sourceopen', sourceOpen);
-    } else {
-	console.error('Unsupported MIME type or codec: ', mimeCodec);
-    }
-
-    function sourceOpen (_) {
-	//console.log(this.readyState); // open
-	var mediaSource = this;
-	var sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
-	fetchAB(VIDEO_URL, function (buf) {
-	    sourceBuffer.addEventListener('updateend', function (_) {
-		mediaSource.endOfStream();
-		video.play();
-		console.log(mediaSource.readyState); // ended
-	    });
-	    sourceBuffer.appendBuffer(buf);
-	});
-    };
-    
-    function fetchAB (url, cb) {
-	console.log(url);
-	var xhr = new XMLHttpRequest;
-	xhr.open('get', url);
-	xhr.responseType = 'arraybuffer';
-	xhr.onload = function () {
-	    cb(xhr.response);
-	};
-	xhr.send();
-    };
-    
-    /*var xmlhttp = new XMLHttpRequest();
-
-    xmlhttp.onreadystatechange = function() {
-	if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
-	{
-	    status.innerHTML = "AVC VIDEO loaded. Initializing MediaAPI h264 decoder." ;
-	    var arrayBuffer = xmlhttp.response;	    	    	    
-	} ;
-    } ;
-
-    status.innerHTML = "Loading movie...";
-    xmlhttp.open("GET", VIDEO_URL, true);
-    xmlhttp.responseType = "arraybuffer";
-    xmlhttp.timeout = 0 ;
-    xmlhttp.send();*/
-}
-
-function init_h264_video()
-{    
-    var VIDEO_URL = encodeURI("VIDEOCACHE/" + datasetId + ".mp4" + "&" + votable.getAttribute('data-server-string')) ;
-    //var VIDEO_URL = "fixed_scale_y_axis.mp4" ;
-    
-    var div = d3.select("body").append("div")
-	.attr("id", "MP4")
-	.attr("class", "threejs") ;
-
-    div.append("span")
-	.attr("id", "closeMP4")
-	.attr("class", "close myclose")
-	.on("click", function() {	    
-	    d3.select("#MP4").remove() ;	    	    
-	})
-	.text("×") ;
-
-    /*div.append("div")
-	.attr("id", "video")
-	.attr("class", "video")
-	.attr("src", VIDEO_URL)
-	.attr("workers", "false")
-	.attr("render", "true")
-	.attr("webgl", "false")
-	.on("click", function() { play_video()}) ;
-
-    return ;*/
-    
-    div.append("canvas")
-	.attr("id", "video")
-	.attr("class", "video");
-	/*.attr("width", 208)
-	.attr("height", 208);*/        
-
-    div.append("span")
-	.attr("id", "status")
-	.html("init_video");
-
-    var video = document.getElementById("video");
-    var status = document.getElementById("status");
-    
-    var xmlhttp = new XMLHttpRequest();
-
-    xmlhttp.onreadystatechange = function() {
-	if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
-	{
-	    status.innerHTML = "AVC VIDEO loaded. Initializing h264 decoder." ;
-	    var arrayBuffer = xmlhttp.response;
-	    
-	    /*var p = new Player({
-		useWorker: false,
-		render: true
-	    });*/
-
-	    var p = new Decoder();
-		p.onPictureDecoded = function(buffer, width, height, infos) {
-			console.log("h264 frame decoded:", infos);
-		}		
-
-	    //p.canvas = video ;	    
-	    p.decode(new Uint8Array(arrayBuffer)) ;  
-	} ;
-    } ;
-
-    status.innerHTML = "Loading movie...";
-    xmlhttp.open("GET", VIDEO_URL, true);
-    xmlhttp.responseType = "arraybuffer";
-    xmlhttp.timeout = 0 ;
-    xmlhttp.send();
-}
-
-//try live streaming of h264
-function stream_h264()
-{
-    var div = d3.select("body").append("div")
-	.attr("id", "MP4")
-	.attr("class", "threejs") ;
-
-    div.append("span")
-	.attr("id", "closeMP4")
-	.attr("class", "close myclose")
-	.on("click", function() {	    
-	    d3.select("#MP4").remove() ;	    	    
-	})
-	.text("×") ;
-
-    div.append("canvas")
-	.attr("id", "video")
-	.attr("class", "video");
-	/*.attr("width", 208)
-	.attr("height", 208);*/        
-
-    div.append("span")
-	.attr("id", "status")
-	.html("init_video");
-
-    var video = document.getElementById("video");
-    var status = document.getElementById("status");
-
-    // Create h264 player
-    var loc = window.location ;
-    var uri = "ws://" + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/video/" + encodeURIComponent(datasetId) ;//unsecure (LAN)
-    //var uri = "wss://" + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/video/" + encodeURIComponent(datasetId) ;//secure JVO Proxy (WAN)
-    /*var wsavc = new WSAvcPlayer(video, "canvas", 1, 35);//webgl
-    wsavc.connect(uri);
-
-    setTimeout(function() {wsavc.playStream();},2000);*/
-    videoWS.send("REQUESTSTREAM") ;
-    
-} ;
-
 /*function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -11958,19 +11682,14 @@ async*/ function mainRenderer()
 	    fetch_spectral_lines(datasetId, 0, 0) ;	    
 	}
 	else
-	{	    
-	    //fetch_spectrum(datasetId[0], 1, false) ;
-	    //open_websocket_connection(datasetId[0], 1);	    
-	    
+	{	    	   
 	    for(let index = 1 ;index <= va_count; index++)
 	    {
-		open_websocket_connection(datasetId[index-1], index);
-		
-		//fetch_image(encodeURI("IMAGECACHE/" + datasetId[index-1] + ".bpg" + "&" + votable.getAttribute('data-server-string')), index) ;
+			open_websocket_connection(datasetId[index-1], index);
 
-		fetch_image(datasetId[index-1], index, false) ;
+			fetch_image(datasetId[index-1], index, false) ;
 
-		fetch_spectrum(datasetId[index-1], index, false) ;				
+			fetch_spectrum(datasetId[index-1], index, false) ;				
 		
 		//sleep(1000) ;
 	    }

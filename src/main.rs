@@ -968,7 +968,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-20.2";
+static VERSION_STRING: &'static str = "SV2018-09-20.4";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -990,7 +990,7 @@ const JVO_HOST: &'static str = "localhost";
 
 const SERVER_PORT: i32 = 8080;
 
-const WEBSOCKET_TIMEOUT: u64 = 60*60;//[s]; a websocket inactivity timeout
+const WEBSOCKET_TIMEOUT: u64 = 60;//[s]; a websocket inactivity timeout
 
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
@@ -1753,6 +1753,7 @@ fn http_fits_response(fitswebql_path: &String, dataset_id: &Vec<&str>, composite
     html.push_str("<script>
         const golden_ratio = 1.6180339887;
         var ALMAWS = null ;
+        var wsVideo = null ;
         var wsConn = null ;
         var firstTime = true ;
         var has_image = false ;         
