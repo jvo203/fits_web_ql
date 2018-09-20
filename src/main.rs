@@ -965,7 +965,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-20.0";
+static VERSION_STRING: &'static str = "SV2018-09-20.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1533,10 +1533,8 @@ fn get_molecules(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespo
 }
 
 #[cfg(feature = "server")]
-fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> String
+fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<String>
 {    
-    let mut path = String::from(fits::FITSCACHE);
-
     let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
 
     println!("PostgreSQL connection URL: {}", connection_url);
@@ -1555,20 +1553,23 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> String
             let res = conn.query(&sql, &[]);
 
             match res {
-                Ok(rows) => {
-                    println!("{:?}", rows);
-
+                Ok(rows) => {                    
                     for row in &rows {
-                        path = row.get(0);
+                        let path: String = row.get(0);
+                        let path = format!("{}/{}/{}", fits::FITSHOME, db, path);
+                        
+                        println!("filepath: {}", path);
+
+                        return Some(path);
                     };
                 },
                 Err(err) => println!("error executing a SQL query {}: {}", sql, err),
             };
         },
         Err(err) => println!("error connecting to PostgreSQL: {}", err),
-    }
+    }    
 
-    return path ;
+    return None ;
 }
 
 fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<server::SessionServer>) -> HttpResponse {
@@ -1590,12 +1591,10 @@ fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: 
 
         //if it does not exist set has_fits to false and load the FITS data
         if !has_entry {
-            has_fits = false ;            
+            has_fits = false ;        
 
-            //try to read a directory from the PostgreSQL database
-            #[cfg(feature = "server")]
-            let dir = get_jvo_path(&data_id.to_string(), &db, &table);
-
+            let my_db = db.to_string();
+            let my_table = table.to_string();
             let my_dir = dir.to_string();
             let my_data_id = data_id.to_string();
             let my_ext = ext.to_string();
@@ -1606,6 +1605,12 @@ fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: 
                
             //load FITS data in a new thread
             thread::spawn(move || {
+                #[cfg(feature = "server")]
+                {
+                    //try to read a directory from the PostgreSQL database
+                    let path = get_jvo_path(&my_data_id.to_string(), &my_db, &my_table);
+                }
+
                 let filename = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
                 println!("loading FITS data from {}", filename); 
 
