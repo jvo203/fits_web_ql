@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-20.3";
+    return "JS2018-09-20.4";
 }
 
 var generateUid = function ()
@@ -1538,84 +1538,27 @@ function open_video_websocket(datasetId)
     var ws_uri = "ws://" + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/video/" + encodeURIComponent(datasetId) ;//unsecure (LAN)
     //var ws_uri = "wss://" + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/video/" + encodeURIComponent(datasetId) ;//secure JVO Proxy (WAN)
     
-    videoWS = new ReconnectingWebSocket(ws_uri, null, {binaryType : 'arraybuffer'});
-    videoWS.binaryType = 'arraybuffer' ;
+    wsVideo = new ReconnectingWebSocket(ws_uri, null, {binaryType : 'arraybuffer'});
+    wsVideo.binaryType = 'arraybuffer' ;
 
-    videoWS.addEventListener("open", function(evt) {
-	console.log("video websocket connection opened.");
-	//return;
-	//create a h264 decoder
-	/*console.log("Module = ", Module);
-	  this.decoder = new H264bsdDecoder(Module);*/
-	this.decoder = new Worker("h264bsd_worker.js");
-	this.pktnum = 0;
-
-	this.decoder.addEventListener('message', function(e) {
-	    var message = e.data;
-	    if (!message.hasOwnProperty('type')) return;
-
-	    switch(message.type) {
-
-		// Posted when onHeadersReady is called on the worker
-	    case 'pictureParams':
-		croppingParams = message.croppingParams;
-		console.log('pictureParams',croppingParams);
-		/*if(croppingParams === null) {
-		    canvas.width = message.width;
-		    canvas.height = message.height;
-		} else {
-		    canvas.width = croppingParams.width;
-		    canvas.height = croppingParams.height;
-		}*/
-		break;
-
-		// Posted when onPictureReady is called on the worker
-	    case 'pictureReady':
-		/*display.drawNextOutputPicture(
-		    message.width, 
-		    message.height, 
-		    message.croppingParams, 
-		    new Uint8Array(message.data));
-		    ++pictureCount;*/
-		console.log('pictureReady',message.width,message.height);
-		break;
-
-		// Posted after all of the queued data has been decoded
-	    case 'noInput':
-		break;
-
-		// Posted after the worker creates and configures a decoder
-	    case 'decoderReady':
-		break;
-
-		// Error messages that line up with error codes returned by decode()
-	    case 'decodeError':
-		console.log('decodeError');
-		break;
-		
-	    case 'paramSetError':
-		console.log('paramSetError');
-		break;
-		
-	    case 'memAllocError':
-		console.log('memAllocError');
-		break;
-	    }
-	});
-	
+    wsVideo.addEventListener("open", function(evt) {
+		console.log("video websocket connection opened.");
     });
 
-    videoWS.addEventListener("message", function (evt) {
-	if(typeof evt.data == "string")
-	    return;
+    wsVideo.addEventListener("message", function (evt) {
+		if(typeof evt.data === "string")
+		{
+			var received_msg = evt.data ;
+			var cmd = "[heartbeat]" ;
+			var pos = received_msg.indexOf(cmd) ;
 
-	this.pktnum++;
-	var frame = new Uint8Array(evt.data);
-	console.log("[Pkt " + this.pktnum + " (" + evt.data.byteLength + " bytes)]", evt.data);
+			if(pos >= 0)
+			{
+				wsVideo.send(received_msg);
+			}
 
-	// Queue input data
-	//this.decoder.decode(frame);
-	this.decoder.postMessage({'type' : 'queueInput', 'data' : frame.buffer}, [frame.buffer]);
+			return;
+		}
     });
 }
 
@@ -11670,8 +11613,7 @@ async*/ function mainRenderer()
 	
 	if(va_count == 1)
 	{
-		open_websocket_connection(datasetId, 1);
-		//open_video_websocket(datasetId);
+		open_websocket_connection(datasetId, 1);		
 	    
 		//fetch_image(encodeURI("IMAGECACHE/" + datasetId + ".bpg" + "&" + votable.getAttribute('data-server-string')), 1) ;
 		
@@ -11692,7 +11634,9 @@ async*/ function mainRenderer()
 			fetch_spectrum(datasetId[index-1], index, false) ;				
 		
 		//sleep(1000) ;
-	    }
+		}
+		
+		open_video_websocket(datasetId);
 	}
 
     }
