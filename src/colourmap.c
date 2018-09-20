@@ -5,11 +5,14 @@
 
 void apply_colourmap(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, bool invert, const float* r, const float* g, const float* b, const unsigned char* alpha)
 {
+	if(canvas == NULL || luma == NULL || alpha == NULL)
+		return;
+
 	size_t src_offset = 0 ;
 	size_t dst_offset = 0 ;
 
 	int no_colours = 64 ;
-  float interp_factor = no_colours / 256.0f ;
+	float interp_factor = no_colours / 256.0f ;
 
 	for(int j=0;j<h;j++)
 	{	  
@@ -38,6 +41,9 @@ void apply_colourmap(unsigned char* canvas, const unsigned char* luma, int w, in
 
 void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, const unsigned char* alpha)
 {
+	if(canvas == NULL || luma == NULL || alpha == NULL)
+		return;
+
 	size_t src_offset = 0 ;
 	size_t dst_offset = 0 ;
 

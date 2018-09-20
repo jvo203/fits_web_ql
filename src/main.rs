@@ -965,7 +965,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-19.6";
+static VERSION_STRING: &'static str = "SV2018-09-20.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1534,23 +1534,41 @@ fn get_molecules(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespo
 
 #[cfg(feature = "server")]
 fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> String
-{
-    //data_id: if db is alma append _00_00_00
-    let data_id = match db {
-        "alma" => format!("{}_00_00_00", dataset_id),
-        _ => dataset_id.clone(),
-    };
+{    
+    let mut path = String::from(fits::FITSCACHE);
 
     let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
 
     println!("PostgreSQL connection URL: {}", connection_url);
     
     match Connection::connect(connection_url, TlsMode::None) {
-        Ok(_) => println!("connected to PostgreSQL"),
-        Err(err) => print!("error connecting to PostgreSQL: {}", err),
+        Ok(conn) => {
+            println!("connected to PostgreSQL");
+
+            //data_id: if db is alma append _00_00_00
+            let data_id = match db {
+                "alma" => format!("{}_00_00_00", dataset_id),
+                _ => dataset_id.clone(),
+            };
+
+            let sql = format!("SELECT path FROM {} WHERE data_id = '{}';", table, data_id);
+            let res = conn.query(&sql, &[]);
+
+            match res {
+                Ok(rows) => {
+                    println!("{:?}", rows);
+
+                    for row in &rows {
+                        path = row.get(0);
+                    };
+                },
+                Err(err) => println!("error executing a SQL query {}: {}", sql, err),
+            };
+        },
+        Err(err) => println!("error connecting to PostgreSQL: {}", err),
     }
 
-    return String::from(fits::FITSCACHE) ;
+    return path ;
 }
 
 fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: &str, dataset_id: &Vec<&str>, composite: bool, flux: &str, server: &Addr<server::SessionServer>) -> HttpResponse {
