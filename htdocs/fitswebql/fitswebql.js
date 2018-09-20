@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-20.0";
+    return "JS2018-09-20.2";
 }
 
 var generateUid = function ()
@@ -6086,12 +6086,27 @@ function setup_axes()
 			}
 		}
 
-		var elem = d3.select("#legend");
-
-		if(displayLegend)
-		    elem.attr("opacity",1);
-		else
-			elem.attr("opacity",0);
+		 if(va_count == 1)
+				  {
+					  var elem = d3.select("#legend");
+					  
+				  	if(displayLegend)
+				      	elem.attr("opacity",1);
+				  	else
+					  	elem.attr("opacity",0);
+				  }
+				  else
+				  {
+					for(let index = 1 ;index <= va_count; index++)
+					{
+						var elem = d3.select("#legend"+index);
+					  
+				  	if(displayLegend)
+				      	elem.attr("opacity",1);
+				  	else
+					  	elem.attr("opacity",0);
+					}  
+				  }
 
 		d3.select("#fps").text("");
 
@@ -6163,8 +6178,19 @@ function setup_axes()
     
 			ctx.clearRect(0, 0, width, height);
 		}
-	
-		d3.select("#legend").attr("opacity",0);
+			
+		if(va_count == 1)
+		{
+			var elem = d3.select("#legend");elem.attr("opacity",0);
+		}
+		else
+		{
+		  for(let index = 1 ;index <= va_count; index++)
+		  {
+			var elem = d3.select("#legend"+index);
+			elem.attr("opacity",0);
+		  }  
+		}
 
 		for(let index=0;index<va_count;index++)
 		{
@@ -9329,11 +9355,28 @@ function display_menu()
 	.on("click", function () {displayLegend = !displayLegend;
 				  var htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
 				  d3.select(this).html(htmlStr);
-				  var elem = d3.select("#legend");
-				  if(displayLegend)
-				      elem.attr("opacity",1);
+
+				  if(va_count == 1)
+				  {
+					  var elem = d3.select("#legend");
+					  
+				  	if(displayLegend)
+				      	elem.attr("opacity",1);
+				  	else
+					  	elem.attr("opacity",0);
+				  }
 				  else
-				      elem.attr("opacity",0);
+				  {
+					for(let index = 1 ;index <= va_count; index++)
+					{
+						var elem = d3.select("#legend"+index);
+					  
+				  	if(displayLegend)
+				      	elem.attr("opacity",1);
+				  	else
+					  	elem.attr("opacity",0);
+					}  
+				  }
 				 })
 	.html(htmlStr) ;
 
