@@ -127,8 +127,10 @@ static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
 #[cfg(feature = "server")]
 static JVO_FITS_DB: &'static str = "alma";
 
-pub static FITSCACHE: &'static str = "FITSCACHE";
+#[cfg(feature = "server")]
 pub static FITSHOME: &'static str = "/home";
+
+pub static FITSCACHE: &'static str = "FITSCACHE";
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
 
 pub const IMAGE_PIXEL_COUNT_LIMIT: u64 = 1280*720;

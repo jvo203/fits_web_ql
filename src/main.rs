@@ -965,7 +965,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-20.1";
+static VERSION_STRING: &'static str = "SV2018-09-20.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1533,7 +1533,7 @@ fn get_molecules(req: &HttpRequest<WsSessionState>) -> Box<Future<Item=HttpRespo
 }
 
 #[cfg(feature = "server")]
-fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<String>
+fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path::PathBuf>
 {    
     let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
 
@@ -1553,14 +1553,23 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<String>
             let res = conn.query(&sql, &[]);
 
             match res {
-                Ok(rows) => {                    
+                Ok(rows) => {                
                     for row in &rows {
                         let path: String = row.get(0);
-                        let path = format!("{}/{}/{}", fits::FITSHOME, db, path);
-                        
-                        println!("filepath: {}", path);
 
-                        return Some(path);
+                        let table = match table.find('.') {
+                            Some(index) => &table[0..index],
+                            None => table,
+                        };
+
+                        let filename = format!("{}/{}/{}/{}", fits::FITSHOME, db, table.to_string().to_ascii_uppercase(), path);
+
+                        let filepath = std::path::PathBuf::from(&filename);
+                        println!("filepath: {:?}", filepath);
+
+                        if filepath.exists() {
+                            return Some(filepath);
+                        }
                     };
                 },
                 Err(err) => println!("error executing a SQL query {}: {}", sql, err),
@@ -1605,17 +1614,21 @@ fn execute_fits(fitswebql_path: &String, db: &str, table: &str, dir: &str, ext: 
                
             //load FITS data in a new thread
             thread::spawn(move || {
+                #[cfg(not(feature = "server"))]
+                let filepath = std::path::PathBuf::from(&format!("{}/{}.{}", my_dir, my_data_id, my_ext));
+                
                 #[cfg(feature = "server")]
-                {
+                let filepath = {
                     //try to read a directory from the PostgreSQL database
-                    let path = get_jvo_path(&my_data_id.to_string(), &my_db, &my_table);
-                }
+                    match get_jvo_path(&my_data_id.to_string(), &my_db, &my_table) {
+                        Some(buf) => buf,
+                        None => std::path::PathBuf::from(&format!("{}/{}.{}", my_dir, my_data_id, my_ext)),
+                    }
+                };
+                                           
+                println!("loading FITS data from {:?}", filepath);     
 
-                let filename = format!("{}/{}.{}", my_dir, my_data_id, my_ext);
-                println!("loading FITS data from {}", filename); 
-
-                let filepath = std::path::Path::new(&filename);           
-                let fits = fits::FITS::from_path(&my_data_id.clone(), &my_flux.clone(), filepath, &my_server);//from_path or from_path_mmap
+                let fits = fits::FITS::from_path(&my_data_id.clone(), &my_flux.clone(), filepath.as_path(), &my_server);//from_path or from_path_mmap
 
                 let fits = Arc::new(RwLock::new(Box::new(fits)));
                 
