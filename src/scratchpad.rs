@@ -874,3 +874,144 @@ fn garbage_collection(/*server: &Addr<server::SessionServer>*/) {
             },
         }
     }
+
+//VideoSession handling (eventually merged with the UserSession, not needed anymore)
+
+
+struct VideoSession {    
+    dataset_id: Vec<String>,
+    session_id: Uuid,
+    timestamp: std::time::Instant,
+    log: std::io::Result<File>,
+    hevc: std::io::Result<File>,    
+    param: *mut x265_param,//HEVC param
+    enc: *mut x265_encoder,//HEVC context
+    pic: *mut x265_picture,//HEVC picture    
+    width: u32,
+    height: u32, 
+}
+
+
+impl VideoSession {
+    pub fn new(id: &Vec<String>) -> VideoSession {
+        let uuid = Uuid::new_v4();
+
+        #[cfg(not(feature = "server"))]
+        let filename = format!("/dev/null");
+
+        #[cfg(feature = "server")]
+        let filename = format!("{}/{}.log", LOG_DIRECTORY, uuid);
+
+        let log = File::create(filename);
+
+        #[cfg(not(feature = "server"))]
+        let filename = format!("/dev/null");
+
+        #[cfg(feature = "server")]
+        let filename = format!("{}/{}.hevc", LOG_DIRECTORY, uuid);
+
+        let hevc = File::create(filename);
+
+        let session = VideoSession {
+            dataset_id: id.clone(),            
+            session_id: uuid,
+            timestamp: std::time::Instant::now(),   
+            log: log,
+            hevc: hevc,                  
+            param: ptr::null_mut(),
+            enc: ptr::null_mut(),
+            pic: ptr::null_mut(),            
+            width: 0,
+            height: 0,
+        } ;
+
+        println!("allocating a new websocket session for {:?}", id);
+
+        session
+    }
+}
+
+impl Drop for VideoSession {
+    fn drop(&mut self) {
+        println!("dropping a websocket video session for {:?}", self.dataset_id);        
+
+        unsafe {
+            if !self.param.is_null() {
+                    x265_param_free(self.param);
+            }
+
+            if !self.enc.is_null() {
+                x265_encoder_close(self.enc);
+            }
+
+            if !self.pic.is_null() {
+                x265_picture_free(self.pic);
+            }
+        }       
+    }
+}
+
+impl Actor for VideoSession {
+    type Context = ws::WebsocketContext<Self, WsSessionState>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        println!("video websocket connection started for {:?}/{}", self.dataset_id, self.session_id);
+
+        ctx.run_interval(std::time::Duration::new(10,0), |act, ctx| {
+            if std::time::Instant::now().duration_since(act.timestamp) > std::time::Duration::new(WEBSOCKET_TIMEOUT,0) {        
+                println!("video websocket inactivity timeout for {:?}", act.dataset_id);
+                
+                ctx.stop();
+            }            
+        });
+
+        ctx.run_later(std::time::Duration::new(10,0), |_, ctx| {
+            ctx.text("[heartbeat]");
+        });
+    }
+
+    fn stopping(&mut self, _ctx: &mut Self::Context) -> Running {
+        println!("stopping a video websocket connection for {:?}/{}", self.dataset_id, self.session_id);
+
+        Running::Stop
+    }     
+}
+
+// Handler for ws::Message messages
+impl StreamHandler<ws::Message, ws::ProtocolError> for VideoSession {
+    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
+        //println!("VIDEO WEBSOCKET MESSAGE: {:?}", msg);
+
+        match msg {
+            ws::Message::Ping(msg) => ctx.pong(&msg),
+            ws::Message::Text(text) => {                
+                if (&text).contains("[heartbeat]") {
+                    self.timestamp = std::time::Instant::now();                    
+
+                    //schedule the next heartbeat request
+                    ctx.run_later(std::time::Duration::new(10,0), |_, ctx| {
+                        ctx.text("[heartbeat]");
+                    });
+                }
+            },
+            _ => {},
+        }
+    }
+}
+
+
+fn video_websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpResponse> {
+    let dataset_id_orig: String = req.match_info().query("id").unwrap();
+
+    //dataset_id needs to be URI-decoded
+    let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
+        Ok(x) => x.into_owned(),
+        Err(_) => dataset_id_orig.clone(),
+    };
+
+    let id: Vec<String> = dataset_id.split(',').map(|s| s.to_string()).collect();
+
+    println!("new video websocket request for {:?}", id);
+
+    ws::start(req, VideoSession::new(&id))
+}

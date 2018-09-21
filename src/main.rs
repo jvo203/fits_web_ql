@@ -117,129 +117,8 @@ struct WsSessionState {
     addr: Addr<server::SessionServer>,
 }
 
-struct VideoSession {    
-    dataset_id: Vec<String>,
-    session_id: Uuid,
-    timestamp: std::time::Instant,
-    log: std::io::Result<File>,
-    hevc: std::io::Result<File>,    
-    param: *mut x265_param,//HEVC param
-    enc: *mut x265_encoder,//HEVC context
-    pic: *mut x265_picture,//HEVC picture    
-    width: u32,
-    height: u32, 
-}
-
-
-impl VideoSession {
-    pub fn new(id: &Vec<String>) -> VideoSession {
-        let uuid = Uuid::new_v4();
-
-        #[cfg(not(feature = "server"))]
-        let filename = format!("/dev/null");
-
-        #[cfg(feature = "server")]
-        let filename = format!("{}/{}.log", LOG_DIRECTORY, uuid);
-
-        let log = File::create(filename);        
-
-        #[cfg(not(feature = "server"))]
-        let filename = format!("/dev/null");
-
-        #[cfg(feature = "server")]
-        let filename = format!("{}/{}.hevc", LOG_DIRECTORY, uuid);
-
-        let hevc = File::create(filename);
-
-        let session = VideoSession {
-            dataset_id: id.clone(),            
-            session_id: uuid,
-            timestamp: std::time::Instant::now(),   
-            log: log,
-            hevc: hevc,                  
-            param: ptr::null_mut(),
-            enc: ptr::null_mut(),
-            pic: ptr::null_mut(),            
-            width: 0,
-            height: 0,
-        } ;
-
-        println!("allocating a new websocket session for {:?}", id);
-
-        session
-    }
-}
-
-impl Drop for VideoSession {
-    fn drop(&mut self) {
-        println!("dropping a websocket video session for {:?}", self.dataset_id);        
-
-        unsafe {
-            if !self.param.is_null() {
-                    x265_param_free(self.param);
-            }
-
-            if !self.enc.is_null() {
-                x265_encoder_close(self.enc);
-            }
-
-            if !self.pic.is_null() {
-                x265_picture_free(self.pic);
-            }
-        }       
-    }
-}
-
-impl Actor for VideoSession {
-    type Context = ws::WebsocketContext<Self, WsSessionState>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        println!("video websocket connection started for {:?}/{}", self.dataset_id, self.session_id);
-
-        ctx.run_interval(std::time::Duration::new(10,0), |act, ctx| {
-            if std::time::Instant::now().duration_since(act.timestamp) > std::time::Duration::new(WEBSOCKET_TIMEOUT,0) {        
-                println!("video websocket inactivity timeout for {:?}", act.dataset_id);
-                
-                ctx.stop();
-            }            
-        });
-
-        ctx.run_later(std::time::Duration::new(10,0), |_, ctx| {
-            ctx.text("[heartbeat]");
-        });
-    }
-
-    fn stopping(&mut self, _ctx: &mut Self::Context) -> Running {
-        println!("stopping a video websocket connection for {:?}/{}", self.dataset_id, self.session_id);
-
-        Running::Stop
-    }     
-}
-
-// Handler for ws::Message messages
-impl StreamHandler<ws::Message, ws::ProtocolError> for VideoSession {
-    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
-        //println!("VIDEO WEBSOCKET MESSAGE: {:?}", msg);
-
-        match msg {
-            ws::Message::Ping(msg) => ctx.pong(&msg),
-            ws::Message::Text(text) => {                
-                if (&text).contains("[heartbeat]") {
-                    self.timestamp = std::time::Instant::now();                    
-
-                    //schedule the next heartbeat request
-                    ctx.run_later(std::time::Duration::new(10,0), |_, ctx| {
-                        ctx.text("[heartbeat]");
-                    });
-                }
-            },
-            _ => {},
-        }
-    }
-}
-
 struct UserSession {    
-    dataset_id: String,
+    dataset_id: Vec<String>,
     session_id: Uuid,
     timestamp: std::time::Instant,
     log: std::io::Result<File>,
@@ -255,22 +134,22 @@ struct UserSession {
 }
 
 impl UserSession {
-    pub fn new(id: &String) -> UserSession {
+    pub fn new(id: &Vec<String>) -> UserSession {
         let uuid = Uuid::new_v4();
 
         #[cfg(not(feature = "server"))]
         let filename = format!("/dev/null");
 
         #[cfg(feature = "server")]
-        let filename = format!("{}/{}_{}.log", LOG_DIRECTORY, id.replace("/","_"), uuid);
+        let filename = format!("{}/{}_{}.log", LOG_DIRECTORY, id[0].replace("/","_"), uuid);
 
-        let log = File::create(filename);        
+        let log = File::create(filename); 
 
         #[cfg(not(feature = "server"))]
         let filename = format!("/dev/null");
 
         #[cfg(feature = "server")]
-        let filename = format!("{}/{}_{}.hevc", LOG_DIRECTORY, id.replace("/","_"), uuid);
+        let filename = format!("{}/{}_{}.hevc", LOG_DIRECTORY, id[0].replace("/","_"), uuid);
 
         let hevc = File::create(filename);
 
@@ -300,7 +179,7 @@ impl UserSession {
             height: 0,
         } ;
 
-        println!("allocating a new websocket session for {}", id);
+        println!("allocating a new websocket session for {}", id[0]);
 
         session
     }
@@ -308,7 +187,7 @@ impl UserSession {
 
 impl Drop for UserSession {
     fn drop(&mut self) {
-        println!("dropping a websocket session for {}", self.dataset_id);
+        println!("dropping a websocket session for {}", self.dataset_id[0]);
 
         unsafe { vpx_codec_destroy(&mut self.ctx) };
 
@@ -332,7 +211,7 @@ impl Actor for UserSession {
     type Context = ws::WebsocketContext<Self, WsSessionState>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        println!("websocket connection started for {}", self.dataset_id);
+        println!("websocket connection started for {}", self.dataset_id[0]);
 
         let addr = ctx.address();
 
@@ -340,13 +219,13 @@ impl Actor for UserSession {
             .addr
             .do_send(server::Connect {
                 addr: addr.recipient(),
-                dataset_id: self.dataset_id.clone(),
+                dataset_id: self.dataset_id[0].clone(),
                 id: self.session_id,
             });
 
         ctx.run_interval(std::time::Duration::new(10,0), |act, ctx| {
             if std::time::Instant::now().duration_since(act.timestamp) > std::time::Duration::new(WEBSOCKET_TIMEOUT,0) {        
-                println!("websocket inactivity timeout for {}", act.dataset_id);
+                println!("websocket inactivity timeout for {}", act.dataset_id[0]);
 
                 ctx.text("[close]");
                 ctx.stop();
@@ -355,10 +234,10 @@ impl Actor for UserSession {
     }
 
     fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
-        println!("stopping a websocket connection for {}/{}", self.dataset_id, self.session_id);
+        println!("stopping a websocket connection for {}/{}", self.dataset_id[0], self.session_id);
 
         ctx.state().addr.do_send(server::Disconnect {
-            dataset_id: self.dataset_id.clone(),
+            dataset_id: self.dataset_id[0].clone(),
             id: self.session_id.clone()
             });
 
@@ -416,10 +295,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
 
-                    let fits = match datasets.get(&self.dataset_id).unwrap().try_read() {
+                    let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
                         Some(x) => x,
                         None => {
-                            println!("[WS] cannot find {}", self.dataset_id);
+                            println!("[WS] cannot find {}", self.dataset_id[0]);
                             return;
                         }
                     };
@@ -541,8 +420,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         self.height = h ;                        
                         self.cfg.g_w = w;
                         self.cfg.g_h = h;
-                        /*self.cfg.g_timebase.num = 1;
-                        self.cfg.g_timebase.den = fps;*/
+                        self.cfg.g_timebase.num = 1;
+                        self.cfg.g_timebase.den = fps;
 
                         self.cfg.rc_min_quantizer = 10 ;
                         self.cfg.rc_max_quantizer = 42 ;
@@ -702,7 +581,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
 
-                    let fits = match datasets.get(&self.dataset_id).unwrap().try_read() {
+                    let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
                         Some(x) => x,
                         None => {
                             let msg = json!({
@@ -750,7 +629,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 if (&text).contains("[image]") {
                     let datasets = DATASETS.read();
 
-                    let fits = match datasets.get(&self.dataset_id).unwrap().try_read() {
+                    let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
                         Some(x) => x,
                         None => {
                             let msg = json!({
@@ -829,7 +708,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     let datasets = DATASETS.read();
 
-                    let fits = match datasets.get(&self.dataset_id).unwrap().try_read() {
+                    let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
                         Some(x) => x,
                         None => {
                             let msg = json!({
@@ -1087,7 +966,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-20.5";
+static VERSION_STRING: &'static str = "SV2018-09-21.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -1303,22 +1182,6 @@ fn directory_handler(req: &HttpRequest<WsSessionState>) -> HttpResponse {
     Ok(Box::new(result(ws::start(req, session))))
 }*/
 
-fn video_websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpResponse> {
-    let dataset_id_orig: String = req.match_info().query("id").unwrap();
-
-    //dataset_id needs to be URI-decoded
-    let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
-        Ok(x) => x.into_owned(),
-        Err(_) => dataset_id_orig.clone(),
-    };
-
-    let id: Vec<String> = dataset_id.split(',').map(|s| s.to_string()).collect();
-
-    println!("new video websocket request for {:?}", id);
-
-    ws::start(req, VideoSession::new(&id))
-}
-
 fn websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpResponse> {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
@@ -1336,9 +1199,11 @@ fn websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpResponse> {
         None => &empty_agent,
     };
 
-    println!("new websocket request user agent: {:?}", user_agent);
+    let id: Vec<String> = dataset_id.split(';').map(|s| s.to_string()).collect();
 
-    ws::start(req, UserSession::new(&dataset_id))
+    println!("new websocket request for {:?}, user agent: {:?}", id, user_agent);
+
+    ws::start(req, UserSession::new(&id))
 }
 
 fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
@@ -2025,7 +1890,7 @@ fn main() {
                 )
                 .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
                 .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
-                .resource("/{path}/websocket/video/{id}", |r| {r.route().f(video_websocket_entry)})
+                //.resource("/{path}/websocket/video/{id}", |r| {r.route().f(video_websocket_entry)})
                 .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
                 .resource("/{path}/get_image", |r| {r.method(http::Method::GET).f(get_image)})
                 .resource("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})

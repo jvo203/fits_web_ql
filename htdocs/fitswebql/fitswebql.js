@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-20.4";
+    return "JS2018-09-21.2";
 }
 
 var generateUid = function ()
@@ -13,6 +13,10 @@ var generateUid = function ()
     var st = ((new Date).getTime().toString(16)).slice(0,11) + (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1,2);
 
     return (S4() + S4() + S4() + S4() + S4() + st);
+}
+
+Array.prototype.rotate = function(n) {
+    return this.slice(n, this.length).concat(this.slice(0, n));
 }
 
 function round (value, precision, mode) {
@@ -6057,11 +6061,10 @@ function setup_axes()
 		videoLeft = true ;
 		video_stack = new Array(va_count) ;
 
-		for(let index=0;index<va_count;index++)
-		{
-			/*wsConn[index].decoder = null ;*/
-			wsConn[index].send('[end_video]');
-			video_stack[index] = [] ;
+		//for(let index=0;index<va_count;index++)
+		{		
+			wsConn[0].send('[end_video]');
+			video_stack[0] = [] ;
 		};
 
 		try {
@@ -6135,16 +6138,11 @@ function setup_axes()
 		  }  
 		}
 
-		for(let index=0;index<va_count;index++)
-		{
-			//OGVDecoderVideoVP9 (asm.js) or OGVDecoderVideoVP9W (wasm)
-			/*var decoder = new OGVDecoderVideoVP9();
-			decoder.init(function () {console.log("streaming video decoder initiated");});
-			wsConn[index].decoder = decoder;*/
-
-			wsConn[index].send('[init_video] fps=' + vidFPS);
+		//for(let index=0;index<va_count;index++)
+		{	
+			wsConn[0].send('[init_video] fps=' + vidFPS);
 	    	    	
-			video_stack[index] = [] ;
+			video_stack[0] = [] ;
 
 			//requestAnimationFrame(update_video);
 		};
@@ -6458,13 +6456,12 @@ function x_axis_move(offset)
 			sent_vid_id++ ;
 
 			video_count = 0 ;
-
-			if(va_count == 1)
+			
 			//for(let index=0;index<va_count;index++)
 		    {
 				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
 				
-				wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());				
+				wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());
 			} ;
 		} ;
 
@@ -8448,8 +8445,7 @@ function videoTimeout(freq)
 	sent_vid_id++ ;
 
 	video_count = 0 ;
-
-	if(va_count == 1)
+	
 	//for(let index=0;index<va_count;index++)
 	{
 		let strRequest = 'frame=' + freq + '&key=true' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
@@ -11627,7 +11623,9 @@ async*/ function mainRenderer()
 	{	    	   
 	    for(let index = 1 ;index <= va_count; index++)
 	    {
-			open_websocket_connection(datasetId[index-1], index);
+			console.log(index, datasetId.rotate(index-1));
+
+			open_websocket_connection(datasetId.rotate(index-1).join(";"), index);
 
 			fetch_image(datasetId[index-1], index, false) ;
 
@@ -11636,7 +11634,7 @@ async*/ function mainRenderer()
 		//sleep(1000) ;
 		}
 		
-		open_video_websocket(datasetId);
+		//open_video_websocket(datasetId);
 	}
 
     }
