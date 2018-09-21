@@ -1109,9 +1109,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     }
                                 } else {
                                     vec![0; (width * height) as usize]
-                                }
-
-                                //vec![0; (width * height) as usize]
+                                }                                
                             }).collect();
 
                         //HEVC (x265)
@@ -1119,9 +1117,18 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         {
                             if !self.pic.is_null() {
                                 //convert planes:RGB to planes:YUV (TODO!)
-                                let total_size = width * height ;
+                                /*let total_size = width * height ;
                                 unsafe {
                                     ispc_rgb_to_yuv(planes[0].as_mut_ptr(), planes[1].as_mut_ptr(), planes[2].as_mut_ptr(), total_size);
+                                }*/
+
+                                let mut dummy = vec![0; (width * height) as usize];
+
+                                for i in 0..3 {
+                                    unsafe {
+                                        (*self.pic).stride[i] = width as i32;
+                                        (*self.pic).planes[i] = dummy.as_mut_ptr() as *mut std::os::raw::c_void;
+                                    }
                                 }
 
                                 //setup the I444 picture (max 3 channels)
@@ -1325,7 +1332,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-21.3";
+static VERSION_STRING: &'static str = "SV2018-09-21.4";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

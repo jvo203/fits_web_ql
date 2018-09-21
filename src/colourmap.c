@@ -88,16 +88,20 @@ void apply_yuv(unsigned char* canvas,  const unsigned char* _y, const unsigned c
 
 	  for(int i=0;i<w;i++)
 	  {	
+		  unsigned char r = _y[offset];
+		  unsigned char g = _u[offset];
+		  unsigned char b = _v[offset];
+		  offset++;
+
 		//ITU-R
-		float Y = _y[offset];
+		/*float Y = _y[offset];
 		float Cb = _u[offset];
 		float Cr = _v[offset];
+		offset++;
 
 		unsigned char r = clamp(Y + 1.402f * (Cr - 128.0f), 0.0f, 255.0f);
 		unsigned char g = clamp(Y - 0.344f * (Cb - 128.0f) - 0.714f * (Cr - 128.0f), 0.0f, 255.0f);
-		unsigned char b = clamp(Y + 1.772f * (Cb - 128.0f), 0.0f, 255.0f);
-
-		offset++;
+		unsigned char b = clamp(Y + 1.772f * (Cb - 128.0f), 0.0f, 255.0f);*/
 			
 		canvas[dst_offset++] = r ;
 		canvas[dst_offset++] = g ;

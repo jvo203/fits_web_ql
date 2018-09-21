@@ -875,9 +875,12 @@ impl FITS {
         println!("{}: reading FITS data completed", id);
 
         //and lastly create a symbolic link in the FITSCACHE directory
-        let filename = format!("{}/{}.fits", FITSCACHE, id);
-        let cachefile = std::path::Path::new(&filename);
-        let _ = std::os::unix::fs::symlink(filepath, cachefile);
+        #[cfg(not(feature = "server"))]
+        {
+            let filename = format!("{}/{}.fits", FITSCACHE, id);
+            let cachefile = std::path::Path::new(&filename);
+            let _ = std::os::unix::fs::symlink(filepath, cachefile);
+        }
 
         fits
     }
