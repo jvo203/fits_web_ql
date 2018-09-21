@@ -1119,6 +1119,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         {
                             if !self.pic.is_null() {
                                 //convert planes:RGB to planes:YUV (TODO!)
+                                let total_size = width * height ;
+                                unsafe {
+                                    ispc_rgb_to_yuv(planes[0].as_mut_ptr(), planes[1].as_mut_ptr(), planes[2].as_mut_ptr(), total_size);
+                                }
 
                                 //setup the I444 picture (max 3 channels)
                                 for i in 0..planes.len().min(3) {
@@ -1321,7 +1325,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-21.2";
+static VERSION_STRING: &'static str = "SV2018-09-21.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

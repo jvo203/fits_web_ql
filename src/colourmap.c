@@ -63,9 +63,20 @@ void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, in
 	}
 }
 
-void apply_yuv(unsigned char* canvas,  const unsigned char* y, const unsigned char* u, const unsigned char* v, int w, int h, int stride, const unsigned char* alpha)
+float clamp(float x, float min, float max)
 {
-	if(canvas == NULL || y == NULL || u == NULL || v == NULL || alpha == NULL)
+	if(x < min)
+		return min ;
+
+	if(x > max)
+		return max;
+
+	return x ;
+}
+
+void apply_yuv(unsigned char* canvas,  const unsigned char* _y, const unsigned char* _u, const unsigned char* _v, int w, int h, int stride, const unsigned char* alpha)
+{
+	if(canvas == NULL || _y == NULL || _u == NULL || _v == NULL || alpha == NULL)
 		return;
 
 	size_t src_offset = 0 ;
@@ -76,10 +87,15 @@ void apply_yuv(unsigned char* canvas,  const unsigned char* y, const unsigned ch
 	  size_t offset = j * stride ;
 
 	  for(int i=0;i<w;i++)
-	  {			
-		unsigned char r = y[offset] ;
-		unsigned char g = u[offset] ;
-		unsigned char b = v[offset] ;
+	  {	
+		//ITU-R
+		float Y = _y[offset];
+		float Cb = _u[offset];
+		float Cr = _v[offset];
+
+		unsigned char r = clamp(Y + 1.402f * (Cr - 128.0f), 0.0f, 255.0f);
+		unsigned char g = clamp(Y - 0.344f * (Cb - 128.0f) - 0.714f * (Cr - 128.0f), 0.0f, 255.0f);
+		unsigned char b = clamp(Y + 1.772f * (Cb - 128.0f), 0.0f, 255.0f);
 
 		offset++;
 			

@@ -248,3 +248,22 @@ export void bilinear_resize(uniform int8 src[], uniform int src_len, uniform int
     dst[dst_index] = clamp( (int)round(pixel / accum), 0, 255) ;
   }
 } ;
+
+export void rgb_to_yuv(uniform unsigned int8 _r[], uniform unsigned int8 _g[], uniform unsigned int8 _b[], uniform unsigned int total_size)
+{
+  foreach(j=0 ... total_size)
+  {
+    float r = _r[j];
+    float g = _g[j];
+    float b = _b[j];
+
+    //ITU-R
+    float Y = 0.299f * r + 0.587f * g + 0.114f * b;
+    float Cb = -0.169f * r - 0.331f * g + 0.499f * b + 128.0f;
+    float Cr = 0.499f * r - 0.418f * g - 0.0813 * b + 128f;
+
+    _r[j] = clamp((int)Y, 0, 255);
+    _g[j] = clamp((int)Cb, 0, 255);
+    _b[j] = clamp((int)Cr, 0, 255);
+  }
+}
