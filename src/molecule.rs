@@ -17,48 +17,48 @@ impl Molecule {
     pub fn from_sqlite_row(row: &rusqlite::Row) -> Molecule {
         Molecule {
             species: match row.get_checked(0) {
-                Ok(x) => x,                
-                Err(_) => String::from("")
+                Ok(x) => x,
+                Err(_) => String::from(""),
             },
 
             name: match row.get_checked(1) {
                 Ok(x) => x,
-                Err(_) => String::from("")
+                Err(_) => String::from(""),
             },
 
             frequency: match row.get_checked(2) {
                 Ok(x) => x,
-                Err(_) => 0.0
+                Err(_) => 0.0,
             },
 
             qn: match row.get_checked(3) {
                 Ok(x) => x,
-                Err(_) => String::from("")
+                Err(_) => String::from(""),
             },
 
             cdms_intensity: match row.get_checked(4) {
                 Ok(x) => x,
-                Err(_) => 0.0
+                Err(_) => 0.0,
             },
 
             lovas_intensity: match row.get_checked(5) {
                 Ok(x) => x,
-                Err(_) => 0.0
+                Err(_) => 0.0,
             },
 
             e_l: match row.get_checked(6) {
                 Ok(x) => x,
-                Err(_) => 0.0
+                Err(_) => 0.0,
             },
 
             linelist: match row.get_checked(7) {
                 Ok(x) => x,
-                Err(_) => String::from("")
+                Err(_) => String::from(""),
             },
         }
     }
 
-    pub fn to_json(&self) -> serde_json::value::Value {        
+    pub fn to_json(&self) -> serde_json::value::Value {
         json!({            
             "species" : self.species,
             "name" : self.name,

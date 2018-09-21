@@ -1,31 +1,31 @@
-use std::path;
-use std::sync::Arc;
 use parking_lot::RwLock;
 use std::collections::{HashMap, HashSet};
+use std::path;
+use std::sync::Arc;
 
 use chrono;
-use timer;
-use std::time::SystemTime;
 use std::time::Duration;
+use std::time::SystemTime;
+use timer;
 
 use actix::*;
 use rusqlite;
 use uuid::Uuid;
 
-use serde_json;
 use molecule::Molecule;
+use serde_json;
 
 use DATASETS;
 
 #[cfg(feature = "server")]
-const GARBAGE_COLLECTION_TIMEOUT: i64 = 60*60;//[s]; a dataset inactivity timeout//was 60
+const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60
 
 #[cfg(not(feature = "server"))]
-const GARBAGE_COLLECTION_TIMEOUT: i64 = 10;//[s]; a dataset inactivity timeout
+const GARBAGE_COLLECTION_TIMEOUT: i64 = 10; //[s]; a dataset inactivity timeout
 
-const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60*60;//[s]; a dataset inactivity timeout//was 60
+const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60
 
-const DUMMY_DATASET_TIMEOUT: u64 = 24*60*60;//[s]; 24 hours, plenty of time for a local jvox download to complete (or fail)
+const DUMMY_DATASET_TIMEOUT: u64 = 24 * 60 * 60; //[s]; 24 hours, plenty of time for a local jvox download to complete (or fail)
 
 /// the server sends this messages to session
 #[derive(Message)]
@@ -44,18 +44,18 @@ pub struct Connect {
 #[derive(Message)]
 pub struct Disconnect {
     pub dataset_id: String,
-    pub id: Uuid,    
+    pub id: Uuid,
 }
 
 //remove a dataset
 #[derive(Message)]
 pub struct Remove {
-    pub dataset_id: String,        
+    pub dataset_id: String,
 }
 
 /// broadcast a message to a dataset
 #[derive(Message)]
-pub struct WsMessage {    
+pub struct WsMessage {
     /// a WebSocket text message
     pub msg: String,
     /// dataset
@@ -64,9 +64,9 @@ pub struct WsMessage {
 
 /// broadcast a message to a dataset
 #[derive(Message)]
-pub struct FrequencyRangeMessage {    
+pub struct FrequencyRangeMessage {
     /// frequency range    
-    pub freq_range: (f64, f64),    
+    pub freq_range: (f64, f64),
     /// dataset
     pub dataset_id: String,
 }
@@ -74,7 +74,7 @@ pub struct FrequencyRangeMessage {
 /// New session is created
 #[derive(Message)]
 #[rtype(String)]
-pub struct GetMolecules {    
+pub struct GetMolecules {
     pub dataset_id: String,
 }
 
@@ -180,7 +180,7 @@ impl Default for SessionServer {
 }
 
 /// Make actor from `SessionServer`
-impl Actor for SessionServer {    
+impl Actor for SessionServer {
     type Context = Context<Self>;
 }
 
@@ -189,14 +189,21 @@ impl Actor for SessionServer {
 impl Handler<Connect> for SessionServer {
     type Result = String;
 
-    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {        
+    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
         // register a new session
-        let id = msg.id;        
+        let id = msg.id;
         self.sessions.insert(id, msg.addr);
 
-        println!("[SessionServer]: registering a new session {}/{}", msg.dataset_id, id); 
+        println!(
+            "[SessionServer]: registering a new session {}/{}",
+            msg.dataset_id, id
+        );
 
-        self.datasets.write().entry(msg.dataset_id).or_insert(HashSet::new()).insert(id);
+        self.datasets
+            .write()
+            .entry(msg.dataset_id)
+            .or_insert(HashSet::new())
+            .insert(id);
 
         // return the session id
         id.to_string()
@@ -212,14 +219,17 @@ impl Handler<Disconnect> for SessionServer {
         let id = msg.id;
 
         if self.sessions.remove(&id).is_some() {
-            println!("[SessionServer]: removing a session {}/{}", &msg.dataset_id, id);
-          
+            println!(
+                "[SessionServer]: removing a session {}/{}",
+                &msg.dataset_id, id
+            );
+
             let remove_entry = {
                 match self.datasets.write().get_mut(&msg.dataset_id) {
-                    Some(dataset) => {                        
+                    Some(dataset) => {
                         dataset.remove(&id);
                         dataset.is_empty()
-                    },
+                    }
                     None => {
                         println!("[SessionServer]: {} not found", &msg.dataset_id);
                         false
@@ -277,7 +287,7 @@ impl Handler<Disconnect> for SessionServer {
                     };
                 }).ignore();
             }
-        }     
+        }
     }
 }
 
@@ -285,8 +295,11 @@ impl Handler<Disconnect> for SessionServer {
 impl Handler<Remove> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: Remove, _: &mut Context<Self>) {        
-        println!("[SessionServer]: received a Remove request for '{}'", &msg.dataset_id);        
+    fn handle(&mut self, msg: Remove, _: &mut Context<Self>) {
+        println!(
+            "[SessionServer]: received a Remove request for '{}'",
+            &msg.dataset_id
+        );
     }
 }
 
@@ -299,14 +312,14 @@ impl Handler<WsMessage> for SessionServer {
 
         match self.datasets.read().get(&msg.dataset_id) {
             Some(dataset) => {
-                for id in dataset {                   
+                for id in dataset {
                     if let Some(addr) = self.sessions.get(id) {
                         let _ = addr.do_send(Message(msg.msg.to_owned()));
                     }
                 }
-            },            
+            }
             None => {
-                //println!("[SessionServer]: {} not found", &msg.dataset_id);                        
+                //println!("[SessionServer]: {} not found", &msg.dataset_id);
             }
         }
     }
@@ -316,10 +329,10 @@ impl Handler<WsMessage> for SessionServer {
 impl Handler<GetMolecules> for SessionServer {
     type Result = String;
 
-    fn handle(&mut self, msg: GetMolecules, _: &mut Context<Self>) -> Self::Result {        
-        match self.molecules.read().get(&msg.dataset_id) {            
+    fn handle(&mut self, msg: GetMolecules, _: &mut Context<Self>) -> Self::Result {
+        match self.molecules.read().get(&msg.dataset_id) {
             Some(contents) => contents.clone(),
-            None => String::from("")
+            None => String::from(""),
         }
     }
 }
@@ -329,50 +342,61 @@ impl Handler<FrequencyRangeMessage> for SessionServer {
     type Result = ();
 
     fn handle(&mut self, msg: FrequencyRangeMessage, _: &mut Context<Self>) {
-        println!("[SessionServer]: received a frequency range {:?} GHz for '{}'", &msg.freq_range, &msg.dataset_id);        
+        println!(
+            "[SessionServer]: received a frequency range {:?} GHz for '{}'",
+            &msg.freq_range, &msg.dataset_id
+        );
 
         let (freq_start, freq_end) = msg.freq_range;
 
         if freq_start == 0.0 || freq_end == 0.0 {
             //insert an empty JSON array into self.molecules
-            self.molecules.write().insert(msg.dataset_id, String::from("[]"));
+            self.molecules
+                .write()
+                .insert(msg.dataset_id, String::from("[]"));
             return;
         }
 
-        let mut molecules : Vec<serde_json::Value> = Vec::new();
+        let mut molecules: Vec<serde_json::Value> = Vec::new();
 
         match self.conn_res {
             Ok(ref splat_db) => {
-                println!("[SessionServer] splatalogue sqlite connection Ok");                
+                println!("[SessionServer] splatalogue sqlite connection Ok");
 
-                match splat_db.prepare(&format!("SELECT * FROM lines WHERE frequency>={} AND frequency<={};", freq_start, freq_end)) {
+                match splat_db.prepare(&format!(
+                    "SELECT * FROM lines WHERE frequency>={} AND frequency<={};",
+                    freq_start, freq_end
+                )) {
                     Ok(mut stmt) => {
-                        let molecule_iter = stmt.query_map(&[], |row| {
-                            Molecule::from_sqlite_row(row)                            
-                        }).unwrap();
+                        let molecule_iter = stmt
+                            .query_map(&[], |row| Molecule::from_sqlite_row(row))
+                            .unwrap();
 
                         for molecule in molecule_iter {
                             //println!("molecule {:?}", molecule.unwrap());
-                            let mol = molecule.unwrap();                            
+                            let mol = molecule.unwrap();
                             molecules.push(mol.to_json());
                         }
-                    },
-                    Err(err) => println!("sqlite prepare error: {}", err)
-                } 
-            },
-            Err(ref err) => println!("[SessionServer] error connecting to splatalogue sqlite: {}", err)
+                    }
+                    Err(err) => println!("sqlite prepare error: {}", err),
+                }
+            }
+            Err(ref err) => println!(
+                "[SessionServer] error connecting to splatalogue sqlite: {}",
+                err
+            ),
         }
 
         let mut contents = String::from("[");
 
         for entry in &molecules {
-            contents.push_str(&entry.to_string()) ;
+            contents.push_str(&entry.to_string());
             contents.push(',');
-        };
+        }
 
         if !molecules.is_empty() {
-            contents.pop() ;
-        }   
+            contents.pop();
+        }
 
         contents.push(']');
 

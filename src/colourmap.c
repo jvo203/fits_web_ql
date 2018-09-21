@@ -62,3 +62,31 @@ void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, in
 		}
 	}
 }
+
+void apply_yuv(unsigned char* canvas,  const unsigned char* y, const unsigned char* u, const unsigned char* v, int w, int h, int stride, const unsigned char* alpha)
+{
+	if(canvas == NULL || y == NULL || u == NULL || v == NULL || alpha == NULL)
+		return;
+
+	size_t src_offset = 0 ;
+	size_t dst_offset = 0 ;
+
+	for(int j=0;j<h;j++)
+	{	  
+	  size_t offset = j * stride ;
+
+	  for(int i=0;i<w;i++)
+	  {			
+		unsigned char r = y[offset] ;
+		unsigned char g = u[offset] ;
+		unsigned char b = v[offset] ;
+
+		offset++;
+			
+		canvas[dst_offset++] = r ;
+		canvas[dst_offset++] = g ;
+		canvas[dst_offset++] = b ;
+		canvas[dst_offset++] = alpha[src_offset++] ;//the alpha channel
+	  }
+	}
+}

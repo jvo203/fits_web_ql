@@ -76,4 +76,6 @@ void apply_colourmap(unsigned char* canvas, const unsigned char* luma, int w, in
 
 void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, const unsigned char* alpha) ;
 
+void apply_yuv(unsigned char* canvas,  const unsigned char* y, const unsigned char* u, const unsigned char* v, int w, int h, int stride, const unsigned char* alpha);
+
 #endif

@@ -121,17 +121,46 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
     if( ret == AVERROR(ENOMEM) )
         printf("failed to add packet to internal queue etc.\n");    
 
-    //if( ret == AVERROR(EAGAIN) )
-    {
-        while( (ret = avcodec_receive_frame(avctx, avframe)) == 0)
-        {                        
-            printf("[wasm hevc] decoded a %d x %d frame, elapsed time %5.2f [ms], applying %s colourmap\n", avframe->width, avframe->height, (stop-start), colourmap) ;
+    
+    while( (ret = avcodec_receive_frame(avctx, avframe)) == 0)
+    {                        
+        enum AVColorSpace cs = av_frame_get_colorspace(avframe) ;
+        int format = avframe->format ;
+
+        printf("[wasm hevc] decoded a %d x %d frame with in a colourspace:format %d:%d, elapsed time %5.2f [ms], applying %s colourmap\n", avframe->width, avframe->height, cs, format, (stop-start), colourmap) ;        
+
+        if(format == AV_PIX_FMT_YUV444P)
+        {
+            printf("processing a YUV444 format\n");
+
+            int w = avframe->width ;
+			int h = avframe->height ;
+
+            int stride_y = avframe->linesize[0] ;
+            int stride_u = avframe->linesize[1] ;
+            int stride_v = avframe->linesize[2] ;
+
+			const unsigned char* y = avframe->data[0] ;
+            const unsigned char* u = avframe->data[1] ;  
+            const unsigned char* v = avframe->data[2] ;  
+
+            if(w == _w && h == _h && stride_y == stride_u && stride_y == stride_v)
+			{						
+                //carry YUV (RGB) over to the canvas
+                apply_yuv(canvas, y, u, v, w, h, stride_y, alpha);
+            }
+            else
+			    printf("[wasm hevc] canvas image dimensions %d x %d do not match the decoded image size, or the y,u,v strides differ; doing nothing\n", _w, _h);
+        }
+        else
+        {
+            printf("processing a YUV400 format\n");
 
             //apply a colourmap etc.
             int w = avframe->width ;
 			int h = avframe->height ;
 			int stride = avframe->linesize[0] ;
-			const unsigned char* luma = avframe->data[0] ;
+			const unsigned char* luma = avframe->data[0] ;        
 
             if(w == _w && h == _h)
 			{								
@@ -192,12 +221,12 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
 			}
 			else
 				printf("[wasm hevc] canvas image dimensions %d x %d do not match the decoded image size, doing nothing\n", _w, _h);
-
-            av_frame_unref(avframe);            
         }
 
-        printf("avcodec_receive_frame returned = %d\n", ret);
+        av_frame_unref(avframe);            
     }
+
+    printf("avcodec_receive_frame returned = %d\n", ret);    
 
     double elapsed = stop - start;
 
