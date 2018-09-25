@@ -129,7 +129,9 @@ pub const VIDEO_PIXEL_COUNT_LIMIT: u64 = 720 * 480;
 
 const FITS_CHUNK_LENGTH: usize = 2880;
 const FITS_LINE_LENGTH: usize = 80;
+
 const NBINS: usize = 1024;
+const NBINS2: usize = 16 * 1024;
 
 #[derive(Debug)]
 pub enum Beam {
@@ -1744,7 +1746,7 @@ impl FITS {
     pub fn make_data_histogram(&self) {
         println!("global dmin = {}, dmax = {}", self.dmin, self.dmax);
 
-        self.data_hist.write().resize(NBINS, 0);
+        self.data_hist.write().resize(NBINS2, 0);
 
         fn increment_histogram(
             x: f32,
@@ -1756,8 +1758,8 @@ impl FITS {
         ) {
             if x.is_finite() && x >= datamin && x <= datamax {
                 //add it to a local histogram
-                let bin = (NBINS as f32) * (x - dmin) / (dmax - dmin);
-                let index = num::clamp(bin as usize, 0, NBINS - 1);
+                let bin = (NBINS2 as f32) * (x - dmin) / (dmax - dmin);
+                let index = num::clamp(bin as usize, 0, NBINS2 - 1);
                 hist[index] = hist[index] + 1;
             }
         }
@@ -1791,11 +1793,11 @@ impl FITS {
             let total_size = (self.width * self.height) as usize;
 
             //an adaptive step based on the amount of data
-            if total_size >= 100 * NBINS {
+            if total_size >= 100 * NBINS2 {
                 1000
-            } else if total_size >= 10 * NBINS {
+            } else if total_size >= 10 * NBINS2 {
                 100
-            } else if total_size >= NBINS {
+            } else if total_size >= NBINS2 {
                 10
             } else {
                 //take all data by default
@@ -1810,7 +1812,7 @@ impl FITS {
         //into_par_iter or into_iter
         (0..self.depth).into_par_iter().for_each(|frame| {
             //init a local histogram
-            let mut hist = vec![0; NBINS];
+            let mut hist = vec![0; NBINS2];
 
             //build a local histogram using frame data            
             match self.bitpix {
@@ -1855,7 +1857,7 @@ impl FITS {
             //get a write lock to the global histogram, update it
             let mut data_hist = self.data_hist.write() ;
 
-            for i in 0..NBINS {
+            for i in 0..NBINS2 {
                 data_hist[i] = data_hist[i] + hist[i] ;
             }
         });
@@ -1864,7 +1866,7 @@ impl FITS {
 
         let mut total: i64 = 0;
 
-        for i in 0..NBINS {
+        for i in 0..NBINS2 {
             total += data_hist[i];
         }
 
@@ -1872,7 +1874,7 @@ impl FITS {
         let mut cumulative: i64 = 0;
         let mut pos = 0;
 
-        for i in 0..NBINS {
+        for i in 0..NBINS2 {
             if cumulative + data_hist[i] >= (total >> 1) {
                 pos = i;
                 break;
@@ -1881,7 +1883,7 @@ impl FITS {
             cumulative += data_hist[i];
         }
 
-        let dx = (self.dmax - self.dmin) / ((NBINS << 1) as f32);
+        let dx = (self.dmax - self.dmin) / ((NBINS2 << 1) as f32);
         let median = self.dmin + (((pos << 1) + 1) as f32) * dx;
         *self.data_median.write() = median;
 
@@ -2764,14 +2766,14 @@ impl FITS {
         }
     }
 
-    fn pixels_to_luminance(&self) -> Vec<u8> {
+    fn pixels_to_luminance(&self, pixels: &Vec<f32>, mask: &Vec<u8>) -> Vec<u8> {
         match self.flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (self.white - self.black);
 
-                self.pixels
+                pixels
                     .par_iter()
-                    .zip(self.mask.par_iter())
+                    .zip(mask.par_iter())
                     .map(|(x, m)| {
                         if *m > 0 {
                             let pixel = num::clamp((x - self.black) * slope, 0.0, 1.0);
@@ -2781,10 +2783,9 @@ impl FITS {
                         }
                     }).collect()
             }
-            "logistic" => self
-                .pixels
+            "logistic" => pixels
                 .par_iter()
-                .zip(self.mask.par_iter())
+                .zip(mask.par_iter())
                 .map(|(x, m)| {
                     if *m > 0 {
                         let pixel = num::clamp(
@@ -2797,10 +2798,9 @@ impl FITS {
                         0
                     }
                 }).collect(),
-            "ratio" => self
-                .pixels
+            "ratio" => pixels
                 .par_iter()
-                .zip(self.mask.par_iter())
+                .zip(mask.par_iter())
                 .map(|(x, m)| {
                     if *m > 0 {
                         let pixel = 5.0 * (x - self.black) * self.sensitivity;
@@ -2814,10 +2814,9 @@ impl FITS {
                         0
                     }
                 }).collect(),
-            "square" => self
-                .pixels
+            "square" => pixels
                 .par_iter()
-                .zip(self.mask.par_iter())
+                .zip(mask.par_iter())
                 .map(|(x, m)| {
                     if *m > 0 {
                         let pixel = (x - self.black) * self.sensitivity;
@@ -2836,9 +2835,9 @@ impl FITS {
                 let lmin = (0.5f32).ln();
                 let lmax = (1.5f32).ln();
 
-                self.pixels
+                pixels
                     .par_iter()
-                    .zip(self.mask.par_iter())
+                    .zip(mask.par_iter())
                     .map(|(x, m)| {
                         if *m > 0 {
                             let pixel = 0.5 + (x - self.pmin) / (self.pmax - self.pmin);
@@ -3153,7 +3152,7 @@ impl FITS {
         mem::forget(ret); // img and ret are the same
         print!("{:#?}", raw);
 
-        let mut y: Vec<u8> = self.pixels_to_luminance();
+        let mut y: Vec<u8> = self.pixels_to_luminance(&self.pixels, &self.mask);
 
         {
             let start = precise_time::precise_time_ns();
@@ -3383,6 +3382,50 @@ impl FITS {
             }
             Err(err) => println!("error serializing a FITSImage structure: {}", err),
         }
+    }
+
+    pub fn get_viewport(
+        &self,
+        x1: i32,
+        y1: i32,
+        x2: i32,
+        y2: i32,
+    ) -> Option<(u32, u32, Vec<u8>, Vec<u8>)> {
+        //spatial range checks
+        let x1 = num::clamp(x1, 0, self.width - 1) as usize;
+        let y1 = num::clamp(y1, 0, self.height - 1) as usize;
+
+        let x2 = num::clamp(x2, 0, self.width - 1) as usize;
+        let y2 = num::clamp(y2, 0, self.height - 1) as usize;
+
+        let dimx = x2 - x1 + 1;
+        let dimy = y2 - y1 + 1;
+
+        let mut pixels: Vec<f32> = vec![0.0; (dimx * dimy) as usize];
+        let mut mask: Vec<u8> = vec![0; (dimx * dimy) as usize];
+
+        for j in y1..y2 {
+            let mut src_offset = j * (self.width as usize);
+            let mut dst_offset = ((dimy - 1) - (j - y1)) * dimx;
+
+            for i in x1..x2 {
+                pixels[dst_offset] = self.pixels[src_offset + i];
+                mask[dst_offset] = self.mask[src_offset + i];
+                dst_offset = dst_offset + 1;
+            }
+        }
+
+        let y = self.pixels_to_luminance(&pixels, &mask);
+
+        /*match self.make_vpx_viewport(dimx, dimy, &pixels) {
+            Some(frame) => {
+                let alpha = lz4_compress::compress(&mask);
+                Some((dimx, dimy, frame, alpha))
+            }
+            None => None,
+        }*/
+
+        None
     }
 
     pub fn get_spectrum(

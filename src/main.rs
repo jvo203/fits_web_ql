@@ -114,6 +114,19 @@ pub struct WsFrame {
     pub frame: Vec<u8>,
 }
 
+#[derive(Serialize, Debug)]
+pub struct WsImage {
+    pub ts: f32,
+    pub seq_id: u32,
+    pub msg_type: u32,
+    pub elapsed: f32,
+    pub identifier: String,
+    pub width: u32,
+    pub height: u32,
+    pub image: Vec<u8>,
+    pub alpha: Vec<u8>,
+}
+
 struct WsSessionState {
     addr: Addr<server::SessionServer>,
 }
@@ -680,7 +693,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     ts: timestamp as f32,
                                     seq_id: seq_id as u32,
                                     msg_type: 0,
-                                    //length: spectrum.len() as u32,
                                     elapsed: elapsed as f32,
                                     spectrum: spectrum,
                                 };
@@ -698,7 +710,42 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }
                             }
                             None => {}
-                        };
+                        }
+
+                        if image {
+                            match fits.get_viewport(x1, y1, x2, y2) {
+                                Some((width, height, frame, alpha)) => {
+                                    let stop = precise_time::precise_time_ns();
+                                    let elapsed = (stop - start) / 1000000;
+
+                                    //send a binary response message (serialize a structure to a binary stream)
+                                    let ws_viewport = WsImage {
+                                        ts: timestamp as f32,
+                                        seq_id: seq_id as u32,
+                                        msg_type: 1,
+                                        elapsed: elapsed as f32,
+                                        identifier: String::from("VP9"),
+                                        width: width,
+                                        height: height,
+                                        image: frame,
+                                        alpha: alpha,
+                                    };
+
+                                    match serialize(&ws_viewport) {
+                                        Ok(bin) => {
+                                            println!("binary length: {}", bin.len());
+                                            //println!("{}", bin);
+                                            ctx.binary(bin);
+                                        }
+                                        Err(err) => println!(
+                                            "error serializing a WebSocket viewport response: {}",
+                                            err
+                                        ),
+                                    }
+                                }
+                                None => {}
+                            }
+                        }
                     };
                 }
 
@@ -1109,7 +1156,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     }
                                 } else {
                                     vec![0; (width * height) as usize]
-                                }                                
+                                }
                             }).collect();
 
                         //HEVC (x265)
@@ -1127,7 +1174,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 for i in 0..3 {
                                     unsafe {
                                         (*self.pic).stride[i] = width as i32;
-                                        (*self.pic).planes[i] = dummy.as_mut_ptr() as *mut std::os::raw::c_void;
+                                        (*self.pic).planes[i] =
+                                            dummy.as_mut_ptr() as *mut std::os::raw::c_void;
                                     }
                                 }
 
@@ -1332,7 +1380,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-23.0";
+static VERSION_STRING: &'static str = "SV2018-09-25.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
