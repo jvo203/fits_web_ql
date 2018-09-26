@@ -136,7 +136,7 @@ struct UserSession {
     session_id: Uuid,
     timestamp: std::time::Instant,
     log: std::io::Result<File>,
-    hevc: std::io::Result<File>,
+    //hevc: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t, //VP9 encoder config
     ctx: vpx_codec_ctx_t,     //VP9 encoder context
     param: *mut x265_param,   //HEVC param
@@ -159,7 +159,7 @@ impl UserSession {
 
         let log = File::create(filename);
 
-        #[cfg(not(feature = "server"))]
+        /*#[cfg(not(feature = "server"))]
         let filename = format!("/dev/null");
 
         #[cfg(feature = "server")]
@@ -170,14 +170,14 @@ impl UserSession {
             uuid
         );
 
-        let hevc = File::create(filename);
+        let hevc = File::create(filename);*/
 
         let session = UserSession {
             dataset_id: id.clone(),
             session_id: uuid,
             timestamp: std::time::Instant::now(), //SpawnHandle::default(),
             log: log,
-            hevc: hevc,
+            //hevc: hevc,
             cfg: vpx_codec_enc_cfg::default(),
             ctx: vpx_codec_ctx_t {
                 name: ptr::null(),
@@ -948,12 +948,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
                                         }
 
-                                            match self.hevc {
+                                            /*match self.hevc {
                                                 Ok(ref mut file) => {
                                                     let _ = file.write_all(payload);
                                                 }
                                                 Err(_) => {}
-                                            }
+                                            }*/
                                         }
                                     }
 
@@ -1014,12 +1014,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
                                                 }
 
-                                                    match self.hevc {
+                                                    /*match self.hevc {
                                                         Ok(ref mut file) => {
                                                             let _ = file.write_all(payload);
                                                         }
                                                         Err(_) => {}
-                                                    }
+                                                    }*/
                                                 }
                                             } else {
                                                 break;
@@ -1264,12 +1264,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
                                         }
 
-                                        match self.hevc {
+                                        /*match self.hevc {
                                             Ok(ref mut file) => {
                                                 let _ = file.write_all(payload);
                                             }
                                             Err(_) => {}
-                                        }
+                                        }*/
                                     }
                                 }
 
@@ -1330,12 +1330,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
                                                 }
 
-                                                match self.hevc {
+                                                /*match self.hevc {
                                                     Ok(ref mut file) => {
                                                         let _ = file.write_all(payload);
                                                     }
                                                     Err(_) => {}
-                                                }
+                                                }*/
                                             }
                                         } else {
                                             break;
@@ -1380,7 +1380,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-25.1";
+static VERSION_STRING: &'static str = "SV2018-09-26.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
