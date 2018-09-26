@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-26.1";
+    return "JS2018-09-26.2";
 }
 
 var generateUid = function ()
@@ -3850,16 +3850,12 @@ function image_refresh(index)
     var flux = '&flux=' + document.getElementById('flux'+index).value ;
     var freq = '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ ;
     var hist = '&hist=true' ;
-
-    var dataId = datasetId ;	
-    if(va_count > 1)
-	dataId = datasetId[index-1] ;
     
-    var strRequest = 'datasetId=' + dataId + black + white + median + noise + flux + freq + hist ;
+    var strRequest = black + white + median + noise + flux + freq + hist ;
     console.log(strRequest) ;
 
     //send an [image] request to the server    
-    wsConn[index-1].send('[image] ' + strRequest + '&timestamp=' + performance.now());    
+    wsConn[index-1].send('[image]' + strRequest + '&timestamp=' + performance.now());    
 }
 
 function display_scale_range_ui()
@@ -4219,18 +4215,14 @@ function add_histogram_line(g, pos, width, height, offset, info, position, addLi
 	var flux = '&flux=' + document.getElementById('flux'+index).value ;
 	var freq = '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ ;
 	var hist = '&hist=false' ;
-
-	var dataId = datasetId ;	
-	if(va_count > 1)
-	    dataId = datasetId[index-1] ;
 	    
-	var strRequest = 'datasetId=' + dataId + black + white + median + noise + flux + freq + hist ;
+	var strRequest = black + white + median + noise + flux + freq + hist ;
 	console.log("dropGroup:",strRequest) ;
 
 	image_count=va_count-1 ;
 	
 	//send an [image] request to the server	
-	wsConn[index-1].send('[image] ' + strRequest + '&timestamp=' + performance.now());
+	wsConn[index-1].send('[image]' + strRequest + '&timestamp=' + performance.now());
     }
 
     function dragGroup(d) {
@@ -8830,16 +8822,12 @@ function change_noise_sensitivity(refresh, index)
 	var flux = '&flux=' + document.getElementById('flux'+index).value ;
 	var freq = '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ ;
 	var hist = '&hist=false' ;
-
-	var dataId = datasetId ;	
-	if(va_count > 1)
-	    dataId = datasetId[index-1] ;
 	
-	var strRequest = 'datasetId=' + dataId + black + white + median + noise + flux + freq + hist ;
+	var strRequest = black + white + median + noise + flux + freq + hist ;
 	console.log(strRequest) ;
 
 	//send an [image] request to the server
-	wsConn[index-1].send('[image] ' + strRequest + '&timestamp=' + performance.now());
+	wsConn[index-1].send('[image]' + strRequest + '&timestamp=' + performance.now());
     }
 }
 

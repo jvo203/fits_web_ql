@@ -130,9 +130,20 @@ struct WsSessionState {
     addr: Addr<server::SessionServer>,
 }
 
+struct UserParams {
+    black: f32,
+    white: f32,
+    median: f32,
+    noise: f32,
+    flux: String,
+    start: usize,
+    end: usize,
+}
+
 struct UserSession {
     dataset_id: Vec<String>,
     session_id: Uuid,
+    user: Option<UserParams>,
     timestamp: std::time::Instant,
     log: std::io::Result<File>,
     //hevc: std::io::Result<File>,
@@ -174,6 +185,7 @@ impl UserSession {
         let session = UserSession {
             dataset_id: id.clone(),
             session_id: uuid,
+            user: None,
             timestamp: std::time::Instant::now(), //SpawnHandle::default(),
             log: log,
             //hevc: hevc,
@@ -649,7 +661,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         _ => 0.0,
                     };
 
-                    println!("x1:{} y1:{} x2:{} y2:{} image:{} beam:{:?} intensity:{:?} frame_start:{} frame_end:{} ref_freq:{} seq_id:{} timestamp:{}", x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp);
+                    println!("[spectrum] x1:{} y1:{} x2:{} y2:{} image:{} beam:{:?} intensity:{:?} frame_start:{} frame_end:{} ref_freq:{} seq_id:{} timestamp:{}", x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp);
 
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
@@ -745,6 +757,85 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[image]") {
+                    //println!("{}", text.replace("&", " "));
+                    let (black, white, median, noise, flux, frame_start, frame_end, ref_freq, hist, timestamp) = scan_fmt!(&text.replace("&"," "), "[image] black={} white={} median={} noise={} flux={} frame_start={} frame_end={} ref_freq={} hist={} timestamp={}", String, String, String, String, String, String, String, String, bool, String);
+
+                    let black = match black {
+                        Some(s) => match s.parse::<f32>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    let white = match white {
+                        Some(s) => match s.parse::<f32>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    let median = match median {
+                        Some(s) => match s.parse::<f32>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    let noise = match noise {
+                        Some(s) => match s.replace("x", "").parse::<f32>() {
+                            Ok(x) => x,
+                            Err(_) => 1.0,
+                        },
+                        _ => 1.0,
+                    };
+
+                    let flux = match flux {
+                        Some(s) => s,
+                        _ => String::from("logistic"),
+                    };
+
+                    let frame_start = match frame_start {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    let frame_end = match frame_end {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    let ref_freq = match ref_freq {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    let hist = match hist {
+                        Some(x) => x,
+                        _ => false,
+                    };
+
+                    let timestamp = match timestamp {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    println!("[image] black:{} white:{} median:{} noise:{} flux:{} frame_start:{} frame_end:{} ref_freq:{} hist:{} timestamp:{}", black, white, median, noise, flux, frame_start, frame_end, ref_freq, hist, timestamp);
+
                     let datasets = DATASETS.read();
 
                     let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
@@ -833,7 +924,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     };
 
                     println!(
-                        "frame:{} keyframe:{} ref_freq:{} seq_id:{} target_bitrate:{} timestamp:{}",
+                        "[video] frame:{} keyframe:{} ref_freq:{} seq_id:{} target_bitrate:{} timestamp:{}",
                         frame, keyframe, ref_freq, seq_id, target_bitrate, timestamp
                     );
 
@@ -1375,7 +1466,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-26.1";
+static VERSION_STRING: &'static str = "SV2018-09-26.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
