@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-21.2";
+    return "JS2018-09-26.1";
 }
 
 var generateUid = function ()
@@ -1259,35 +1259,27 @@ function process_image_event(image, index)
     }
 }
 
-function process_viewport_event(image, index)
+function process_viewport(w, h, bytes, stride, alpha, index)
 {
-    console.log("process_viewport_event(" + index + ")") ;
+	console.log("process_viewport(" + index + ")") ;
     
     document.getElementById('welcome').style.display = "none";
     
     let viewportCanvas = document.createElement('canvas') ;
     viewportCanvas.style.visibility = "hidden";
     var context = viewportCanvas.getContext('2d');
-    
-    var img = new BPGDecoder(context);
-
-    var request = {response: image} ;
-    var event = null ;
-    
-    img._onload(request, event) ;
-
-    let viewportData = img.imageData ;    
-
-    viewportCanvas.width = viewportData.width ;
-    viewportCanvas.height = viewportData.height ;
-    console.log("viewport:", viewportCanvas.width, viewportCanvas.height) ;
+		
+	viewportCanvas.width = w ;
+	viewportCanvas.height = h ;
+	console.log(viewportCanvas.width, viewportCanvas.height) ;
 
     viewport_count++ ;
     
     if(!composite_view)
     {
-	apply_colourmap(viewportData, colourmap) ;
-	context.putImageData(viewportData, 0, 0);
+		let imageData=context.createImageData(w,h);
+	apply_colourmap(imageData, colourmap, bytes, w, h, stride, alpha) ;
+	context.putImageData(imageData, 0, 0);
     }
     else
     {
@@ -1306,7 +1298,7 @@ function process_viewport_event(image, index)
 	    compositeViewportImageData = ctx.createImageData(compositeViewportCanvas.width,compositeViewportCanvas.height);
 	}
 	
-	add_composite_channel(viewportData.data, compositeViewportImageData, index-1) ;	
+	add_composite_channel(bytes, w, h, stride, alpha, compositeViewportImageData, index-1) ;	
 
 	if(viewport_count == va_count)
 	{
@@ -1355,7 +1347,7 @@ function process_viewport_event(image, index)
 
 	zoomed_size = Math.round(zoomed_size) ;
 	px = Math.round(px) ;
-	py = Math.round(py) ;    
+	py = Math.round(py) ;
 	
 	if(recv_seq_id == sent_seq_id /*&& !dragging*/ && !moving)
 	{
@@ -1709,15 +1701,54 @@ function open_websocket_connection(datasetId, index)
 			//viewport
 			if(type == 1)
 			{
-			    var length = dv.getUint32(12, endianness)
+				var offset = 12;
+				var id_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
 
-			    var elapsed = dv.getFloat32(16, endianness) ;
+				var identifier = new Uint8Array(received_msg, offset, id_length) ;
+				identifier = new TextDecoder("utf-8").decode(identifier);
+				offset += id_length;
 			    
-			    console.log("binary image size: " + length + " bytes; server computation time: " + elapsed.toFixed(1) + " [ms]");
+			    var width = dv.getUint32(offset, endianness) ;
+				offset += 4;
 
-			    var image = new Uint8Array(received_msg, 20);
-			    
-			    process_viewport_event(image, index) ;
+				var height = dv.getUint32(offset, endianness) ;
+				offset += 4;
+
+				var image_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
+
+				var frame = new Uint8Array(received_msg, offset, image_length) ;//offset by 8 bytes
+				offset += image_length;
+
+				var alpha_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
+
+				var alpha = new Uint8Array(received_msg, offset) ;
+				console.log("image frame identifier: ", identifier, "width:", width, "height:", height, "compressed alpha length:", alpha.length);
+
+				var Buffer = require('buffer').Buffer ;
+				var LZ4 = require('lz4') ;
+	
+				var uncompressed = new Buffer(width*height) ;
+				uncompressedSize = LZ4.decodeBlock(new Buffer(alpha), uncompressed) ;
+				alpha = uncompressed.slice(0, uncompressedSize) ;
+				
+				if(identifier == 'VP9')
+				{
+					var decoder = new OGVDecoderVideoVP9();					
+
+					decoder.init(function () {console.log("init callback done");});
+					decoder.processFrame(frame, function () {
+						process_viewport(decoder.frameBuffer.format.displayWidth,
+							decoder.frameBuffer.format.displayHeight,
+							decoder.frameBuffer.y.bytes,
+							decoder.frameBuffer.y.stride,
+							alpha,						
+							index);
+					});
+				}
+				
 			    return ;
 			}
 

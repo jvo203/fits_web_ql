@@ -59,7 +59,7 @@ impl Molecule {
     }
 
     pub fn to_json(&self) -> serde_json::value::Value {
-        json!({            
+        json!({
             "species" : self.species,
             "name" : self.name,
             "frequency" : self.frequency,

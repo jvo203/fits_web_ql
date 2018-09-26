@@ -107,7 +107,7 @@ impl Default for SessionServer {
             let orphans: Vec<_> = {
                 let tmp = DATASETS.read();
 
-                tmp.iter().map(|(key, value)| {                    
+                tmp.iter().map(|(key, value)| {
                     let dataset = value.read();
 
                     let now = SystemTime::now();
@@ -115,11 +115,11 @@ impl Default for SessionServer {
 
                     let timeout = if dataset.is_dummy {
                         Duration::new(DUMMY_DATASET_TIMEOUT, 0)
-                    } else {                    
+                    } else {
                         Duration::new(GARBAGE_COLLECTION_TIMEOUT as u64, 0)
                     };
 
-                    match elapsed {                        
+                    match elapsed {
                         Ok(elapsed) => {
                             println!("[orphaned dataset cleanup]: key: {}, elapsed time: {:?}", key, elapsed);
 
@@ -127,14 +127,14 @@ impl Default for SessionServer {
                                 println!("{} marked as a candidate for deletion", key);
 
                                 //check if there are no new active sessions
-                                match datasets_copy.read().get(key) {                        
-                                    Some(_) => {                            
+                                match datasets_copy.read().get(key) {
+                                    Some(_) => {
                                         println!("[orphaned dataset cleanup]: an active session has been found for {}, doing nothing", key);
                                         None
                                     },
                                     None => {
                                         println!("[orphaned dataset cleanup]: no active sessions found, {} will be expunged from memory", key);
-                                        Some(key.clone()) 
+                                        Some(key.clone())
                                     }
                                 }
                             }
@@ -147,24 +147,23 @@ impl Default for SessionServer {
                             None
                         }
                     }
-                    
                 }).collect()
             };
-            
+
             //println!("orphans: {:?}", orphans);
 
             for key in orphans {
                 match key {
                     Some(key) => {
                         //println!("[orphaned dataset cleanup]: no active sessions found, {} will be expunged from memory", key);
-                        
-                        molecules_copy.write().remove(&key);                        
+
+                        molecules_copy.write().remove(&key);
                         DATASETS.write().remove(&key);//cannot get a lock!                        
 
                         println!("[orphaned dataset cleanup]: {} has been expunged from memory", key);
                     },
                     None => {},
-                }  
+                }
             }
         });
 
@@ -247,13 +246,13 @@ impl Handler<Disconnect> for SessionServer {
                 let datasets = self.datasets.clone();
                 let molecules = self.molecules.clone();
 
-                self.timer.schedule_with_delay(chrono::Duration::seconds(GARBAGE_COLLECTION_TIMEOUT), move || {                    
+                self.timer.schedule_with_delay(chrono::Duration::seconds(GARBAGE_COLLECTION_TIMEOUT), move || {
                     // This closure is executed on the scheduler thread
                     println!("executing garbage collection for {}", &msg.dataset_id);
 
                     //check if there are no new active sessions
-                    match datasets.read().get(&msg.dataset_id) {                        
-                        Some(_) => {                            
+                    match datasets.read().get(&msg.dataset_id) {
+                        Some(_) => {
                             println!("[garbage collection]: an active session has been found for {}, doing nothing", &msg.dataset_id);
                         },
                         None => {
@@ -262,7 +261,7 @@ impl Handler<Disconnect> for SessionServer {
                             let is_dummy = {
                                 let tmp = DATASETS.read();
                                 let fits = tmp.get(&msg.dataset_id);
-                                                                
+
                                 match fits {
                                     Some(lock) => {
                                         let fits = lock.read();
@@ -272,7 +271,7 @@ impl Handler<Disconnect> for SessionServer {
                                         println!("[garbage collection]: (warning) {} not found in a HashMap", &msg.dataset_id);
                                         return;
                                     }
-                                }                        
+                                }
                             };
 
                             //do not remove dummy datasets (loading progress etc)

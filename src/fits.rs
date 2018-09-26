@@ -170,11 +170,11 @@ pub struct FITS {
     //this is a FITS data part
     bitpix: i32,
     naxis: i32,
-    naxes: [i32; 4],
-    pub width: i32,
-    pub height: i32,
-    depth: i32,
-    polarisation: i32,
+    naxes: [usize; 4],
+    pub width: usize,
+    pub height: usize,
+    depth: usize,
+    polarisation: usize,
     data_u8: Vec<Vec<u8>>,
     data_i16: Vec<Vec<i16>>,
     data_i32: Vec<Vec<i32>>,
@@ -396,8 +396,8 @@ impl FITS {
         //at first fill-in the self.data_f16 vector in parallel
         let gather_f16 : Vec<_> = pool.install(|| (0 .. self.depth).into_par_iter().map(|frame| {
             //frame is i32
-            let offset = (frame as usize) * frame_size ;      
-            
+            let offset = (frame as usize) * frame_size ;
+
             let mut data_u8 : Vec<u8> = vec![0; frame_size];
 
             //parallel read at offset
@@ -433,31 +433,31 @@ impl FITS {
             let mut frame_max = std::f32::MIN;
 
             let mut mean_spectrum = 0.0_f32;
-            let mut integrated_spectrum = 0.0_f32;            
+            let mut integrated_spectrum = 0.0_f32;
 
             let mut references: [f32; 4] = [frame_min, frame_max, mean_spectrum, integrated_spectrum];
-            
+
             let vec_ptr = data_f16.as_ptr() as *mut i16;
             let vec_len = data_f16.len() ;
 
-            let mut pixels = thread_pixels[tid].write();            
+            let mut pixels = thread_pixels[tid].write();
 
             let mask = thread_mask[tid].write();
             let mask_ptr = mask.as_ptr() as *mut u8;
             let mask_len = mask.len() ;
 
-            unsafe {                    
+            unsafe {
                 let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
                 let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                ispc_make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());  
+                ispc_make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());
             }
 
             frame_min = references[0] ;
             frame_max = references[1] ;
             mean_spectrum = references[2] ;
             integrated_spectrum = references[3] ;
-            
+
             thread_mean_spectrum[frame as usize].store(mean_spectrum, Ordering::SeqCst) ;
             thread_integrated_spectrum[frame as usize].store(integrated_spectrum, Ordering::SeqCst) ;
 
@@ -469,8 +469,8 @@ impl FITS {
             //end of parallel data processing
 
             let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;
-            let current_frame_count = previous_frame_count + 1;          
-            self.send_progress_notification(&server, &"loading FITS".to_owned(), total, current_frame_count);
+            let current_frame_count = previous_frame_count + 1;
+            self.send_progress_notification(&server, &"loading FITS".to_owned(), total as i32, current_frame_count);
 
             data_f16
         }).collect()
@@ -550,7 +550,7 @@ impl FITS {
         let (tx, rx) = mpsc::channel();
 
         thread::spawn(move || {
-            let mut frame: i32 = 0;
+            let mut frame: usize = 0;
 
             while frame < total {
                 //println!("requesting a cube frame {}/{}", frame, fits.depth);
@@ -579,7 +579,7 @@ impl FITS {
             }
         });
 
-        let mut frame: i32 = 0;
+        let mut frame: usize = 0;
 
         for data in rx {
             let len = data.len() / 2;
@@ -633,7 +633,7 @@ impl FITS {
             }
 
             frame = frame + 1;
-            self.send_progress_notification(&server, &"processing FITS".to_owned(), total, frame);
+            self.send_progress_notification(&server, &"processing FITS".to_owned(), total as i32, frame as i32);
         }
 
         if frame != total {
@@ -793,7 +793,7 @@ impl FITS {
             let (tx, rx) = mpsc::channel();
 
             thread::spawn(move || {
-                let mut frame: i32 = 0;
+                let mut frame: usize = 0;
 
                 while frame < total {
                     //println!("requesting a cube frame {}/{}", frame, fits.depth);
@@ -822,16 +822,16 @@ impl FITS {
                 }
             });
 
-            let mut frame: i32 = 0;
+            let mut frame: usize = 0;
 
             for data in rx {
-                fits.process_cube_frame(&data, cdelt3 as f32, frame as usize);
+                fits.process_cube_frame(&data, cdelt3 as f32, frame);
                 frame = frame + 1;
                 fits.send_progress_notification(
                     &server,
                     &"processing FITS".to_owned(),
-                    total,
-                    frame,
+                    total as i32,
+                    frame as i32,
                 );
             }
 
@@ -920,7 +920,7 @@ impl FITS {
         let mut header: Vec<u8> = Vec::new();
         let mut end: bool = false;
         let mut no_hu: i32 = 0;
-        let mut frame: i32 = 0;
+        let mut frame: usize = 0;
         let mut frame_size: usize = 0;
 
         let mut total = 0;
@@ -1003,13 +1003,13 @@ impl FITS {
                             while buffer.len() >= frame_size && !fits.has_data {
                                 let data: Vec<u8> = buffer.drain(0..frame_size).collect();
 
-                                fits.process_cube_frame(&data, cdelt3 as f32, frame as usize);
+                                fits.process_cube_frame(&data, cdelt3 as f32, frame);
                                 frame = frame + 1;
                                 fits.send_progress_notification(
                                     &server,
                                     &"downloading FITS".to_owned(),
-                                    total,
-                                    frame,
+                                    total as i32,
+                                    frame as i32,
                                 );
 
                                 if frame == fits.depth {
@@ -1102,10 +1102,10 @@ impl FITS {
             return 0;
         }
 
-        let capacity = self.width * self.height;
+        let capacity = self.width * self.height ;
 
-        self.mask.resize(capacity as usize, 0);
-        self.pixels.resize(capacity as usize, 0.0);
+        self.mask.resize(capacity, 0);
+        self.pixels.resize(capacity, 0.0);
 
         self.mean_spectrum.resize(self.depth as usize, 0.0);
         self.integrated_spectrum.resize(self.depth as usize, 0.0);
@@ -1113,22 +1113,22 @@ impl FITS {
         match self.bitpix {
             8 => self
                 .data_u8
-                .resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+                .resize(self.depth as usize, Vec::with_capacity(capacity)),
             16 => self
                 .data_i16
-                .resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+                .resize(self.depth as usize, Vec::with_capacity(capacity)),
             32 => self
                 .data_i32
-                .resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+                .resize(self.depth as usize, Vec::with_capacity(capacity)),
             //-32 => self.data_f16.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
             -32 => self.data_f16.resize(self.depth as usize, Vec::new()),
             -64 => self
                 .data_f64
-                .resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
+                .resize(self.depth as usize, Vec::with_capacity(capacity)),
             _ => println!("unsupported bitpix: {}", self.bitpix),
         }
 
-        (self.width * self.height * self.bitpix.abs() / 8) as usize
+        capacity * ((self.bitpix.abs() / 8) as usize)
     }
 
     fn frame_reference_type(&mut self) {
@@ -1249,7 +1249,7 @@ impl FITS {
             }
 
             if line.contains("NAXIS1  = ") {
-                self.width = match scan_fmt!(line, "NAXIS1  = {d}", i32) {
+                self.width = match scan_fmt!(line, "NAXIS1  = {d}", usize) {
                     Some(x) => x,
                     _ => 0,
                 };
@@ -1258,7 +1258,7 @@ impl FITS {
             }
 
             if line.contains("NAXIS2  = ") {
-                self.height = match scan_fmt!(line, "NAXIS2  = {d}", i32) {
+                self.height = match scan_fmt!(line, "NAXIS2  = {d}", usize) {
                     Some(x) => x,
                     _ => 0,
                 };
@@ -1267,7 +1267,7 @@ impl FITS {
             }
 
             if line.contains("NAXIS3  = ") {
-                self.depth = match scan_fmt!(line, "NAXIS3  = {d}", i32) {
+                self.depth = match scan_fmt!(line, "NAXIS3  = {d}", usize) {
                     Some(x) => x,
                     _ => 1,
                 };
@@ -1276,7 +1276,7 @@ impl FITS {
             }
 
             if line.contains("NAXIS4  = ") {
-                self.polarisation = match scan_fmt!(line, "NAXIS4  = {d}", i32) {
+                self.polarisation = match scan_fmt!(line, "NAXIS4  = {d}", usize) {
                     Some(x) => x,
                     _ => 1,
                 };
@@ -1834,7 +1834,7 @@ impl FITS {
                         increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
                     }
                 },
-                -32 => {                    
+                -32 => {
                     /*self.data_f16[frame as usize].iter()
                         .zip(self.mask.iter())
                             .for_each(|(x, m)| {*/
@@ -1910,26 +1910,26 @@ impl FITS {
                 16 => {
                     for x in self.data_i16[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
                     }
                 },
                 32 => {
                     for x in self.data_i32[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
                     }
                 },
-                -32 => {                                        
+                -32 => {
                     for x in self.data_f16[frame as usize].iter().step_by(data_step) {
                         //            if *m {                            
                         let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
-                    }                 
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
+                    }
                 },
                 -64 => {
                     for x in self.data_f64[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);                        
+                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
                     }
                 },
                 _ => println!("unsupported bitpix: {}", self.bitpix),
@@ -2998,9 +2998,9 @@ impl FITS {
         unsafe {
             libyuv_ScalePlane(
                 src.as_ptr(),
-                self.width,
-                self.width,
-                -self.height,
+                self.width as i32,
+                self.width as i32,
+                - (self.height as i32),
                 dst.as_mut_ptr(),
                 width as i32,
                 width as i32,
@@ -3053,6 +3053,153 @@ impl FITS {
                 dst[(dst_y*width + dst_x) as usize] = num::clamp( (pixel / accum).round() as i32, 0, 255) as u8;
             }
         }*/    }
+
+    fn make_vpx_viewport(&self, dimx: u32, dimy: u32, y: &Vec<u8>) -> Option<Vec<u8>> {
+        let start = precise_time::precise_time_ns();
+
+        let mut image_frame: Vec<u8> = Vec::new();
+
+        let mut raw: vpx_image = vpx_image::default();
+        let mut ctx = vpx_codec_ctx_t {
+            name: ptr::null(),
+            iface: ptr::null_mut(),
+            err: VPX_CODEC_ERROR,
+            err_detail: ptr::null(),
+            init_flags: 0,
+            config: vpx_codec_ctx__bindgen_ty_1 { enc: ptr::null() },
+            priv_: ptr::null_mut(),
+        };
+
+        let align = 1;
+
+        let ret =
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, dimx, dimy, align) };
+
+        if ret.is_null() {
+            println!("VP9 image frame error: image allocation failed");
+            return None;
+        }
+        mem::forget(ret); // img and ret are the same
+        print!("dimx: {}, dimy: {}, {:#?}", dimx, dimy, raw);
+
+        //I420
+        let stride_u = raw.stride[1];
+        let stride_v = raw.stride[2];
+        let count = stride_u * stride_v;
+
+        let u: &[u8] = &vec![128; count as usize];
+        let v: &[u8] = &vec![128; count as usize];
+
+        raw.planes[0] = unsafe { mem::transmute(y.as_ptr()) };
+        raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
+        raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
+
+        raw.stride[0] = dimx as i32;
+
+        let mut cfg = vpx_codec_enc_cfg::default();
+        let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut cfg, 0) };
+
+        if ret != VPX_CODEC_OK {
+            println!("VP9 image frame error: default Configuration failed");
+
+            //release the image
+            unsafe { vpx_img_free(&mut raw) };
+
+            return None;
+        }
+
+        cfg.g_w = dimx;
+        cfg.g_h = dimy;
+
+        cfg.rc_min_quantizer = 10;
+        cfg.rc_max_quantizer = 42;
+        cfg.rc_target_bitrate = 4096; // [kilobits per second]
+        cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
+        cfg.g_threads = num_cpus::get().min(4) as u32; //set the upper limit on the number of threads to 4
+
+        ret = unsafe {
+            vpx_codec_enc_init_ver(
+                &mut ctx,
+                vpx_codec_vp9_cx(),
+                &mut cfg,
+                0,
+                (14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
+            )
+        };
+
+        if ret != VPX_CODEC_OK {
+            println!("VP9 image frame error: codec init failed {:?}", ret);
+
+            unsafe { vpx_img_free(&mut raw) };
+
+            return None;
+        }
+
+        ret = unsafe {
+            vpx_codec_control_(&mut ctx, vp8e_enc_control_id::VP8E_SET_CPUUSED as i32, 8)
+        };
+
+        if ret != VPX_CODEC_OK {
+            println!("VP9: error setting VP8E_SET_CPUUSED {:?}", ret);
+        }
+
+        let mut flags = 0;
+        flags |= VPX_EFLAG_FORCE_KF;
+
+        //call encode_frame with a valid image
+        match encode_frame(ctx, raw, 0, flags as i64, VPX_DL_BEST_QUALITY as u64) {
+            Ok(res) => match res {
+                Some(res) => image_frame = res,
+                _ => {}
+            },
+            Err(err) => {
+                println!("codec error: {:?}", err);
+
+                unsafe { vpx_img_free(&mut raw) };
+                unsafe { vpx_codec_destroy(&mut ctx) };
+
+                return None;
+            }
+        };
+
+        //flush the encoder to signal the end
+        match flush_frame(ctx, VPX_DL_BEST_QUALITY as u64) {
+            Ok(res) => match res {
+                Some(res) => image_frame = res,
+                _ => {}
+            },
+            Err(err) => {
+                println!("codec error: {:?}", err);
+
+                unsafe { vpx_img_free(&mut raw) };
+                unsafe { vpx_codec_destroy(&mut ctx) };
+
+                return None;
+            }
+        };
+
+        if image_frame.is_empty() {
+            println!("VP9 image frame error: no image packet produced");
+
+            unsafe { vpx_img_free(&mut raw) };
+
+            unsafe { vpx_codec_destroy(&mut ctx) };
+
+            return None;
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        println!(
+            "VP9 image frame encode time: {} [ms]",
+            (stop - start) / 1000000
+        );
+
+        unsafe { vpx_img_free(&mut raw) };
+        unsafe { vpx_codec_destroy(&mut ctx) };
+
+        Some(image_frame)
+    }
 
     fn make_vpx_image(&mut self) {
         //check if the .img binary image file is already in the IMAGECACHE
@@ -3392,11 +3539,30 @@ impl FITS {
         y2: i32,
     ) -> Option<(u32, u32, Vec<u8>, Vec<u8>)> {
         //spatial range checks
-        let x1 = num::clamp(x1, 0, self.width - 1) as usize;
+        let width = self.width as i32 ;
+        let height = self.height as i32 ;
+
+        if x1 < 0 || x1 > width - 1 {
+            return None;
+        }
+
+        if x2 < 0 || x2 > width - 1 {
+            return None;
+        }
+
+        if y1 < 0 || y1 > height - 1 {
+            return None;
+        }
+
+        if y2 < 0 || y2 > height - 1 {
+            return None;
+        }
+
+        /*let x1 = num::clamp(x1, 0, self.width - 1) as usize;
         let y1 = num::clamp(y1, 0, self.height - 1) as usize;
 
         let x2 = num::clamp(x2, 0, self.width - 1) as usize;
-        let y2 = num::clamp(y2, 0, self.height - 1) as usize;
+        let y2 = num::clamp(y2, 0, self.height - 1) as usize;*/
 
         let dimx = x2 - x1 + 1;
         let dimy = y2 - y1 + 1;
@@ -3404,28 +3570,32 @@ impl FITS {
         let mut pixels: Vec<f32> = vec![0.0; (dimx * dimy) as usize];
         let mut mask: Vec<u8> = vec![0; (dimx * dimy) as usize];
 
-        for j in y1..y2 {
-            let mut src_offset = j * (self.width as usize);
-            let mut dst_offset = ((dimy - 1) - (j - y1)) * dimx;
+        for j in y1..y2 + 1 {
+            let mut src_offset = (j * width) as usize;
+            let mut dst_offset = (((dimy - 1) - (j - y1)) * dimx) as usize;
 
-            for i in x1..x2 {
-                pixels[dst_offset] = self.pixels[src_offset + i];
-                mask[dst_offset] = self.mask[src_offset + i];
+            for i in x1..x2 + 1 {
+                let valid_pixel = (i >= 0) && (i < width) && (j >= 0) && (j < height);
+
+                if valid_pixel {
+                    pixels[dst_offset] = self.pixels[src_offset + i as usize];
+                    mask[dst_offset] = self.mask[src_offset + i as usize];
+                }
+
                 dst_offset = dst_offset + 1;
             }
         }
 
         let y = self.pixels_to_luminance(&pixels, &mask);
 
-        /*match self.make_vpx_viewport(dimx, dimy, &pixels) {
+        match self.make_vpx_viewport(dimx as u32, dimy as u32, &y) {
             Some(frame) => {
                 let alpha = lz4_compress::compress(&mask);
-                Some((dimx, dimy, frame, alpha))
+
+                Some((dimx as u32, dimy as u32, frame, alpha))
             }
             None => None,
-        }*/
-
-        None
+        }
     }
 
     pub fn get_spectrum(
@@ -3441,11 +3611,11 @@ impl FITS {
         ref_freq: f64,
     ) -> Option<Vec<f32>> {
         //spatial range checks
-        let x1 = num::clamp(x1, 0, self.width - 1) as usize;
-        let y1 = num::clamp(y1, 0, self.height - 1) as usize;
+        let x1 = num::clamp(x1, 0, self.width as i32 - 1) as usize;
+        let y1 = num::clamp(y1, 0, self.height as i32 - 1) as usize;
 
-        let x2 = num::clamp(x2, 0, self.width - 1) as usize;
-        let y2 = num::clamp(y2, 0, self.height - 1) as usize;
+        let x2 = num::clamp(x2, 0, self.width as i32 - 1) as usize;
+        let y2 = num::clamp(y2, 0, self.height as i32 - 1) as usize;
 
         let cdelt3 = {
             if self.has_velocity && self.depth > 1 {
@@ -3925,8 +4095,8 @@ impl FITS {
             + (v2 - self.crval3 * self.frame_multiplier) / (self.cdelt3 * self.frame_multiplier)
             - 1.0;
 
-        let mut start = x1.round() as i32;
-        let mut end = x2.round() as i32;
+        let mut start = x1.round() as usize;
+        let mut end = x2.round() as usize;
 
         if self.cdelt3 < 0.0 {
             start = self.depth - 1 - start;
@@ -3945,7 +4115,7 @@ impl FITS {
         end = end.max(0);
         end = end.min(self.depth - 1);
 
-        (start as usize, end as usize)
+        (start, end)
     }
 
     fn get_frequency_bounds(&self, freq_start: f64, freq_end: f64) -> (usize, usize) {
@@ -3963,14 +4133,14 @@ impl FITS {
 
             if self.cdelt3 > 0.0 {
                 start = ((freq_start - band_lo) / (band_hi - band_lo) * (self.depth as f64 - 1.0))
-                    .round() as i32;
+                    .round() as usize;
                 end = ((freq_end - band_lo) / (band_hi - band_lo) * (self.depth as f64 - 1.0))
-                    .round() as i32;
+                    .round() as usize;
             } else {
                 start = ((band_hi - freq_start) / (band_hi - band_lo) * (self.depth as f64 - 1.0))
-                    .round() as i32;
+                    .round() as usize;
                 end = ((band_hi - freq_end) / (band_hi - band_lo) * (self.depth as f64 - 1.0))
-                    .round() as i32;
+                    .round() as usize;
             };
 
             if end < start {
@@ -3986,7 +4156,7 @@ impl FITS {
             end = end.min(self.depth - 1);
         };
 
-        (start as usize, end as usize)
+        (start, end)
     }
 
     fn get_velocity_bounds(&self, vel_start: f64, vel_end: f64) -> (usize, usize) {
@@ -4003,14 +4173,14 @@ impl FITS {
 
         if self.cdelt3 > 0.0 {
             start = ((vel_start - band_lo) / (band_hi - band_lo) * (self.depth as f64 - 1.0))
-                .round() as i32;
+                .round() as usize;
             end = ((vel_end - band_lo) / (band_hi - band_lo) * (self.depth as f64 - 1.0)).round()
-                as i32;
+                as usize;
         } else {
             start = ((band_hi - vel_start) / (band_hi - band_lo) * (self.depth as f64 - 1.0))
-                .round() as i32;
+                .round() as usize;
             end = ((band_hi - vel_end) / (band_hi - band_lo) * (self.depth as f64 - 1.0)).round()
-                as i32;
+                as usize;
         };
 
         if end < start {
@@ -4025,7 +4195,7 @@ impl FITS {
         end = end.max(0);
         end = end.min(self.depth - 1);
 
-        (start as usize, end as usize)
+        (start, end)
     }
 
     fn get_frequency_range(&self) -> (f64, f64) {
@@ -4063,7 +4233,7 @@ impl FITS {
     }
 
     pub fn to_json(&self) -> String {
-        let value = json!({                
+        let value = json!({
                 "HEADER" : self.header,
                 "width" : self.width,
                 "height" : self.height,

@@ -119,7 +119,6 @@ pub struct WsImage {
     pub ts: f32,
     pub seq_id: u32,
     pub msg_type: u32,
-    pub elapsed: f32,
     pub identifier: String,
     pub width: u32,
     pub height: u32,
@@ -715,15 +714,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         if image {
                             match fits.get_viewport(x1, y1, x2, y2) {
                                 Some((width, height, frame, alpha)) => {
-                                    let stop = precise_time::precise_time_ns();
-                                    let elapsed = (stop - start) / 1000000;
-
                                     //send a binary response message (serialize a structure to a binary stream)
                                     let ws_viewport = WsImage {
                                         ts: timestamp as f32,
                                         seq_id: seq_id as u32,
                                         msg_type: 1,
-                                        elapsed: elapsed as f32,
                                         identifier: String::from("VP9"),
                                         width: width,
                                         height: height,
@@ -939,14 +934,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 frame: payload.to_vec(),
                                             };
 
-                                            match serialize(&ws_frame) {  
-                                            Ok(bin) => {                      
-                                                println!("WsFrame binary length: {}", bin.len());
-                                                //println!("{}", bin);
-                                                ctx.binary(bin);
-                                            },
-                                            Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
-                                        }
+                                            match serialize(&ws_frame) {
+                                                Ok(bin) => {
+                                                    println!("WsFrame binary length: {}", bin.len());
+                                                    //println!("{}", bin);
+                                                    ctx.binary(bin);
+                                                },
+                                                Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                            }
 
                                             /*match self.hevc {
                                                 Ok(ref mut file) => {
@@ -1005,14 +1000,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                         frame: payload.to_vec(),
                                                     };
 
-                                                    match serialize(&ws_frame) {  
-                                                    Ok(bin) => {                      
-                                                    println!("WsFrame binary length: {}", bin.len());
-                                                    //println!("{}", bin);
-                                                    ctx.binary(bin);
-                                                    },
-                                                    Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
-                                                }
+                                                    match serialize(&ws_frame) {
+                                                        Ok(bin) => {
+                                                        println!("WsFrame binary length: {}", bin.len());
+                                                        //println!("{}", bin);
+                                                        ctx.binary(bin);
+                                                        },
+                                                        Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                                    }
 
                                                     /*match self.hevc {
                                                         Ok(ref mut file) => {
@@ -1109,14 +1104,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             frame: video_frame,
                                         };
 
-                                        match serialize(&ws_frame) {                                        
-                                        Ok(bin) => {                      
-                                            println!("WsFrame binary length: {}", bin.len());
-                                            //println!("{}", bin);
-                                            ctx.binary(bin);
-                                        },
-                                        Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
-                                    }
+                                        match serialize(&ws_frame) {
+                                            Ok(bin) => {
+                                                println!("WsFrame binary length: {}", bin.len());
+                                                //println!("{}", bin);
+                                                ctx.binary(bin);
+                                            },
+                                            Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                        }
                                     }
                                 }
                                 None => {}
@@ -1255,8 +1250,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             frame: payload.to_vec(),
                                         };
 
-                                        match serialize(&ws_frame) {  
-                                            Ok(bin) => {                      
+                                        match serialize(&ws_frame) {
+                                            Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
                                                 ctx.binary(bin);
@@ -1321,8 +1316,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     frame: payload.to_vec(),
                                                 };
 
-                                                match serialize(&ws_frame) {  
-                                                    Ok(bin) => {                      
+                                                match serialize(&ws_frame) {
+                                                    Ok(bin) => {
                                                     println!("WsFrame binary length: {}", bin.len());
                                                     //println!("{}", bin);
                                                     ctx.binary(bin);
@@ -1380,7 +1375,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-26.0";
+static VERSION_STRING: &'static str = "SV2018-09-26.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2386,12 +2381,12 @@ fn main() {
     //let server: Addr<Syn, _> = SyncArbiter::start(32,|| server::SessionServer::default());//16 or 32 threads at most
 
     HttpServer::new(
-        move || {            
+        move || {
             // WebSocket sessions state
-            let state = WsSessionState {                
-                addr: server.clone(),                    
-            };            
-        
+            let state = WsSessionState {
+                addr: server.clone(),
+            };
+
             App::with_state(state)
                 //.middleware(Logger::default())
                 .middleware(Logger::new("%t %a %{User-Agent}i %r")                    
