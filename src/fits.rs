@@ -633,7 +633,12 @@ impl FITS {
             }
 
             frame = frame + 1;
-            self.send_progress_notification(&server, &"processing FITS".to_owned(), total as i32, frame as i32);
+            self.send_progress_notification(
+                &server,
+                &"processing FITS".to_owned(),
+                total as i32,
+                frame as i32,
+            );
         }
 
         if frame != total {
@@ -1102,7 +1107,7 @@ impl FITS {
             return 0;
         }
 
-        let capacity = self.width * self.height ;
+        let capacity = self.width * self.height;
 
         self.mask.resize(capacity, 0);
         self.pixels.resize(capacity, 0.0);
@@ -3000,7 +3005,7 @@ impl FITS {
                 src.as_ptr(),
                 self.width as i32,
                 self.width as i32,
-                - (self.height as i32),
+                -(self.height as i32),
                 dst.as_mut_ptr(),
                 width as i32,
                 width as i32,
@@ -3539,8 +3544,8 @@ impl FITS {
         y2: i32,
     ) -> Option<(u32, u32, Vec<u8>, Vec<u8>)> {
         //spatial range checks
-        let width = self.width as i32 ;
-        let height = self.height as i32 ;
+        let width = self.width as i32;
+        let height = self.height as i32;
 
         if x1 < 0 || x1 > width - 1 {
             return None;
