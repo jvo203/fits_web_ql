@@ -173,7 +173,7 @@ pub struct FITS {
     naxes: [usize; 4],
     pub width: usize,
     pub height: usize,
-    depth: usize,
+    pub depth: usize,
     polarisation: usize,
     data_u8: Vec<Vec<u8>>,
     data_i16: Vec<Vec<i16>>,
@@ -4055,7 +4055,7 @@ impl FITS {
         }
     }
 
-    fn get_spectrum_range(
+    pub fn get_spectrum_range(
         &self,
         frame_start: f64,
         frame_end: f64,

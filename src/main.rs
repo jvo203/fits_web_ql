@@ -821,7 +821,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         _ => 0.0,
                     };
 
-                    let hist = match hist {
+                    let mut refresh_histogram = match hist {
                         Some(x) => x,
                         _ => false,
                     };
@@ -834,7 +834,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         _ => 0.0,
                     };
 
-                    println!("[image] black:{} white:{} median:{} noise:{} flux:{} frame_start:{} frame_end:{} ref_freq:{} hist:{} timestamp:{}", black, white, median, noise, flux, frame_start, frame_end, ref_freq, hist, timestamp);
+                    println!("[image] black:{} white:{} median:{} noise:{} flux:{} frame_start:{} frame_end:{} ref_freq:{} hist:{} timestamp:{}", black, white, median, noise, flux, frame_start, frame_end, ref_freq, refresh_histogram, timestamp);
 
                     let datasets = DATASETS.read();
 
@@ -868,6 +868,55 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     if fits.has_data {
                         //fits.make_vpx_image()
                         //send a binary response
+
+                        let (start, end) =
+                            match fits.get_spectrum_range(frame_start, frame_end, ref_freq) {
+                                Some(frame) => frame,
+                                None => {
+                                    println!("error: an invalid spectrum range");
+                                    return;
+                                }
+                            };
+
+                        let mut refresh_spectrum = false ;
+
+                        //check if a user param structure exists
+                        match self.user {
+                            Some(ref mut user) => {
+                                if start != user.start || end != user.end {
+                                    refresh_spectrum = true ;
+                                    refresh_histogram = true ;
+                                }
+
+                                //update the user session
+                                user.black = black ;
+                                user.white = white ;
+                                user.median = median ;
+                                user.noise = noise ;
+                                user.flux = flux.clone() ;
+                                user.start = start ;
+                                user.end = end ;
+                            }
+                            None => {
+                                //create a new user parameter set                                
+                                self.user = Some(UserParams {
+                                    black: black,
+                                    white: white,
+                                    median: median,
+                                    noise: noise,
+                                    flux: flux.clone(),
+                                    start: start,
+                                    end: end,
+                                });
+
+                                if start != 0 || end != fits.depth - 1 {
+                                    refresh_spectrum = true ;
+                                    refresh_histogram = true ;
+                                }                    
+                            }
+                        }
+
+                        println!("[image] refresh_histogram: {}, refresh_spectrum: {}", refresh_histogram, refresh_spectrum);
                     };
                 }
 
@@ -1466,7 +1515,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-26.3";
+static VERSION_STRING: &'static str = "SV2018-09-27.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

@@ -63,8 +63,8 @@ static void hevc_init() {
 EMSCRIPTEN_KEEPALIVE
 static void hevc_destroy() {
     //flush the decoder
-    avcodec_send_packet(avctx, NULL);
-    avcodec_flush_buffers(avctx);
+    /*avcodec_send_packet(avctx, NULL);
+    avcodec_flush_buffers(avctx);*/
 
     if (avctx != NULL)
     {   
