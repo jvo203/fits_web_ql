@@ -78,6 +78,7 @@ use percent_encoding::percent_decode;
 use uuid::Uuid;
 
 use rayon::prelude::*;
+use std::cmp::Ordering::Equal;
 
 #[cfg(feature = "server")]
 use postgres::{Connection, TlsMode};
@@ -131,13 +132,17 @@ struct WsSessionState {
 }
 
 struct UserParams {
+    pmin: f32,
+    pmax: f32,
     black: f32,
     white: f32,
     median: f32,
-    noise: f32,
+    sensitivity: f32,
     flux: String,
     start: usize,
     end: usize,
+    mask: Vec<u8>,
+    pixels: Vec<f32>,
 }
 
 struct UserSession {
@@ -821,7 +826,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         _ => 0.0,
                     };
 
-                    let mut refresh_histogram = match hist {
+                    let mut refresh_image = match hist {
                         Some(x) => x,
                         _ => false,
                     };
@@ -834,7 +839,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         _ => 0.0,
                     };
 
-                    println!("[image] black:{} white:{} median:{} noise:{} flux:{} frame_start:{} frame_end:{} ref_freq:{} hist:{} timestamp:{}", black, white, median, noise, flux, frame_start, frame_end, ref_freq, refresh_histogram, timestamp);
+                    println!("[image] black:{} white:{} median:{} noise:{} flux:{} frame_start:{} frame_end:{} ref_freq:{} hist:{} timestamp:{}", black, white, median, noise, flux, frame_start, frame_end, ref_freq, refresh_image, timestamp);
 
                     let datasets = DATASETS.read();
 
@@ -878,45 +883,120 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }
                             };
 
-                        let mut refresh_spectrum = false ;
-
                         //check if a user param structure exists
                         match self.user {
                             Some(ref mut user) => {
                                 if start != user.start || end != user.end {
-                                    refresh_spectrum = true ;
-                                    refresh_histogram = true ;
+                                    refresh_image = true;
                                 }
 
                                 //update the user session
-                                user.black = black ;
-                                user.white = white ;
-                                user.median = median ;
-                                user.noise = noise ;
-                                user.flux = flux.clone() ;
-                                user.start = start ;
-                                user.end = end ;
+                                user.black = black;
+                                user.white = white;
+                                user.median = median;
+                                user.sensitivity = noise * fits.sensitivity;
+                                user.flux = flux.clone();
+                                user.start = start;
+                                user.end = end;
                             }
                             None => {
-                                //create a new user parameter set                                
+                                if start != 0 || end != fits.depth - 1 {
+                                    refresh_image = true;
+                                }
+
+                                //create a new user parameter set
                                 self.user = Some(UserParams {
+                                    pmin: fits.pmin,
+                                    pmax: fits.pmax,
                                     black: black,
                                     white: white,
                                     median: median,
-                                    noise: noise,
+                                    sensitivity: noise * fits.sensitivity,
                                     flux: flux.clone(),
                                     start: start,
                                     end: end,
+                                    mask: fits.mask.clone(),
+                                    pixels: fits.pixels.clone(),
                                 });
-
-                                if start != 0 || end != fits.depth - 1 {
-                                    refresh_spectrum = true ;
-                                    refresh_histogram = true ;
-                                }                    
                             }
                         }
 
-                        println!("[image] refresh_histogram: {}, refresh_spectrum: {}", refresh_histogram, refresh_spectrum);
+                        println!("[image] refresh_histogram: {}", refresh_image);
+
+                        match self.user {
+                            Some(ref mut user) => {
+                                if refresh_image {
+                                    //regenerate pixels and mask
+                                    match fits.make_image_spectrum(start, end) {
+                                        Some((
+                                            pixels,
+                                            mask,
+                                            mean_spectrum,
+                                            integrated_spectrum,
+                                        )) => {
+                                            //get ord_pixels
+                                            let mut ord_pixels = pixels.clone();
+
+                                            ord_pixels.par_sort_unstable_by(|a, b| {
+                                                a.partial_cmp(b).unwrap_or(Equal)
+                                            });
+
+                                            match fits.get_image_histogram(
+                                                &ord_pixels,
+                                                &pixels,
+                                                &mask,
+                                            ) {
+                                                Some((
+                                                    hist,
+                                                    pmin,
+                                                    pmax,
+                                                    black,
+                                                    white,
+                                                    median,
+                                                    sensitivity,
+                                                )) => {
+                                                    user.pmin = pmin;
+                                                    user.pmax = pmax;
+                                                    user.black = black;
+                                                    user.white = white;
+                                                    user.median = median;
+
+                                                    user.pixels = pixels;
+                                                    user.mask = mask;
+
+                                                    //and then
+
+                                                    //send a spectrum refresh
+
+                                                    //send a histogram refresh
+                                                }
+                                                None => {}
+                                            }
+                                        }
+                                        None => {
+                                            println!("[image] make_image_spectrum returned None")
+                                        }
+                                    }
+                                }
+
+                                //redo the image based on new user parameters, pixels and mask
+                                let y = fits.pixels_to_luminance(
+                                    &user.pixels,
+                                    &user.mask,
+                                    user.pmin,
+                                    user.pmax,
+                                    user.black,
+                                    user.white,
+                                    user.median,
+                                    user.sensitivity,
+                                    &user.flux,
+                                );
+
+                                //get a VP9 keyframe
+                                
+                            }
+                            None => {}
+                        }
                     };
                 }
 
@@ -1515,7 +1595,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-27.0";
+static VERSION_STRING: &'static str = "SV2018-09-28.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

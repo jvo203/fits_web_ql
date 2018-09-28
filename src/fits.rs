@@ -211,8 +211,8 @@ pub struct FITS {
     data_mad_p: RwLock<f32>,
     data_mad_n: RwLock<f32>,
     data_flux: String,
-    pmin: f32,
-    pmax: f32,
+    pub pmin: f32,
+    pub pmax: f32,
     hist: Vec<i32>,
     median: f32,
     mad: f32,
@@ -220,7 +220,7 @@ pub struct FITS {
     mad_n: f32,
     black: f32,
     white: f32,
-    sensitivity: f32,
+    pub sensitivity: f32,
     flux: String,
     has_frequency: bool,
     has_velocity: bool,
@@ -350,7 +350,8 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
-        let num_threads = num_cpus::get();
+        //let num_threads = num_cpus::get();
+        let num_threads = (num_cpus::get() / 2).max(1);
 
         let pool = match rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
@@ -441,7 +442,6 @@ impl FITS {
             let vec_len = data_f16.len() ;
 
             let mut pixels = thread_pixels[tid].write();
-
             let mask = thread_mask[tid].write();
             let mask_ptr = mask.as_ptr() as *mut u8;
             let mask_len = mask.len() ;
@@ -1748,6 +1748,192 @@ impl FITS {
         }
     }
 
+    pub fn make_image_spectrum(
+        &self,
+        start: usize,
+        end: usize,
+    ) -> Option<(Vec<f32>, Vec<u8>, Vec<f32>, Vec<f32>)> {
+        let start_watch = precise_time::precise_time_ns();
+
+        let num_threads = (num_cpus::get() / 2).max(1);
+
+        let pool = match rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build()
+        {
+            Ok(pool) => pool,
+            Err(err) => {
+                println!(
+                    "[make_image_spectrum] CRITICAL ERROR cannot create a thread pool: {:?}",
+                    err
+                );
+                return None;
+            }
+        };
+
+        println!("custom thread pool: {:?}", pool);
+
+        let mut dmin = std::f32::MAX; //no mistake here
+        let mut dmax = std::f32::MIN; //no mistake here
+
+        let mut pixels: Vec<f32> = vec![0.0; self.pixels.len()];
+        let mask: Vec<u8> = vec![0; self.mask.len()];
+
+        //set up thread-local vectors
+        let mut thread_pixels: Vec<RwLock<Vec<f32>>> = Vec::with_capacity(num_threads);
+        let mut thread_mask: Vec<RwLock<Vec<u8>>> = Vec::with_capacity(num_threads);
+
+        let mut thread_min: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
+        let mut thread_max: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
+
+        for _ in 0..num_threads {
+            thread_pixels.push(RwLock::new(vec![0.0; self.pixels.len()]));
+            thread_mask.push(RwLock::new(vec![0; self.mask.len()]));
+
+            thread_min.push(atomic::Atomic::new(std::f32::MAX));
+            thread_max.push(atomic::Atomic::new(std::f32::MIN));
+        }
+
+        let total = end - start + 1;
+
+        let cdelt3 = {
+            if self.has_velocity && self.depth > 1 {
+                self.cdelt3 * self.frame_multiplier / 1000.0
+            } else {
+                1.0
+            }
+        } as f32;
+
+        let mut thread_mean_spectrum: Vec<atomic::Atomic<f32>> = Vec::with_capacity(total);
+        let mut thread_integrated_spectrum: Vec<atomic::Atomic<f32>> = Vec::with_capacity(total);
+
+        for _ in 0..total {
+            thread_mean_spectrum.push(atomic::Atomic::new(0.0));
+            thread_integrated_spectrum.push(atomic::Atomic::new(0.0));
+        }
+
+        pool.install(|| {
+            (0..total).into_par_iter().for_each(|index| {
+                let frame = start + index;
+
+                let tid = match pool.current_thread_index() {
+                    Some(tid) => tid,
+                    None => 0,
+                };
+
+                println!("tid: {}, index: {}, frame: {}", tid, index, frame);
+
+                //parallel data processing
+                let mut frame_min = std::f32::MAX;
+                let mut frame_max = std::f32::MIN;
+
+                let mut mean_spectrum = 0.0_f32;
+                let mut integrated_spectrum = 0.0_f32;
+
+                match self.bitpix {
+                    -32 => {
+                        let mut references: [f32; 4] =
+                            [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+
+                        let vec = &self.data_f16[frame];
+                        let vec_ptr = vec.as_ptr() as *mut i16;
+                        let vec_len = vec.len();
+
+                        let mut pixels = thread_pixels[tid].write();
+                        let mask = thread_mask[tid].write();
+                        let mask_ptr = mask.as_ptr() as *mut u8;
+                        let mask_len = mask.len();
+
+                        unsafe {
+                            let mut vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                            ispc_make_image_spectrumF16_minmax(
+                                vec_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                self.datamin,
+                                self.datamax,
+                                cdelt3,
+                                pixels.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                vec_len as u32,
+                                references.as_mut_ptr(),
+                            );
+                        }
+
+                        frame_min = references[0];
+                        frame_max = references[1];
+                        mean_spectrum = references[2];
+                        integrated_spectrum = references[3];
+                    }
+                    _ => println!("unsupported bitpix: {}", self.bitpix),
+                }
+
+                thread_mean_spectrum[index].store(mean_spectrum, Ordering::SeqCst);
+                thread_integrated_spectrum[index].store(integrated_spectrum, Ordering::SeqCst);
+
+                let current_min = thread_min[tid].load(Ordering::SeqCst);
+                thread_min[tid].store(frame_min.min(current_min), Ordering::SeqCst);
+
+                let current_max = thread_max[tid].load(Ordering::SeqCst);
+                thread_max[tid].store(frame_max.max(current_max), Ordering::SeqCst);
+                //end of parallel data processing
+            })
+        });
+
+        let mean_spectrum: Vec<f32> = thread_mean_spectrum
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        let integrated_spectrum: Vec<f32> = thread_integrated_spectrum
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        //then fuse self.pixels and self.mask with the local thread versions
+        for tid in 0..num_threads {
+            dmin = dmin.min(thread_min[tid].load(Ordering::SeqCst));
+            dmax = dmax.max(thread_max[tid].load(Ordering::SeqCst));
+
+            let mut pixels_tid = thread_pixels[tid].write();
+
+            let mask_tid = thread_mask[tid].read();
+            let mask_tid_ptr = mask_tid.as_ptr() as *mut u8;
+
+            let mask_ptr = mask.as_ptr() as *mut u8;
+
+            let total_size = pixels.len();
+
+            unsafe {
+                let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
+                let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
+
+                ispc_join_pixels_masks(
+                    pixels.as_mut_ptr(),
+                    pixels_tid.as_mut_ptr(),
+                    mask_raw.as_mut_ptr(),
+                    mask_tid_raw.as_mut_ptr(),
+                    cdelt3,
+                    total_size as u32,
+                );
+            }
+        }
+
+        let stop_watch = precise_time::precise_time_ns();
+
+        println!(
+            "[make_image_spectrum] elapsed time: {} [ms]",
+            (stop_watch - start_watch) / 1000000
+        );
+
+        //println!("mean spectrum: {:?}", mean_spectrum);
+        //println!("integrated spectrum: {:?}", integrated_spectrum);
+
+        Some((pixels, mask, mean_spectrum, integrated_spectrum))
+    }
+
     pub fn make_data_histogram(&self) {
         println!("global dmin = {}, dmax = {}", self.dmin, self.dmax);
 
@@ -1983,6 +2169,114 @@ impl FITS {
             data_step,
             (stop - start) / 1000000
         );
+    }
+
+    pub fn get_image_histogram(
+        &self,
+        ord_pixels: &Vec<f32>,
+        pixels: &Vec<f32>,
+        mask: &Vec<u8>,
+    ) -> Option<(Vec<i32>, f32, f32, f32, f32, f32, f32)> {
+        let len = ord_pixels.len();
+        let mut hist: Vec<i32> = vec![0; NBINS];
+
+        //in the future need to take into account the mask and IGNRVAL
+        let pmin = ord_pixels[0];
+        let pmax = ord_pixels[len - 1];
+
+        let median = {
+            if len.is_odd() {
+                ord_pixels[len >> 1]
+            } else {
+                (ord_pixels[(len >> 1) - 1] + ord_pixels[len >> 1]) / 2.0
+            }
+        };
+
+        //a single-threaded version (seems to be more efficient than rayon in this case)
+        let mut mad: f32 = 0.0;
+        let mut count: i32 = 0;
+        let mut mad_n: f32 = 0.0;
+        let mut count_n: i32 = 0;
+        let mut mad_p: f32 = 0.0;
+        let mut count_p: i32 = 0;
+
+        let start = precise_time::precise_time_ns();
+
+        for i in 0..len {
+            if mask[i] > 0 {
+                let x = pixels[i];
+
+                mad += (x - median).abs();
+                count += 1;
+
+                if x > median {
+                    mad_p += x - median;
+                    count_p += 1;
+                }
+
+                if x < median {
+                    mad_n += median - x;
+                    count_n += 1;
+                }
+            }
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        mad = if count > 0 { mad / (count as f32) } else { 0.0 };
+
+        mad_p = if count_p > 0 {
+            mad_p / (count_p as f32)
+        } else {
+            mad
+        };
+
+        mad_n = if count_n > 0 {
+            mad_n / (count_n as f32)
+        } else {
+            mad
+        };
+
+        let u = 7.5_f32;
+        //let v = 15.0_f32 ;
+
+        let black = pmin.max(median - u * mad_n);
+        let white = pmax.min(median + u * mad_p);
+        let sensitivity = 1.0 / (white - black);
+
+        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
+
+        //the histogram part
+        let dx = (pmax - pmin) / (NBINS as f32);
+
+        if dx <= 0.0 {
+            return None;
+        }
+
+        let mut bin = pmin + dx;
+        let mut index = 0;
+
+        let start = precise_time::precise_time_ns();
+
+        for x in ord_pixels {
+            while x >= &bin {
+                bin = bin + dx;
+                index = index + 1;
+            }
+
+            if x >= &pmin && x <= &pmax && index < NBINS {
+                hist[index] = hist[index] + 1;
+            }
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        println!(
+            "histogram creation elapsed time {} [μs]",
+            (stop - start) / 1000
+        );
+
+        Some((hist, pmin, pmax, black, white, median, sensitivity))
     }
 
     fn make_image_histogram(&mut self, ord_pixels: &Vec<f32>) {
@@ -2771,17 +3065,28 @@ impl FITS {
         }
     }
 
-    fn pixels_to_luminance(&self, pixels: &Vec<f32>, mask: &Vec<u8>) -> Vec<u8> {
-        match self.flux.as_ref() {
+    pub fn pixels_to_luminance(
+        &self,
+        pixels: &Vec<f32>,
+        mask: &Vec<u8>,
+        pmin: f32,
+        pmax: f32,
+        black: f32,
+        white: f32,
+        median: f32,
+        sensitivity: f32,
+        flux: &String,
+    ) -> Vec<u8> {
+        match flux.as_ref() {
             "linear" => {
-                let slope = 1.0 / (self.white - self.black);
+                let slope = 1.0 / (white - black);
 
                 pixels
                     .par_iter()
                     .zip(mask.par_iter())
                     .map(|(x, m)| {
                         if *m > 0 {
-                            let pixel = num::clamp((x - self.black) * slope, 0.0, 1.0);
+                            let pixel = num::clamp((x - black) * slope, 0.0, 1.0);
                             (255.0 * pixel) as u8
                         } else {
                             0
@@ -2794,7 +3099,7 @@ impl FITS {
                 .map(|(x, m)| {
                     if *m > 0 {
                         let pixel = num::clamp(
-                            1.0 / (1.0 + (-6.0 * (x - self.median) * self.sensitivity).exp()),
+                            1.0 / (1.0 + (-6.0 * (x - median) * sensitivity).exp()),
                             0.0,
                             1.0,
                         );
@@ -2808,7 +3113,7 @@ impl FITS {
                 .zip(mask.par_iter())
                 .map(|(x, m)| {
                     if *m > 0 {
-                        let pixel = 5.0 * (x - self.black) * self.sensitivity;
+                        let pixel = 5.0 * (x - black) * sensitivity;
 
                         if pixel > 0.0 {
                             (255.0 * pixel / (1.0 + pixel)) as u8
@@ -2824,7 +3129,7 @@ impl FITS {
                 .zip(mask.par_iter())
                 .map(|(x, m)| {
                     if *m > 0 {
-                        let pixel = (x - self.black) * self.sensitivity;
+                        let pixel = (x - black) * sensitivity;
 
                         if pixel > 0.0 {
                             (255.0 * num::clamp(pixel * pixel, 0.0, 1.0)) as u8
@@ -2845,7 +3150,7 @@ impl FITS {
                     .zip(mask.par_iter())
                     .map(|(x, m)| {
                         if *m > 0 {
-                            let pixel = 0.5 + (x - self.pmin) / (self.pmax - self.pmin);
+                            let pixel = 0.5 + (x - pmin) / (pmax - pmin);
 
                             if pixel > 0.0 {
                                 (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
@@ -3304,7 +3609,17 @@ impl FITS {
         mem::forget(ret); // img and ret are the same
         print!("{:#?}", raw);
 
-        let mut y: Vec<u8> = self.pixels_to_luminance(&self.pixels, &self.mask);
+        let mut y: Vec<u8> = self.pixels_to_luminance(
+            &self.pixels,
+            &self.mask,
+            self.pmin,
+            self.pmax,
+            self.black,
+            self.white,
+            self.median,
+            self.sensitivity,
+            &self.flux,
+        );
 
         {
             let start = precise_time::precise_time_ns();
@@ -3591,7 +3906,17 @@ impl FITS {
             }
         }
 
-        let y = self.pixels_to_luminance(&pixels, &mask);
+        let y = self.pixels_to_luminance(
+            &pixels,
+            &mask,
+            self.pmin,
+            self.pmax,
+            self.black,
+            self.white,
+            self.median,
+            self.sensitivity,
+            &self.flux,
+        );
 
         match self.make_vpx_viewport(dimx as u32, dimy as u32, &y) {
             Some(frame) => {
