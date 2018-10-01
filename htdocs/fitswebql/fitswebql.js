@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-10-01.1";
+    return "JS2018-10-01.2";
 }
 
 var generateUid = function ()
@@ -5196,7 +5196,7 @@ function display_histogram(index)
     //.attr("class", "form-control")
 	.attr("id", "flux"+index)
 	.attr("onchange", "javascript:image_count=0;display_hourglass();change_tone_mapping("+index+",true);")
-	.html("<option value='linear'>linear</option><option value='legacy'>log (legacy)</option><option value='logistic'>logistic</option><option value='ratio'>ratio</option><option value='square'>square</option>");//<option value='log'>log</option>
+	.html("<option value='linear'>linear</option><option value='legacy'>logarithmic</option><option value='logistic'>logistic</option><option value='ratio'>ratio</option><option value='square'>square</option>");//<option value='log'>log</option>
     
     document.getElementById('flux'+index).value = fitsData.flux ;
     //document.querySelectorAll('[value="' + fitsData.flux + '"]')[0].text = fitsData.flux + ' (default)' ;
