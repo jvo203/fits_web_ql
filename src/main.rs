@@ -1040,7 +1040,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }
 
                                 let mut raw: vpx_image = vpx_image::default();
-                                let mut ctx = vpx_codec_ctx_t {
+                                let mut vpx_ctx = vpx_codec_ctx_t {
                                     name: ptr::null(),
                                     iface: ptr::null_mut(),
                                     err: VPX_CODEC_ERROR,
@@ -1170,7 +1170,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                 ret = unsafe {
                                     vpx_codec_enc_init_ver(
-                                        &mut ctx,
+                                        &mut vpx_ctx,
                                         vpx_codec_vp9_cx(),
                                         &mut cfg,
                                         0,
@@ -1188,7 +1188,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                 ret = unsafe {
                                     vpx_codec_control_(
-                                        &mut ctx,
+                                        &mut vpx_ctx,
                                         vp8e_enc_control_id::VP8E_SET_CPUUSED as i32,
                                         8,
                                     )
@@ -1203,7 +1203,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                 //call encode_frame with a valid image
                                 match fits::encode_frame(
-                                    ctx,
+                                    vpx_ctx,
                                     raw,
                                     0,
                                     flags as i64,
@@ -1217,14 +1217,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         println!("codec error: {:?}", err);
 
                                         unsafe { vpx_img_free(&mut raw) };
-                                        unsafe { vpx_codec_destroy(&mut ctx) };
+                                        unsafe { vpx_codec_destroy(&mut vpx_ctx) };
 
                                         return;
                                     }
                                 };
 
                                 //flush the encoder to signal the end
-                                match fits::flush_frame(ctx, VPX_DL_BEST_QUALITY as u64) {
+                                match fits::flush_frame(vpx_ctx, VPX_DL_BEST_QUALITY as u64) {
                                     Ok(res) => match res {
                                         Some(res) => image_frame = res,
                                         _ => {}
@@ -1233,7 +1233,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         println!("codec error: {:?}", err);
 
                                         unsafe { vpx_img_free(&mut raw) };
-                                        unsafe { vpx_codec_destroy(&mut ctx) };
+                                        unsafe { vpx_codec_destroy(&mut vpx_ctx) };
 
                                         return;
                                     }
@@ -1244,14 +1244,38 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                     unsafe { vpx_img_free(&mut raw) };
 
-                                    unsafe { vpx_codec_destroy(&mut ctx) };
+                                    unsafe { vpx_codec_destroy(&mut vpx_ctx) };
 
                                     return;
                                 }
 
                                 unsafe { vpx_img_free(&mut raw) };
-                                unsafe { vpx_codec_destroy(&mut ctx) };
-                                //(...) we have a VP9 frame
+                                unsafe { vpx_codec_destroy(&mut vpx_ctx) };
+
+                                //(...) we have a VP9 frame, send to as WsImage
+                                //send a binary response message (serialize a structure to a binary stream)
+                                let ws_image = WsImage {
+                                    ts: timestamp as f32,
+                                    seq_id: 0,
+                                    msg_type: 2,
+                                    identifier: String::from("VP9"),
+                                    width: w,
+                                    height: h,
+                                    image: image_frame,
+                                    alpha: alpha_frame,
+                                };
+
+                                match serialize(&ws_image) {
+                                    Ok(bin) => {
+                                        println!("binary length: {}", bin.len());
+                                        //println!("{}", bin);
+                                        ctx.binary(bin);
+                                    }
+                                    Err(err) => println!(
+                                        "error serializing a WebSocket image response: {}",
+                                        err
+                                    ),
+                                }
                             }
                             None => {}
                         }
@@ -1853,7 +1877,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-01.2";
+static VERSION_STRING: &'static str = "SV2018-10-01.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

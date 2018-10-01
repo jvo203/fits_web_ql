@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-10-01.2";
+    return "JS2018-10-01.4";
 }
 
 var generateUid = function ()
@@ -1742,16 +1742,64 @@ function open_websocket_connection(datasetId, index)
 			//image
 			if(type == 2)
 			{
-			    var length = dv.getUint32(12, endianness)
+				var offset = 12;
+				var id_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
 
-			    var elapsed = dv.getFloat32(16, endianness) ;
+				var identifier = new Uint8Array(received_msg, offset, id_length) ;
+				identifier = new TextDecoder("utf-8").decode(identifier);
+				offset += id_length;
 			    
-			    console.log("binary image size: " + length + " bytes; server computation time: " + elapsed.toFixed(1) + " [ms]");
+			    var width = dv.getUint32(offset, endianness) ;
+				offset += 4;
 
-			    var image = new Uint8Array(received_msg, 20);
-			    
-			    process_image_event(image, index) ;
+				var height = dv.getUint32(offset, endianness) ;
+				offset += 4;
+
+				var image_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
+
+				var frame = new Uint8Array(received_msg, offset, image_length) ;//offset by 8 bytes
+				offset += image_length;
+
+				var alpha_length = dv.getUint32(offset, endianness) ;
+				offset += 8;
+
+				var alpha = new Uint8Array(received_msg, offset) ;
+				console.log("image frame identifier: ", identifier, "width:", width, "height:", height, "compressed alpha length:", alpha.length);
+
+				var Buffer = require('buffer').Buffer ;
+				var LZ4 = require('lz4') ;
+	
+				var uncompressed = new Buffer(width*height) ;
+				uncompressedSize = LZ4.decodeBlock(new Buffer(alpha), uncompressed) ;
+				alpha = uncompressed.slice(0, uncompressedSize) ;
+				
+				if(identifier == 'VP9')
+				{
+					var decoder = new OGVDecoderVideoVP9();					
+
+					decoder.init(function () {console.log("init callback done");});
+					decoder.processFrame(frame, function () {
+						process_image(decoder.frameBuffer.format.displayWidth,
+							decoder.frameBuffer.format.displayHeight,
+							decoder.frameBuffer.y.bytes,
+							decoder.frameBuffer.y.stride,
+							alpha,						
+							index);
+					});
+				}
+				
 			    return ;
+
+				//clear the Video Canvas
+				/*var c = document.getElementById('VideoCanvas') ;
+    			var ctx = c.getContext("2d");
+
+    			var width = c.width ;
+    			var height = c.height ;
+    
+				ctx.clearRect(0, 0, width, height);*/
 			}
 
 			//full spectrum refresh

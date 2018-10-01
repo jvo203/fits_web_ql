@@ -72,6 +72,10 @@ sudo make install
 ##
 install Google's libvpx from for example https://www.webmproject.org/code/
 
+macOS: "brew install libvpx"
+
+other systems:
+
 git clone https://github.com/webmproject/libvpx
 
 cd libvpx
@@ -87,10 +91,14 @@ sudo make install
 ##
 install x265 version 2.8
 
+macOS: "brew install x265"
+
+other systems:
+
 http://www.linuxfromscratch.org/blfs/view/8.3/multimedia/x265.html
 
 ## WARNING
-many systems, for example Ubuntu, CentOS 6 and 7, need the following environment variable to be set before running fits_web_ql
+some Linux systems, for example Ubuntu, CentOS 6 and 7, need the following environment variable to be set before running fits_web_ql
 
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
