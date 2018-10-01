@@ -92,16 +92,16 @@ it is best to append this line into your .bashrc
 # How to run a local version (Personal Edition)
 cd into the fits_web_ql directory and execute
 
-cargo run --features=vpx --release
+cargo run --release
 
-# How to run on the server (only at the Japanese Virtual Observatory)
+# How to run on the production server (only at the Japanese Virtual Observatory)
 cd into the fits_web_ql directory and execute
 
-cargo run --features 'server vp9' --release
+cargo run --features 'server production' --release
 
 or if you need to specify an alternative HTTP port
 
-cargo run --features 'server vp9' --release -- --port 8000
+cargo run --features 'server production' --release -- --port 8000
 
 # switching between VP9 and HEVC streaming video during development
 

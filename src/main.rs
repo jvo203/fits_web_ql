@@ -993,7 +993,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 );
 
                                 //get a VP9 keyframe
-                                
                             }
                             None => {}
                         }
@@ -1595,7 +1594,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-09-28.0";
+static VERSION_STRING: &'static str = "SV2018-10-01.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2463,6 +2462,36 @@ fn http_fits_response(
     }
 
     html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits));
+
+    #[cfg(not(feature = "server"))]
+    {
+        html.push_str(
+            "<script>
+        var WS_SOCKET = 'ws://';
+        </script>\n",
+        );
+    }
+
+    #[cfg(feature = "server")]
+    {
+        #[cfg(not(feature = "production"))]
+        {
+            html.push_str(
+                "<script>
+        var WS_SOCKET = 'ws://';
+        </script>\n",
+            );
+        }
+
+        #[cfg(feature = "production")]
+        {
+            html.push_str(
+                "<script>
+        var WS_SOCKET = 'wss://';
+        </script>\n",
+            );
+        }
+    }
 
     //the page entry point
     html.push_str(

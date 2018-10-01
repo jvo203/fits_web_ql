@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-09-26.2";
+    return "JS2018-10-01.1";
 }
 
 var generateUid = function ()
@@ -1531,8 +1531,7 @@ function send_ping()
 function open_video_websocket(datasetId)
 {
     var loc = window.location ;
-    var ws_uri = "ws://" + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/video/" + encodeURIComponent(datasetId) ;//unsecure (LAN)
-    //var ws_uri = "wss://" + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/video/" + encodeURIComponent(datasetId) ;//secure JVO Proxy (WAN)
+    var ws_uri = WS_SOCKET + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/video/" + encodeURIComponent(datasetId) ;   
     
     wsVideo = new ReconnectingWebSocket(ws_uri, null, {binaryType : 'arraybuffer'});
     wsVideo.binaryType = 'arraybuffer' ;
@@ -1567,19 +1566,7 @@ function open_websocket_connection(datasetId, index)
 	    // Let us open a web socket
 	    var loc = window.location, ws_uri;		
 
-	    /*if (loc.protocol === "https:")
-		{
-		    ws_uri = "wss:";
-		}
-	    else
-		{
-		    ws_uri = "ws:";
-		    //ws_uri = "wss:";//JVO proxy needs wss
-		}
-	    ws_uri += "//" + loc.hostname + ':' + loc.port + "/fitswebql/websocket/" + datasetId ;*/
-
-	    ws_uri = "ws://" + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/" + encodeURIComponent(datasetId) ;//unsecure (LAN)
-	    //ws_uri = "wss://" + loc.hostname + ROOT_PATH + "websocket/" + encodeURIComponent(datasetId) ;//secure JVO Proxy (WAN)
+		ws_uri = WS_SOCKET + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/" + encodeURIComponent(datasetId) ;
 	    
 	    //d3.select("#welcome").append("p").text("ws_uri: " + ws_uri) ;
 
@@ -9567,7 +9554,7 @@ function show_welcome()
     {
 	ul.append("li")
 	    .attr("class", "list-group-item list-group-item-success")
-	    .html("<h4>FITSWebQL Personal Edition (local version) download: <a href=\"http://jvo.nao.ac.jp/~chris/fitswebql.html\"><em>FITSWebQL installation instructions</em></a></h4>");
+	    .html('<h4>FITSWebQL Personal Edition (local desktop) on GitHub: <a href="https://github.com/jvo203/fits_web_ql"><em>FITSWebQL installation instructions</em></a></h4>');
     }    
     
     bodyDiv.append("h3")	
@@ -9818,10 +9805,10 @@ function setup_help()
 	    textColour = 'red' ;
 	
 	footer.append("p")
-	    .html("A local version is available for download: ")
+	    .html("A local version is available on GitHub: ")
 	    .append("a")
 	    .style("color", textColour)
-	    .attr("href", "http://jvo.nao.ac.jp/~chris/fitswebql.html")
+	    .attr("href", "https://github.com/jvo203/fits_web_ql")
 	    .attr("target", "_blank")
 	    .style("target-new", "tab")
 	    .html("<b>FITSWebQL installation instructions</b>") ;

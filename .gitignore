@@ -16,4 +16,4 @@ Cargo.lock
 *.db
 
 #Apple
-.DS_Store
+**/*.DS_Store
