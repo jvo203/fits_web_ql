@@ -1,5 +1,7 @@
 # fits_web_ql
-A trial Rust re-implementation of the C/C++ FITSWebQL
+A next-generationre-implementation of the C/C++ FITSWebQL in Rust. The previous C/C++ version can still be found here:
+
+http://jvo.nao.ac.jp/~chris/fitswebql.html
 
 # IMPORTANT
 After cloning the fits_web_ql repository the 809MB-large spectral lines database file needs to be downloaded from
@@ -108,8 +110,8 @@ or if you need to specify an alternative HTTP port
 
 cargo run --features 'server production' --release -- --port 8000
 
-# switching between VP9 and HEVC streaming video during development
+# switching between VP9 and HEVC streaming video during development (testing purposes only, not recommended in normal use; by default streaming video is handled by HEVC and still images by VP9)
 
-cargo run --features 'server vp9' --release
+cargo run --features 'server production vp9' --release
 
-cargo run --features 'server hevc' --release
+cargo run --features 'server production hevc' --release

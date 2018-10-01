@@ -66,7 +66,7 @@ use std::io::Write;
 use std::sync::Arc;
 use std::thread;
 use std::time::SystemTime;
-use std::{env, ptr};
+use std::{env, mem, ptr};
 
 use actix::*;
 use actix_web::http::header::HeaderValue;
@@ -490,7 +490,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         if self.enc.is_null() {
-                            self.enc = unsafe { x265_encoder_open_160(self.param) };
+                            self.enc = unsafe { x265_encoder_open(self.param) }; //x265_encoder_open_160 for x265 2.8
                             unsafe { x265_picture_init(self.param, self.pic) };
                         }
 
@@ -979,8 +979,98 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     }
                                 }
 
+                                //get a VP9 keyframe
+                                let mut image_frame: Vec<u8> = Vec::new();
+
+                                let mut w = fits.width as u32;
+                                let mut h = fits.height as u32;
+                                let pixel_count = (w as u64) * (h as u64);
+
+                                if pixel_count > fits::IMAGE_PIXEL_COUNT_LIMIT {
+                                    let ratio: f32 = ((pixel_count as f32)
+                                        / (fits::IMAGE_PIXEL_COUNT_LIMIT as f32))
+                                        .sqrt();
+
+                                    if ratio > 4.5 {
+                                        //default scaling, no optimisations
+                                        w = ((w as f32) / ratio) as u32;
+                                        h = ((h as f32) / ratio) as u32;
+
+                                        println!(
+                    "downscaling the image from {}x{} to {}x{}, default ratio: {}",
+                    fits.width, fits.height, w, h, ratio
+                );
+                                    } else if ratio > 3.0 {
+                                        // 1/4
+                                        w = w / 4;
+                                        h = h / 4;
+
+                                        println!(
+                                            "downscaling the image from {}x{} to {}x{} (1/4)",
+                                            fits.width, fits.height, w, h
+                                        );
+                                    } else if ratio > 2.25 {
+                                        // 3/8
+                                        w = 3 * w / 8;
+                                        h = (h * 3 + 7) / 8;
+
+                                        println!(
+                                            "downscaling the image from {}x{} to {}x{} (3/8)",
+                                            fits.width, fits.height, w, h
+                                        );
+                                    } else if ratio > 1.5 {
+                                        // 1/2
+                                        w = w / 2;
+                                        h = h / 2;
+
+                                        println!(
+                                            "downscaling the image from {}x{} to {}x{} (1/2)",
+                                            fits.width, fits.height, w, h
+                                        );
+                                    } else if ratio > 1.0 {
+                                        // 3/4
+                                        w = 3 * w / 4;
+                                        h = 3 * h / 4;
+
+                                        println!(
+                                            "downscaling the image from {}x{} to {}x{} (3/4)",
+                                            fits.width, fits.height, w, h
+                                        );
+                                    }
+                                }
+
+                                let mut raw: vpx_image = vpx_image::default();
+                                let mut ctx = vpx_codec_ctx_t {
+                                    name: ptr::null(),
+                                    iface: ptr::null_mut(),
+                                    err: VPX_CODEC_ERROR,
+                                    err_detail: ptr::null(),
+                                    init_flags: 0,
+                                    config: vpx_codec_ctx__bindgen_ty_1 { enc: ptr::null() },
+                                    priv_: ptr::null_mut(),
+                                };
+
+                                let align = 1;
+
+                                let ret = unsafe {
+                                    vpx_img_alloc(
+                                        &mut raw,
+                                        vpx_img_fmt::VPX_IMG_FMT_I420,
+                                        w,
+                                        h,
+                                        align,
+                                    )
+                                }; //I420 or I444
+
+                                if ret.is_null() {
+                                    println!("VP9 image frame error: image allocation failed");
+                                    return;
+                                }
+                                mem::forget(ret); // img and ret are the same
+                                print!("{:#?}", raw);
+
                                 //redo the image based on new user parameters, pixels and mask
-                                let y = fits.pixels_to_luminance(
+                                let mut y = fits.pixels_to_luminance(
                                     &user.pixels,
                                     &user.mask,
                                     user.pmin,
@@ -992,7 +1082,176 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     &user.flux,
                                 );
 
-                                //get a VP9 keyframe
+                                {
+                                    let start = precise_time::precise_time_ns();
+
+                                    let mut dst = vec![0; (w as usize) * (h as usize)];
+                                    fits.resize_and_invert(
+                                        &y,
+                                        &mut dst,
+                                        w,
+                                        h,
+                                        libyuv_FilterMode_kFilterBox,
+                                    );
+                                    y = dst;
+
+                                    let stop = precise_time::precise_time_ns();
+
+                                    println!(
+                                        "VP9 image frame inverting/downscaling time: {} [ms]",
+                                        (stop - start) / 1000000
+                                    );
+                                }
+
+                                let alpha_frame = {
+                                    let start = precise_time::precise_time_ns();
+
+                                    //invert/downscale the mask (alpha channel) without interpolation
+                                    let mut alpha = vec![0; (w as usize) * (h as usize)];
+
+                                    fits.resize_and_invert(
+                                        &user.mask,
+                                        &mut alpha,
+                                        w,
+                                        h,
+                                        libyuv_FilterMode_kFilterNone,
+                                    );
+
+                                    let compressed_alpha = lz4_compress::compress(&alpha);
+
+                                    let stop = precise_time::precise_time_ns();
+
+                                    println!(
+                "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
+                alpha.len(),
+                compressed_alpha.len(),
+                (stop - start) / 1000000
+            );
+
+                                    compressed_alpha
+                                };
+
+                                //I420
+                                let stride_u = raw.stride[1];
+                                let stride_v = raw.stride[2];
+                                let count = stride_u * stride_v;
+
+                                let u: &[u8] = &vec![128; count as usize];
+                                let v: &[u8] = &vec![128; count as usize];
+
+                                raw.planes[0] = unsafe { mem::transmute(y.as_ptr()) };
+                                raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
+                                raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
+
+                                raw.stride[0] = w as i32;
+
+                                let mut cfg = vpx_codec_enc_cfg::default();
+                                let mut ret = unsafe {
+                                    vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut cfg, 0)
+                                };
+
+                                if ret != VPX_CODEC_OK {
+                                    println!("VP9 image frame error: default Configuration failed");
+
+                                    //release the image
+                                    unsafe { vpx_img_free(&mut raw) };
+
+                                    return;
+                                }
+
+                                cfg.g_w = w;
+                                cfg.g_h = h;
+
+                                cfg.rc_min_quantizer = 10;
+                                cfg.rc_max_quantizer = 42;
+                                cfg.rc_target_bitrate = 4096; // [kilobits per second]
+                                cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
+                                cfg.g_threads = num_cpus::get().min(4) as u32; //set the upper limit on the number of threads to 4
+
+                                ret = unsafe {
+                                    vpx_codec_enc_init_ver(
+                                        &mut ctx,
+                                        vpx_codec_vp9_cx(),
+                                        &mut cfg,
+                                        0,
+                                        (14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
+                                    )
+                                };
+
+                                if ret != VPX_CODEC_OK {
+                                    println!("VP9 image frame error: codec init failed {:?}", ret);
+
+                                    unsafe { vpx_img_free(&mut raw) };
+
+                                    return;
+                                }
+
+                                ret = unsafe {
+                                    vpx_codec_control_(
+                                        &mut ctx,
+                                        vp8e_enc_control_id::VP8E_SET_CPUUSED as i32,
+                                        8,
+                                    )
+                                };
+
+                                if ret != VPX_CODEC_OK {
+                                    println!("VP9: error setting VP8E_SET_CPUUSED {:?}", ret);
+                                }
+
+                                let mut flags = 0;
+                                flags |= VPX_EFLAG_FORCE_KF;
+
+                                //call encode_frame with a valid image
+                                match fits::encode_frame(
+                                    ctx,
+                                    raw,
+                                    0,
+                                    flags as i64,
+                                    VPX_DL_BEST_QUALITY as u64,
+                                ) {
+                                    Ok(res) => match res {
+                                        Some(res) => image_frame = res,
+                                        _ => {}
+                                    },
+                                    Err(err) => {
+                                        println!("codec error: {:?}", err);
+
+                                        unsafe { vpx_img_free(&mut raw) };
+                                        unsafe { vpx_codec_destroy(&mut ctx) };
+
+                                        return;
+                                    }
+                                };
+
+                                //flush the encoder to signal the end
+                                match fits::flush_frame(ctx, VPX_DL_BEST_QUALITY as u64) {
+                                    Ok(res) => match res {
+                                        Some(res) => image_frame = res,
+                                        _ => {}
+                                    },
+                                    Err(err) => {
+                                        println!("codec error: {:?}", err);
+
+                                        unsafe { vpx_img_free(&mut raw) };
+                                        unsafe { vpx_codec_destroy(&mut ctx) };
+
+                                        return;
+                                    }
+                                };
+
+                                if image_frame.is_empty() {
+                                    println!("VP9 image frame error: no image packet produced");
+
+                                    unsafe { vpx_img_free(&mut raw) };
+
+                                    unsafe { vpx_codec_destroy(&mut ctx) };
+
+                                    return;
+                                }
+
+                                unsafe { vpx_img_free(&mut raw) };
+                                unsafe { vpx_codec_destroy(&mut ctx) };
+                                //(...) we have a VP9 frame
                             }
                             None => {}
                         }
@@ -1594,7 +1853,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-01.0";
+static VERSION_STRING: &'static str = "SV2018-10-01.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

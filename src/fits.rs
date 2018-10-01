@@ -3624,7 +3624,7 @@ impl FITS {
         {
             let start = precise_time::precise_time_ns();
 
-            let mut dst = vec![0; (w * h) as usize];
+            let mut dst = vec![0; (w as usize) * (h as usize)];
             self.resize_and_invert(&y, &mut dst, w, h, libyuv_FilterMode_kFilterBox);
             y = dst;
 
@@ -3640,7 +3640,7 @@ impl FITS {
             let start = precise_time::precise_time_ns();
 
             //invert/downscale the mask (alpha channel) without interpolation
-            let mut alpha = vec![0; (w * h) as usize];
+            let mut alpha = vec![0; (w as usize) * (h as usize)];
 
             self.resize_and_invert(&self.mask, &mut alpha, w, h, libyuv_FilterMode_kFilterNone);
 

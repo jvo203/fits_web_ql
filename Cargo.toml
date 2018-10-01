@@ -13,6 +13,11 @@ production = []
 
 [build-dependencies]
 bindgen = "*"
+metadeps = "*"
+
+[package.metadata.pkg-config]
+x265 = "2.8"
+vpx = "1.7.0"
 
 [dependencies]
 actix = "*"
