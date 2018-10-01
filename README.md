@@ -82,6 +82,11 @@ sudo make install
 
 (when compiling from source enforce -fPIC by means of the configure flag --enable-pic)
 
+##
+install x265 version 2.8
+
+http://www.linuxfromscratch.org/blfs/view/8.3/multimedia/x265.html
+
 ## WARNING
 many systems, for example Ubuntu, CentOS 6 and 7, need the following environment variable to be set before running fits_web_ql
 
