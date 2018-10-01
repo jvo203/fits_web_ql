@@ -14,8 +14,8 @@ fn main() {
     println!("cargo:rustc-link-lib=yuv");
     //println!("cargo:rustc-link-lib=x265");
 
-    println!("cargo:rustc-link-lib=stdc++");
-    println!("cargo:rustc-link-lib=numa");
+    //println!("cargo:rustc-link-lib=stdc++");//causes problems on macOS (cannot be found!)
+    //println!("cargo:rustc-link-lib=numa");//causes problems on macOS (cannot be found!)
 
     let libs = metadeps::probe().unwrap();
     let x265 = libs.get("x265").unwrap();
@@ -24,9 +24,23 @@ fn main() {
     let mut path = x265.link_paths[0].clone();
     path.push(PathBuf::from("libx265.so"));
 
-    let link = path.read_link().unwrap();
-    let name = link.to_str().unwrap();
-    let apiver = name.split(".").nth(2).unwrap();
+    let apiver = if path.exists() {
+        let link = path.read_link().unwrap();
+        let name = link.to_str().unwrap();
+        String::from(name.split(".").nth(2).unwrap())
+    } else {
+        //on macOS this should be libx265.dylib
+        let mut path = x265.link_paths[0].clone();
+        path.push(PathBuf::from("libx265.dylib"));
+
+        if !path.exists() {
+            panic!("cannot find a shared library for x265x");
+        }
+
+        let link = path.read_link().unwrap();
+        let name = link.to_str().unwrap();
+        String::from(name.split(".").nth(1).unwrap())
+    };
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
