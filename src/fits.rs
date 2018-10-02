@@ -23,6 +23,7 @@ use actix::*;
 use rayon;
 use rayon::prelude::*;
 use server;
+use UserParams;
 
 #[cfg(feature = "server")]
 use curl::easy::Easy;
@@ -3857,6 +3858,7 @@ impl FITS {
         y1: i32,
         x2: i32,
         y2: i32,
+        user: &Option<UserParams>,
     ) -> Option<(u32, u32, Vec<u8>, Vec<u8>)> {
         //spatial range checks
         let width = self.width as i32;
@@ -3887,8 +3889,13 @@ impl FITS {
         let dimx = x2 - x1 + 1;
         let dimy = y2 - y1 + 1;
 
-        let mut pixels: Vec<f32> = vec![0.0; (dimx * dimy) as usize];
-        let mut mask: Vec<u8> = vec![0; (dimx * dimy) as usize];
+        let (master_pixels, master_mask) = match user {
+            Some(params) => (&params.pixels, &params.mask),
+            None => (&self.pixels, &self.mask),
+        };
+
+        let mut pixels: Vec<f32> = vec![0.0; (dimx as usize) * (dimy as usize)];
+        let mut mask: Vec<u8> = vec![0; (dimx as usize) * (dimy as usize)];
 
         for j in y1..y2 + 1 {
             let mut src_offset = (j * width) as usize;
@@ -3898,25 +3905,38 @@ impl FITS {
                 let valid_pixel = (i >= 0) && (i < width) && (j >= 0) && (j < height);
 
                 if valid_pixel {
-                    pixels[dst_offset] = self.pixels[src_offset + i as usize];
-                    mask[dst_offset] = self.mask[src_offset + i as usize];
+                    pixels[dst_offset] = master_pixels[src_offset + i as usize];
+                    mask[dst_offset] = master_mask[src_offset + i as usize];
                 }
 
                 dst_offset = dst_offset + 1;
             }
         }
 
-        let y = self.pixels_to_luminance(
-            &pixels,
-            &mask,
-            self.pmin,
-            self.pmax,
-            self.black,
-            self.white,
-            self.median,
-            self.sensitivity,
-            &self.flux,
-        );
+        let y = match user {
+            Some(params) => self.pixels_to_luminance(
+                &pixels,
+                &mask,
+                params.pmin,
+                params.pmax,
+                params.black,
+                params.white,
+                params.median,
+                params.sensitivity,
+                &params.flux,
+            ),
+            None => self.pixels_to_luminance(
+                &pixels,
+                &mask,
+                self.pmin,
+                self.pmax,
+                self.black,
+                self.white,
+                self.median,
+                self.sensitivity,
+                &self.flux,
+            ),
+        };
 
         match self.make_vpx_viewport(dimx as u32, dimy as u32, &y) {
             Some(frame) => {

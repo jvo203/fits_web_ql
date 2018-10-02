@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-10-01.4";
+    return "JS2018-10-02.2";
 }
 
 var generateUid = function ()
@@ -1476,9 +1476,7 @@ function send_http_realtime_spectrum_request(strRequest, index)
 
 		//spectrum
 		if(type == 0)
-		{						
-		    var length = dv.getUint32(12, endianness) ;			
-
+		{	
 		    computed = dv.getFloat32(16, endianness) ;
 		    
 		    var spectrum = new Float32Array(received_msg, 20);
@@ -1804,12 +1802,15 @@ function open_websocket_connection(datasetId, index)
 
 			//full spectrum refresh
 			if(type == 3)
-			{						
-			    var length = dv.getUint32(12, endianness) ;					    
-			    var mean_spectrum = new Float32Array(received_msg, 16, length);
-			    var integrated_spectrum = new Float32Array(received_msg, 16+4*length, length);	
+			{	
+				var length = dv.getUint32(12, endianness) ;
+				var offset = 20;
+				var mean_spectrum = new Float32Array(received_msg, offset, length);
+				offset += 4*length + 8 ;
+			    var integrated_spectrum = new Float32Array(received_msg, offset, length);				
 
-			    //self.postMessage({type: 'refresh', latency: latency, recv_seq_id: recv_seq_id, length: length, mean_spectrum: mean_spectrum, integrated_spectrum: integrated_spectrum});			    
+				/*self.postMessage;console.log({type: 'refresh', latency: latency, recv_seq_id: recv_seq_id, length: length, mean_spectrum: mean_spectrum, integrated_spectrum: integrated_spectrum});*/
+				
 			    fitsContainer[index-1].depth = length ;
 			    fitsContainer[index-1].mean_spectrum = mean_spectrum ;
 			    fitsContainer[index-1].integrated_spectrum = integrated_spectrum ;
@@ -1851,11 +1852,11 @@ function open_websocket_connection(datasetId, index)
 			if(type == 4)
 			{
 			    var min = dv.getFloat32(12, endianness) ;
-			    var max = dv.getFloat32(16, endianness) ;
-			    var median = dv.getFloat32(20, endianness) ;
-			    var sensitivity = dv.getFloat32(24, endianness) ;
-			    var black = dv.getFloat32(28, endianness) ;
-			    var white = dv.getFloat32(32, endianness) ;
+				var max = dv.getFloat32(16, endianness) ;
+				var black = dv.getFloat32(20, endianness) ;
+			    var white = dv.getFloat32(24, endianness) ;
+			    var median = dv.getFloat32(28, endianness) ;
+			    var sensitivity = dv.getFloat32(32, endianness) ;			    
 
 			    console.log("histogram refresh", min, max, median, sensitivity, black, white) ;
 
@@ -1875,7 +1876,7 @@ function open_websocket_connection(datasetId, index)
 			    fitsContainer[index-1].white = white ;
 			    
 			    var nbins = dv.getUint32(36, endianness) ;
-			    var histogram = new Int32Array(received_msg, 40, nbins);
+			    var histogram = new Int32Array(received_msg, 44, nbins);
 			    fitsContainer[index-1].histogram = histogram ;
 				
 			    console.log("NBINS:", nbins, histogram) ;

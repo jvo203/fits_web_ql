@@ -107,6 +107,29 @@ pub struct WsSpectrum {
 }
 
 #[derive(Serialize, Debug)]
+pub struct WsSpectra {
+    pub ts: f32,
+    pub seq_id: u32,
+    pub msg_type: u32,
+    pub mean_spectrum: Vec<f32>,
+    pub integrated_spectrum: Vec<f32>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct WsHistogram {
+    pub ts: f32,
+    pub seq_id: u32,
+    pub msg_type: u32,
+    pub pmin: f32,
+    pub pmax: f32,
+    pub black: f32,
+    pub white: f32,
+    pub median: f32,
+    pub sensitivity: f32,
+    pub hist: Vec<i32>,
+}
+
+#[derive(Serialize, Debug)]
 pub struct WsFrame {
     pub ts: f32,
     pub seq_id: u32,
@@ -131,7 +154,7 @@ struct WsSessionState {
     addr: Addr<server::SessionServer>,
 }
 
-struct UserParams {
+pub struct UserParams {
     pmin: f32,
     pmax: f32,
     black: f32,
@@ -729,7 +752,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         if image {
-                            match fits.get_viewport(x1, y1, x2, y2) {
+                            match fits.get_viewport(x1, y1, x2, y2, &self.user) {
                                 Some((width, height, frame, alpha)) => {
                                     //send a binary response message (serialize a structure to a binary stream)
                                     let ws_viewport = WsImage {
@@ -960,15 +983,66 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     user.black = black;
                                                     user.white = white;
                                                     user.median = median;
-
+                                                    user.sensitivity = sensitivity;
                                                     user.pixels = pixels;
                                                     user.mask = mask;
 
                                                     //and then
 
-                                                    //send a spectrum refresh
+                                                    //send a spectra refresh
+                                                    //send a binary response message (serialize a structure to a binary stream)
+                                                    let ws_spectra = WsSpectra {
+                                                        ts: timestamp as f32,
+                                                        seq_id: 0,
+                                                        msg_type: 3,
+                                                        mean_spectrum: mean_spectrum,
+                                                        integrated_spectrum: integrated_spectrum,
+                                                    };
+
+                                                    match serialize(&ws_spectra) {
+                                                        Ok(bin) => {
+                                                            println!(
+                                                                "binary length: {}",
+                                                                bin.len()
+                                                            );
+                                                            //println!("{}", bin);
+                                                            ctx.binary(bin);
+                                                        }
+                                                        Err(err) => println!(
+                                        "error serializing a WebSocket spectra response: {}",
+                                        err
+                                    ),
+                                                    }
 
                                                     //send a histogram refresh
+                                                    //send a binary response message (serialize a structure to a binary stream)
+                                                    let ws_histogram = WsHistogram {
+                                                        ts: timestamp as f32,
+                                                        seq_id: 0,
+                                                        msg_type: 4,
+                                                        pmin: pmin,
+                                                        pmax: pmax,
+                                                        black: black,
+                                                        white: white,
+                                                        median: median,
+                                                        sensitivity: sensitivity,
+                                                        hist: hist,
+                                                    };
+
+                                                    match serialize(&ws_histogram) {
+                                                        Ok(bin) => {
+                                                            println!(
+                                                                "binary length: {}",
+                                                                bin.len()
+                                                            );
+                                                            //println!("{}", bin);
+                                                            ctx.binary(bin);
+                                                        }
+                                                        Err(err) => println!(
+                                        "error serializing a WebSocket histogram response: {}",
+                                        err
+                                    ),
+                                                    }
                                                 }
                                                 None => {}
                                             }
@@ -1877,7 +1951,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-01.3";
+static VERSION_STRING: &'static str = "SV2018-10-02.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
