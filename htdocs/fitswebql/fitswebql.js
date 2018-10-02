@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-10-02.2";
+    return "JS2018-10-02.4";
 }
 
 var generateUid = function ()
@@ -1451,51 +1451,6 @@ function process_progress_event(data, index)
 			show_error();
 	}
     }
-}
-
-function send_http_realtime_spectrum_request(strRequest, index)
-{
-    var xmlhttp = new XMLHttpRequest();
-
-    var url = 'get_spectrum?' + strRequest ;
-
-    xmlhttp.onerror = null ;
-    xmlhttp.onreadystatechange = function() {
-	if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
-	{	    
-	    var received_msg = xmlhttp.response ;
-
-	    if(received_msg instanceof ArrayBuffer)
-	    {
-		var dv = new DataView(received_msg) ;		    		  
-
-		latency = performance.now() - dv.getFloat32(0, endianness) ;		  
-		//console.log("[http] latency = " + latency.toFixed(1) + " [ms]") ;
-		recv_seq_id = dv.getUint32(4, endianness) ;		  
-		var type = dv.getUint32(8, endianness);
-
-		//spectrum
-		if(type == 0)
-		{	
-		    computed = dv.getFloat32(16, endianness) ;
-		    
-		    var spectrum = new Float32Array(received_msg, 20);
-
-		    //console.log("[http] computed = " + computed.toFixed(1) + " [ms]") ;
-		    
-		    spectrum_stack[index].push({spectrum: spectrum, id: recv_seq_id}) ;
-		    console.log("index:", index+1, "spectrum_stack length:", spectrum_stack[index].length) ;
-		    
-		    return ;
-		}
-	    }
-	}
-    }
-
-    xmlhttp.open("POST", url, true);
-    xmlhttp.responseType = 'arraybuffer';
-    xmlhttp.timeout = 0 ;
-    xmlhttp.send();
 }
 
 function getEndianness() {
@@ -4991,48 +4946,7 @@ function display_preferences(index)
 				  var htmlStr = realtime ? '<span class="glyphicon glyphicon-check"></span> realtime spectrum updates' : '<span class="glyphicon glyphicon-unchecked"></span> realtime spectrum updates' ;				  				  
 				  d3.select(this).html(htmlStr);				  
 				 })
-	.html(htmlStr) ;     
-
-    {
-	var tmp = prefDropdown.append("li")	
-	    .append("a")    
-	    .style("class", "form-group")
-	    .attr("class", "form-horizontal");
-
-	tmp.append("label")
-	    .attr("class", "control-label")	
-	    .html("realtime comm.:&nbsp; ");
-
-	let checked = '';
-
-	if(transport_mode == 'WS')
-	    checked = 'checked';
-	else
-	    checked = '' ;
-	
-	tmp.append("label")
-	    .style("class", "radio-inline")
-	    .style('cursor','pointer')
-	    .on("click", function () {
-		localStorage.setItem("transport_mode", "WS") ;
-		transport_mode = 'WS' ;
-	    })
-	    .html('<input type="radio" name="transport_mode"' + checked + '>WebSockets&nbsp; ') ;
-
-	if(transport_mode == 'HTTP')
-	    checked = 'checked';
-	else
-	    checked = '' ;
-	
-	tmp.append("label")
-	    .style("class", "radio-inline")
-	    .style('cursor','pointer')
-	    .on("click", function () {
-		localStorage.setItem("transport_mode", "HTTP") ;
-		transport_mode = 'HTTP' ;
-	    })
-	    .html('<input type="radio" name="transport_mode"' + checked + '>HTTP&nbsp; ') ;
-    }
+	.html(htmlStr) ;
     
     var tmpA ;
 
@@ -7871,19 +7785,11 @@ function setup_image_selection()
 			/*let frame_bounds = get_frame_bounds(data_band_lo, data_band_hi, index) ;
 			console.log("frame_bounds:", frame_bounds) ;*/
 			
-			if(transport_mode == 'WS' && wsConn[index].readyState == 1)
+			if(wsConn[index].readyState == 1)
 			{						
 			    let strRequest = 'x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=false&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id ;
 			    
 			    wsConn[index].send('[spectrum] ' + strRequest + '&timestamp=' + performance.now());
-			}
-
-			//alternative HTTP transport		    
-			if(transport_mode == 'HTTP' || wsConn[index].readyState != 1)
-			{
-			    let strRequest = 'datasetId=' + encodeURIComponent(dataId) + '&x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=false&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id ;
-			    
-			    send_http_realtime_spectrum_request(strRequest + '&timestamp=' + performance.now(), index) ;
 			}
 		    }
 		}
@@ -11259,17 +11165,7 @@ async*/ function mainRenderer()
 	colourmap = localStorage.getItem("colourmap") ;
     
     if (colourmap === null)
-	colourmap = "green" ;
-
-    transport_mode = 'WS' ;//'WS' or 'HTTP'
-    
-    if (localStorage.getItem("transport_mode") === null)
-    {
-	transport_mode = 'WS' ;
-	localStorage.setItem("transport_mode", transport_mode) ;	
-    }
-    else
-	transport_mode = localStorage.getItem("transport_mode") ;
+	colourmap = "green" ;   
 
     composite_view = (parseInt(votable.getAttribute('data-composite')) == 1) ? true : false ;
     console.log("composite view:", composite_view) ;
