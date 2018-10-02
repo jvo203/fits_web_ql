@@ -157,6 +157,8 @@ struct WsSessionState {
 pub struct UserParams {
     pmin: f32,
     pmax: f32,
+    lmin: f32,
+    lmax: f32,
     black: f32,
     white: f32,
     median: f32,
@@ -921,16 +923,54 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 user.flux = flux.clone();
                                 user.start = start;
                                 user.end = end;
+
+                                if flux == "legacy" {
+                                    //recalculate lmin, lmax; change pmin, pmax to black, white in a call to pixels_to_luminance
+                                    let xmin = 0.01f32;
+                                    let xmax = 100.0f32;
+                                    let pmin = 0.001f32;
+                                    let pmax = 0.5f32;
+
+                                    let p = pmin + (pmax - pmin) * (noise - xmin) / (xmax - xmin);
+
+                                    user.lmin = p.ln();
+                                    user.lmax = (p + 1.0).ln();
+
+                                    user.pmin = black;
+                                    user.pmax = white;
+                                };
                             }
                             None => {
                                 if start != 0 || end != fits.depth - 1 {
                                     refresh_image = true;
                                 }
 
+                                let (pmin, pmax, lmin, lmax) = if flux == "legacy" {
+                                    //recalculate lmin, lmax; change pmin, pmax to black, white in a call to pixels_to_luminance
+                                    let xmin = 0.01f32;
+                                    let xmax = 100.0f32;
+                                    let pmin = 0.001f32;
+                                    let pmax = 0.5f32;
+
+                                    let p = pmin + (pmax - pmin) * (noise - xmin) / (xmax - xmin);
+
+                                    let lmin = p.ln();
+                                    let lmax = (p + 1.0).ln();
+
+                                    let pmin = black;
+                                    let pmax = white;
+
+                                    (pmin, pmax, lmin, lmax)
+                                } else {
+                                    (fits.pmin, fits.pmax, fits.lmin, fits.lmax)
+                                };
+
                                 //create a new user parameter set
                                 self.user = Some(UserParams {
-                                    pmin: fits.pmin,
-                                    pmax: fits.pmax,
+                                    pmin: pmin,
+                                    pmax: pmax,
+                                    lmin: lmin,
+                                    lmax: lmax,
                                     black: black,
                                     white: white,
                                     median: median,
@@ -1149,6 +1189,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     &user.mask,
                                     user.pmin,
                                     user.pmax,
+                                    user.lmin,
+                                    user.lmax,
                                     user.black,
                                     user.white,
                                     user.median,
@@ -1436,9 +1478,20 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         if fits.has_data && !self.pic.is_null() {
                             let start = precise_time::precise_time_ns();
 
+                            let flux = match self.user {
+                                Some(ref user) => user.flux.clone(),
+                                None => fits.flux.clone(),
+                            };
+
                             //HEVC (x265)
                             #[cfg(feature = "hevc")]
-                            match fits.get_video_frame(frame, ref_freq, self.width, self.height) {
+                            match fits.get_video_frame(
+                                frame,
+                                ref_freq,
+                                self.width,
+                                self.height,
+                                &flux,
+                            ) {
                                 Some(mut y) => {
                                     unsafe {
                                         (*self.pic).stride[0] = self.width as i32;
@@ -1603,7 +1656,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                             //VP9 (libvpx)
                             #[cfg(feature = "vp9")]
-                            match fits.get_video_frame(frame, ref_freq, self.width, self.height) {
+                            match fits.get_video_frame(
+                                frame,
+                                ref_freq,
+                                self.width,
+                                self.height,
+                                &flux,
+                            ) {
                                 Some(mut image) => {
                                     //serialize a video response with seq_id, timestamp
                                     //send a binary response
@@ -1698,6 +1757,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         let width = self.width;
                         let height = self.height;
 
+                        let flux = match self.user {
+                            Some(ref user) => Some(user.flux.clone()),
+                            None => None,
+                        };
+
                         let mut planes: Vec<_> = self
                             .dataset_id
                             .clone()
@@ -1721,7 +1785,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }
 
                                 if fits.has_data {
-                                    match fits.get_video_frame(frame, ref_freq, width, height) {
+                                    let flux = match flux {
+                                        Some(ref flux) => flux.clone(),
+                                        None => fits.flux.clone(),
+                                    };
+
+                                    match fits
+                                        .get_video_frame(frame, ref_freq, width, height, &flux)
+                                    {
                                         Some(y) => y,
                                         None => vec![0; (width * height) as usize],
                                     }
@@ -1951,7 +2022,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-02.1";
+static VERSION_STRING: &'static str = "SV2018-10-02.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

@@ -766,7 +766,9 @@ function process_image(w, h, bytes, stride, alpha, index)
 
 	    display_beam() ;
 	    
-	    setup_3d_view() ;
+		setup_3d_view() ;
+		
+		hide_hourglass() ;
 	}
 	else
 	{

@@ -214,6 +214,8 @@ pub struct FITS {
     data_flux: String,
     pub pmin: f32,
     pub pmax: f32,
+    pub lmin: f32,
+    pub lmax: f32,
     hist: Vec<i32>,
     median: f32,
     mad: f32,
@@ -222,7 +224,7 @@ pub struct FITS {
     black: f32,
     white: f32,
     pub sensitivity: f32,
-    flux: String,
+    pub flux: String,
     has_frequency: bool,
     has_velocity: bool,
     frame_multiplier: f64,
@@ -308,6 +310,8 @@ impl FITS {
             data_flux: String::from("logistic"),
             pmin: std::f32::MIN,
             pmax: std::f32::MAX,
+            lmin: (0.5f32).ln(),
+            lmax: (1.5f32).ln(),
             hist: Vec::new(),
             median: 0.0,
             mad: 0.0,
@@ -2502,7 +2506,7 @@ impl FITS {
         );
     }
 
-    fn data_to_luminance_u8(&self, frame: usize) -> Vec<u8> {
+    fn data_to_luminance_u8(&self, frame: usize, flux: &String) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -2516,7 +2520,7 @@ impl FITS {
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match self.flux.as_ref() {
+        match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -2584,33 +2588,31 @@ impl FITS {
                     }
                 }).collect(),
             //by default assume "legacy"
-            _ => {
-                let lmin = (0.5f32).ln();
-                let lmax = (1.5f32).ln();
+            _ => self.data_u8[frame]
+                .par_iter()
+                .zip(self.mask.par_iter())
+                .map(|(x, m)| {
+                    if *m > 0 {
+                        let x = self.bzero + self.bscale * (*x as f32);
+                        let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
 
-                self.data_u8[frame]
-                    .par_iter()
-                    .zip(self.mask.par_iter())
-                    .map(|(x, m)| {
-                        if *m > 0 {
-                            let x = self.bzero + self.bscale * (*x as f32);
-                            let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
-
-                            if pixel > 0.0 {
-                                (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
-                                    as u8
-                            } else {
-                                0
-                            }
+                        if pixel > 0.0 {
+                            (255.0 * num::clamp(
+                                (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
+                                0.0,
+                                1.0,
+                            )) as u8
                         } else {
                             0
                         }
-                    }).collect()
-            }
+                    } else {
+                        0
+                    }
+                }).collect(),
         }
     }
 
-    fn data_to_luminance_i16(&self, frame: usize) -> Vec<u8> {
+    fn data_to_luminance_i16(&self, frame: usize, flux: &String) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -2624,7 +2626,7 @@ impl FITS {
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match self.flux.as_ref() {
+        match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -2692,33 +2694,31 @@ impl FITS {
                     }
                 }).collect(),
             //by default assume "legacy"
-            _ => {
-                let lmin = (0.5f32).ln();
-                let lmax = (1.5f32).ln();
+            _ => self.data_i16[frame]
+                .par_iter()
+                .zip(self.mask.par_iter())
+                .map(|(x, m)| {
+                    if *m > 0 {
+                        let x = self.bzero + self.bscale * (*x as f32);
+                        let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
 
-                self.data_i16[frame]
-                    .par_iter()
-                    .zip(self.mask.par_iter())
-                    .map(|(x, m)| {
-                        if *m > 0 {
-                            let x = self.bzero + self.bscale * (*x as f32);
-                            let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
-
-                            if pixel > 0.0 {
-                                (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
-                                    as u8
-                            } else {
-                                0
-                            }
+                        if pixel > 0.0 {
+                            (255.0 * num::clamp(
+                                (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
+                                0.0,
+                                1.0,
+                            )) as u8
                         } else {
                             0
                         }
-                    }).collect()
-            }
+                    } else {
+                        0
+                    }
+                }).collect(),
         }
     }
 
-    fn data_to_luminance_i32(&self, frame: usize) -> Vec<u8> {
+    fn data_to_luminance_i32(&self, frame: usize, flux: &String) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -2732,7 +2732,7 @@ impl FITS {
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match self.flux.as_ref() {
+        match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -2800,33 +2800,31 @@ impl FITS {
                     }
                 }).collect(),
             //by default assume "legacy"
-            _ => {
-                let lmin = (0.5f32).ln();
-                let lmax = (1.5f32).ln();
+            _ => self.data_i32[frame]
+                .par_iter()
+                .zip(self.mask.par_iter())
+                .map(|(x, m)| {
+                    if *m > 0 {
+                        let x = self.bzero + self.bscale * (*x as f32);
+                        let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
 
-                self.data_i32[frame]
-                    .par_iter()
-                    .zip(self.mask.par_iter())
-                    .map(|(x, m)| {
-                        if *m > 0 {
-                            let x = self.bzero + self.bscale * (*x as f32);
-                            let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
-
-                            if pixel > 0.0 {
-                                (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
-                                    as u8
-                            } else {
-                                0
-                            }
+                        if pixel > 0.0 {
+                            (255.0 * num::clamp(
+                                (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
+                                0.0,
+                                1.0,
+                            )) as u8
                         } else {
                             0
                         }
-                    }).collect()
-            }
+                    } else {
+                        0
+                    }
+                }).collect(),
         }
     }
 
-    fn data_to_luminance_f16(&self, frame: usize) -> Vec<u8> {
+    fn data_to_luminance_f16(&self, frame: usize, flux: &String) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -2851,7 +2849,7 @@ impl FITS {
         let mut y: Vec<u8> = vec![0; len];
         //end of interface
 
-        match self.flux.as_ref() {
+        match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -2917,34 +2915,29 @@ impl FITS {
                 );
             },
             //by default assume "legacy"
-            _ => {
-                let lmin = (0.5f32).ln();
-                let lmax = (1.5f32).ln();
+            _ => unsafe {
+                let mut raw = slice::from_raw_parts_mut(ptr, len);
+                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                unsafe {
-                    let mut raw = slice::from_raw_parts_mut(ptr, len);
-                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-
-                    ispc_data_to_luminance_f16_legacy(
-                        raw.as_mut_ptr(),
-                        mask_raw.as_mut_ptr(),
-                        self.bzero,
-                        self.bscale,
-                        self.dmin,
-                        self.dmax,
-                        lmin,
-                        lmax,
-                        y.as_mut_ptr(),
-                        len as u32,
-                    );
-                }
-            }
+                ispc_data_to_luminance_f16_legacy(
+                    raw.as_mut_ptr(),
+                    mask_raw.as_mut_ptr(),
+                    self.bzero,
+                    self.bscale,
+                    self.dmin,
+                    self.dmax,
+                    self.lmin,
+                    self.lmax,
+                    y.as_mut_ptr(),
+                    len as u32,
+                );
+            },
         }
 
         y
     }
 
-    fn data_to_luminance_f64(&self, frame: usize) -> Vec<u8> {
+    fn data_to_luminance_f64(&self, frame: usize, flux: &String) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -2958,7 +2951,7 @@ impl FITS {
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match self.flux.as_ref() {
+        match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -3026,39 +3019,37 @@ impl FITS {
                     }
                 }).collect(),
             //by default assume "legacy"
-            _ => {
-                let lmin = (0.5f32).ln();
-                let lmax = (1.5f32).ln();
+            _ => self.data_f64[frame]
+                .par_iter()
+                .zip(self.mask.par_iter())
+                .map(|(x, m)| {
+                    if *m > 0 {
+                        let x = self.bzero + self.bscale * (*x as f32);
+                        let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
 
-                self.data_f64[frame]
-                    .par_iter()
-                    .zip(self.mask.par_iter())
-                    .map(|(x, m)| {
-                        if *m > 0 {
-                            let x = self.bzero + self.bscale * (*x as f32);
-                            let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
-
-                            if pixel > 0.0 {
-                                (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
-                                    as u8
-                            } else {
-                                0
-                            }
+                        if pixel > 0.0 {
+                            (255.0 * num::clamp(
+                                (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
+                                0.0,
+                                1.0,
+                            )) as u8
                         } else {
                             0
                         }
-                    }).collect()
-            }
+                    } else {
+                        0
+                    }
+                }).collect(),
         }
     }
 
-    fn data_to_luminance(&self, frame: usize) -> Option<Vec<u8>> {
+    fn data_to_luminance(&self, frame: usize, flux: &String) -> Option<Vec<u8>> {
         match self.bitpix {
-            8 => Some(self.data_to_luminance_u8(frame)),
-            16 => Some(self.data_to_luminance_i16(frame)),
-            32 => Some(self.data_to_luminance_i32(frame)),
-            -32 => Some(self.data_to_luminance_f16(frame)),
-            -64 => Some(self.data_to_luminance_f64(frame)),
+            8 => Some(self.data_to_luminance_u8(frame, flux)),
+            16 => Some(self.data_to_luminance_i16(frame, flux)),
+            32 => Some(self.data_to_luminance_i32(frame, flux)),
+            -32 => Some(self.data_to_luminance_f16(frame, flux)),
+            -64 => Some(self.data_to_luminance_f64(frame, flux)),
             _ => {
                 println!("unsupported bitpix: {}", self.bitpix);
                 None
@@ -3072,6 +3063,8 @@ impl FITS {
         mask: &Vec<u8>,
         pmin: f32,
         pmax: f32,
+        lmin: f32,
+        lmax: f32,
         black: f32,
         white: f32,
         median: f32,
@@ -3142,28 +3135,23 @@ impl FITS {
                     }
                 }).collect(),
             //by default assume "legacy"
-            _ => {
-                let lmin = (0.5f32).ln();
-                let lmax = (1.5f32).ln();
+            _ => pixels
+                .par_iter()
+                .zip(mask.par_iter())
+                .map(|(x, m)| {
+                    if *m > 0 {
+                        let pixel = 0.5 + (x - pmin) / (pmax - pmin);
 
-                pixels
-                    .par_iter()
-                    .zip(mask.par_iter())
-                    .map(|(x, m)| {
-                        if *m > 0 {
-                            let pixel = 0.5 + (x - pmin) / (pmax - pmin);
-
-                            if pixel > 0.0 {
-                                (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
-                                    as u8
-                            } else {
-                                0
-                            }
+                        if pixel > 0.0 {
+                            (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
+                                as u8
                         } else {
                             0
                         }
-                    }).collect()
-            }
+                    } else {
+                        0
+                    }
+                }).collect(),
         }
     }
 
@@ -3174,6 +3162,7 @@ impl FITS {
         ref_freq: f64,
         width: u32,
         height: u32,
+        flux: &String,
     ) -> Option<Vec<u8>> {
         //get a frame index (frame_start = frame_end = frame)
         let frame = match self.get_spectrum_range(frame, frame, ref_freq) {
@@ -3188,7 +3177,7 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
-        let y: Vec<u8> = match self.data_to_luminance(frame) {
+        let y: Vec<u8> = match self.data_to_luminance(frame, flux) {
             Some(y) => y,
             None => vec![0; (width * height) as usize],
         };
@@ -3214,6 +3203,7 @@ impl FITS {
         ref_freq: f64,
         width: u32,
         height: u32,
+        flux: &String,
     ) -> Option<vpx_image> {
         //get a frame index (frame_start = frame_end = frame)
         let frame = match self.get_spectrum_range(frame, frame, ref_freq) {
@@ -3254,7 +3244,7 @@ impl FITS {
         let stride_v = raw.stride[2];
         let count = stride_u * stride_v;
 
-        let mut y: Vec<u8> = match self.data_to_luminance(frame) {
+        let mut y: Vec<u8> = match self.data_to_luminance(frame, flux) {
             Some(y) => y,
             None => vec![0; (width * height) as usize],
         };
@@ -3615,6 +3605,8 @@ impl FITS {
             &self.mask,
             self.pmin,
             self.pmax,
+            self.lmin,
+            self.lmax,
             self.black,
             self.white,
             self.median,
@@ -3919,6 +3911,8 @@ impl FITS {
                 &mask,
                 params.pmin,
                 params.pmax,
+                params.lmin,
+                params.lmax,
                 params.black,
                 params.white,
                 params.median,
@@ -3930,6 +3924,8 @@ impl FITS {
                 &mask,
                 self.pmin,
                 self.pmax,
+                self.lmin,
+                self.lmax,
                 self.black,
                 self.white,
                 self.median,
