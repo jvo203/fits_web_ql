@@ -5,9 +5,10 @@ function pad(num, size) {
 } ;
 
 function randomise_alma()
-{
-    var maxId = 9999 ;
-    var Id = Math.floor((Math.random() * maxId) + 1);
+{   
+    var timestamp = new Date();
+    var Id = timestamp.getMinutes().toPrecision(1) * 100 + timestamp.getUTCMilliseconds();    
+
     var datasetId = "ALMA0101" + pad(Id.toString(), 4) ;
     document.getElementById("datasetid").value = datasetId ;
 
