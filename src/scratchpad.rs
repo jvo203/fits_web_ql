@@ -1015,3 +1015,9 @@ fn video_websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpRespon
 
     ws::start(req, VideoSession::new(&id))
 }
+
+# switching between VP9 and HEVC streaming video during development (testing purposes only, not recommended in normal use; by default streaming video is handled by HEVC and still images by VP9)
+
+cargo run --features 'server production vp9' --release
+
+cargo run --features 'server production hevc' --release
