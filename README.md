@@ -78,6 +78,8 @@ sudo make install
 ##
 install Google's libvpx from for example https://www.webmproject.org/code/
 
+http://www.linuxfromscratch.org/blfs/view/svn/multimedia/libvpx.html
+
 macOS: "brew install libvpx"
 
 other systems:
