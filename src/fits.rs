@@ -4414,6 +4414,8 @@ impl FITS {
             if self.has_velocity {
                 return Some(self.get_velocity_bounds(frame_start, frame_end));
             }
+        } else {
+            return Some((0, 0));
         };
 
         //a default empty range

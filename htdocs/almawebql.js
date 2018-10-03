@@ -7,7 +7,7 @@ function pad(num, size) {
 function randomise_alma()
 {   
     var timestamp = new Date();
-    var Id = timestamp.getMinutes().toPrecision(1) * 100 + timestamp.getUTCMilliseconds();    
+    var Id = 500 + timestamp.getUTCMilliseconds();    
 
     var datasetId = "ALMA0101" + pad(Id.toString(), 4) ;
     document.getElementById("datasetid").value = datasetId ;
