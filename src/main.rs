@@ -563,7 +563,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 vpx_codec_vp9_cx(),
                                 &mut self.cfg,
                                 0,
-                                (14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
+                                //(14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
+                                VPX_ENCODER_ABI_VERSION as i32,
                             )
                         };
 
@@ -1290,7 +1291,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         vpx_codec_vp9_cx(),
                                         &mut cfg,
                                         0,
-                                        (14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
+                                        //(14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
+                                        VPX_ENCODER_ABI_VERSION as i32,
                                     )
                                 };
 
