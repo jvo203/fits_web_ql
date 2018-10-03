@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-03.9";
+	return "JS2018-10-03.10";
 }
 
 var generateUid = function () {
@@ -1281,12 +1281,6 @@ function open_websocket_connection(datasetId, index) {
 					.attr("opacity", 0.8);
 
 				ALMAWS.binaryType = 'arraybuffer';
-				//ALMAWS.send("[open] datasetId=" + datasetId);//no need to send it, the id is in the URL
-
-				//request an image (if it is not in the browser cache)
-				//ALMAWS.send("[image]");
-
-				//ALMAWS.send('[init_video] fps=' + vidFPS);
 
 				if (index == va_count)
 					send_ping();
@@ -5345,27 +5339,26 @@ function setup_axes() {
 
 				//send an end_video command via WebSockets
 				streaming = false;
-				/*video_stack = new Array(va_count) ;
-		
-				//for(let index=0;index<va_count;index++)
-				{		
-					wsConn[0].send('[end_video]');
-					video_stack[0] = [] ;
-				};
-		
-				try {
-					api.hevc_destroy();
-				} catch (e) {};
-		
-				if(videoFrame != null)
-				{
+				video_stack = new Array(va_count);
+
+				if (videoFrame != null) {
+					try {
+						api.hevc_destroy();
+					} catch (e) { };
+
 					Module._free(videoFrame.ptr);
 					Module._free(videoFrame.alpha_ptr);
 					videoFrame.img = null;
 					videoFrame.ptr = null;
 					videoFrame.alpha_ptr = null;
 					videoFrame = null;
-				}*/
+
+					//for(let index=0;index<va_count;index++)
+					{
+						wsConn[0].send('[end_video]');
+						video_stack[0] = [];
+					};
+				}
 
 				shortcut.remove("f");
 				shortcut.remove("Left");
@@ -5421,18 +5414,19 @@ function setup_axes() {
 					}
 				}
 
-				if (videoFrame == null) {
+				//if (videoFrame == null) 
+				{
+					try {
+						//init the HEVC encoder		
+						api.hevc_init();
+					} catch (e) { };
+
 					//for(let index=0;index<va_count;index++)
 					{
 						wsConn[0].send('[init_video] fps=' + vidFPS);
 
 						video_stack[0] = [];
 					};
-
-					try {
-						//init the HEVC encoder		
-						api.hevc_init();
-					} catch (e) { };
 				}
 
 				hide_navigation_bar();
@@ -5692,8 +5686,7 @@ function x_axis_move(offset) {
 			video_count = 0;
 
 			//for(let index=0;index<va_count;index++)
-			if(realtime_video)
-			{
+			if (realtime_video) {
 				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
 
 				wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());
