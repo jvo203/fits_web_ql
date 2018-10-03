@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-10-03.2";
+    return "JS2018-10-03.3";
 }
 
 var generateUid = function ()
@@ -1263,7 +1263,7 @@ function process_image_event(image, index)
 
 function process_viewport(w, h, bytes, stride, alpha, index)
 {
-	if(videoLeft == false)
+	if(streaming)
 		return ;
 
 	console.log("process_viewport(" + index + ")") ;
@@ -1890,7 +1890,7 @@ function open_websocket_connection(datasetId, index)
 
 					Module.HEAPU8.set(frame, ptr);
 
-					if(videoFrame != null && !videoLeft)
+					if(streaming && videoFrame != null)
 					{
 						var img = videoFrame.img;
 
@@ -1961,12 +1961,6 @@ function open_websocket_connection(datasetId, index)
 					if(videoFrame != null)
 						d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps, bitrate: ' + Math.round(bitrate) + ' [kbps]');//, η: ' + eta.toFixed(4) + ' var: ' + variance
 				}
-
-			    /*if(!videoLeft)
-			    {
-					video_stack[index-1].push({frame: decoded, id: recv_seq_id}) ;
-					console.log("index:", index, "video_stack length:", video_stack[index-1].length) ;
-				} ;*/
 			    
 			    return ;
 			}
@@ -6008,7 +6002,7 @@ function setup_axes()
 		d3.select("#fps").text("");
 
 		//send an end_video command via WebSockets
-		videoLeft = true ;
+		streaming = false ;
 		/*video_stack = new Array(va_count) ;
 
 		//for(let index=0;index<va_count;index++)
@@ -6061,7 +6055,7 @@ function setup_axes()
 	})
 	.on("mouseenter", function () {
 		//send an init_video command via WebSockets
-		videoLeft = false ;
+		streaming = true ;
 		video_stack = new Array(va_count) ;	
 
 		//clear the VideoCanvas
@@ -6094,8 +6088,6 @@ function setup_axes()
 				wsConn[0].send('[init_video] fps=' + vidFPS);
 	    	    	
 				video_stack[0] = [] ;
-
-				//requestAnimationFrame(update_video);
 			};
 
 			try {
@@ -6217,17 +6209,6 @@ function setup_axes()
 		.style("fill", fillColour)
 		.style("stroke", fillColour);
 	});
-}
-
-function update_video()
-{
-	if(!videoLeft)
-	    requestAnimationFrame(update_video);
-
-	//get decoded frames from the decoder for each websocket connection
-
-	//or
-	//let frame = video_stack.pop() ;
 }
 
 function x_axis_left()
@@ -8353,7 +8334,7 @@ function scaled() {
 
 function videoTimeout(freq)
 {
-	if(videoLeft)
+	if(!streaming)
 		return ;
 
 	console.log("video inactive event") ;
@@ -8374,7 +8355,7 @@ function imageTimeout()
 {   
     console.log("image inactive event") ;
 
-    if(mousedown || videoLeft == false)
+    if(mousedown || streaming)
 	return ;
     
     moving = false ;
@@ -8448,7 +8429,7 @@ function imageTimeout()
 
     console.log("zoomed_size:", zoomed_size) ;
 
-    if(moving || videoLeft == false)
+    if(moving || streaming)
 	return ;
 
     compositeViewportCanvas = null ;
@@ -8465,7 +8446,7 @@ function imageTimeout()
 	wsConn[index].send('[spectrum] ' + strRequest);
     }
 
-    if(moving || videoLeft == false)
+    if(moving || streaming)
 	return ;
     
     var zoom_element = d3.select("#zoom") ;
@@ -11131,7 +11112,7 @@ async*/ function mainRenderer()
 	newImageData = null ;
 	initKalmanFilter = false ;
 	windowLeft = false ;
-	videoLeft = true ;
+	streaming = false ;
 	mol_pos = -1 ;
 	idleMouse = -1 ;
 	idleVideo = -1 ;
