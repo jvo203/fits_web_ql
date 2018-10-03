@@ -1,6 +1,6 @@
 function get_js_version()
 {
-    return "JS2018-10-02.4";
+    return "JS2018-10-03.2";
 }
 
 var generateUid = function ()
@@ -1263,6 +1263,9 @@ function process_image_event(image, index)
 
 function process_viewport(w, h, bytes, stride, alpha, index)
 {
+	if(videoLeft == false)
+		return ;
+
 	console.log("process_viewport(" + index + ")") ;
     
     document.getElementById('welcome').style.display = "none";
@@ -1379,32 +1382,6 @@ function process_viewport(w, h, bytes, stride, alpha, index)
 	    }
 	}
     }
-}
-
-function process_spectrum_event(spectrum)
-{
-    document.getElementById('welcome').style.display = "none";
-    
-    if(windowLeft)
-	return ;
-
-    let fitsData = fitsContainer[va_count-1] ;
-    
-    var start = performance.now() ;    
-    
-    if(fitsData.depth > 1)
-    {
-	plot_spectrum([spectrum]) ;
-	replot_y_axis() ;
-    }
-
-    var stop = performance.now() ;
-
-    processed = stop - start ;
-    
-    //console.log("[process_spectrum_event] " + processed.toFixed(3) + " [ms]") ;
-
-    last_spectrum = spectrum ;
 }
 
 function process_progress_event(data, index)
@@ -1584,8 +1561,6 @@ function open_websocket_connection(datasetId, index)
 			    var spectrum = new Float32Array(received_msg, 24);//16+8, extra 8 bytes for the length of the vector, added automatically by Rust
 
 				//console.log("[ws] computed = " + computed.toFixed(1) + " [ms]" + " length: " + length + " spectrum length:" + spectrum.length + " spectrum: " + spectrum);
-
-			    //process_spectrum_event(spectrum) ;
 
 			    if(!windowLeft)
 			    {
@@ -1915,7 +1890,7 @@ function open_websocket_connection(datasetId, index)
 
 					Module.HEAPU8.set(frame, ptr);
 
-					if(videoFrame != null)
+					if(videoFrame != null && !videoLeft)
 					{
 						var img = videoFrame.img;
 
@@ -6034,7 +6009,7 @@ function setup_axes()
 
 		//send an end_video command via WebSockets
 		videoLeft = true ;
-		video_stack = new Array(va_count) ;
+		/*video_stack = new Array(va_count) ;
 
 		//for(let index=0;index<va_count;index++)
 		{		
@@ -6054,7 +6029,7 @@ function setup_axes()
 			videoFrame.ptr = null;
 			videoFrame.alpha_ptr = null;
 			videoFrame = null;
-		}		
+		}*/
 
 	    shortcut.remove("f");
 	    shortcut.remove("Left") ;
@@ -6113,42 +6088,21 @@ function setup_axes()
 		  }  
 		}
 
-		//for(let index=0;index<va_count;index++)
-		{	
-			wsConn[0].send('[init_video] fps=' + vidFPS);
+		if(videoFrame == null) {
+			//for(let index=0;index<va_count;index++)
+			{	
+				wsConn[0].send('[init_video] fps=' + vidFPS);
 	    	    	
-			video_stack[0] = [] ;
+				video_stack[0] = [] ;
 
-			//requestAnimationFrame(update_video);
-		};
+				//requestAnimationFrame(update_video);
+			};
 
-		try {
-			//init the HEVC encoder		
-			api.hevc_init();
-		} catch (e) {};
-
-		//pre-allocate a video memory
-		//get the dimensions from the imageFrame
-		/*if(videoFrame == null)
-		{
-			let imageFrame = imageContainer[va_count-1].imageFrame;
-
-			if(imageFrame != null)
-			{
-				var len = imageFrame.w * imageFrame.h * 4;
-				var ptr = Module._malloc(len);
-
-				var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
-				var img = new ImageData(data, imageFrame.w, imageFrame.h);
-
-				console.log("Module._malloc ptr=", ptr, "ImageData=", img);
-
-				videoFrame = {
-					img: img,
-					ptr: ptr
-				};
-			}
-		}*/
+			try {
+				//init the HEVC encoder		
+				api.hevc_init();
+			} catch (e) {};
+		}
 
 	    hide_navigation_bar() ;
 
@@ -7374,14 +7328,6 @@ function setup_image_selection()
 	    catch (e) {
 		console.log(e) ;
 		}
-		
-		/*let data = spectrum_stack.pop() ;
-
-		if(data.id > last_seq_id)
-		{
-		    process_spectrum_event(data.spectrum) ;
-		    last_seq_id = data.id ;
-		}*/
 
 	}
     }
@@ -8407,6 +8353,9 @@ function scaled() {
 
 function videoTimeout(freq)
 {
+	if(videoLeft)
+		return ;
+
 	console.log("video inactive event") ;
 
 	sent_vid_id++ ;
@@ -8425,7 +8374,7 @@ function imageTimeout()
 {   
     console.log("image inactive event") ;
 
-    if(mousedown)
+    if(mousedown || videoLeft == false)
 	return ;
     
     moving = false ;
@@ -8499,7 +8448,7 @@ function imageTimeout()
 
     console.log("zoomed_size:", zoomed_size) ;
 
-    if(moving)
+    if(moving || videoLeft == false)
 	return ;
 
     compositeViewportCanvas = null ;
@@ -8510,16 +8459,13 @@ function imageTimeout()
     
     for(let index=0;index<va_count;index++)
     {
-	var dataId = datasetId ;	
-	if(va_count > 1)
-	    dataId = datasetId[index] ;
 	
 	var strRequest = 'x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=true&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id + '&timestamp=' + performance.now();    
 	
 	wsConn[index].send('[spectrum] ' + strRequest);
     }
 
-    if(moving)
+    if(moving || videoLeft == false)
 	return ;
     
     var zoom_element = d3.select("#zoom") ;
@@ -11185,11 +11131,12 @@ async*/ function mainRenderer()
 	newImageData = null ;
 	initKalmanFilter = false ;
 	windowLeft = false ;
+	videoLeft = true ;
 	mol_pos = -1 ;
 	idleMouse = -1 ;
 	idleVideo = -1 ;
 	moving = false ;
-	freqdrag = false ;
+	freqdrag = false ;	
 	data_band_lo = 0 ;
 	data_band_hi = 0 ;
 	latency = 0 ;
