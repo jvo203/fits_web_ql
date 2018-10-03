@@ -2022,7 +2022,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-02.2";
+static VERSION_STRING: &'static str = "SV2018-10-03.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2852,6 +2852,7 @@ fn http_fits_response(
                 hevc_init: Module.cwrap('hevc_init', '', []), 
                 hevc_destroy: Module.cwrap('hevc_destroy', '', []),                
                 hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'string']),
+                /*hevc_decode_nal_stream: Module.cwrap('hevc_decode_nal_stream', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'string']),*/
             };            
         };
         </script>\n");
