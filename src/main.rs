@@ -2023,7 +2023,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-04.0";
+static VERSION_STRING: &'static str = "SV2018-10-04.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2638,6 +2638,14 @@ fn get_molecules(
     })).responder()
 }
 
+fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    println!("{:?}", req);
+
+    return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+        format!("<p><b>Error</b>: FITS cut-out service not implemented yet</p>"),
+    ))).responder();
+}
+
 #[cfg(feature = "server")]
 fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path::PathBuf> {
     let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
@@ -3080,6 +3088,7 @@ fn main() {
                 .resource("/{path}/get_image", |r| {r.method(http::Method::GET).f(get_image)})
                 .resource("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})
                 .resource("/{path}/get_molecules", |r| {r.method(http::Method::GET).f(get_molecules)})
+                .resource("/{path}/get_fits", |r| {r.method(http::Method::GET).f(get_fits)})
                 .handler("/", fs::StaticFiles::new("htdocs").unwrap().index_file(index_file))
         })
         .bind(&format!("{}:{}", SERVER_ADDRESS, server_port)).expect(&format!("Cannot bind to localhost:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_port))        
