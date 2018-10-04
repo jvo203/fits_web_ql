@@ -3,6 +3,12 @@ A next-generation re-implementation of the C/C++ FITSWebQL in Rust. The previous
 
 http://jvo.nao.ac.jp/~chris/fitswebql.html
 
+# How to get started
+clone the fits_web_ql project onto your computer with the git tool:
+
+cd <your_projects_folder>
+git clone https://github.com/jvo203/fits_web_ql.git
+
 # IMPORTANT
 After cloning the fits_web_ql repository the 809MB-large spectral lines database file needs to be downloaded from
 
