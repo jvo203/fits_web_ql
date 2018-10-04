@@ -7,6 +7,7 @@ http://jvo.nao.ac.jp/~chris/fitswebql.html
 clone the fits_web_ql project onto your computer with the git tool:
 
 cd <your_projects_folder>
+
 git clone https://github.com/jvo203/fits_web_ql.git
 
 # IMPORTANT
