@@ -14,7 +14,9 @@ and placed inside the fits_web_ql directory.
 install a free open-source Intel SPMD compiler (ispc) and then execute "make" from within the fits_webql_ql directory
 
 ##
-install clang, i.e. for CentOS 7 please go to
+install clang (for macOS this step can probably be skipped as clang should already be present),
+
+i.e. for CentOS 7 please go to
 
 https://copr.fedorainfracloud.org/coprs/alonid/llvm-3.9.0/
 
@@ -53,6 +55,17 @@ export PATH=/opt/llvm-3.9.0/bin:$PATH
 export LIBCLANG_PATH=/opt/llvm-3.9.0/lib64
 
 ##
+install nasm and yasm assembler compilers
+
+macOS:
+
+brew install nasm yasm
+
+Ubuntu Linux:
+
+sudo apt-get install nasm yasm
+
+##
 install a libyuv library (YUV rescaling/image inversion):
 
 git clone https://github.com/lemenkov/libyuv
@@ -80,7 +93,7 @@ install Google's libvpx 1.7.0 or higher
 
 macOS: "brew install libvpx"
 
-other systems:
+other systems follow:
 
 http://www.linuxfromscratch.org/blfs/view/svn/multimedia/libvpx.html
 
@@ -99,9 +112,11 @@ install x265 version 2.8
 
 macOS: "brew install x265"
 
-other systems:
+other systems follow:
 
-http://www.linuxfromscratch.org/blfs/view/8.3/multimedia/x265.html
+http://www.linuxfromscratch.org/blfs/view/svn/multimedia/x265.html
+
+please be sure to have nasm installed beforehand when building from source, plus NUMA API: numactl and numa development library libnuma (package libnuma-dev on Ubuntu)
 
 ## WARNING
 some Linux systems, for example Ubuntu, CentOS 6 and 7, need the following environment variable to be set before running fits_web_ql

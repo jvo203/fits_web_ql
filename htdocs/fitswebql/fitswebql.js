@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-03.10";
+	return "JS2018-10-04.6";
 }
 
 var generateUid = function () {
@@ -876,7 +876,9 @@ function process_video(index) {
 	var img_width = scale * image_bounding_dims.width;
 	var img_height = scale * image_bounding_dims.height;
 
-	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width/**videoFrame.scaleX*/, img_height/**videoFrame.scaleY*/);
+	requestAnimationFrame(function () {
+		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width/**videoFrame.scaleX*/, img_height/**videoFrame.scaleY*/);
+	});
 
 	if (viewport_zoom_settings != null) {
 		d3.select("#upper").style("stroke", "Gray");
@@ -895,26 +897,28 @@ function process_video(index) {
 		let py = emStrokeWidth;
 
 		//and a zoomed viewport
-		if (zoom_shape == "square") {
-			ctx.fillStyle = "rgba(0,0,0,0.3)";
-			ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		requestAnimationFrame(function () {
+			if (zoom_shape == "square") {
+				ctx.fillStyle = "rgba(0,0,0,0.3)";
+				ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 
-			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-		}
+				ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+			}
 
-		if (zoom_shape == "circle") {
-			ctx.save();
-			ctx.beginPath();
-			ctx.arc(px + viewport_zoom_settings.zoomed_size / 2, py + viewport_zoom_settings.zoomed_size / 2, viewport_zoom_settings.zoomed_size / 2, 0, 2 * Math.PI, true);
+			if (zoom_shape == "circle") {
+				ctx.save();
+				ctx.beginPath();
+				ctx.arc(px + viewport_zoom_settings.zoomed_size / 2, py + viewport_zoom_settings.zoomed_size / 2, viewport_zoom_settings.zoomed_size / 2, 0, 2 * Math.PI, true);
 
-			ctx.fillStyle = "rgba(0,0,0,0.3)";
-			ctx.fill();
+				ctx.fillStyle = "rgba(0,0,0,0.3)";
+				ctx.fill();
 
-			ctx.closePath();
-			ctx.clip();
-			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-			ctx.restore();
-		}
+				ctx.closePath();
+				ctx.clip();
+				ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+				ctx.restore();
+			}
+		});
 	}
 }
 
@@ -1775,12 +1779,12 @@ function open_websocket_connection(datasetId, index) {
 						if (data.type == "progress")
 							process_progress_event(data, index);
 
-						if (data.type == "image") {
+						/*if (data.type == "image") {
 							if (data.message.indexOf("unavailable") >= 0) {
 								console.log("Server not ready, long-polling the image again after 100 ms.");
 								setTimeout(function () { ALMAWS.send("[image]"); }, 100);
 							}
-						}
+						}*/
 
 						if (data.type == "init_video") {
 							var width = data.width;
@@ -3199,7 +3203,7 @@ function change_tone_mapping(index, recursive) {
 	}
 }
 
-function image_refresh(index) {
+function image_refresh(index, refresh_histogram = true) {
 	try {
 		d3.selectAll('#contourPlot').remove();
 	}
@@ -3207,7 +3211,8 @@ function image_refresh(index) {
 
 	//has_contours = false ;
 
-	enable_autoscale();
+	if (refresh_histogram)
+		enable_autoscale();
 
     /*displayContours = false ;
     var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines' ;
@@ -3240,7 +3245,7 @@ function image_refresh(index) {
 	var noise = '&noise=' + get_noise_sensitivity_string(noise_sensitivity, 3);
 	var flux = '&flux=' + document.getElementById('flux' + index).value;
 	var freq = '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ;
-	var hist = '&hist=true';
+	var hist = '&hist=' + refresh_histogram;
 
 	var strRequest = black + white + median + noise + flux + freq + hist;
 	console.log(strRequest);
@@ -3553,40 +3558,17 @@ function add_histogram_line(g, pos, width, height, offset, info, position, addLi
 	function dropGroup(d) {
 		display_hourglass();
 
-		var black = '&black=';
-		var white = '&white=';
-		var median = '&median=';
+		if (!composite_view) {
+			image_count = va_count - 1;
 
-		try {
-			black += flux_elem.attr("black");
+			image_refresh(index, false);
 		}
-		catch (e) {
-		};
+		else {
+			image_count = 0;
 
-		try {
-			white += flux_elem.attr("white");
+			for (let i = 1; i <= va_count; i++)
+				image_refresh(i, false);
 		}
-		catch (e) {
-		};
-
-		try {
-			median += flux_elem.attr("median");
-		}
-		catch (e) {
-		};
-
-		var noise = '&noise=' + get_noise_sensitivity_string(noise_sensitivity, 3);
-		var flux = '&flux=' + document.getElementById('flux' + index).value;
-		var freq = '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ;
-		var hist = '&hist=false';
-
-		var strRequest = black + white + median + noise + flux + freq + hist;
-		console.log("dropGroup:", strRequest);
-
-		image_count = va_count - 1;
-
-		//send an [image] request to the server	
-		wsConn[index - 1].send('[image]' + strRequest + '&timestamp=' + performance.now());
 	}
 
 	function dragGroup(d) {
@@ -5299,6 +5281,7 @@ function setup_axes() {
 					var height = c.height;
 
 					ctx.clearRect(0, 0, width, height);
+					ctx.globalAlpha = 0.0;
 
 					//the zoomcanvas too
 					if (viewport_zoom_settings != null) {
@@ -5402,6 +5385,7 @@ function setup_axes() {
 					var height = c.height;
 
 					ctx.clearRect(0, 0, width, height);
+					ctx.globalAlpha = 1.0;
 				}
 
 				if (va_count == 1) {
@@ -7872,20 +7856,18 @@ function change_noise_sensitivity(refresh, index) {
 	if (refresh) {
 		display_hourglass();
 
-		var black = '&black=' + black;
-		var white = '&white=' + white;
-		var median = '&median=' + median;
 
-		var noise = '&noise=' + get_noise_sensitivity_string(noise_sensitivity, 3);
-		var flux = '&flux=' + document.getElementById('flux' + index).value;
-		var freq = '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ;
-		var hist = '&hist=false';
+		if (!composite_view) {
+			image_count = va_count - 1;
 
-		var strRequest = black + white + median + noise + flux + freq + hist;
-		console.log(strRequest);
+			image_refresh(index, false);
+		}
+		else {
+			image_count = 0;
 
-		//send an [image] request to the server
-		wsConn[index - 1].send('[image]' + strRequest + '&timestamp=' + performance.now());
+			for (let i = 1; i <= va_count; i++)
+				image_refresh(i, false);
+		}
 	}
 }
 

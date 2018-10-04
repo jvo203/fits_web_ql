@@ -3424,7 +3424,6 @@ impl FITS {
                 vpx_codec_vp9_cx(),
                 &mut cfg,
                 0,
-                //(14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
                 VPX_ENCODER_ABI_VERSION as i32,
             )
         };
@@ -3512,13 +3511,6 @@ impl FITS {
         if filepath.exists() {
             return;
         }
-
-        /*unsafe {
-            println!("{:?}",vpx_codec_vp9_cx());
-        };*/
-        //let mut cfg: vpx_codec_enc_cfg_t = Default::default();
-
-        println!("libvpx version: {}", VPX_ENCODER_ABI_VERSION);
 
         let start = precise_time::precise_time_ns();
 
@@ -3720,7 +3712,6 @@ impl FITS {
                 vpx_codec_vp9_cx(),
                 &mut cfg,
                 0,
-                //(14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
                 VPX_ENCODER_ABI_VERSION as i32,
             )
         };

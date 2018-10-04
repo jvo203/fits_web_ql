@@ -563,7 +563,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 vpx_codec_vp9_cx(),
                                 &mut self.cfg,
                                 0,
-                                //(14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
                                 VPX_ENCODER_ABI_VERSION as i32,
                             )
                         };
@@ -1291,7 +1290,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         vpx_codec_vp9_cx(),
                                         &mut cfg,
                                         0,
-                                        //(14 + 4 + 5) as i32, //23 for libvpx-1.7.0; VPX_ENCODER_ABI_VERSION does not get expanded correctly by bind-gen
                                         VPX_ENCODER_ABI_VERSION as i32,
                                     )
                                 };
@@ -2024,7 +2022,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-03.3";
+static VERSION_STRING: &'static str = "SV2018-10-04.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
