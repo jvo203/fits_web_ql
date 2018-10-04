@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "initializer_list": "c",
-        "string_view": "c",
-        "utility": "c"
-    }
-}
