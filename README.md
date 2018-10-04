@@ -11,6 +11,12 @@ http://jvo.nao.ac.jp/~chris/splatalogue_v3.db
 and placed inside the fits_web_ql directory.
 
 # How to Build, Prerequisites
+##
+First and foremost the Rust language must be installed:
+
+https://www.rust-lang.org/install.html
+
+##
 install a free open-source Intel SPMD compiler (ispc) and then execute "make" from within the fits_webql_ql directory
 
 ##

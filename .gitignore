@@ -17,3 +17,6 @@ Cargo.lock
 
 #Apple
 **/*.DS_Store
+
+#Microsoft Visual Code IDE
+.vscode/
