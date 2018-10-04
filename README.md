@@ -18,7 +18,6 @@ http://jvo.nao.ac.jp/~chris/splatalogue_v3.db
 and placed inside the fits_web_ql directory.
 
 # How to Build, Prerequisites
-##
 First and foremost the Rust language must be installed:
 
 https://www.rust-lang.org/install.html
