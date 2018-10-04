@@ -2019,6 +2019,7 @@ static LOG_DIRECTORY: &'static str = "LOGS";
 
 #[cfg(not(feature = "server"))]
 static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
+
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
