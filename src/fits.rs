@@ -787,15 +787,15 @@ impl FITS {
 
         //check if bitpix == -32 and the F16 half-float cache file exists
         let filename = format!("{}/{}.bin", FITSCACHE, id.replace("/", "_"));
-        let filepath = std::path::Path::new(&filename);
+        let binpath = std::path::Path::new(&filename);
 
-        if fits.bitpix == -32 && filepath.exists() {
+        if fits.bitpix == -32 && binpath.exists() {
             println!("{}: reading half-float f16 data from cache", id);
 
-            if !fits.read_from_cache_par(filepath, frame_size / 2, cdelt3 as f32, &server) {
+            if !fits.read_from_cache_par(binpath, frame_size / 2, cdelt3 as f32, &server) {
                 println!("CRITICAL ERROR parallel reading from half-float cache");
 
-                if !fits.read_from_cache(filepath, frame_size / 2, cdelt3 as f32, &server) {
+                if !fits.read_from_cache(binpath, frame_size / 2, cdelt3 as f32, &server) {
                     println!("CRITICAL ERROR reading from half-float cache");
                     return fits;
                 }
