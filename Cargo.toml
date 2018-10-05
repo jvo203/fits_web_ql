@@ -56,4 +56,5 @@ flexi_logger = "*"
 regex = "*"
 lz4-compress = "*"
 postgres = "*"
+tar = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }

@@ -31,6 +31,7 @@ extern crate positioned_io;
 extern crate rayon;
 extern crate regex;
 extern crate rusqlite;
+extern crate tar;
 extern crate time as precise_time;
 extern crate timer;
 extern crate uuid;
@@ -75,6 +76,7 @@ use actix_web::server::HttpServer;
 use actix_web::*;
 use futures::future::{result, Future};
 use percent_encoding::percent_decode;
+use tar::{Builder, Header};
 use uuid::Uuid;
 
 use rayon::prelude::*;
@@ -2023,7 +2025,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-05.5";
+static VERSION_STRING: &'static str = "SV2018-10-05.6";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2590,7 +2592,7 @@ fn get_molecules(
     };
 
     println!(
-        "[get_molecules] http request for {}: freq_start={}, freq_end={}",
+        "[get_molecules] http request for {}: freq_start={}, freq_end={} [GHz]",
         dataset_id, freq_start, freq_end
     );
 
@@ -2643,12 +2645,45 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
 
     let query = req.query();
 
-    let dataset_id = match query.get("datasetId") {
-        Some(x) => x,
+    #[cfg(not(feature = "server"))]
+    let dataset = "filename";
+
+    #[cfg(feature = "server")]
+    let dataset = "datasetId";
+
+    let dataset_id = match query.get(dataset) {
+        Some(x) => vec![x.as_str()],
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_fits/datasetId parameter not found</p>"),
-            ))).responder();
+            //try to read multiple datasets or filename,
+            //i.e. dataset1,dataset2,... or filename1,filename2,...
+            let mut v: Vec<&str> = Vec::new();
+            let mut count: u32 = 1;
+
+            loop {
+                let pattern = format!("{}{}", dataset, count);
+                count = count + 1;
+
+                match query.get(&pattern) {
+                    Some(x) => {
+                        v.push(x);
+                    }
+                    None => {
+                        break;
+                    }
+                };
+            }
+
+            //the last resort
+            if v.is_empty() {
+                return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                    format!(
+                        "<p><b>Critical Error</b>: get_fits/{} parameter not found</p>",
+                        dataset
+                    ),
+                ))).responder();
+            };
+
+            v
         }
     };
 
@@ -2662,7 +2697,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         }
     };
 
-    let x1 = match x1.parse::<usize>() {
+    let x1 = match x1.parse::<i32>() {
         Ok(x) => x,
         Err(_) => 0,
     };
@@ -2677,7 +2712,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         }
     };
 
-    let x2 = match x2.parse::<usize>() {
+    let x2 = match x2.parse::<i32>() {
         Ok(x) => x,
         Err(_) => 0,
     };
@@ -2692,7 +2727,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         }
     };
 
-    let y1 = match y1.parse::<usize>() {
+    let y1 = match y1.parse::<i32>() {
         Ok(x) => x,
         Err(_) => 0,
     };
@@ -2707,7 +2742,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         }
     };
 
-    let y2 = match y2.parse::<usize>() {
+    let y2 = match y2.parse::<i32>() {
         Ok(x) => x,
         Err(_) => 0,
     };
@@ -2758,13 +2793,93 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
     };
 
     println!(
-        "[get_fits] http request for {}: x1={}, y1={}, x2={}, y2={}, frame_start={}, frame_end={}, ref_freq={}",
+        "[get_fits] http request for {:?}: x1={}, y1={}, x2={}, y2={}, frame_start={}, frame_end={}, ref_freq={}",
         dataset_id, x1, y1, x2, y2, frame_start, frame_end, ref_freq
     );
 
-    return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-        format!("<p><b>Error</b>: FITS cut-out service not implemented yet</p>"),
-    ))).responder();
+    let mut ar = Builder::new(Vec::new());
+
+    //for each dataset append it to the archives
+    for entry in dataset_id {
+        let datasets = DATASETS.read();
+
+        let fits = match datasets.get(entry).unwrap().try_read() {
+            Some(x) => x,
+            None => {
+                println!("[get_fits] error getting {} from DATASETS; aborting", entry);
+                return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                    format!(
+                        "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
+                        entry
+                    ),
+                ))).responder();
+            }
+        };
+
+        {
+            *fits.timestamp.write() = SystemTime::now();
+        }
+
+        if fits.has_data {
+            match fits.get_region(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
+                Some(region) => {
+                    let mut header = Header::new_gnu();
+                    if let Err(err) =
+                        header.set_path(format!("{}-subregion.fits", entry.replace("/", "_")))
+                    {
+                        return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                            format!(
+                                "<p><b>Critical Error</b>: get_fits/tar/set_path error: {}</p>",
+                                err
+                            ),
+                        ))).responder();
+                    }
+
+                    header.set_mode(420);
+                    header.set_size(region.len() as u64);
+                    header.set_cksum();
+                    if let Err(err) = ar.append(&header, region.as_slice()) {
+                        return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                            format!(
+                                "<p><b>Critical Error</b>: get_fits/tar/append error: {}</p>",
+                                err
+                            ),
+                        ))).responder();
+                    }
+                }
+                None => println!(
+                    "partial FITS cut-out for {} did not produce any data",
+                    entry
+                ),
+            }
+        }
+    }
+
+    match ar.into_inner() {
+        Ok(tarball) => {
+            let timestamp = Local::now();
+            let disposition_filename = format!(
+                "attachment; filename=fits_web_ql_{}.tar",
+                timestamp.format("%Y-%m-%d_%H:%M:%S")
+            );
+
+            result(Ok(HttpResponse::Ok()
+                .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                .header("Pragma", "no-cache")
+                .header("Expires", "0")
+                .content_type("application/force-download")
+                .header("Content-Disposition", disposition_filename)
+                .header("Content-Transfer-Encoding", "binary")
+                .header("Accept-Ranges", "bytes")
+                .body(tarball))).responder()
+        }
+        Err(err) => result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+            format!(
+                "<p><b>Critical Error</b>: get_fits tarball creation error: {}</p>",
+                err
+            ),
+        ))).responder(),
+    }
 }
 
 #[cfg(feature = "server")]

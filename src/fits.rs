@@ -4627,6 +4627,37 @@ impl FITS {
 
         value.to_string()
     }
+
+    pub fn get_region(
+        &self,
+        x1: i32,
+        y1: i32,
+        x2: i32,
+        y2: i32,
+        frame_start: f64,
+        frame_end: f64,
+        ref_freq: f64,
+    ) -> Option<Vec<u8>> {
+        //spatial range checks
+        let x1 = num::clamp(x1, 0, self.width as i32 - 1) as usize;
+        let y1 = num::clamp(y1, 0, self.height as i32 - 1) as usize;
+
+        let x2 = num::clamp(x2, 0, self.width as i32 - 1) as usize;
+        let y2 = num::clamp(y2, 0, self.height as i32 - 1) as usize;
+
+        let (start, end) = match self.get_spectrum_range(frame_start, frame_end, ref_freq) {
+            Some((start, end)) => {
+                println!("[fits.get_region] start:{} end:{}", start, end);
+                (start, end)
+            }
+            None => {
+                println!("error: an invalid spectrum range");
+                return None;
+            }
+        };
+
+        Some(String::from("a FITS cut-out").into_bytes())
+    }
 }
 
 impl Drop for FITS {
