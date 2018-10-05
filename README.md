@@ -26,9 +26,15 @@ https://www.rust-lang.org/install.html
 install a free open-source Intel SPMD compiler (ispc) and then execute "make" from within the fits_webql_ql directory
 
 ##
-install clang (for macOS this step can probably be skipped as clang should already be present),
+install clang
 
-i.e. for CentOS 7 please go to
+macOS: this step can probably be skipped as clang should already be present, if not you should run "xcode-select --install" from the command-line to install the software development environment
+
+Ubuntu Linux:
+
+sudo apt install clang
+
+for CentOS 7 you may try the alonid repository:
 
 https://copr.fedorainfracloud.org/coprs/alonid/llvm-3.9.0/
 

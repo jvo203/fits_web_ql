@@ -14,6 +14,7 @@ production = []
 [build-dependencies]
 bindgen = "*"
 metadeps = "*"
+clang = "*"
 
 [package.metadata.pkg-config]
 x265 = "2.8"

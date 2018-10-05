@@ -888,9 +888,9 @@ impl FITS {
         println!("{}: reading FITS data completed", id);
 
         //and lastly create a symbolic link in the FITSCACHE directory
-        #[cfg(not(feature = "server"))]
+        //#[cfg(not(feature = "server"))]
         {
-            let filename = format!("{}/{}.fits", FITSCACHE, id);
+            let filename = format!("{}/{}.fits", FITSCACHE, id.replace("/", "_"));
             let cachefile = std::path::Path::new(&filename);
             let _ = std::os::unix::fs::symlink(filepath, cachefile);
         }
@@ -910,7 +910,7 @@ impl FITS {
 
         println!("FITS::from_url({})", url);
 
-        let tmp = format!("{}/{}.fits.tmp", FITSCACHE, id);
+        let tmp = format!("{}/{}.fits.tmp", FITSCACHE, id.replace("/", "_"));
 
         let mut cachefile = match File::create(&tmp) {
             Err(ref e) => {
@@ -1072,7 +1072,7 @@ impl FITS {
         };
 
         if fits.filesize >= FITS_CHUNK_LENGTH as u64 {
-            let filename = format!("{}/{}.fits", FITSCACHE, id);
+            let filename = format!("{}/{}.fits", FITSCACHE, id.replace("/", "_"));
             let _ = std::fs::rename(tmp, filename);
         } else {
             fits.send_progress_notification(&server, &"error downloading FITS".to_owned(), 0, 0);
@@ -4681,6 +4681,21 @@ impl Drop for FITS {
                     }
 
                     let _ = std::fs::rename(tmp_filepath, filepath);
+                }
+            }
+
+            //remove a symbolic link
+            let filename = format!("{}/{}.fits", FITSCACHE, self.dataset_id.replace("/", "_"));
+            let filepath = std::path::Path::new(&filename);
+
+            if filepath.exists() {
+                if let Ok(metadata) = filepath.metadata() {
+                    let filetype = metadata.file_type();
+
+                    if filetype.is_symlink() {
+                        println!("removing a symbolic link to {:?}", filepath.file_name());
+                        let _ = std::fs::remove_file(filepath);
+                    }
                 }
             }
         }
