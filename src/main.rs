@@ -1438,7 +1438,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     };
 
                     let target_bitrate = match target_bitrate {
-                        Some(x) => x.min(10000),
+                        Some(x) => num::clamp(x, 100, 10000),
                         _ => 1000,
                     };
 
@@ -2023,7 +2023,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-04.1";
+static VERSION_STRING: &'static str = "SV2018-10-05.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

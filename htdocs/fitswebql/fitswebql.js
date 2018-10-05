@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-04.6";
+	return "JS2018-10-04.7";
 }
 
 var generateUid = function () {
@@ -1580,13 +1580,16 @@ function open_websocket_connection(datasetId, index) {
 
 						var latency = performance.now() - dv.getFloat32(0, endianness);
 						var transfer = (latency - computed) / 1000;//[s]
-						var bandwidth = (received_msg.byteLength * 8 / 1000) / transfer;//[kilobits per s]
 
-						//bitrate tracking (variance-tracking Kalman Filter)
-						//eta = (variance - bitrate*bitrate) / (1 + Math.cosh(bitrate));
-						bitrate = (1 - eta) * bitrate + eta * bandwidth;
-						//variance = (1 - eta)*variance + eta * bandwidth*bandwidth;
-						target_bitrate = 0.8 * bitrate;
+						if (transfer > 0) {
+							var bandwidth = (received_msg.byteLength * 8 / 1000) / transfer;//[kilobits per s]
+
+							//bitrate tracking (variance-tracking Kalman Filter)
+							//eta = (variance - bitrate*bitrate) / (1 + Math.cosh(bitrate));
+							bitrate = (1 - eta) * bitrate + eta * bandwidth;
+							//variance = (1 - eta)*variance + eta * bandwidth*bandwidth;
+							target_bitrate = 0.8 * bitrate;
+						}
 
 						console.log("[ws] computed = " + computed.toFixed(1) + " [ms], latency = " + latency.toFixed(1) + "[ms], n/w transfer time = " + (1000 * transfer).toFixed(1) + " [ms],  n/w bandwidth = " + Math.round(bandwidth) + " [kbps], frame length: " + length + " frame length:" + frame.length);
 
@@ -10263,7 +10266,7 @@ async*/ function mainRenderer() {
 		vidInterval = 1000 / vidFPS;
 
 		//track the bitrate with a Kalman Filter
-		target_bitrate = 1024;
+		target_bitrate = 1000;
 		bitrate = target_bitrate;
 		eta = 0.1;
 		variance = 0.0;
