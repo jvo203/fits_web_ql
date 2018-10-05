@@ -2023,7 +2023,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-05.2";
+static VERSION_STRING: &'static str = "SV2018-10-05.4";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2049,7 +2049,7 @@ const WEBSOCKET_TIMEOUT: u64 = 60 * 60; //[s]; a websocket inactivity timeout
 
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-fn fetch_molecules(freq_start: f32, freq_end: f32) -> String {
+fn fetch_molecules(freq_start: f64, freq_end: f64) -> String {
     //splatalogue sqlite db integration
     let mut molecules: Vec<serde_json::Value> = Vec::new();
 
@@ -2569,8 +2569,8 @@ fn get_molecules(
         }
     };
 
-    let freq_start = match freq_start.parse::<f32>() {
-        Ok(x) => x,
+    let freq_start = match freq_start.parse::<f64>() {
+        Ok(x) => x / 1e9, //[Hz -> GHz]
         Err(_) => 0.0,
     };
 
@@ -2584,8 +2584,8 @@ fn get_molecules(
         }
     };
 
-    let freq_end = match freq_end.parse::<f32>() {
-        Ok(x) => x,
+    let freq_end = match freq_end.parse::<f64>() {
+        Ok(x) => x / 1e9, //[Hz -> GHz]
         Err(_) => 0.0,
     };
 
@@ -2639,7 +2639,128 @@ fn get_molecules(
 }
 
 fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
-    println!("{:?}", req);
+    //println!("{:?}", req);
+
+    let query = req.query();
+
+    let dataset_id = match query.get("datasetId") {
+        Some(x) => x,
+        None => {
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_fits/datasetId parameter not found</p>"),
+            ))).responder();
+        }
+    };
+
+    //x1
+    let x1 = match query.get("x1") {
+        Some(x) => x,
+        None => {
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_fits/x1 parameter not found</p>"),
+            ))).responder();
+        }
+    };
+
+    let x1 = match x1.parse::<usize>() {
+        Ok(x) => x,
+        Err(_) => 0,
+    };
+
+    //x2
+    let x2 = match query.get("x2") {
+        Some(x) => x,
+        None => {
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_fits/x2 parameter not found</p>"),
+            ))).responder();
+        }
+    };
+
+    let x2 = match x2.parse::<usize>() {
+        Ok(x) => x,
+        Err(_) => 0,
+    };
+
+    //y1
+    let y1 = match query.get("y1") {
+        Some(x) => x,
+        None => {
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_fits/y1 parameter not found</p>"),
+            ))).responder();
+        }
+    };
+
+    let y1 = match y1.parse::<usize>() {
+        Ok(x) => x,
+        Err(_) => 0,
+    };
+
+    //y2
+    let y2 = match query.get("y2") {
+        Some(x) => x,
+        None => {
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_fits/y2 parameter not found</p>"),
+            ))).responder();
+        }
+    };
+
+    let y2 = match y2.parse::<usize>() {
+        Ok(x) => x,
+        Err(_) => 0,
+    };
+
+    //frame_start
+    let frame_start = match query.get("frame_start") {
+        Some(x) => x,
+        None => {
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_fits/frame_start parameter not found</p>"),
+            ))).responder();
+        }
+    };
+
+    let frame_start = match frame_start.parse::<f64>() {
+        Ok(x) => x,
+        Err(_) => 0.0,
+    };
+
+    //frame_end
+    let frame_end = match query.get("frame_end") {
+        Some(x) => x,
+        None => {
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_fits/frame_end parameter not found</p>"),
+            ))).responder();
+        }
+    };
+
+    let frame_end = match frame_end.parse::<f64>() {
+        Ok(x) => x,
+        Err(_) => 0.0,
+    };
+
+    //ref_freq
+    let ref_freq = match query.get("ref_freq") {
+        Some(x) => x,
+        None => {
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_fits/ref_freq parameter not found</p>"),
+            ))).responder();
+        }
+    };
+
+    let ref_freq = match ref_freq.parse::<f64>() {
+        Ok(x) => x,
+        Err(_) => 0.0,
+    };
+
+    println!(
+        "[get_fits] http request for {}: x1={}, y1={}, x2={}, y2={}, frame_start={}, frame_end={}, ref_freq={}",
+        dataset_id, x1, y1, x2, y2, frame_start, frame_end, ref_freq
+    );
 
     return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
         format!("<p><b>Error</b>: FITS cut-out service not implemented yet</p>"),
