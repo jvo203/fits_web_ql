@@ -4689,7 +4689,7 @@ impl Drop for FITS {
             let filepath = std::path::Path::new(&filename);
 
             if filepath.exists() {
-                if let Ok(metadata) = filepath.metadata() {
+                if let Ok(metadata) = filepath.symlink_metadata() {
                     let filetype = metadata.file_type();
 
                     if filetype.is_symlink() {
