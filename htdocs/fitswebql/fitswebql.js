@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-04.7";
+	return "JS2018-10-08.0";
 }
 
 var generateUid = function () {
@@ -843,6 +843,9 @@ function process_image(w, h, bytes, stride, alpha, index) {
 
 
 function process_video(index) {
+	if (!streaming || videoFrame == null)
+		return;
+
 	//let image_bounding_dims = imageContainer[index-1].image_bounding_dims;
 	//{x1: 0, y1: 0, width: w, height: h};
 
@@ -876,9 +879,7 @@ function process_video(index) {
 	var img_width = scale * image_bounding_dims.width;
 	var img_height = scale * image_bounding_dims.height;
 
-	requestAnimationFrame(function () {
-		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width/**videoFrame.scaleX*/, img_height/**videoFrame.scaleY*/);
-	});
+	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width/**videoFrame.scaleX*/, img_height/**videoFrame.scaleY*/);
 
 	if (viewport_zoom_settings != null) {
 		d3.select("#upper").style("stroke", "Gray");
@@ -897,162 +898,27 @@ function process_video(index) {
 		let py = emStrokeWidth;
 
 		//and a zoomed viewport
-		requestAnimationFrame(function () {
-			if (zoom_shape == "square") {
-				ctx.fillStyle = "rgba(0,0,0,0.3)";
-				ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+		if (zoom_shape == "square") {
+			ctx.fillStyle = "rgba(0,0,0,0.3)";
+			ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 
-				ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-			}
-
-			if (zoom_shape == "circle") {
-				ctx.save();
-				ctx.beginPath();
-				ctx.arc(px + viewport_zoom_settings.zoomed_size / 2, py + viewport_zoom_settings.zoomed_size / 2, viewport_zoom_settings.zoomed_size / 2, 0, 2 * Math.PI, true);
-
-				ctx.fillStyle = "rgba(0,0,0,0.3)";
-				ctx.fill();
-
-				ctx.closePath();
-				ctx.clip();
-				ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-				ctx.restore();
-			}
-		});
-	}
-}
-
-function process_video_asm(w, h, bytes, stride, index) {
-	let image_bounding_dims = { x1: 0, y1: 0, width: w, height: h };
-	var pixel_range = image_pixel_range(bytes, w, h, stride);
-	console.log("min pixel:", pixel_range.min_pixel, "max pixel:", pixel_range.max_pixel);
-
-	let imageCanvas = document.createElement('canvas');
-	imageCanvas.style.visibility = "hidden";
-	var context = imageCanvas.getContext('2d');
-
-	imageCanvas.width = w;
-	imageCanvas.height = h;
-	console.log(imageCanvas.width, imageCanvas.height);
-
-	let imageData = context.createImageData(w, h);
-
-	apply_colourmap(imageData, colourmap, bytes, w, h, stride);
-	//apply_colourmap(imageData, 'greyscale', bytes, w, h, stride) ;
-	context.putImageData(imageData, 0, 0);
-
-	//next display the image
-	if (va_count == 1) {
-		//place the image onto the main canvas
-		var c = document.getElementById('VideoCanvas');
-		var width = c.width;
-		var height = c.height;
-		var ctx = c.getContext("2d");
-
-		ctx.mozImageSmoothingEnabled = false;
-		ctx.webkitImageSmoothingEnabled = false;
-		ctx.msImageSmoothingEnabled = false;
-		ctx.imageSmoothingEnabled = false;
-
-		var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-
-		var img_width = scale * image_bounding_dims.width;
-		var img_height = scale * image_bounding_dims.height;
-
-		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width, img_height);
-
-		if (viewport_zoom_settings != null) {
-			d3.select("#upper").style("stroke", "Gray");
-			d3.select("#upperCross").attr("opacity", 0.75);
-			d3.select("#upperBeam").attr("opacity", 0.75);
-
-			var c = document.getElementById("ZOOMCanvas");
-			var ctx = c.getContext("2d");
-
-			ctx.mozImageSmoothingEnabled = false;
-			ctx.webkitImageSmoothingEnabled = false;
-			ctx.msImageSmoothingEnabled = false;
-			ctx.imageSmoothingEnabled = false;
-
-			let px = emStrokeWidth;
-			let py = emStrokeWidth;
-
-			//and a zoomed viewport
-			if (zoom_shape == "square") {
-				ctx.fillStyle = "rgba(0,0,0,0.3)";
-				ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-
-				ctx.drawImage(imageCanvas, viewport_zoom_settings.x - viewport_zoom_settings.clipSize, viewport_zoom_settings.y - viewport_zoom_settings.clipSize, 2 * viewport_zoom_settings.clipSize + 1, 2 * viewport_zoom_settings.clipSize + 1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-			}
-
-			if (zoom_shape == "circle") {
-				ctx.save();
-				ctx.beginPath();
-				ctx.arc(px + viewport_zoom_settings.zoomed_size / 2, py + viewport_zoom_settings.zoomed_size / 2, viewport_zoom_settings.zoomed_size / 2, 0, 2 * Math.PI, true);
-
-				ctx.fillStyle = "rgba(0,0,0,0.3)";
-				ctx.fill();
-
-				ctx.closePath();
-				ctx.clip();
-				ctx.drawImage(imageCanvas, viewport_zoom_settings.x - viewport_zoom_settings.clipSize, viewport_zoom_settings.y - viewport_zoom_settings.clipSize, 2 * viewport_zoom_settings.clipSize + 1, 2 * viewport_zoom_settings.clipSize + 1, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
-				ctx.restore();
-			}
-		}
-	}
-	else {
-		if (composite_view)
-		//add a channel to the RGB composite image
-		{
-			if (compositeCanvas == null) {
-				compositeCanvas = document.createElement('canvas');
-				compositeCanvas.style.visibility = "hidden";
-				//compositeCanvas = document.getElementById('CompositeCanvas');
-
-				compositeCanvas.width = imageCanvas.width;
-				compositeCanvas.height = imageCanvas.height;
-			}
-
-			if (compositeImageData == null) {
-				var ctx = compositeCanvas.getContext('2d');
-				compositeImageData = ctx.createImageData(compositeCanvas.width, compositeCanvas.height);
-			}
-
-			add_composite_channel(bytes, w, h, stride, compositeImageData, index - 1);
-		}
-	}
-
-	video_count++;
-
-	if (video_count == va_count) {
-		//display the composite image
-		if (composite_view) {
-			if (compositeCanvas != null && compositeImageData != null) {
-				var tmp = compositeCanvas.getContext('2d');
-				tmp.putImageData(compositeImageData, 0, 0);
-
-				//place the image onto the main canvas
-				var c = document.getElementById('VideoCanvas');
-				var width = c.width;
-				var height = c.height;
-				var ctx = c.getContext("2d");
-
-				ctx.mozImageSmoothingEnabled = false;
-				ctx.webkitImageSmoothingEnabled = false;
-				ctx.msImageSmoothingEnabled = false;
-				ctx.imageSmoothingEnabled = false;
-
-				var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-
-				var img_width = scale * image_bounding_dims.width;
-				var img_height = scale * image_bounding_dims.height;
-
-				ctx.drawImage(compositeCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width, img_height);
-			}
+			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		}
 
-	}
+		if (zoom_shape == "circle") {
+			ctx.save();
+			ctx.beginPath();
+			ctx.arc(px + viewport_zoom_settings.zoomed_size / 2, py + viewport_zoom_settings.zoomed_size / 2, viewport_zoom_settings.zoomed_size / 2, 0, 2 * Math.PI, true);
 
+			ctx.fillStyle = "rgba(0,0,0,0.3)";
+			ctx.fill();
+
+			ctx.closePath();
+			ctx.clip();
+			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+			ctx.restore();
+		}
+	}
 }
 
 function process_viewport(w, h, bytes, stride, alpha, index) {
@@ -1593,47 +1459,6 @@ function open_websocket_connection(datasetId, index) {
 
 						console.log("[ws] computed = " + computed.toFixed(1) + " [ms], latency = " + latency.toFixed(1) + "[ms], n/w transfer time = " + (1000 * transfer).toFixed(1) + " [ms],  n/w bandwidth = " + Math.round(bandwidth) + " [kbps], frame length: " + length + " frame length:" + frame.length);
 
-						/*let decoder = wsConn[index-1].decoder ;
-		
-						if(decoder != null) {
-							decoder.processFrame(frame, function () {
-								let delta = decoder.cpuTime - cpuTime ;
-								cpuTime = decoder.cpuTime ;						
-		
-								let start = performance.now() ;
-		
-								process_video_asm(decoder.frameBuffer.format.displayWidth,
-								decoder.frameBuffer.format.displayHeight,
-								decoder.frameBuffer.y.bytes,
-								decoder.frameBuffer.y.stride,
-								index);
-		
-								let stop = performance.now() ;
-		
-								let processing_time = delta + (stop-start);
-		
-								let log = 'video frame decode time: ' + delta + ' [ms], process_video time: ' + (stop-start) + ' [ms], total: ' + processing_time + ' [ms]';
-		
-								if(processing_time > vidInterval)
-								{
-									//reduce the video FPS
-									vidFPS = Math.round(0.8*vidFPS);
-									vidFPS = Math.max(1, vidFPS);	
-								}
-								else {
-									//increase the video FPS
-									vidFPS = Math.round(1.2*vidFPS);
-									vidFPS = Math.min(30, vidFPS);
-								}
-		
-								log += ' vidFPS = ' + vidFPS;
-		
-								wsConn[0].send('[debug] ' + log);
-		
-								d3.select("#fps").text('video: ' + vidFPS + ' fps');
-							});
-						};*/
-
 						//call the wasm decoder
 						{
 							let start = performance.now();
@@ -1669,7 +1494,7 @@ function open_websocket_connection(datasetId, index) {
 									videoFrame.img = img;
 								}
 
-								process_video(index);
+								requestAnimationFrame(process_video(index));
 							}
 							else {
 								try {
