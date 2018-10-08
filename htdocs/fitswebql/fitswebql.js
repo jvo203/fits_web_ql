@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-08.0";
+	return "JS2018-10-08.1";
 }
 
 var generateUid = function () {
@@ -5101,7 +5101,7 @@ function setup_axes() {
 			.style('cursor', 'pointer')
 			.on("mouseleave", function () {
 				//clear the VideoCanvas and the ZoomCanvas
-				{
+				requestAnimationFrame(function () {
 					var c = document.getElementById('VideoCanvas');
 					var ctx = c.getContext("2d");
 
@@ -5125,7 +5125,7 @@ function setup_axes() {
 
 						ctx.clearRect(0, 0, c.width, c.height);
 					}
-				}
+				});
 
 				if (va_count == 1) {
 					var elem = d3.select("#legend");
@@ -5205,7 +5205,7 @@ function setup_axes() {
 				video_stack = new Array(va_count);
 
 				//clear the VideoCanvas
-				{
+				requestAnimationFrame(function () {
 					var c = document.getElementById('VideoCanvas');
 					var ctx = c.getContext("2d");
 
@@ -5214,7 +5214,7 @@ function setup_axes() {
 
 					ctx.clearRect(0, 0, width, height);
 					ctx.globalAlpha = 1.0;
-				}
+				});
 
 				if (va_count == 1) {
 					var elem = d3.select("#legend"); elem.attr("opacity", 0);
