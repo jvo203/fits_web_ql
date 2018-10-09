@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-09.1";
+	return "JS2018-10-09.2";
 }
 
 var generateUid = function () {
@@ -5097,6 +5097,7 @@ function setup_axes() {
 				d3.select("#upper").style("stroke", "transparent");
 				d3.select("#upperCross").attr("opacity", 0.0);
 				d3.select("#upperBeam").attr("opacity", 0.0);
+				d3.select("#lower").attr("pointer-events", "auto");
 
 				requestAnimationFrame(function () {
 					var c = document.getElementById('VideoCanvas');
@@ -5188,6 +5189,8 @@ function setup_axes() {
 					d3.select("#upperCross").attr("opacity", 0.75);
 					d3.select("#upperBeam").attr("opacity", 0.75);
 				}
+
+				d3.select("#lower").attr("pointer-events", "none");
 
 				//clear the VideoCanvas
 				requestAnimationFrame(function () {
