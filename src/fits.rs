@@ -4850,7 +4850,7 @@ impl FITS {
         for data in rx {
             frame = frame + 1;
 
-            println!("read {}/{} FITS cube frames", frame, partial_depth);
+            //println!("read {}/{} FITS cube frames", frame, partial_depth);
 
             for y in y1..y2 {
                 let src_offset = ((y as usize) * self.width + (x1 as usize))
