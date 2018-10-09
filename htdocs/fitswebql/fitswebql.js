@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-09.0";
+	return "JS2018-10-09.1";
 }
 
 var generateUid = function () {
@@ -882,18 +882,6 @@ function process_video(index) {
 	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width/**videoFrame.scaleX*/, img_height/**videoFrame.scaleY*/);
 
 	if (viewport_zoom_settings != null) {
-		d3.select("#upper").style("stroke", "Gray");
-		d3.select("#upperCross").attr("opacity", 0.75);
-		d3.select("#upperBeam").attr("opacity", 0.75);
-
-		var c = document.getElementById("ZOOMCanvas");
-		var ctx = c.getContext("2d");
-
-		ctx.mozImageSmoothingEnabled = false;
-		ctx.webkitImageSmoothingEnabled = false;
-		ctx.msImageSmoothingEnabled = false;
-		ctx.imageSmoothingEnabled = false;
-
 		let px = emStrokeWidth;
 		let py = emStrokeWidth;
 
@@ -5102,7 +5090,14 @@ function setup_axes() {
 			.attr("opacity", 0.0)
 			.style('cursor', 'pointer')
 			.on("mouseleave", function () {
-				//clear the VideoCanvas and the ZoomCanvas
+				streaming = false;
+				video_stack = new Array(va_count);
+
+				//clear the VideoCanvas and reset the Zoom Viewport
+				d3.select("#upper").style("stroke", "transparent");
+				d3.select("#upperCross").attr("opacity", 0.0);
+				d3.select("#upperBeam").attr("opacity", 0.0);
+
 				requestAnimationFrame(function () {
 					var c = document.getElementById('VideoCanvas');
 					var ctx = c.getContext("2d");
@@ -5112,21 +5107,6 @@ function setup_axes() {
 
 					ctx.clearRect(0, 0, width, height);
 					ctx.globalAlpha = 0.0;
-
-					//the zoomcanvas too
-					if (viewport_zoom_settings != null) {
-						d3.select("#upper").style("stroke", "transparent");
-						d3.select("#upperCross").attr("opacity", 0.0);
-						d3.select("#upperBeam").attr("opacity", 0.0);
-
-						var c = document.getElementById("ZOOMCanvas");
-						var ctx = c.getContext("2d");
-
-						let px = emStrokeWidth;
-						let py = emStrokeWidth;
-
-						ctx.clearRect(0, 0, c.width, c.height);
-					}
 				});
 
 				if (va_count == 1) {
@@ -5151,9 +5131,6 @@ function setup_axes() {
 				d3.select("#fps").text("");
 
 				//send an end_video command via WebSockets
-				streaming = false;
-				video_stack = new Array(va_count);
-
 				if (videoFrame != null) {
 					try {
 						api.hevc_destroy();
@@ -5205,6 +5182,12 @@ function setup_axes() {
 				//send an init_video command via WebSockets
 				streaming = true;
 				video_stack = new Array(va_count);
+
+				if (viewport_zoom_settings != null) {
+					d3.select("#upper").style("stroke", "Gray");
+					d3.select("#upperCross").attr("opacity", 0.75);
+					d3.select("#upperBeam").attr("opacity", 0.75);
+				}
 
 				//clear the VideoCanvas
 				requestAnimationFrame(function () {
