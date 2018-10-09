@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-08.1";
+	return "JS2018-10-09.0";
 }
 
 var generateUid = function () {
@@ -1494,7 +1494,9 @@ function open_websocket_connection(datasetId, index) {
 									videoFrame.img = img;
 								}
 
-								requestAnimationFrame(process_video(index));
+								requestAnimationFrame(function () {
+									process_video(index)
+								});
 							}
 							else {
 								try {
