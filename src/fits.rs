@@ -9,6 +9,8 @@ use regex::Regex;
 use std;
 use std::fs::File;
 use std::io::Cursor;
+use std::io::Seek;
+use std::io::SeekFrom;
 use std::io::{Read, Write};
 use std::slice;
 use std::sync::mpsc;
@@ -1184,6 +1186,101 @@ impl FITS {
             }
             _ => {}
         }
+    }
+
+    fn modify_partial_fits_header_chunk(
+        &self,
+        buf: &mut [u8],
+        naxes: &[usize],
+        x1: f64,
+        y1: f64,
+        start: f64,
+    ) -> bool {
+        let mut offset: usize = 0;
+
+        while offset < FITS_CHUNK_LENGTH {
+            let slice = &buf[offset..offset + FITS_LINE_LENGTH].to_vec();
+            let line = match std::str::from_utf8(slice) {
+                Ok(x) => x,
+                Err(err) => {
+                    println!("non-UTF8 characters found: {}", err);
+                    return true;
+                }
+            };
+
+            if line.contains("END       ") {
+                return true;
+            }
+
+            if line.contains("NAXIS1  = ") {
+                let new_value =
+                    format!("NAXIS1  = {} / modified by fits_web_ql", naxes[0]).into_bytes();
+
+                for i in 0..new_value.len().min(FITS_LINE_LENGTH) {
+                    buf[offset + i] = new_value[i];
+                }
+            }
+
+            if line.contains("NAXIS2  = ") {
+                let new_value =
+                    format!("NAXIS2  = {} / modified by fits_web_ql", naxes[1]).into_bytes();
+
+                for i in 0..new_value.len().min(FITS_LINE_LENGTH) {
+                    buf[offset + i] = new_value[i];
+                }
+            }
+
+            if line.contains("NAXIS3  = ") {
+                let new_value =
+                    format!("NAXIS3  = {} / modified by fits_web_ql", naxes[2]).into_bytes();
+
+                for i in 0..new_value.len().min(FITS_LINE_LENGTH) {
+                    buf[offset + i] = new_value[i];
+                }
+            }
+
+            if line.contains("NAXIS4  = ") {
+                let new_value =
+                    format!("NAXIS4  = {} / modified by fits_web_ql", naxes[3]).into_bytes();
+
+                for i in 0..new_value.len().min(FITS_LINE_LENGTH) {
+                    buf[offset + i] = new_value[i];
+                }
+            }
+
+            if line.contains("CRPIX1  = ") {
+                let new_value = format!("CRPIX1  = {} / modified by fits_web_ql", self.crpix1 - x1)
+                    .into_bytes();
+
+                for i in 0..new_value.len().min(FITS_LINE_LENGTH) {
+                    buf[offset + i] = new_value[i];
+                }
+            }
+
+            if line.contains("CRPIX2  = ") {
+                let new_value = format!("CRPIX2  = {} / modified by fits_web_ql", self.crpix2 - y1)
+                    .into_bytes();
+
+                for i in 0..new_value.len().min(FITS_LINE_LENGTH) {
+                    buf[offset + i] = new_value[i];
+                }
+            }
+
+            if line.contains("CRPIX3  = ") {
+                let new_value = format!(
+                    "CRPIX3  = {} / modified by fits_web_ql",
+                    self.crpix3 - start
+                ).into_bytes();
+
+                for i in 0..new_value.len().min(FITS_LINE_LENGTH) {
+                    buf[offset + i] = new_value[i];
+                }
+            }
+
+            offset = offset + FITS_LINE_LENGTH;
+        }
+
+        return false;
     }
 
     fn parse_fits_header_chunk(&mut self, buf: &[u8]) -> bool {
@@ -4628,7 +4725,7 @@ impl FITS {
         value.to_string()
     }
 
-    pub fn get_region(
+    pub fn get_cutout(
         &self,
         x1: i32,
         y1: i32,
@@ -4639,11 +4736,11 @@ impl FITS {
         ref_freq: f64,
     ) -> Option<Vec<u8>> {
         //spatial range checks
-        let x1 = num::clamp(x1, 0, self.width as i32 - 1) as usize;
-        let y1 = num::clamp(y1, 0, self.height as i32 - 1) as usize;
+        let x1 = num::clamp(x1, 0, self.width as i32 - 1);
+        let y1 = num::clamp(y1, 0, self.height as i32 - 1);
 
-        let x2 = num::clamp(x2, 0, self.width as i32 - 1) as usize;
-        let y2 = num::clamp(y2, 0, self.height as i32 - 1) as usize;
+        let x2 = num::clamp(x2, 0, self.width as i32 - 1);
+        let y2 = num::clamp(y2, 0, self.height as i32 - 1);
 
         let (start, end) = match self.get_spectrum_range(frame_start, frame_end, ref_freq) {
             Some((start, end)) => {
@@ -4656,7 +4753,143 @@ impl FITS {
             }
         };
 
-        Some(String::from("a FITS cut-out").into_bytes())
+        let partial_width = (x2 - x1).abs() as usize;
+        let partial_height = (y2 - y1).abs() as usize;
+        let partial_depth = end - start + 1;
+
+        let partial_data_size =
+            partial_height * partial_width * partial_depth * ((self.bitpix.abs() / 8) as usize);
+        let mut no_units = partial_data_size / FITS_CHUNK_LENGTH;
+
+        if partial_data_size % FITS_CHUNK_LENGTH > 0 {
+            no_units += 1;
+        }
+
+        let partial_capacity = self.header.len() + no_units * FITS_CHUNK_LENGTH;
+        let mut partial_fits = Vec::with_capacity(partial_capacity);
+
+        let naxes = [partial_width, partial_height, partial_depth, 1];
+
+        //open the original FITS file
+        let filename = format!("{}/{}.fits", FITSCACHE, self.dataset_id.replace("/", "_"));
+        let filepath = std::path::Path::new(&filename);
+
+        let mut f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(x) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
+
+                return None;
+            }
+        };
+
+        let mut header_end: bool = false;
+
+        while !header_end {
+            //read a FITS chunk
+            let mut chunk = [0; FITS_CHUNK_LENGTH];
+
+            match f.read_exact(&mut chunk) {
+                Ok(()) => {
+                    //parse and modify a FITS header chunk
+                    header_end = self.modify_partial_fits_header_chunk(
+                        &mut chunk,
+                        &naxes,
+                        x1 as f64,
+                        y1 as f64,
+                        start as f64,
+                    );
+                    partial_fits.extend_from_slice(&chunk);
+                }
+                Err(err) => {
+                    println!("CRITICAL ERROR reading FITS header: {}", err);
+                    return None;
+                }
+            };
+        }
+
+        let frame_size = self.width * self.height * ((self.bitpix.abs() / 8) as usize);
+        let header_size = self.header.len();
+
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(move || {
+            for frame in start..end + 1 {
+                let offset = header_size + frame * frame_size;
+
+                if let Err(err) = f.seek(SeekFrom::Start(offset as u64)) {
+                    println!("CRITICAL ERROR seeking within the FITS file: {}", err);
+                    return;
+                }
+
+                //f now points to the start of a correct frame
+                //read a chunk of <frame_size> bytes
+                let mut data: Vec<u8> = vec![0; frame_size];
+
+                //read a FITS cube frame
+                match f.read_exact(&mut data) {
+                    Ok(()) => {
+                        match tx.send(data) {
+                            Ok(()) => {}
+                            Err(err) => {
+                                println!("file reading thread: {}", err);
+                                return;
+                            }
+                        };
+                    }
+                    Err(err) => {
+                        println!("CRITICAL ERROR reading FITS data: {}", err);
+                        return;
+                    }
+                }
+            }
+        });
+
+        let mut frame: usize = 0;
+
+        for data in rx {
+            frame = frame + 1;
+
+            println!("read {}/{} FITS cube frames", frame, partial_depth);
+
+            for y in y1..y2 {
+                let src_offset = ((y as usize) * self.width + (x1 as usize))
+                    * ((self.bitpix.abs() / 8) as usize);
+
+                let partial_row_size = partial_width * ((self.bitpix.abs() / 8) as usize);
+
+                partial_fits.extend_from_slice(&data[src_offset..src_offset + partial_row_size]);
+            }
+        }
+
+        if frame != partial_depth {
+            println!(
+                "CRITICAL ERROR not all FITS cube frames have been read: {}/{}",
+                frame, partial_depth
+            );
+            return None;
+        }
+
+        println!(
+            "FITS cut-out length: {}, capacity: {}",
+            partial_fits.len(),
+            partial_capacity
+        );
+
+        let padding = partial_capacity - partial_fits.len();
+
+        //pad the FITS cut-out to the nearest FITS_CHUNK_LENGTH
+        if padding > 0 {
+            partial_fits.extend_from_slice(&vec![0; padding]);
+
+            println!(
+                "padded FITS cut-out length: {}, capacity: {}",
+                partial_fits.len(),
+                partial_capacity
+            );
+        }
+
+        Some(partial_fits)
     }
 }
 

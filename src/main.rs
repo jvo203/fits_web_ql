@@ -2025,7 +2025,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
 
-static VERSION_STRING: &'static str = "SV2018-10-05.6";
+static VERSION_STRING: &'static str = "SV2018-10-09.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2821,7 +2821,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         }
 
         if fits.has_data {
-            match fits.get_region(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
+            match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
                 Some(region) => {
                     let mut header = Header::new_gnu();
                     if let Err(err) =
