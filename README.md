@@ -88,13 +88,25 @@ sudo make install
 (when compiling from source enforce -fPIC by means of the configure flag --enable-pic)
 
 ##
-install x265 version 2.8
+install x265 version 2.8 or higher
 
 macOS: "brew install x265"
 
 other systems follow:
 
 http://www.linuxfromscratch.org/blfs/view/svn/multimedia/x265.html
+
+cd x265_2.9
+
+mkdir -p build
+
+cd build
+
+cmake ../source
+
+make
+
+sudo make install
 
 please be sure to have nasm installed beforehand when building from source, plus NUMA API: numactl and numa development library libnuma (package libnuma-dev on Ubuntu)
 

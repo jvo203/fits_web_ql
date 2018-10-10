@@ -68,6 +68,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
+use std::sync::mpsc
 
 use actix::*;
 use actix_web::http::header::HeaderValue;
@@ -2025,7 +2026,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-10.2";
+static VERSION_STRING: &'static str = "SV2018-10-10.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2825,7 +2826,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
             }
 
             if fits.has_data {
-                match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
+                match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq, None) {
                     Some(region) => {
                         let mut header = Header::new_gnu();
                         if let Err(err) =
@@ -2895,7 +2896,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
             ))).responder(),
         }
     } else {
-        //only one dataset, no need to use tarball
+        //only one dataset, no need to use tarball, stream the data instead
         let entry = dataset_id[0];
 
         let datasets = DATASETS.read();
@@ -2904,6 +2905,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
             Some(x) => x,
             None => {
                 println!("[get_fits] error getting {} from DATASETS; aborting", entry);
+
                 return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                     format!(
                         "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
@@ -2918,7 +2920,25 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         }
 
         if fits.has_data {
-            match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
+            /*let (tx, rx): (mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>) = mpsc::channel();
+            let id = entry.clone();            
+
+            thread::spawn(|| {
+                println!("a thread within a future: {}", id);
+            });*/
+
+            /*thread::spawn(move || {
+                let datasets = DATASETS.read();
+                let fits = datasets.get(id).unwrap().read();
+
+                //let _ = fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq, Some(tx));
+            });
+
+            for data in rx {
+                println!("streaming data: {:?}", data);
+            }*/
+
+            match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq, None) {
                 Some(region) => {
                     let disposition_filename = format!(
                         "attachment; filename={}-subregion.fits",
@@ -2948,6 +2968,13 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
             ))).responder()
                 }
             }
+
+            /*result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!(
+                    "<p><b>Critical Error</b>: get_fits: {} streaming test under way</p>",
+                    entry
+                ),
+            ))).responder()*/
         } else {
             result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!(

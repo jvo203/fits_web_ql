@@ -4742,6 +4742,7 @@ impl FITS {
         frame_start: f64,
         frame_end: f64,
         ref_freq: f64,
+        stream: Option<mpsc::Sender<Vec<u8>>>,
     ) -> Option<Vec<u8>> {
         //spatial range checks
         let x1 = num::clamp(x1, 0, self.width as i32 - 1);
