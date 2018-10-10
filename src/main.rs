@@ -2026,7 +2026,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-10.4";
+static VERSION_STRING: &'static str = "SV2018-10-10.5";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2882,7 +2882,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                     .header("Cache-Control", "no-cache, no-store, must-revalidate")
                     .header("Pragma", "no-cache")
                     .header("Expires", "0")
-                    .content_type("application/force-download")
+                    .content_type("application/force-download")                    
+                    .content_encoding(ContentEncoding::Identity)// disable compression
                     .header("Content-Disposition", disposition_filename)
                     .header("Content-Transfer-Encoding", "binary")
                     .header("Accept-Ranges", "bytes")
@@ -2950,6 +2951,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                         .header("Pragma", "no-cache")
                         .header("Expires", "0")
                         .content_type("application/force-download")
+                        .content_encoding(ContentEncoding::Identity)// disable compression
                         .header("Content-Disposition", disposition_filename)
                         .header("Content-Transfer-Encoding", "binary")
                         .header("Accept-Ranges", "bytes")
