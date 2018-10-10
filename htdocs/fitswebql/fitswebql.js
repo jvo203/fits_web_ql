@@ -1,9 +1,10 @@
 function get_js_version() {
-	return "JS2018-10-10.3";
+	return "JS2018-10-10.4";
 }
 
 const wasm_supported = (() => {
 	try {
+		console.log("checking for WebAssembly support");
 		if (typeof WebAssembly === "object"
 			&& typeof WebAssembly.instantiate === "function") {
 			const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
@@ -5258,7 +5259,8 @@ function setup_axes() {
 					}
 				}
 
-				//if (videoFrame == null) 
+				//if (videoFrame == null)
+				if(wasm_supported)
 				{
 					try {
 						//init the HEVC encoder		
@@ -5513,7 +5515,7 @@ function x_axis_move(offset) {
 		modal.style.left = null;
 	};
 
-	if (!freqdrag) {
+	if (!freqdrag && wasm_supported) {
 		//initially assume 10 frames per second for a video
 		//later on use a Kalman Filter to predict the next frame position and request it		
 		vidInterval = 1000 / vidFPS;
