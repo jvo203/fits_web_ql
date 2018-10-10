@@ -2020,12 +2020,12 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 #[cfg(not(feature = "server"))]
-static SERVER_STRING: &'static str = "FITSWebQL v1.2.0";
+static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 
 #[cfg(feature = "server")]
-static SERVER_STRING: &'static str = "FITSWebQL v3.2.0";
+static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-09.1";
+static VERSION_STRING: &'static str = "SV2018-10-10.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2797,10 +2797,100 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         dataset_id, x1, y1, x2, y2, frame_start, frame_end, ref_freq
     );
 
-    let mut ar = Builder::new(Vec::new());
+    if dataset_id.len() > 1 {
+        let mut ar = Builder::new(Vec::new());
 
-    //for each dataset append it to the archives
-    for entry in dataset_id {
+        //for each dataset append it to the archives
+        for entry in dataset_id {
+            let datasets = DATASETS.read();
+
+            let fits = match datasets.get(entry).unwrap().try_read() {
+                Some(x) => x,
+                None => {
+                    println!("[get_fits] error getting {} from DATASETS; aborting", entry);
+                    return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                        format!(
+                            "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
+                            entry
+                        ),
+                    ))).responder();
+                }
+            };
+
+            {
+                *fits.timestamp.write() = SystemTime::now();
+            }
+
+            if fits.has_data {
+                match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
+                    Some(region) => {
+                        let mut header = Header::new_gnu();
+                        if let Err(err) =
+                            header.set_path(format!("{}-subregion.fits", entry.replace("/", "_")))
+                        {
+                            return result(Ok(HttpResponse::NotFound()
+                                .content_type("text/html")
+                                .body(format!(
+                                    "<p><b>Critical Error</b>: get_fits/tar/set_path error: {}</p>",
+                                    err
+                                )))).responder();
+                        }
+
+                        header.set_mode(420);
+
+                        match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+                            Ok(n) => header.set_mtime(n.as_secs()),
+                            Err(_) => println!("SystemTime before UNIX EPOCH!"),
+                        };
+
+                        header.set_size(region.len() as u64);
+                        header.set_cksum();
+                        if let Err(err) = ar.append(&header, region.as_slice()) {
+                            return result(Ok(HttpResponse::NotFound()
+                                .content_type("text/html")
+                                .body(format!(
+                                    "<p><b>Critical Error</b>: get_fits/tar/append error: {}</p>",
+                                    err
+                                )))).responder();
+                        }
+                    }
+                    None => println!(
+                        "partial FITS cut-out for {} did not produce any data",
+                        entry
+                    ),
+                }
+            }
+        }
+
+        match ar.into_inner() {
+            Ok(tarball) => {
+                let timestamp = Local::now();
+                let disposition_filename = format!(
+                    "attachment; filename=fits_web_ql_{}.tar",
+                    timestamp.format("%Y-%m-%d_%H:%M:%S")
+                );
+
+                result(Ok(HttpResponse::Ok()
+                    .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                    .header("Pragma", "no-cache")
+                    .header("Expires", "0")
+                    .content_type("application/force-download")
+                    .header("Content-Disposition", disposition_filename)
+                    .header("Content-Transfer-Encoding", "binary")
+                    .header("Accept-Ranges", "bytes")
+                    .body(tarball))).responder()
+            }
+            Err(err) => result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!(
+                    "<p><b>Critical Error</b>: get_fits tarball creation error: {}</p>",
+                    err
+                ),
+            ))).responder(),
+        }
+    } else {
+        //only one dataset, no need to use tarball
+        let entry = dataset_id[0];
+
         let datasets = DATASETS.read();
 
         let fits = match datasets.get(entry).unwrap().try_read() {
@@ -2823,62 +2913,42 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         if fits.has_data {
             match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
                 Some(region) => {
-                    let mut header = Header::new_gnu();
-                    if let Err(err) =
-                        header.set_path(format!("{}-subregion.fits", entry.replace("/", "_")))
-                    {
-                        return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                            format!(
-                                "<p><b>Critical Error</b>: get_fits/tar/set_path error: {}</p>",
-                                err
-                            ),
-                        ))).responder();
-                    }
+                    let disposition_filename = format!(
+                        "attachment; filename={}-subregion.fits",
+                        entry.replace("/", "_")
+                    );
 
-                    header.set_mode(420);
-                    header.set_size(region.len() as u64);
-                    header.set_cksum();
-                    if let Err(err) = ar.append(&header, region.as_slice()) {
-                        return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                            format!(
-                                "<p><b>Critical Error</b>: get_fits/tar/append error: {}</p>",
-                                err
-                            ),
-                        ))).responder();
-                    }
+                    result(Ok(HttpResponse::Ok()
+                        .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                        .header("Pragma", "no-cache")
+                        .header("Expires", "0")
+                        .content_type("application/force-download")
+                        .header("Content-Disposition", disposition_filename)
+                        .header("Content-Transfer-Encoding", "binary")
+                        .header("Accept-Ranges", "bytes")
+                        .body(region))).responder()
                 }
-                None => println!(
-                    "partial FITS cut-out for {} did not produce any data",
+                None => {
+                    println!(
+                        "partial FITS cut-out for {} did not produce any data",
+                        entry
+                    );
+                    result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!(
+                    "<p><b>Critical Error</b>: partial FITS cut-out for {} did not produce any data</p>",
                     entry
                 ),
+            ))).responder()
+                }
             }
+        } else {
+            result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!(
+                    "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
+                    entry
+                ),
+            ))).responder()
         }
-    }
-
-    match ar.into_inner() {
-        Ok(tarball) => {
-            let timestamp = Local::now();
-            let disposition_filename = format!(
-                "attachment; filename=fits_web_ql_{}.tar",
-                timestamp.format("%Y-%m-%d_%H:%M:%S")
-            );
-
-            result(Ok(HttpResponse::Ok()
-                .header("Cache-Control", "no-cache, no-store, must-revalidate")
-                .header("Pragma", "no-cache")
-                .header("Expires", "0")
-                .content_type("application/force-download")
-                .header("Content-Disposition", disposition_filename)
-                .header("Content-Transfer-Encoding", "binary")
-                .header("Accept-Ranges", "bytes")
-                .body(tarball))).responder()
-        }
-        Err(err) => result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-            format!(
-                "<p><b>Critical Error</b>: get_fits tarball creation error: {}</p>",
-                err
-            ),
-        ))).responder(),
     }
 }
 

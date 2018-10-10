@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-09.2";
+	return "JS2018-10-10.2";
 }
 
 var generateUid = function () {
@@ -1088,32 +1088,6 @@ function send_ping() {
 	}
 }
 
-function open_video_websocket(datasetId) {
-	var loc = window.location;
-	var ws_uri = WS_SOCKET + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/video/" + encodeURIComponent(datasetId);
-
-	wsVideo = new ReconnectingWebSocket(ws_uri, null, { binaryType: 'arraybuffer' });
-	wsVideo.binaryType = 'arraybuffer';
-
-	wsVideo.addEventListener("open", function (evt) {
-		console.log("video websocket connection opened.");
-	});
-
-	wsVideo.addEventListener("message", function (evt) {
-		if (typeof evt.data === "string") {
-			var received_msg = evt.data;
-			var cmd = "[heartbeat]";
-			var pos = received_msg.indexOf(cmd);
-
-			if (pos >= 0) {
-				wsVideo.send(received_msg);
-			}
-
-			return;
-		}
-	});
-}
-
 function open_websocket_connection(datasetId, index) {
 	if ("WebSocket" in window) {
 		//alert("WebSocket is supported by your Browser!");
@@ -1506,21 +1480,22 @@ function open_websocket_connection(datasetId, index) {
 
 							let log = 'video frame length ' + len + ' bytes, decoding/processing/rendering time: ' + delta.toFixed() + ' [ms], bandwidth: ' + Math.round(bandwidth) + " [kbps], request latency: " + latency.toFixed() + ' [ms]';
 
-							//latency > computed or delta, take the greater
-							if (Math.max(latency, delta) > 0.8 * vidInterval) {
-								//reduce the video FPS
-								vidFPS = 0.8 * vidFPS;
-								vidFPS = Math.max(1, vidFPS);
-							}
-							else {
-								//increase the video FPS
-								vidFPS = 1.2 * vidFPS;
-								vidFPS = Math.min(30, vidFPS);
+							if (video_fps_control == 'auto') {
+								//latency > computed or delta, take the greater
+								if (Math.max(latency, delta) > 0.8 * vidInterval) {
+									//reduce the video FPS
+									vidFPS = 0.8 * vidFPS;
+									vidFPS = Math.max(1, vidFPS);
+								}
+								else {
+									//increase the video FPS
+									vidFPS = 1.2 * vidFPS;
+									vidFPS = Math.min(30, vidFPS);
+								}
 							}
 
 							log += ' vidFPS = ' + Math.round(vidFPS);
-
-							wsConn[0].send('[debug] ' + log);
+							//wsConn[0].send('[debug] ' + log);
 
 							if (videoFrame != null)
 								d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps, bitrate: ' + Math.round(bitrate) + ' [kbps]');//, η: ' + eta.toFixed(4) + ' var: ' + variance
@@ -3169,6 +3144,17 @@ function enable_autoscale() {
 	user_data_max = null;
 };
 
+function change_video_fps_control() {
+	video_fps_control = document.getElementById('video_fps_control').value;
+
+	if (video_fps_control == 'auto')
+		vidFPS = 5;//10
+	else
+		vidFPS = parseInt(video_fps_control);
+
+	localStorage.setItem("video_fps_control", video_fps_control);
+}
+
 function change_zoom_shape() {
 	zoom_shape = document.getElementById('zoom_shape').value;
 	localStorage.setItem("zoom_shape", zoom_shape);
@@ -3989,7 +3975,8 @@ function display_preferences(index) {
 	group.append("text")
 		.attr("id", "ping")
 		.attr("x", "0.5em")
-		.attr("y", offset)//"0.75em")
+		//.attr("y", offset)//"0.75em")
+		.attr("y", (svgHeight - offset / 4))
 		.attr("font-family", "Helvetica")//Helvetica
 		.attr("font-size", "0.75em")
 		.attr("text-anchor", "start")
@@ -4006,7 +3993,8 @@ function display_preferences(index) {
 	group.append("text")
 		.attr("id", "latency")
 		.attr("x", "1.75em")
-		.attr("y", offset)//"0.85em")
+		//.attr("y", offset)//"0.85em")
+		.attr("y", (svgHeight - offset / 4))
 		.attr("font-family", "Inconsolata")
 		//.attr("font-weight", "bold")
 		.attr("font-size", "0.75em")//0.75 Helvetica
@@ -4019,7 +4007,8 @@ function display_preferences(index) {
 	group.append("text")
 		.attr("id", "fps")
 		.attr("x", svgWidth)
-		.attr("y", offset)
+		//.attr("y", offset)
+		.attr("y", (svgHeight - offset / 4))
 		.attr("font-family", "Inconsolata")
 		//.attr("font-weight", "bold")
 		.attr("font-size", "0.75em")//0.75 Helvetica
@@ -4097,10 +4086,44 @@ function display_preferences(index) {
 			localStorage_write_boolean("realtime_video", realtime_video);
 			var htmlStr = realtime_video ? '<span class="glyphicon glyphicon-check"></span> realtime video updates' : '<span class="glyphicon glyphicon-unchecked"></span> realtime video updates';
 			d3.select(this).html(htmlStr);
+
+			if (realtime_video) {
+				d3.select('#video_fps_control_li').style("display", "block");
+			}
+			else {
+				d3.select('#video_fps_control_li').style("display", "none");
+			}
 		})
 		.html(htmlStr);
 
+	//----------------------------------------
 	var tmpA;
+
+	tmpA = prefDropdown.append("li")
+		.attr("id", "video_fps_control_li")
+		//.style("background-color", "#FFF")
+		.append("a")
+		.style("class", "form-group")
+		.attr("class", "form-horizontal");
+
+	tmpA.append("label")
+		.attr("for", "video_fps_control")
+		.attr("class", "control-label")
+		.html("video fps control:&nbsp; ");
+
+	tmpA.append("select")
+		.attr("id", "video_fps_control")
+		.attr("onchange", "javascript:change_video_fps_control();")
+		.html("<option value='auto'>auto</option><option value='5'>5 fps</option><option value='10'>10 fps</option><option value='20'>20 fps</option><option value='30'>30 fps</option>");
+
+	document.getElementById('video_fps_control').value = video_fps_control;
+
+	if (realtime_video) {
+		d3.select('#video_fps_control_li').style("display", "block");
+	}
+	else {
+		d3.select('#video_fps_control_li').style("display", "none");
+	}
 
 	tmpA = prefDropdown.append("li")
 		//.style("background-color", "#FFF")	
@@ -7720,6 +7743,7 @@ function partial_fits_download(offsetx, offsety, width, height) {
 
 	//console.log(url) ;
 	window.location.assign(url);
+	//window.open(url, '_blank');
 }
 
 function ok_download() {
@@ -10040,6 +10064,13 @@ async*/ function mainRenderer() {
 	if (colourmap === null)
 		colourmap = "green";
 
+	if (localStorage.getItem("video_fps_control") === null) {
+		video_fps_control = "auto";
+		localStorage.setItem("video_fps_control", video_fps_control);
+	}
+	else
+		video_fps_control = localStorage.getItem("video_fps_control");
+
 	composite_view = (parseInt(votable.getAttribute('data-composite')) == 1) ? true : false;
 	console.log("composite view:", composite_view);
 
@@ -10075,7 +10106,11 @@ async*/ function mainRenderer() {
 		last_seq_id = 0;
 
 		//video
-		vidFPS = 5;//10	
+		if (video_fps_control == 'auto')
+			vidFPS = 5;//10
+		else
+			vidFPS = parseInt(video_fps_control);
+
 		vidInterval = 1000 / vidFPS;
 
 		//track the bitrate with a Kalman Filter
@@ -10439,8 +10474,6 @@ async*/ function mainRenderer() {
 
 				//sleep(1000) ;
 			}
-
-			//open_video_websocket(datasetId);
 		}
 
 	}

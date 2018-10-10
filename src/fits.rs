@@ -124,9 +124,17 @@ static JVO_FITS_DB: &'static str = "alma";
 #[cfg(feature = "server")]
 pub static FITSHOME: &'static str = "/home";
 
+//#[cfg(not(feature = "production"))]
 pub static FITSCACHE: &'static str = "FITSCACHE";
 
+//#[cfg(not(feature = "production"))]
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
+
+/*#[cfg(feature = "production")]
+pub static FITSCACHE: &'static str = "/ssd0/chris/fitswebql/FITSCACHE";
+
+#[cfg(feature = "production")]
+pub static IMAGECACHE: &'static str = "/ssd0/chris/fitswebql/IMAGECACHE";*/
 
 pub const IMAGE_PIXEL_COUNT_LIMIT: u64 = 1280 * 720;
 pub const VIDEO_PIXEL_COUNT_LIMIT: u64 = 720 * 480;
