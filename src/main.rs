@@ -2025,7 +2025,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-10.1";
+static VERSION_STRING: &'static str = "SV2018-10-10.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2800,14 +2800,17 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
     if dataset_id.len() > 1 {
         let mut ar = Builder::new(Vec::new());
 
+        //dataset_id.iter().for_each(|entry| {//not used for now; problems accessing inner data of Arc<RwLock<Builder>> later on
+
         //for each dataset append it to the archives
-        for entry in dataset_id {
+        for entry in dataset_id {            
             let datasets = DATASETS.read();
 
             let fits = match datasets.get(entry).unwrap().try_read() {
                 Some(x) => x,
                 None => {
                     println!("[get_fits] error getting {} from DATASETS; aborting", entry);
+
                     return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                         format!(
                             "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
@@ -2828,6 +2831,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                         if let Err(err) =
                             header.set_path(format!("{}-subregion.fits", entry.replace("/", "_")))
                         {
+                            println!("Critical Error: get_fits/tar/set_path error: {}", err);
+
                             return result(Ok(HttpResponse::NotFound()
                                 .content_type("text/html")
                                 .body(format!(
@@ -2845,7 +2850,9 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
 
                         header.set_size(region.len() as u64);
                         header.set_cksum();
+
                         if let Err(err) = ar.append(&header, region.as_slice()) {
+                            println!("Critical Error: get_fits/tar/append error: {}", err);
                             return result(Ok(HttpResponse::NotFound()
                                 .content_type("text/html")
                                 .body(format!(
