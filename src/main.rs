@@ -64,11 +64,11 @@ use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::fs::File;
 use std::io::Write;
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
-use std::sync::mpsc;
 
 use actix::*;
 use actix_web::http::header::HeaderValue;
@@ -2026,7 +2026,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-10.3";
+static VERSION_STRING: &'static str = "SV2018-10-10.4";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2804,7 +2804,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         //dataset_id.iter().for_each(|entry| {//not used for now; problems accessing inner data of Arc<RwLock<Builder>> later on
 
         //for each dataset append it to the archives
-        for entry in dataset_id {            
+        for entry in dataset_id {
             let datasets = DATASETS.read();
 
             let fits = match datasets.get(entry).unwrap().try_read() {
@@ -2969,7 +2969,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                 }
             }
 
-            /*result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+        /*result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!(
                     "<p><b>Critical Error</b>: get_fits: {} streaming test under way</p>",
                     entry
@@ -3010,18 +3010,19 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
                     for row in &rows {
                         let path: String = row.get(0);
 
-                        let table = match table.find('.') {
-                            Some(index) => &table[0..index],
-                            None => table,
+                        let filename = match table.find('.') {
+                            Some(index) => {
+                                let table = &table[0..index];
+                                format!(
+                                    "{}/{}/{}/{}",
+                                    fits::FITSHOME,
+                                    db,
+                                    table.to_string().to_ascii_uppercase(),
+                                    path
+                                )
+                            }
+                            None => format!("{}/{}/{}", fits::FITSHOME, db, path),
                         };
-
-                        let filename = format!(
-                            "{}/{}/{}/{}",
-                            fits::FITSHOME,
-                            db,
-                            table.to_string().to_ascii_uppercase(),
-                            path
-                        );
 
                         let filepath = std::path::PathBuf::from(&filename);
                         println!("filepath: {:?}", filepath);
