@@ -72,6 +72,7 @@ use std::{env, mem, ptr};
 
 use actix::*;
 use actix_web::http::header::HeaderValue;
+use actix_web::http::ContentEncoding;
 use actix_web::middleware::Logger;
 use actix_web::server::HttpServer;
 use actix_web::*;
