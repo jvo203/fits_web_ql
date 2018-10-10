@@ -1,6 +1,21 @@
 function get_js_version() {
-	return "JS2018-10-10.2";
+	return "JS2018-10-10.3";
 }
+
+const wasm_supported = (() => {
+	try {
+		if (typeof WebAssembly === "object"
+			&& typeof WebAssembly.instantiate === "function") {
+			const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
+			if (module instanceof WebAssembly.Module)
+				return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
+		}
+	} catch (e) {
+	}
+	return false;
+})();
+
+console.log(wasm_supported ? "WebAssembly is supported" : "WebAssembly is not supported");
 
 var generateUid = function () {
 	function S4() {
@@ -1114,8 +1129,14 @@ function open_websocket_connection(datasetId, index) {
 
 				ALMAWS.binaryType = 'arraybuffer';
 
-				if (index == va_count)
+				if (index == va_count) {
 					send_ping();
+
+
+					let log = wasm_supported ? "WebAssembly is supported" : "WebAssembly is not supported";
+
+					ALMAWS.send('[debug] ' + log);
+				}
 			});
 
 			ALMAWS.addEventListener("error", function (evt) {
@@ -1498,7 +1519,7 @@ function open_websocket_connection(datasetId, index) {
 							//wsConn[0].send('[debug] ' + log);
 
 							if (videoFrame != null)
-								d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps, bitrate: ' + Math.round(bitrate) + ' [kbps]');//, η: ' + eta.toFixed(4) + ' var: ' + variance
+								d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps, bitrate: ' + Math.round(bitrate) + ' kbps');//, η: ' + eta.toFixed(4) + ' var: ' + variance
 						}
 
 						return;
@@ -3610,10 +3631,10 @@ function get_flux(value, flux, black, white, median, multiplier, index) {
 			break;
 		case 'ratio':
 			return get_flux_value_ratio(value, max, black, multiplier, sensitivity);
-			return;
+			break;
 		case 'square':
 			return get_flux_value_square(value, black, white);
-			return;
+			break;
 		default:
 			return NaN;
 			break;
@@ -7637,7 +7658,7 @@ function updateKalman() {
 
 	return;
 
-	mouse_position.x = cur_x.elements[0];
+	/*mouse_position.x = cur_x.elements[0];
 	mouse_position.y = cur_x.elements[1];
 
 	return;
@@ -7652,7 +7673,7 @@ function updateKalman() {
 	console.log("extrapolation: x=", predX.elements[0], "y=", predX.elements[1]);
 
 	mouse_position.x = predX.elements[0];
-	mouse_position.y = predX.elements[1];
+	mouse_position.y = predX.elements[1];*/
 }
 
 function change_noise_sensitivity(refresh, index) {
@@ -8412,15 +8433,19 @@ function show_welcome() {
 
 	ul.append("li")
 		.attr("class", "list-group-item list-group-item-success")
-		.html('<h4>real-time HEVC streaming video for FITS data cubes <a  href="https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding"><em>(see Wikipedia)</em></a></h4>');
-
-	ul.append("li")
-		.attr("class", "list-group-item list-group-item-success")
 		.html('<h4>Server-side code changed from C/C++ to <a  href="https://www.rust-lang.org"><em>Rust</em></a></h4>');
 
 	ul.append("li")
 		.attr("class", "list-group-item list-group-item-success")
-		.html('<h4>WebAssembly-accelerated HTML Canvas</h4>');
+		.html('<h4>Images encoded as <a  href="https://en.wikipedia.org/wiki/VP9"><em>Google VP9</em></a> keyframes</h4>');
+
+	ul.append("li")
+		.attr("class", "list-group-item list-group-item-success")
+		.html('<h4><a  href="https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding"><em>HEVC</em></a> streaming video for FITS data cubes</h4>');
+
+	ul.append("li")
+		.attr("class", "list-group-item list-group-item-success")
+		.html('<h4><h4><a  href="https://en.wikipedia.org/wiki/WebAssembly"><em>WebAssembly</em></a>-accelerated HTML Video Canvas</h4>');
 
 	let textColour = 'yellow';
 
@@ -8435,6 +8460,11 @@ function show_welcome() {
 
 	bodyDiv.append("h3")
 		.text("Browser recommendation");
+
+	if (!wasm_supported) {
+		bodyDiv.append("p")
+			.html('A modern browser with <a href="https://en.wikipedia.org/wiki/WebAssembly" style="color:' + textColour + '"><b>WebAssembly (Wasm)</b></a> support is required.');
+	}
 
 	bodyDiv.append("p")
 		.html('For optimum performance we recommend <a href="https://www.google.com/chrome/index.html" style="color:' + textColour + '"><b>Google Chrome</b></a>. Firefox Quantum is pretty much OK. Safari on MacOS works. We do NOT recommend IE.');
