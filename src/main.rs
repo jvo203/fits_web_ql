@@ -68,7 +68,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
-use std::sync::mpsc
+use std::sync::mpsc;
 
 use actix::*;
 use actix_web::http::header::HeaderValue;
