@@ -151,7 +151,7 @@ export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
 it is best to append this line into your .bashrc
 
-# How to run a local version (Personal Edition)
+# How to Run a Local Version (Personal Edition)
 cd into the fits_web_ql directory and execute
 
 cargo run --release
