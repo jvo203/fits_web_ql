@@ -23,7 +23,11 @@ First and foremost the Rust language must be installed:
 https://www.rust-lang.org/install.html
 
 ##
-install a free open-source Intel SPMD compiler (ispc) and then execute "make" from within the fits_webql_ql directory
+install a free open-source Intel SPMD compiler (ispc)
+
+cd <your_projects_folder>/fits_web_ql
+
+run "make" from within the fits_webql_ql directory (where the Makefile is located)
 
 ##
 install clang
