@@ -16,6 +16,7 @@ extern crate postgres;
 extern crate log;
 extern crate atomic;
 extern crate byteorder;
+extern crate bytes;
 extern crate chrono;
 extern crate curl;
 extern crate dirs;
@@ -64,7 +65,6 @@ use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::fs::File;
 use std::io::Write;
-use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
 use std::time::SystemTime;
@@ -2027,7 +2027,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-10.5";
+static VERSION_STRING: &'static str = "SV2018-10-11.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2048,6 +2048,7 @@ const JVO_USER: &'static str = "jvo";
 const JVO_HOST: &'static str = "localhost";
 
 const SERVER_PORT: i32 = 8080;
+const SERVER_PATH: &'static str = "fitswebql";
 
 const WEBSOCKET_TIMEOUT: u64 = 60 * 60; //[s]; a websocket inactivity timeout
 
@@ -2102,7 +2103,22 @@ fn fetch_molecules(freq_start: f64, freq_end: f64) -> String {
     contents
 }
 
-fn remove_symlinks() {
+fn create_server_path(server_path: &String) {
+    let linkname = format!("htdocs/{}", server_path);
+    let linkpath = std::path::Path::new(&linkname);
+
+    if !linkpath.exists() {
+        let filename = format!("fitswebql");
+        let filepath = std::path::Path::new(&filename);
+
+        match std::os::unix::fs::symlink(filepath, linkpath) {
+            Ok(_) => {}
+            Err(err) => println!("could not create a symbolic link to {}: {}", linkname, err),
+        }
+    }
+}
+
+fn remove_symlinks(server_path: Option<String>) {
     let cache = std::path::Path::new(fits::FITSCACHE);
 
     for entry in cache.read_dir().expect("read_dir call failed") {
@@ -2117,6 +2133,25 @@ fn remove_symlinks() {
                 }
             }
         }
+    }
+
+    match server_path {
+        Some(name) => {
+            let filename = format!("htdocs/{}", name);
+            let filepath = std::path::Path::new(&filename);
+
+            if filepath.exists() {
+                if let Ok(metadata) = filepath.symlink_metadata() {
+                    let filetype = metadata.file_type();
+
+                    if filetype.is_symlink() {
+                        println!("removing a symbolic link to {:?}", filepath.file_name());
+                        let _ = std::fs::remove_file(filepath);
+                    }
+                }
+            }
+        }
+        None => {}
     }
 }
 
@@ -2922,21 +2957,16 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         }
 
         if fits.has_data {
-            /*let (tx, rx): (mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>) = mpsc::channel();
-            let id = entry.clone();            
+            /*let (tx, rx): (
+                futures::stream::Sender<Vec<u8>>,
+                futures::stream::Receiver<Vec<u8>>,
+            ) = futures::stream::channel(1);*/
 
-            thread::spawn(|| {
-                println!("a thread within a future: {}", id);
-            });*/
+            //let (tx, rx) = futures::stream::channel();
 
-            /*thread::spawn(move || {
-                let datasets = DATASETS.read();
-                let fits = datasets.get(id).unwrap().read();
+            //fits.get_cutout_stream(x1, y1, x2, y2, frame_start, frame_end, ref_freq);
 
-                //let _ = fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq, Some(tx));
-            });
-
-            for data in rx {
+            /*for data in rx {
                 println!("streaming data: {:?}", data);
             }*/
 
@@ -3375,25 +3405,36 @@ fn main() {
     info!("{} main()", SERVER_STRING);
 
     let mut server_port = SERVER_PORT;
+    let mut server_path = String::from(SERVER_PATH);
 
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 2 {
-        let key = &args[1];
-        let value = &args[2];
+        for i in 1..args.len() - 1 {
+            let key = &args[i];
+            let value = &args[i + 1];
 
-        if key == "--port" {
-            match value.parse::<i32>() {
-                Ok(port) => server_port = port,
-                Err(err) => println!(
-                    "error parsing the port number: {}, defaulting to {}",
-                    err, server_port
-                ),
+            if key == "--port" {
+                match value.parse::<i32>() {
+                    Ok(port) => server_port = port,
+                    Err(err) => println!(
+                        "error parsing the port number: {}, defaulting to {}",
+                        err, server_port
+                    ),
+                }
+            }
+
+            if key == "--path" {
+                server_path = value.clone();
+
+                create_server_path(value);
             }
         }
     }
 
-    remove_symlinks();
+    println!("server port: {}, path: {}", server_port, server_path);
+
+    remove_symlinks(None);
 
     //splatalogue sqlite db integration
     /*let splat_path = std::path::Path::new("splatalogue_v3.db");
@@ -3411,6 +3452,8 @@ fn main() {
     let server = Arbiter::start(|_| server::SessionServer::default());
     //let server: Addr<Syn, _> = SyncArbiter::start(32,|| server::SessionServer::default());//16 or 32 threads at most
 
+    let actix_server_path = server_path.clone();
+
     HttpServer::new(
         move || {
             // WebSocket sessions state
@@ -3420,14 +3463,13 @@ fn main() {
 
             App::with_state(state)
                 //.middleware(Logger::default())
-                .middleware(Logger::new("%t %a %{User-Agent}i %r")                    
-                    .exclude("/fitswebql/get_molecules")
-                    .exclude("/fitswebql/get_image")
-                    .exclude("/fitswebql/get_spectrum")
+                .middleware(Logger::new("%t %a %{User-Agent}i %r")
+                    .exclude(format!("/{}/get_molecules", actix_server_path))
+                    .exclude(format!("/{}/get_image", actix_server_path))
+                    .exclude(format!("/{}/get_spectrum", actix_server_path))
                 )
                 .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
-                .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})
-                //.resource("/{path}/websocket/video/{id}", |r| {r.route().f(video_websocket_entry)})
+                .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})                
                 .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
                 .resource("/{path}/get_image", |r| {r.method(http::Method::GET).f(get_image)})
                 .resource("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})
@@ -3461,7 +3503,8 @@ fn main() {
     let _ = sys.run();
 
     DATASETS.write().clear();
-    remove_symlinks();
+
+    remove_symlinks(Some(server_path));
 
     println!("FITSWebQL: clean shutdown completed.");
 

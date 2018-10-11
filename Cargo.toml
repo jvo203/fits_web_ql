@@ -31,6 +31,7 @@ dirs = "*"
 half = "*"
 lazy_static = "*"
 scan_fmt = "*"
+bytes = "*"
 byteorder = "*"
 uuid = { version = "*", features = ["v4"] }
 percent-encoding = "*"

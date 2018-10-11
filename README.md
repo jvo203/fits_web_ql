@@ -131,6 +131,15 @@ cd into the fits_web_ql directory and execute
 
 cargo run --features 'server production' --release
 
-or if you need to specify an alternative HTTP port
+# extra options
+an alternative HTTP port
 
 cargo run --features 'server production' --release -- --port 8000
+
+an alternative server URL path
+
+cargo run --features 'server production' --release -- --path fitswebql_v4
+
+combined options
+
+cargo run --features 'server production' --release -- --port 8000 --path fitswebql_v4
