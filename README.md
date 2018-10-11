@@ -3,7 +3,7 @@ A next-generation re-write of the C/C++ FITSWebQL in Rust. The previous C/C++ ve
 
 http://jvo.nao.ac.jp/~chris/fitswebql.html
 
-# How to get started
+# How to Get Started
 clone the fits_web_ql project onto your computer with the git tool:
 
 cd <your_projects_folder>
@@ -156,7 +156,7 @@ cd into the fits_web_ql directory and execute
 
 cargo run --release
 
-# How to run the production server (only at the Japanese Virtual Observatory)
+# How to Run the Production Server (only at the Japanese Virtual Observatory)
 cd into the fits_web_ql directory and execute
 
 cargo run --features 'server production' --release
