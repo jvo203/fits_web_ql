@@ -50,7 +50,7 @@ https://ispc.github.io
 
 in the "Downloads" section select the binary corresponding to your platform
 
-then extract the binary executable "ispc" in your PATH (for example ~/bin/)
+then place the extracted executable "ispc" in your PATH (for example ~/bin/)
 
 ##
 compile the native SIMD code with ispc
