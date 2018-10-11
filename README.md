@@ -23,6 +23,27 @@ First and foremost the Rust language must be installed:
 https://www.rust-lang.org/install.html
 
 ##
+make and other command-line software development tools
+
+Ubuntu Linux: open a terminal and type
+
+sudo apt-get install build-essential
+
+macOS: from the command-line
+
+xcode-select --install
+
+then install the Homebrew package manager:
+
+https://coolestguidesontheplanet.com/installing-homebrew-on-macos-sierra-package-manager-for-unix-apps/
+
+execute the following from the command line (you will be prompted for your password in order to complete the installation):
+
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+
+brew install cmake
+
+##
 install a free open-source Intel SPMD compiler (ispc)
 
 cd <your_projects_folder>/fits_web_ql
