@@ -2031,7 +2031,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-11.3";
+static VERSION_STRING: &'static str = "SV2018-10-11.4";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -3554,6 +3554,7 @@ fn main() {
             App::with_state(state)
                 //.middleware(Logger::default())
                 .middleware(Logger::new("%t %a %{User-Agent}i %r")
+                    .exclude("/")
                     .exclude("/fitswebql/get_molecules")
                     .exclude("/fitswebql/get_image")
                     .exclude("/fitswebql/get_spectrum")
