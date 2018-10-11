@@ -81,6 +81,10 @@ use percent_encoding::percent_decode;
 use tar::{Builder, Header};
 use uuid::Uuid;
 
+use bytes::Bytes;
+use futures::stream::poll_fn;
+use futures::{Async, Poll, Stream};
+
 use rayon::prelude::*;
 use std::cmp::Ordering::Equal;
 
@@ -2027,7 +2031,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-11.2";
+static VERSION_STRING: &'static str = "SV2018-10-11.3";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2676,6 +2680,40 @@ fn get_molecules(
         }
     })).responder()
 }
+#[cfg(feature = "server")]
+struct FITSStream {
+    rx: futures::sync::mpsc::Receiver<Vec<u8>>,
+}
+
+#[cfg(feature = "server")]
+impl FITSStream {
+    pub fn new(rx: futures::sync::mpsc::Receiver<Vec<u8>>) -> FITSStream {
+        FITSStream { rx: rx }
+    }
+}
+
+#[cfg(feature = "server")]
+impl Stream for FITSStream {
+    type Item = Bytes;
+    type Error = actix_web::Error;
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        while let Ok(Async::Ready(Some(v))) = self.rx.poll() {
+            println!("stream length: {}", v.len());
+            return Ok(Async::Ready(Some(Bytes::from(v))));
+        }
+
+        if let Ok(Async::Ready(Some(v))) = self.rx.poll() {
+            println!("stream length: {}", v.len());
+
+            Ok(Async::Ready(Some(Bytes::from(v))))
+        } else {
+            Ok(Async::Ready(None))
+            /*let payload = format!("FITS data");
+            Ok(Async::Ready(Some(Bytes::from(payload))))*/
+        }
+    }
+}
 
 fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
     //println!("{:?}", req);
@@ -2862,7 +2900,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
             }
 
             if fits.has_data {
-                match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq, None) {
+                match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
                     Some(region) => {
                         let mut header = Header::new_gnu();
                         if let Err(err) =
@@ -2962,15 +3000,67 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                 futures::stream::Receiver<Vec<u8>>,
             ) = futures::stream::channel(1);*/
 
-            //let (tx, rx) = futures::stream::channel();
+            /*let (tx, rx): (
+                futures::sync::mpsc::Sender<Vec<u8>>,
+                futures::sync::mpsc::Receiver<Vec<u8>>,
+            ) = futures::sync::mpsc::channel(1);
 
-            //fits.get_cutout_stream(x1, y1, x2, y2, frame_start, frame_end, ref_freq);
+            let partial_fits_stream = poll_fn(move || -> Poll<Option<Bytes>, actix_web::Error> {                      
+                while let Ok(Async::Ready(Some(v))) = rx.poll() {
+                    println!("stream length: {}", v.len());
+                }
 
-            /*for data in rx {
-                println!("streaming data: {:?}", data);
+                let payload = format!("FITS data");
+                Ok(Async::Ready(Some(Bytes::from(payload))))
+            });
+
+            let disposition_filename = format!(
+                "attachment; filename={}-subregion.fits",
+                entry.replace("/", "_")
+            );
+
+            return result(Ok(HttpResponse::Ok()
+                        .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                        .header("Pragma", "no-cache")
+                        .header("Expires", "0")
+                        .content_type("application/force-download")
+                        .content_encoding(ContentEncoding::Identity)// disable compression
+                        .header("Content-Disposition", disposition_filename)
+                        .header("Content-Transfer-Encoding", "binary")
+                        .header("Accept-Ranges", "bytes")
+                        .streaming(partial_fits_stream))).responder();*/
+
+            /*match fits.get_cutout_stream(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
+                Some(rx) => {
+                    let fits_stream = FITSStream::new(rx);
+
+                    let disposition_filename = format!(
+                        "attachment; filename={}-subregion.fits",
+                        entry.replace("/", "_")
+                    );
+
+                    return result(Ok(HttpResponse::Ok()
+                        .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                        .header("Pragma", "no-cache")
+                        .header("Expires", "0")
+                        .content_type("application/force-download")
+                        .content_encoding(ContentEncoding::Identity)// disable compression
+                        .header("Content-Disposition", disposition_filename)
+                        .header("Content-Transfer-Encoding", "binary")
+                        .header("Accept-Ranges", "bytes")
+                        .streaming(fits_stream))).responder();
+                }
+                None => {
+                    return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                        format!(
+                            "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
+                            entry
+                        ),
+                    ))).responder();
+                }
             }*/
 
-            match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq, None) {
+            match fits.get_cutout(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
                 Some(region) => {
                     let disposition_filename = format!(
                         "attachment; filename={}-subregion.fits",

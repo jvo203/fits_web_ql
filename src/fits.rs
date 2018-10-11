@@ -29,10 +29,6 @@ use rayon::prelude::*;
 use server;
 use UserParams;
 
-use bytes::Bytes;
-use futures::stream::poll_fn;
-use futures::{Async, Poll, Stream};
-
 #[cfg(feature = "server")]
 use curl::easy::Easy;
 
@@ -4748,7 +4744,6 @@ impl FITS {
         frame_start: f64,
         frame_end: f64,
         ref_freq: f64,
-        stream: Option<futures::sync::mpsc::Sender<Vec<u8>>>,
     ) -> Option<Vec<u8>> {
         //spatial range checks
         let x1 = num::clamp(x1, 0, self.width as i32 - 1);
@@ -4766,11 +4761,6 @@ impl FITS {
                 println!("error: an invalid spectrum range");
                 return None;
             }
-        };
-
-        let streaming = match stream {
-            Some(_) => true,
-            None => false,
         };
 
         let partial_width = (x2 - x1).abs() as usize;
@@ -4820,22 +4810,6 @@ impl FITS {
                         start as f64,
                     );
                     partial_fits.extend_from_slice(&chunk);
-
-                    /*if streaming {
-                        stream.unwrap().send(chunk.to_vec());
-                    }*/
-
-                    /*match stream {
-                        Some(tx) => 
-                        match tx.send(chunk.to_vec()) {
-                            Ok(()) => {}
-                            Err(err) => {
-                                println!("CRITICAL ERROR sending partial_fits: {}", err);
-                                return None;
-                            }
-                        },
-                        None => {}
-                    };*/
                 }
                 Err(err) => {
                     println!("CRITICAL ERROR reading FITS header: {}", err);
@@ -4928,6 +4902,7 @@ impl FITS {
         Some(partial_fits)
     }
 
+    #[cfg(feature = "server")]
     pub fn get_cutout_stream(
         &self,
         x1: i32,
@@ -4937,7 +4912,7 @@ impl FITS {
         frame_start: f64,
         frame_end: f64,
         ref_freq: f64,
-    ) {
+    ) -> Option<futures::sync::mpsc::Receiver<Vec<u8>>> {
         //spatial range checks
         let x1 = num::clamp(x1, 0, self.width as i32 - 1);
         let y1 = num::clamp(y1, 0, self.height as i32 - 1);
@@ -4952,31 +4927,22 @@ impl FITS {
             }
             None => {
                 println!("error: an invalid spectrum range");
-                return;
+                return None;
             }
         };
 
-        /*let (stream_tx, stream_rx): (
+        let (stream_tx, stream_rx): (
             futures::sync::mpsc::Sender<Vec<u8>>,
             futures::sync::mpsc::Receiver<Vec<u8>>,
-        ) = futures::sync::mpsc::channel(1);*/
+        ) = futures::sync::mpsc::channel(1);
 
-        let (stream_tx, stream_rx): (mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>) =
-            mpsc::channel();
+        /*let (stream_tx, stream_rx): (mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>) =
+            mpsc::channel();*/
 
-        thread::spawn(move || {
+        /*thread::spawn(move || {
             for data in stream_rx {
                 println!("streaming data length: {}", data.len());
             }
-        });
-
-        /*let partial_fits_stream = poll_fn(move || -> Poll<Option<Bytes>, actix_web::Error> {
-            for data in stream_rx {
-                println!("streaming data length: {}", data.len());
-            }
-
-            let payload = format!("FITS data");
-            Ok(Async::Ready(Some(Bytes::from(payload))))
         });*/
 
         let partial_width = (x2 - x1).abs() as usize;
@@ -5005,7 +4971,7 @@ impl FITS {
             Err(x) => {
                 println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
 
-                return;
+                return None;
             }
         };
 
@@ -5045,7 +5011,7 @@ impl FITS {
                 }
                 Err(err) => {
                     println!("CRITICAL ERROR reading FITS header: {}", err);
-                    return;
+                    return None;
                 }
             };
         }
@@ -5087,55 +5053,62 @@ impl FITS {
             }
         });
 
-        let mut frame: usize = 0;
+        let fits_width = self.width;
+        let fits_bitpix = self.bitpix;
 
-        for data in rx {
-            frame = frame + 1;
+        thread::spawn(move || {
+            let mut frame: usize = 0;
 
-            //println!("read {}/{} FITS cube frames", frame, partial_depth);
+            for data in rx {
+                frame = frame + 1;
 
-            for y in y1..y2 {
-                let src_offset = ((y as usize) * self.width + (x1 as usize))
-                    * ((self.bitpix.abs() / 8) as usize);
+                //println!("read {}/{} FITS cube frames", frame, partial_depth);
 
-                let partial_row_size = partial_width * ((self.bitpix.abs() / 8) as usize);
+                for y in y1..y2 {
+                    let src_offset = ((y as usize) * fits_width + (x1 as usize))
+                        * ((fits_bitpix.abs() / 8) as usize);
 
-                let slice = &data[src_offset..src_offset + partial_row_size];
+                    let partial_row_size = partial_width * ((fits_bitpix.abs() / 8) as usize);
+
+                    let slice = &data[src_offset..src_offset + partial_row_size];
+                    partial_size += slice.len();
+
+                    let stream = stream_tx.clone();
+                    stream.send(slice.to_vec());
+                }
+            }
+
+            if frame != partial_depth {
+                println!(
+                    "CRITICAL ERROR not all FITS cube frames have been read: {}/{}",
+                    frame, partial_depth
+                );
+                return;
+            }
+
+            println!(
+                "FITS cut-out length: {}, capacity: {}",
+                partial_size, partial_capacity
+            );
+
+            let padding = partial_capacity - partial_size;
+
+            //pad the FITS cut-out to the nearest FITS_CHUNK_LENGTH
+            if padding > 0 {
+                let slice = &vec![0; padding];
                 partial_size += slice.len();
 
                 let stream = stream_tx.clone();
                 stream.send(slice.to_vec());
+
+                println!(
+                    "padded FITS cut-out length: {}, capacity: {}",
+                    partial_size, partial_capacity
+                );
             }
-        }
+        });
 
-        if frame != partial_depth {
-            println!(
-                "CRITICAL ERROR not all FITS cube frames have been read: {}/{}",
-                frame, partial_depth
-            );
-            return;
-        }
-
-        println!(
-            "FITS cut-out length: {}, capacity: {}",
-            partial_size, partial_capacity
-        );
-
-        let padding = partial_capacity - partial_size;
-
-        //pad the FITS cut-out to the nearest FITS_CHUNK_LENGTH
-        if padding > 0 {
-            let slice = &vec![0; padding];
-            partial_size += slice.len();
-
-            let stream = stream_tx.clone();
-            stream.send(slice.to_vec());
-
-            println!(
-                "padded FITS cut-out length: {}, capacity: {}",
-                partial_size, partial_capacity
-            );
-        }
+        Some(stream_rx)
     }
 }
 
