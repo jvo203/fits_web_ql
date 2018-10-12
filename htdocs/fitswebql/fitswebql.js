@@ -5260,8 +5260,7 @@ function setup_axes() {
 				}
 
 				//if (videoFrame == null)
-				if(wasm_supported)
-				{
+				if (wasm_supported) {
 					try {
 						//init the HEVC encoder		
 						api.hevc_init();
@@ -8419,7 +8418,7 @@ function show_welcome() {
 		.style("color", "red")
 		.text("×");
 
-	var title = headerDiv.append("h2")
+	headerDiv.append("h2")
 		.attr("align", "center")
 		.html('WELCOME TO FITSWEBQL <SUB><SMALL>26</SMALL></SUB>Fe');
 
@@ -8457,7 +8456,7 @@ function show_welcome() {
 	if (!isLocal) {
 		ul.append("li")
 			.attr("class", "list-group-item list-group-item-success")
-			.html('<h4>FITSWebQL Personal Edition (local desktop) on GitHub: <a href="https://github.com/jvo203/fits_web_ql"><em>FITSWebQL installation instructions</em></a></h4>');
+			.html('<h4>FITSWebQL Personal Edition (local desktop) on GitHub: <a href="https://github.com/jvo203/fits_web_ql"><em>fits_web_ql installation instructions</em></a></h4>');
 	}
 
 	bodyDiv.append("h3")
@@ -8684,14 +8683,6 @@ function setup_help() {
 	bodyDiv.append("hr");
 
 	bodyDiv.append("h3")
-		.text("Toggle view mode");
-
-	bodyDiv.append("p")
-		.html("press <b>Ctrl</b> and <b>move cursor</b>");
-
-	bodyDiv.append("hr");
-
-	bodyDiv.append("h3")
 		.text("Print");
 
 	bodyDiv.append("p")
@@ -8724,7 +8715,7 @@ function setup_help() {
 			.attr("href", "https://github.com/jvo203/fits_web_ql")
 			.attr("target", "_blank")
 			.style("target-new", "tab")
-			.html("<b>FITSWebQL installation instructions</b>");
+			.html("<b>fits_web_ql installation instructions</b>");
 	}
 
 	footer.append("h3")
