@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-10.5";
+	return "JS2018-10-12.0";
 }
 
 const wasm_supported = (() => {
@@ -8421,7 +8421,7 @@ function show_welcome() {
 
 	var title = headerDiv.append("h2")
 		.attr("align", "center")
-		.text('WELCOME TO FITSWEBQL "Fe"');
+		.html('WELCOME TO FITSWEBQL <SUB><SMALL>26</SMALL></SUB>Fe');
 
 	var bodyDiv = contentDiv.append("div")
 		.attr("id", "modal-body")
