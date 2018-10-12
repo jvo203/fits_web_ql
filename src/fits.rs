@@ -1,7 +1,5 @@
 use atomic;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
-use futures;
-use futures::Sink;
 use half::f16;
 use num_cpus;
 use parking_lot::RwLock;
@@ -4735,7 +4733,7 @@ impl FITS {
         value.to_string()
     }
 
-    pub fn get_cutout(
+    pub fn get_cutout_data(
         &self,
         x1: i32,
         y1: i32,
@@ -4902,7 +4900,6 @@ impl FITS {
         Some(partial_fits)
     }
 
-    #[cfg(feature = "server")]
     pub fn get_cutout_stream(
         &self,
         x1: i32,
@@ -4912,7 +4909,7 @@ impl FITS {
         frame_start: f64,
         frame_end: f64,
         ref_freq: f64,
-    ) -> Option<futures::sync::mpsc::Receiver<Vec<u8>>> {
+    ) -> Option<mpsc::Receiver<Vec<u8>>> {
         //spatial range checks
         let x1 = num::clamp(x1, 0, self.width as i32 - 1);
         let y1 = num::clamp(y1, 0, self.height as i32 - 1);
@@ -4931,19 +4928,8 @@ impl FITS {
             }
         };
 
-        let (stream_tx, stream_rx): (
-            futures::sync::mpsc::Sender<Vec<u8>>,
-            futures::sync::mpsc::Receiver<Vec<u8>>,
-        ) = futures::sync::mpsc::channel(1);
-
-        /*let (stream_tx, stream_rx): (mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>) =
-            mpsc::channel();*/
-
-        /*thread::spawn(move || {
-            for data in stream_rx {
-                println!("streaming data length: {}", data.len());
-            }
-        });*/
+        let (stream_tx, stream_rx): (mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>) =
+            mpsc::channel();
 
         let partial_width = (x2 - x1).abs() as usize;
         let partial_height = (y2 - y1).abs() as usize;
@@ -4995,19 +4981,13 @@ impl FITS {
                     partial_size += chunk.len();
 
                     let stream = stream_tx.clone();
-                    stream.send(chunk.to_vec());
-
-                    /*match stream {
-                        Some(tx) => 
-                        match tx.send(chunk.to_vec()) {
-                            Ok(()) => {}
-                            Err(err) => {
-                                println!("CRITICAL ERROR sending partial_fits: {}", err);
-                                return None;
-                            }
-                        },
-                        None => {}
-                    };*/
+                    match stream.send(chunk.to_vec()) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            println!("CRITICAL ERROR sending partial_fits: {}", err);
+                            return None;
+                        }
+                    }
                 }
                 Err(err) => {
                     println!("CRITICAL ERROR reading FITS header: {}", err);
@@ -5074,7 +5054,13 @@ impl FITS {
                     partial_size += slice.len();
 
                     let stream = stream_tx.clone();
-                    stream.send(slice.to_vec());
+                    match stream.send(slice.to_vec()) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            println!("CRITICAL ERROR sending partial_fits: {}", err);
+                            return;
+                        }
+                    }
                 }
             }
 
@@ -5099,7 +5085,13 @@ impl FITS {
                 partial_size += slice.len();
 
                 let stream = stream_tx.clone();
-                stream.send(slice.to_vec());
+                match stream.send(slice.to_vec()) {
+                    Ok(()) => {}
+                    Err(err) => {
+                        println!("CRITICAL ERROR sending partial_fits: {}", err);
+                        return;
+                    }
+                }
 
                 println!(
                     "padded FITS cut-out length: {}, capacity: {}",
