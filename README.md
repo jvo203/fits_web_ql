@@ -4,7 +4,11 @@ A next-generation re-write of the C/C++ FITSWebQL in Rust. The previous C/C++ ve
 http://jvo.nao.ac.jp/~chris/fitswebql.html
 
 # How to Get Started
-clone the fits_web_ql project onto your computer with the git tool:
+make sure the git tool is installed on your system:
+
+https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
+
+then clone the fits_web_ql project onto your computer with the git tool:
 
 cd <your_projects_folder>
 
