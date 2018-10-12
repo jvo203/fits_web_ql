@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-12.0";
+	return "JS2018-10-12.1";
 }
 
 const wasm_supported = (() => {
@@ -1491,7 +1491,7 @@ function open_websocket_connection(datasetId, index) {
 								try {
 									//HEVC
 									api.hevc_decode_nal_unit(ptr, len, null, 0, 0, null, 'greyscale');
-								} catch { };
+								} catch (e) { };
 							}
 
 							Module._free(ptr);
