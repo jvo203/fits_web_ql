@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-12.1";
+	return "JS2018-10-12.2";
 }
 
 const wasm_supported = (() => {
@@ -7024,10 +7024,10 @@ function fetch_spectral_lines(datasetId, freq_start, freq_end) {
 		}
 
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 202) {
-			console.log("Server not ready, long-polling molecules again after 100 ms.");
+			console.log("Server not ready, long-polling molecules again after 500 ms.");
 			setTimeout(function () {
 				fetch_spectral_lines(datasetId, freq_start, freq_end);
-			}, 100);
+			}, 500);
 		}
 
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
@@ -7067,10 +7067,10 @@ function fetch_image(datasetId, index, add_timestamp) {
 		}
 
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 202) {
-			console.log("Server not ready, long-polling image again after 100ms.");
+			console.log("Server not ready, long-polling image again after 500ms.");
 			setTimeout(function () {
 				fetch_image(datasetId, index, false);
-			}, 100);
+			}, 500);
 		}
 
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
@@ -7157,10 +7157,10 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
 		}
 
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 202) {
-			console.log("Server not ready, long-polling spectrum again after 100ms.");
+			console.log("Server not ready, long-polling spectrum again after 500ms.");
 			setTimeout(function () {
 				fetch_spectrum(datasetId, index, false);
-			}, 100);
+			}, 500);
 		}
 
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
