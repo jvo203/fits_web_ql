@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-12.2";
+	return "JS2018-10-13.0";
 }
 
 const wasm_supported = (() => {
@@ -7764,8 +7764,8 @@ function partial_fits_download(offsetx, offsety, width, height) {
 	url += "x1=" + Math.round(orig_x1) + "&y1=" + Math.round(orig_y2) + "&x2=" + Math.round(orig_x2) + "&y2=" + Math.round(orig_y1) + "&frame_start=" + data_band_lo + "&frame_end=" + data_band_hi + "&ref_freq=" + RESTFRQ;
 
 	//console.log(url) ;
-	window.location.assign(url);
-	//window.open(url, '_blank');
+	//window.location.assign(url);
+	window.open(url, '_blank');
 }
 
 function ok_download() {
