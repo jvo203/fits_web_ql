@@ -320,6 +320,7 @@ impl Handler<server::Message> for UserSession {
 
     fn handle(&mut self, msg: server::Message, ctx: &mut Self::Context) {
         //println!("websocket sending '{}'", msg.0);
+
         ctx.text(msg.0);
     }
 }
@@ -2031,7 +2032,7 @@ static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
 #[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-12.0";
+static VERSION_STRING: &'static str = "SV2018-10-14.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

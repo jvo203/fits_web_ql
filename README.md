@@ -8,7 +8,11 @@ make sure the git tool is installed on your system:
 
 https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
 
-then clone the fits_web_ql project onto your computer with the git tool:
+download a stable release of fits_web_ql from
+
+https://github.com/jvo203/fits_web_ql/releases
+
+or alternatively clone the latest development version fits_web_ql onto your computer with the git tool:
 
 cd <your_projects_folder>
 

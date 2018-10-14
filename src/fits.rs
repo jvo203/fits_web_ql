@@ -1105,15 +1105,10 @@ impl FITS {
         total: i32,
         running: i32,
     ) {
-        let msg = json!({
-            "type" : "progress",
-            "message" : notification,
-            "total" : total,
-            "running" : running            
-        });
-
         server.do_send(server::WsMessage {
-            msg: msg.to_string(),
+            notification: String::from(notification),
+            total: total,
+            running: running,
             dataset_id: self.dataset_id.clone(),
         });
     }

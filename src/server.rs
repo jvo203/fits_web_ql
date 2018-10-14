@@ -4,6 +4,7 @@ use std::path;
 use std::sync::Arc;
 
 use chrono;
+use std;
 use std::time::Duration;
 use std::time::SystemTime;
 use timer;
@@ -57,7 +58,9 @@ pub struct Remove {
 #[derive(Message)]
 pub struct WsMessage {
     /// a WebSocket text message
-    pub msg: String,
+    pub notification: String,
+    pub total: i32,
+    pub running: i32,
     /// dataset
     pub dataset_id: String,
 }
@@ -87,6 +90,8 @@ pub struct SessionServer {
     conn_res: rusqlite::Result<rusqlite::Connection>,
     timer: timer::Timer,
     _guard: timer::Guard,
+    //WebSocket progress timestamp
+    progress_timestamp: std::time::Instant,
 }
 
 impl Default for SessionServer {
@@ -174,6 +179,7 @@ impl Default for SessionServer {
             conn_res: rusqlite::Connection::open(path::Path::new("splatalogue_v3.db")),
             timer: timer,
             _guard: guard,
+            progress_timestamp: std::time::Instant::now(),
         }
     }
 }
@@ -311,10 +317,35 @@ impl Handler<WsMessage> for SessionServer {
 
         match self.datasets.read().get(&msg.dataset_id) {
             Some(dataset) => {
-                for id in dataset {
-                    if let Some(addr) = self.sessions.get(id) {
-                        let _ = addr.do_send(Message(msg.msg.to_owned()));
+                let sending = {
+                    if msg.running < msg.total {
+                        if std::time::Instant::now().duration_since(self.progress_timestamp)
+                            > std::time::Duration::from_millis(500)
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        true
                     }
+                };
+
+                if sending {
+                    let msg = json!({
+                        "type" : "progress",
+                        "message" : msg.notification,
+                        "total" : msg.total,
+                        "running" : msg.running            
+                    }).to_string();
+
+                    for id in dataset {
+                        if let Some(addr) = self.sessions.get(id) {
+                            let _ = addr.do_send(Message(msg.to_owned()));
+                        }
+                    }
+
+                    self.progress_timestamp = std::time::Instant::now();
                 }
             }
             None => {
