@@ -22,7 +22,7 @@ vpx = "1.7.0"
 
 [dependencies]
 actix = "*"
-actix-web = "0.7.12"
+actix-web = "*"
 serde_json = "*"
 chrono = "*"
 dirs = "*"
