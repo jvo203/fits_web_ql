@@ -3,8 +3,6 @@ A next-generation re-write of the C/C++ FITSWebQL in Rust. The previous C/C++ ve
 
 http://jvo.nao.ac.jp/~chris/fitswebql.html
 
-Screenshot
-
 ![Alt text](fits_web_ql.jpeg?raw=true "FITSWebQLv4")
 
 # How to Get Started
