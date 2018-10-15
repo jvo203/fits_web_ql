@@ -464,6 +464,19 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     fits.width, fits.height, w, h
                                 );
                             }
+                        } else {
+                            //should we upscale the image to get around a limitation of HEVC x265?
+                            if w < 32 || h < 32 {
+                                let ratio = (32_f32 / w as f32).max(32_f32 / h as f32);
+
+                                w = ((w as f32) * ratio) as u32;
+                                h = ((h as f32) * ratio) as u32;
+
+                                println!(
+                                    "upscaling the video from {}x{} to {}x{} (x{})",
+                                    fits.width, fits.height, w, h, ratio
+                                );
+                            }
                         }
 
                         //get the alpha channel
@@ -2026,13 +2039,9 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-#[cfg(not(feature = "server"))]
-static SERVER_STRING: &'static str = "FITSWebQL v1.9.99";
-
-#[cfg(feature = "server")]
 static SERVER_STRING: &'static str = "FITSWebQL v3.9.99";
 
-static VERSION_STRING: &'static str = "SV2018-10-14.0";
+static VERSION_STRING: &'static str = "SV2018-10-15.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
