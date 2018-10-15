@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-13.0";
+	return "JS2018-10-15.0";
 }
 
 const wasm_supported = (() => {
@@ -8345,7 +8345,7 @@ function show_help() {
 function donotshow() {
 	var checkbox = document.getElementById('donotshowcheckbox');
 
-	localStorage_write_boolean("welcome", !checkbox.checked);
+	localStorage_write_boolean("welcome_v4", !checkbox.checked);
 };
 
 function show_timeout() {
@@ -10191,7 +10191,7 @@ async*/ function mainRenderer() {
 		realtime_video = localStorage_read_boolean("realtime_video", true);
 		experimental = localStorage_read_boolean("experimental", false);
 		displayDownloadConfirmation = localStorage_read_boolean("displayDownloadConfirmation", true);
-		welcome = localStorage_read_boolean("welcome", true);
+		welcome = localStorage_read_boolean("welcome_v4", true);
 
 		autoscale = true;
 		displayScalingHelp = localStorage_read_boolean("displayScalingHelp", true);
