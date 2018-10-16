@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-15.0";
+	return "JS2018-10-16.0";
 }
 
 const wasm_supported = (() => {
@@ -8399,7 +8399,7 @@ function show_welcome() {
 		.attr("class", "container")
 		.append("div")
 		.attr("id", "welcomeScreen")
-		.attr("class", "modal")
+		.attr("class", "modal modal-center")
 		.attr("role", "dialog")
 		.append("div")
 		.attr("class", "modal-dialog");

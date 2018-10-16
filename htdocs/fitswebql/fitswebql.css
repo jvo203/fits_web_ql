@@ -64,6 +64,12 @@ body {
     /*line-height: 25%;*/
 }
 
+.modal-center{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .modal-dialog {
     /* new custom width */
     min-width: 70%;
