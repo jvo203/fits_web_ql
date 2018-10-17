@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-16.0";
+	return "JS2018-10-17.0";
 }
 
 const wasm_supported = (() => {
@@ -9940,6 +9940,12 @@ function enable_3d_view() {
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
 
+		(function () {
+			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+			po.src = 'surface.js' + '?' + encodeURIComponent(get_js_version());
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+		})();
+
 		/*(function() {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'three.min.js' + '?' + encodeURIComponent(get_js_version());
@@ -9974,13 +9980,13 @@ function enable_3d_view() {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'TrackballControls.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();*/
+		})();
 
 		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			po.src = 'surface.js' + '?' + encodeURIComponent(get_js_version());
+			po.src = 'surface2.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
+		})();*/
 
 		has_webgl = true;
 	}

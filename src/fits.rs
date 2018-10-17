@@ -294,7 +294,7 @@ impl FITS {
             integrated_spectrum: Vec::new(),
             mask: Vec::new(),
             pixels: Vec::new(),
-            bscale: 0.0,
+            bscale: 1.0,
             bzero: 0.0,
             ignrval: std::f32::MIN,
             crval1: 0.0,
@@ -794,6 +794,8 @@ impl FITS {
                 1.0
             }
         };
+
+        println!("setting cdelt3 to {}", cdelt3);
 
         //check if bitpix == -32 and the F16 half-float cache file exists
         let filename = format!("{}/{}.bin", FITSCACHE, id.replace("/", "_"));
@@ -1709,7 +1711,7 @@ impl FITS {
         return false;
     }
 
-    fn process_cube_frame(&mut self, buf: &[u8], cdelt3: f32, frame: usize) {
+    fn process_cube_frame(&mut self, buf: &[u8], cdelt3: f32, frame: usize) {        
         let mut rdr = Cursor::new(buf);
         let len = self.width * self.height;
 
