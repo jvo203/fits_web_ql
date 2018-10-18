@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-17.0";
+	return "JS2018-10-18.0";
 }
 
 const wasm_supported = (() => {
@@ -1807,7 +1807,6 @@ function display_hourglass() {
 		.attr("id", "hourglass")
 		.attr("x", (width - img_width) / 2)
 		.attr("y", (height - img_height) / 2)
-		//.attr("xlink:href", "hourglass.gif")
 		.attr("xlink:href", "loading.gif")
 		.attr("width", img_width)
 		.attr("height", img_height)
@@ -9891,7 +9890,7 @@ function enable_3d_view() {
 	if (test_webgl_support()) {
 		console.log("WebGL supported");
 
-		(function () {
+		/*(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			//po.src = 'http://stemkoski.github.io/Three.js/js/Three.js';
 			po.src = 'stemkoski/Three.js';
@@ -9944,39 +9943,39 @@ function enable_3d_view() {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'surface.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
+		})();*/
 
-		/*(function() {
+		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'three.min.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
-	
-		(function() {
+
+		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'Detector.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
-	
-		(function() {
+
+		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'threex.keyboardstate.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
-	
-		(function() {
+
+		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'threex.windowresize.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
-	
-		(function() {
+
+		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'THREEx.FullScreen.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
-	
-		(function() {
+
+		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'TrackballControls.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
@@ -9986,7 +9985,7 @@ function enable_3d_view() {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'surface2.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();*/
+		})();
 
 		has_webgl = true;
 	}
