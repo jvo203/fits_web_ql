@@ -193,6 +193,7 @@ struct UserSession {
     //config: EncoderConfig,
     width: u32,
     height: u32,
+    last_video_frame: i32,
 }
 
 impl UserSession {
@@ -243,6 +244,7 @@ impl UserSession {
             //config: EncoderConfig::default(),
             width: 0,
             height: 0,
+            last_video_frame: -1,
         };
 
         println!("allocating a new websocket session for {}", id[0]);
@@ -376,6 +378,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     {
                         *fits.timestamp.write() = SystemTime::now();
                     }
+
+                    self.last_video_frame = -1;
 
                     //alloc HEVC params
                     if self.param.is_null() {
@@ -1498,6 +1502,22 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         if fits.has_data && !self.pic.is_null() {
+                            let frame_index = match fits.get_spectrum_range(frame, frame, ref_freq)
+                            {
+                                Some((frame, _)) => frame as i32,
+                                None => {
+                                    println!("error: an invalid spectrum range");
+                                    return;
+                                }
+                            };
+
+                            if self.last_video_frame == frame_index  && !keyframe {
+                                println!("skipping a video frame");
+                                return;
+                            }
+
+                            self.last_video_frame = frame_index ;
+
                             let start = precise_time::precise_time_ns();
 
                             let flux = match self.user {
@@ -1678,7 +1698,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                             //VP9 (libvpx)
                             #[cfg(feature = "vp9")]
-                            match fits.get_video_frame(
+                            match fits.get_vpx_frame(
                                 frame,
                                 ref_freq,
                                 self.width,
@@ -2039,9 +2059,9 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.0.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.0.1";
 
-static VERSION_STRING: &'static str = "SV2018-10-18.0";
+static VERSION_STRING: &'static str = "SV2018-10-19.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2298,7 +2318,9 @@ fn directory_handler(req: &HttpRequest<WsSessionState>) -> HttpResponse {
     Ok(Box::new(result(ws::start(req, session))))
 }*/
 
-fn websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpResponse> {
+fn websocket_entry(
+    req: &HttpRequest<WsSessionState>,
+) -> Result<Box<Future<Item = HttpResponse, Error = Error>>, Error> /*Result<HttpResponse>*/ {
     let dataset_id_orig: String = req.match_info().query("id").unwrap();
 
     //dataset_id needs to be URI-decoded
@@ -2322,10 +2344,12 @@ fn websocket_entry(req: &HttpRequest<WsSessionState>) -> Result<HttpResponse> {
         id, user_agent
     );
 
-    ws::start(req, UserSession::new(&id))
+    Ok(Box::new(result(ws::start(req, UserSession::new(&id)))))
 }
 
-fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
+fn fitswebql_entry(
+    req: &HttpRequest<WsSessionState>,
+) -> Box<Future<Item = HttpResponse, Error = Error>> /*HttpResponse*/ {
     let fitswebql_path: String = req.match_info().query("path").unwrap();
 
     let state = req.state();
@@ -2387,12 +2411,9 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
 
             //the last resort
             if v.is_empty() {
-                return HttpResponse::NotFound()
-                    .content_type("text/html")
-                    .body(format!(
-                        "<p><b>Critical Error</b>: no {} available</p>",
-                        dataset
-                    ));
+                return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                    format!("<p><b>Critical Error</b>: no {} available</p>", dataset),
+                ))).responder();
             };
 
             v
@@ -2427,9 +2448,8 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
     println!("{}", resp);
 
     //server version
-    //execute_fits(&fitswebql_path, &db, &table, &dataset_id, composite, &flux, &server)
     #[cfg(feature = "server")]
-    return execute_fits(
+    return result(Ok(execute_fits(
         &fitswebql_path,
         &db,
         &table,
@@ -2439,11 +2459,11 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
         composite,
         &flux,
         &server,
-    );
+    ))).responder();
 
     //local (Personal Edition)
     #[cfg(not(feature = "server"))]
-    return execute_fits(
+    return result(Ok(execute_fits(
         &fitswebql_path,
         "",
         "",
@@ -2453,7 +2473,7 @@ fn fitswebql_entry(req: &HttpRequest<WsSessionState>) -> HttpResponse {
         composite,
         &flux,
         &server,
-    );
+    ))).responder();
 }
 
 fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse, Error = Error>> {

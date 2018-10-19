@@ -1711,7 +1711,7 @@ impl FITS {
         return false;
     }
 
-    fn process_cube_frame(&mut self, buf: &[u8], cdelt3: f32, frame: usize) {        
+    fn process_cube_frame(&mut self, buf: &[u8], cdelt3: f32, frame: usize) {
         let mut rdr = Cursor::new(buf);
         let len = self.width * self.height;
 
@@ -3258,7 +3258,6 @@ impl FITS {
         }
     }
 
-    #[cfg(feature = "hevc")]
     pub fn get_video_frame(
         &self,
         frame: f64,
@@ -3300,7 +3299,7 @@ impl FITS {
     }
 
     #[cfg(feature = "vp9")]
-    pub fn get_video_frame(
+    pub fn get_vpx_frame(
         &self,
         frame: f64,
         ref_freq: f64,
