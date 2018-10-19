@@ -1504,19 +1504,19 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         if fits.has_data && !self.pic.is_null() {
                             let frame_index = match fits.get_spectrum_range(frame, frame, ref_freq)
                             {
-                                Some((frame, _)) => frame as i32,
+                                Some((frame, _)) => frame,
                                 None => {
                                     println!("error: an invalid spectrum range");
                                     return;
                                 }
                             };
 
-                            if self.last_video_frame == frame_index  && !keyframe {
+                            if self.last_video_frame == (frame_index as i32) && !keyframe {
                                 println!("skipping a video frame");
                                 return;
                             }
 
-                            self.last_video_frame = frame_index ;
+                            self.last_video_frame = frame_index as i32;
 
                             let start = precise_time::precise_time_ns();
 
@@ -1527,13 +1527,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                             //HEVC (x265)
                             #[cfg(feature = "hevc")]
-                            match fits.get_video_frame(
-                                frame,
-                                ref_freq,
-                                self.width,
-                                self.height,
-                                &flux,
-                            ) {
+                            match fits.get_video_frame(frame_index, self.width, self.height, &flux)
+                            {
                                 Some(mut y) => {
                                     unsafe {
                                         (*self.pic).stride[0] = self.width as i32;
@@ -1832,12 +1827,29 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         None => fits.flux.clone(),
                                     };
 
-                                    match fits
+                                    match fits.get_spectrum_range(frame, frame, ref_freq) {
+                                        Some((frame_index, _)) => match fits.get_video_frame(
+                                            frame_index,
+                                            width,
+                                            height,
+                                            &flux,
+                                        ) {
+                                            Some(y) => y,
+                                            None => vec![0; (width * height) as usize],
+                                        },
+                                        None => {
+                                            println!("error: an invalid spectrum range");
+
+                                            vec![0; (width * height) as usize]
+                                        }
+                                    }
+
+                                /*match fits
                                         .get_video_frame(frame, ref_freq, width, height, &flux)
                                     {
                                         Some(y) => y,
                                         None => vec![0; (width * height) as usize],
-                                    }
+                                    }*/
                                 } else {
                                     vec![0; (width * height) as usize]
                                 }
@@ -2061,7 +2073,7 @@ static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.1";
 
-static VERSION_STRING: &'static str = "SV2018-10-19.0";
+static VERSION_STRING: &'static str = "SV2018-10-19.2";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
