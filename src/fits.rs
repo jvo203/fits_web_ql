@@ -3260,22 +3260,11 @@ impl FITS {
 
     pub fn get_video_frame(
         &self,
-        /*frame: f64,
-        ref_freq: f64,*/
         frame: usize,
         width: u32,
         height: u32,
         flux: &String,
     ) -> Option<Vec<u8>> {
-        //get a frame index (frame_start = frame_end = frame)
-        /*let frame = match self.get_spectrum_range(frame, frame, ref_freq) {
-            Some((frame, _)) => frame,
-            None => {
-                println!("error: an invalid spectrum range");
-                return None;
-            }
-        };*/
-
         println!("frame index = {}", frame);
 
         let start = precise_time::precise_time_ns();

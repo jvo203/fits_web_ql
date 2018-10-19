@@ -1839,17 +1839,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         },
                                         None => {
                                             println!("error: an invalid spectrum range");
-
                                             vec![0; (width * height) as usize]
                                         }
                                     }
-
-                                /*match fits
-                                        .get_video_frame(frame, ref_freq, width, height, &flux)
-                                    {
-                                        Some(y) => y,
-                                        None => vec![0; (width * height) as usize],
-                                    }*/
                                 } else {
                                     vec![0; (width * height) as usize]
                                 }
