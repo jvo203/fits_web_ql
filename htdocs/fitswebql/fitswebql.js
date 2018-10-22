@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-22.0";
+	return "JS2018-10-22.3";
 }
 
 const wasm_supported = (() => {
@@ -5265,9 +5265,14 @@ function setup_axes() {
 						api.hevc_init();
 					} catch (e) { };
 
+					var offset = d3.mouse(this);
+					var freq = get_mouse_frequency(offset);
+
+					sent_vid_id++;
+
 					//for(let index=0;index<va_count;index++)
 					{
-						wsConn[0].send('[init_video] fps=' + vidFPS);
+						wsConn[0].send('[init_video] frame=' + freq + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate) + '&timestamp=' + performance.now());
 
 						video_stack[0] = [];
 					};
@@ -5533,7 +5538,7 @@ function x_axis_move(offset) {
 
 			//for(let index=0;index<va_count;index++)
 			if (realtime_video) {
-				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
+				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
 
 				wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());
 			};
@@ -7389,7 +7394,7 @@ function videoTimeout(freq) {
 
 	//for(let index=0;index<va_count;index++)
 	{
-		let strRequest = 'frame=' + freq + '&key=true' + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
+		let strRequest = 'frame=' + freq + '&key=true' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
 
 		wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());
 	};

@@ -9,6 +9,9 @@ extern crate actix;
 extern crate actix_web;
 extern crate lz4_compress;
 
+//extern crate rulinalg;
+//extern crate linearkalman;
+
 #[cfg(feature = "server")]
 extern crate postgres;
 
@@ -88,6 +91,10 @@ use std::sync::mpsc;
 use rayon::prelude::*;
 use std::cmp::Ordering::Equal;
 
+/*use linearkalman::KalmanFilter;
+use rulinalg::matrix::Matrix;
+use rulinalg::vector::Vector;*/
+
 #[cfg(feature = "server")]
 use postgres::{Connection, TlsMode};
 
@@ -99,10 +106,11 @@ use parking_lot::RwLock;
 //use parking_lot::Mutex;
 
 mod fits;
+mod kalman;
 mod molecule;
 mod server;
-//mod encoder;
 
+use kalman::KalmanFilter;
 use molecule::Molecule;
 
 #[derive(Serialize, Debug)]
@@ -193,7 +201,15 @@ struct UserSession {
     //config: EncoderConfig,
     width: u32,
     height: u32,
+    streaming: bool,
     last_video_frame: i32,
+    video_frame: f64,
+    video_ref_freq: f64,
+    video_fps: f64,
+    video_seq_id: i32,
+    video_timestamp: f64,
+    bitrate: i32,
+    kf: KalmanFilter,
 }
 
 impl UserSession {
@@ -244,7 +260,15 @@ impl UserSession {
             //config: EncoderConfig::default(),
             width: 0,
             height: 0,
+            streaming: false,
             last_video_frame: -1,
+            video_frame: 0.0,
+            video_ref_freq: 0.0,
+            video_fps: 10.0,
+            video_seq_id: 0,
+            video_timestamp: 0.0,
+            bitrate: 1000,
+            kf: KalmanFilter::default(),
         };
 
         println!("allocating a new websocket session for {}", id[0]);
@@ -356,13 +380,74 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[init_video]") {
-                    println!("{}", text.replace("&", " "));
-                    let fps = scan_fmt!(&text.replace("&", " "), "[init_video] fps={}", i32);
+                    //println!("{}", text.replace("&", " "));
+                    let (frame, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt!(
+                        &text.replace("&", " "),
+                        "[init_video] frame={} ref_freq={} fps={} seq_id={} bitrate={} timestamp={}",
+                        String,
+                        String,
+                        String,
+                        i32,
+                        i32,
+                        String
+                    );
 
-                    let fps = match fps {
-                        Some(x) => x,
-                        _ => 10, //use 10 frames per second by default
+                    let frame = match frame {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
                     };
+
+                    let ref_freq = match ref_freq {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    //use 10 frames per second by default
+                    let fps = match fps {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 10.0,
+                        },
+                        _ => 10.0,
+                    };
+
+                    let seq_id = match seq_id {
+                        Some(x) => x,
+                        _ => 0,
+                    };
+
+                    let target_bitrate = match target_bitrate {
+                        Some(x) => num::clamp(x, 100, 10000),
+                        _ => 1000,
+                    };
+
+                    let timestamp = match timestamp {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 0.0,
+                        },
+                        _ => 0.0,
+                    };
+
+                    println!(
+                        "[init_video] frame:{} ref_freq:{} fps:{} seq_id:{} target_bitrate:{} timestamp:{}",
+                        frame, ref_freq, fps, seq_id, target_bitrate, timestamp
+                    );
+
+                    self.kf = KalmanFilter::new(frame, 0.0);
+
+                    self.video_frame = frame;
+                    self.video_ref_freq = ref_freq;
+                    self.video_fps = fps;
+                    self.video_seq_id = seq_id;
+                    self.video_timestamp = timestamp;
+                    self.bitrate = target_bitrate;
 
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
@@ -533,7 +618,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                             //constant bitrate
                             (*self.param).rc.rateControlMode = X265_RC_METHODS_X265_RC_CRF as i32;
-                            (*self.param).rc.bitrate = 1000;
+                            (*self.param).rc.bitrate = target_bitrate; //1000;
                         };
 
                         if self.pic.is_null() {
@@ -550,19 +635,19 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         self.cfg.g_w = w;
                         self.cfg.g_h = h;
                         self.cfg.g_timebase.num = 1;
-                        self.cfg.g_timebase.den = fps;
+                        self.cfg.g_timebase.den = fps as i32;
 
                         self.cfg.rc_min_quantizer = 10;
                         self.cfg.rc_max_quantizer = 42;
 
                         #[cfg(not(feature = "server"))]
                         {
-                            self.cfg.rc_target_bitrate = 4000;
+                            self.cfg.rc_target_bitrate = target_bitrate as u32; //4000;
                         } // [kilobits per second]
 
                         #[cfg(feature = "server")]
                         {
-                            self.cfg.rc_target_bitrate = 1000;
+                            self.cfg.rc_target_bitrate = target_bitrate as u32; //1000;
                         } // [kilobits per second]
 
                         #[cfg(feature = "server")]
@@ -609,11 +694,25 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         if ret != VPX_CODEC_OK {
                             println!("VP9: error setting VP8E_SET_CPUUSED {:?}", ret);
                         }
+
+                        //start a video creation event loop
+                        self.streaming = true;
+
+                        ctx.run_later(std::time::Duration::new(0, 0), |act, _ctx| {
+                            println!(
+                                "video frame creation @ frame:{} ref_freq:{} seq_id:{} timestamp:{}; fps:{} streaming:{}",
+                                act.video_frame, act.video_ref_freq, act.video_seq_id, act.video_timestamp, act.video_fps, act.streaming
+                            );
+
+                            //if act.streaming schedule the next execution
+                        });
                     };
                 }
 
                 if (&text).contains("[end_video]") {
                     println!("{}", text);
+
+                    self.streaming = false;
 
                     unsafe { vpx_codec_destroy(&mut self.ctx) };
 
@@ -1426,11 +1525,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[video]") {
                     //println!("{}", text.replace("&"," "));
-                    let (frame, key, ref_freq, seq_id, target_bitrate, timestamp) = scan_fmt!(
+                    let (frame, key, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt!(
                         &text.replace("&", " "),
-                        "[video] frame={} key={} ref_freq={} seq_id={} bitrate={} timestamp={}",
+                        "[video] frame={} key={} ref_freq={} fps={} seq_id={} bitrate={} timestamp={}",
                         String,
                         bool,
+                        String,
                         String,
                         i32,
                         i32,
@@ -1458,6 +1558,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         _ => false,
                     };
 
+                    //use 10 frames per second by default
+                    let fps = match fps {
+                        Some(s) => match s.parse::<f64>() {
+                            Ok(x) => x,
+                            Err(_) => 10.0,
+                        },
+                        _ => 10.0,
+                    };
+
                     let seq_id = match seq_id {
                         Some(x) => x,
                         _ => 0,
@@ -1477,9 +1586,24 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     };
 
                     println!(
-                        "[video] frame:{} keyframe:{} ref_freq:{} seq_id:{} target_bitrate:{} timestamp:{}",
-                        frame, keyframe, ref_freq, seq_id, target_bitrate, timestamp
+                        "[video] frame:{} keyframe:{} ref_freq:{} fps:{} seq_id:{} target_bitrate:{} timestamp:{}",
+                        frame, keyframe, ref_freq, fps, seq_id, target_bitrate, timestamp
                     );
+
+                    self.kf.update(frame, timestamp - self.video_timestamp); //need to convert ms to s
+
+                    if keyframe {
+                        self.kf.reset(frame, 0.0);
+                    }
+
+                    println!("Kalman Filter: {:?}", self.kf);
+
+                    self.video_frame = frame;
+                    self.video_ref_freq = ref_freq;
+                    self.video_fps = fps;
+                    self.video_seq_id = seq_id;
+                    self.video_timestamp = timestamp;
+                    self.bitrate = target_bitrate;
 
                     if self.dataset_id.len() == 1 {
                         let datasets = DATASETS.read();
@@ -2053,19 +2177,12 @@ lazy_static! {
         { Arc::new(RwLock::new(HashMap::new())) };
 }
 
-//PostgreSQL connections
-/*lazy_static! {
-    static ref DBCONNS: Arc<RwLock<HashMap<String, Arc<Mutex<Connection>>>>> = {
-        Arc::new(RwLock::new(HashMap::new()))
-    };
-}*/
-
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.0.1";
+static SERVER_STRING: &'static str = "FITSWebQL v4.0.2";
 
-static VERSION_STRING: &'static str = "SV2018-10-22.0";
+static VERSION_STRING: &'static str = "SV2018-10-22.5";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
