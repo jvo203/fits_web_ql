@@ -2108,7 +2108,7 @@ fn fetch_molecules(freq_start: f64, freq_end: f64) -> String {
             )) {
                 Ok(mut stmt) => {
                     let molecule_iter = stmt
-                        .query_map(&[], |row| Molecule::from_sqlite_row(row))
+                        .query_map(rusqlite::NO_PARAMS, |row| Molecule::from_sqlite_row(row))
                         .unwrap();
 
                     for molecule in molecule_iter {

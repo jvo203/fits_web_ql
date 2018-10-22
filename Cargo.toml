@@ -37,7 +37,7 @@ uuid = { version = "*", features = ["v4"] }
 percent-encoding = "*"
 futures = "*"
 parking_lot = "*"
-rusqlite = "0.14.0"
+rusqlite = "*"
 rayon = "*"
 time = "*"
 num-integer = "*"
