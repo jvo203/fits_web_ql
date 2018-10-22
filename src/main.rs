@@ -2065,7 +2065,7 @@ static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.1";
 
-static VERSION_STRING: &'static str = "SV2018-10-19.2";
+static VERSION_STRING: &'static str = "SV2018-10-22.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

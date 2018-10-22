@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-19.2";
+	return "JS2018-10-22.0";
 }
 
 const wasm_supported = (() => {
@@ -5520,6 +5520,8 @@ function x_axis_move(offset) {
 
 		now = performance.now();
 		elapsed = performance.now() - then;
+
+		var freq = get_mouse_frequency(offset);
 
 		if (elapsed > vidInterval) {
 			then = now - (elapsed % vidInterval);
