@@ -67,7 +67,7 @@ impl KalmanFilter {
         }
     }
 
-    pub fn predict(&mut self, position: f64, deltat: f64) -> f64 {
+    pub fn predict(&self, position: f64, deltat: f64) -> f64 {
         position + self.estimate_velocity * deltat
     }
 }
