@@ -12,23 +12,24 @@ pub struct KalmanFilter {
 }
 
 impl KalmanFilter {
-    pub fn new(position: f64, velocity: f64) -> KalmanFilter {
+    pub fn new(position: f64) -> KalmanFilter {
         KalmanFilter {
             estimate_position: position,
-            estimate_velocity: velocity,
+            estimate_velocity: 0.0,
             P_xx: 0.1 * position,
             P_xv: 1.0,
             P_vv: 1.0,
-            position_variance: 0.01 * position,
+            position_variance: 0.1 * position,
             velocity_variance: 0.01 * position / 1000.0,
             R: 0.01 * position,
             has_velocity: false,
         }
     }
 
-    pub fn reset(&mut self, position: f64, velocity: f64) {
+    pub fn reset(&mut self, position: f64) {
         self.estimate_position = position;
-        self.estimate_velocity = velocity;
+        self.estimate_velocity = 0.0;
+        self.has_velocity = false;
     }
 
     pub fn update(&mut self, position: f64, deltat: f64) {
@@ -64,5 +65,9 @@ impl KalmanFilter {
             self.P_xv *= 1.0 - kx;
             self.P_vv -= kv * self.P_xv;
         }
+    }
+
+    pub fn predict(&mut self, position: f64, deltat: f64) -> f64 {
+        position + self.estimate_velocity * deltat
     }
 }

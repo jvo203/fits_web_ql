@@ -207,7 +207,7 @@ struct UserSession {
     video_ref_freq: f64,
     video_fps: f64,
     video_seq_id: i32,
-    video_timestamp: f64,
+    video_timestamp: std::time::Instant,
     bitrate: i32,
     kf: KalmanFilter,
 }
@@ -266,7 +266,7 @@ impl UserSession {
             video_ref_freq: 0.0,
             video_fps: 10.0,
             video_seq_id: 0,
-            video_timestamp: 0.0,
+            video_timestamp: std::time::Instant::now(),
             bitrate: 1000,
             kf: KalmanFilter::default(),
         };
@@ -440,13 +440,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         frame, ref_freq, fps, seq_id, target_bitrate, timestamp
                     );
 
-                    self.kf = KalmanFilter::new(frame, 0.0);
+                    self.kf = KalmanFilter::new(frame);
 
                     self.video_frame = frame;
                     self.video_ref_freq = ref_freq;
                     self.video_fps = fps;
                     self.video_seq_id = seq_id;
-                    self.video_timestamp = timestamp;
+                    self.video_timestamp = std::time::Instant::now(); //timestamp;
                     self.bitrate = target_bitrate;
 
                     //get a read lock to the dataset
@@ -700,7 +700,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                         ctx.run_later(std::time::Duration::new(0, 0), |act, _ctx| {
                             println!(
-                                "video frame creation @ frame:{} ref_freq:{} seq_id:{} timestamp:{}; fps:{} streaming:{}",
+                                "video frame creation @ frame:{} ref_freq:{} seq_id:{} timestamp:{:?}; fps:{} streaming:{}",
                                 act.video_frame, act.video_ref_freq, act.video_seq_id, act.video_timestamp, act.video_fps, act.streaming
                             );
 
@@ -1590,20 +1590,30 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         frame, keyframe, ref_freq, fps, seq_id, target_bitrate, timestamp
                     );
 
-                    self.kf.update(frame, timestamp - self.video_timestamp); //need to convert ms to s
+                    //let deltat = timestamp - self.video_timestamp;
+                    let deltat = std::time::Instant::now().duration_since(self.video_timestamp);
+                    let deltat = deltat.as_secs() as f64 + deltat.subsec_nanos() as f64 * 1e-9;
+                    self.kf.update(frame, deltat); //need to convert ms to s?
 
                     if keyframe {
-                        self.kf.reset(frame, 0.0);
+                        self.kf.reset(frame);
                     }
 
-                    println!("Kalman Filter: {:?}", self.kf);
+                    let predicted_frame = self.kf.predict(frame, deltat);
+
+                    println!(
+                        "Kalman Filter: {:?}; current = {}, predicted = {}",
+                        self.kf, frame, predicted_frame
+                    );
 
                     self.video_frame = frame;
                     self.video_ref_freq = ref_freq;
                     self.video_fps = fps;
                     self.video_seq_id = seq_id;
-                    self.video_timestamp = timestamp;
+                    self.video_timestamp = std::time::Instant::now(); //timestamp;
                     self.bitrate = target_bitrate;
+
+                    let frame = predicted_frame;
 
                     if self.dataset_id.len() == 1 {
                         let datasets = DATASETS.read();
@@ -2182,7 +2192,7 @@ static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.2";
 
-static VERSION_STRING: &'static str = "SV2018-10-22.5";
+static VERSION_STRING: &'static str = "SV2018-10-23.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
