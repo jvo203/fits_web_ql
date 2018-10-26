@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-22.3";
+	return "JS2018-10-26.3";
 }
 
 const wasm_supported = (() => {
@@ -2728,6 +2728,119 @@ function display_dataset_info() {
 
 	}
 
+	//add video playback control
+	if (fitsData.depth > 1) {
+		var yoffset = 32 * emFontSize;
+
+		if (composite_view)
+			yoffset += 1 * emFontSize;
+
+		var videoStr = '<span id="videoPlay" class="glyphicon glyphicon-play" style="display:inline-block; cursor: pointer"></span><span id="videoPause" class="glyphicon glyphicon-pause" style="display:none; cursor: pointer"></span>&nbsp; <span id="videoStop" class="glyphicon glyphicon-stop" style="cursor: pointer"></span>&nbsp; <span id="videoForward" class="glyphicon glyphicon-forward" style="cursor: pointer"></span>&nbsp; <span id="videoFastForward" class="glyphicon glyphicon-fast-forward" style="cursor: pointer"></span>';
+
+		group.append("g")
+			.attr("id", "videoControlG")
+			.style("opacity", 0.25)
+			.append("foreignObject")
+			.attr("id", "videoControl")
+			.attr("x", (width - 20 * emFontSize))
+			.attr("y", yoffset)//(17.5*emFontSize)//19
+			.attr("width", 20 * emFontSize)
+			.attr("height", 5.0 * emFontSize)
+			.on("mouseenter", function () {
+				d3.select("#videoControlG").style("opacity", 1.0);
+
+				//hide the molecular list (spectral lines) so that it does not obscure the controls!
+				displayMolecules_bak = displayMolecules;
+				displayMolecules = false;
+				document.getElementById('molecularlist').style.display = "none";
+			})
+			.on("mouseleave", function () {
+				d3.select("#videoControlG").style("opacity", 0.25);
+
+				displayMolecules = displayMolecules_bak;
+
+				video_playback = false;
+				document.getElementById('videoPlay').style.display = "inline-block";
+				document.getElementById('videoPause').style.display = "none";
+
+				if (streaming)
+					x_axis_mouseleave();
+			})
+			.append("xhtml:div")
+			.attr("id", "videoDiv")
+			.attr("class", "container-fluid input")
+			.style("float", "right")
+			.style("padding", "2.5%")
+			.append("span")
+			.attr("id", "vel")
+			.html(videoStr);
+
+		document.getElementById('videoPlay').onclick = function () {
+			video_playback = true;
+			video_period = 10.0;
+
+			if (video_offset == null)
+				video_offset = [parseFloat(d3.select("#frequency").attr("x")), parseFloat(d3.select("#frequency").attr("y"))];
+
+			document.getElementById('videoPlay').style.display = "none";
+			document.getElementById('videoPause').style.display = "inline-block";
+
+			if (!streaming)
+				x_axis_mouseenter(video_offset);
+
+			replay_video();
+		};
+
+		document.getElementById('videoPause').onclick = function () {
+			video_playback = false;
+			document.getElementById('videoPlay').style.display = "inline-block";
+			document.getElementById('videoPause').style.display = "none";
+		};
+
+		document.getElementById('videoStop').onclick = function () {
+			video_playback = true;
+			video_offset = null;
+
+			document.getElementById('videoPlay').style.display = "inline-block";
+			document.getElementById('videoPause').style.display = "none";
+
+			if (streaming)
+				x_axis_mouseleave();
+		};
+
+		document.getElementById('videoForward').onclick = function () {
+			video_playback = true;
+			video_period = 5.0;
+
+			if (video_offset == null)
+				video_offset = [parseFloat(d3.select("#frequency").attr("x")), parseFloat(d3.select("#frequency").attr("y"))];
+
+			document.getElementById('videoPlay').style.display = "none";
+			document.getElementById('videoPause').style.display = "inline-block";
+
+			if (!streaming)
+				x_axis_mouseenter(video_offset);
+
+			replay_video();
+		};
+
+		document.getElementById('videoFastForward').onclick = function () {
+			video_playback = true;
+			video_period = 2.5;
+
+			if (video_offset == null)
+				video_offset = [parseFloat(d3.select("#frequency").attr("x")), parseFloat(d3.select("#frequency").attr("y"))];
+
+			document.getElementById('videoPlay').style.display = "none";
+			document.getElementById('videoPause').style.display = "inline-block";
+
+			if (!streaming)
+				x_axis_mouseenter(video_offset);
+
+			replay_video();
+		};
+	}
+
 	var range = get_axes_range(width, height);
 
 	svg.append("text")
@@ -4166,7 +4279,8 @@ function display_preferences(index) {
 	document.getElementById('ui_theme').value = theme;
 
 	tmpA = prefDropdown.append("li")
-		//.style("background-color", "#FFF")	
+		.attr("id", "contour_control_li")
+		//.style("background-color", "#FFF")
 		.append("a")
 		.style("class", "form-group")
 		.attr("class", "form-horizontal");
@@ -4200,6 +4314,13 @@ function display_preferences(index) {
 			validate_contour_lines();
 			return false;
 		}
+	}
+
+	if (displayContours) {
+		d3.select('#contour_control_li').style("display", "block");
+	}
+	else {
+		d3.select('#contour_control_li').style("display", "none");
 	}
 
 	//----------------------------------------
@@ -5134,210 +5255,16 @@ function setup_axes() {
 			.attr("opacity", 0.0)
 			.style('cursor', 'pointer')
 			.on("mouseleave", function () {
-				streaming = false;
-				video_stack = new Array(va_count);
-
-				//clear the VideoCanvas and reset the Zoom Viewport
-				d3.select("#upper").style("stroke", "transparent");
-				d3.select("#upperCross").attr("opacity", 0.0);
-				d3.select("#upperBeam").attr("opacity", 0.0);
-				d3.select("#lower").attr("pointer-events", "auto");
-
-				requestAnimationFrame(function () {
-					var c = document.getElementById('VideoCanvas');
-					var ctx = c.getContext("2d");
-
-					var width = c.width;
-					var height = c.height;
-
-					ctx.clearRect(0, 0, width, height);
-					ctx.globalAlpha = 0.0;
-				});
-
-				if (va_count == 1) {
-					var elem = d3.select("#legend");
-
-					if (displayLegend)
-						elem.attr("opacity", 1);
-					else
-						elem.attr("opacity", 0);
-				}
-				else {
-					for (let index = 1; index <= va_count; index++) {
-						var elem = d3.select("#legend" + index);
-
-						if (displayLegend)
-							elem.attr("opacity", 1);
-						else
-							elem.attr("opacity", 0);
-					}
-				}
-
-				d3.select("#fps").text("");
-
-				//send an end_video command via WebSockets
-				if (videoFrame != null) {
-					try {
-						api.hevc_destroy();
-					} catch (e) { };
-
-					Module._free(videoFrame.ptr);
-					Module._free(videoFrame.alpha_ptr);
-					videoFrame.img = null;
-					videoFrame.ptr = null;
-					videoFrame.alpha_ptr = null;
-					videoFrame = null;
-
-					//for(let index=0;index<va_count;index++)
-					{
-						wsConn[0].send('[end_video]');
-						video_stack[0] = [];
-					};
-				}
-
-				shortcut.remove("f");
-				shortcut.remove("Left");
-				shortcut.remove("Right");
-				shortcut.remove("Enter");
-
-				d3.select(this).attr("opacity", 0.0);
-				d3.select("#freq_bar").attr("opacity", 0.0);
-
-				d3.select("#xaxis")
-					.style("fill", "#996699")
-					.style("stroke", "#996699");
-
-				/*d3.select("#yaxis")
-				  .style("fill", "#996699")
-				  .style("stroke", "#996699");*/
-
-				d3.select("#vaxis")
-					.style("fill", "#996699")
-					.style("stroke", "#996699");
-
-				//d3.select("#freq_bar").attr("opacity", 0.0);
-
-				d3.select("#jvoText").remove();
-
-				mol_pos = -1;
-				var modal = document.getElementById('molecularlist');
-				modal.style.display = "none";
+				x_axis_mouseleave();
 			})
 			.on("mouseenter", function () {
-				//send an init_video command via WebSockets
-				streaming = true;
-				video_stack = new Array(va_count);
+				var offset = d3.mouse(this);
+				x_axis_mouseenter(offset);
 
-				if (viewport_zoom_settings != null) {
-					d3.select("#upper").style("stroke", "Gray");
-					d3.select("#upperCross").attr("opacity", 0.75);
-					d3.select("#upperBeam").attr("opacity", 0.75);
-				}
-
-				d3.select("#lower").attr("pointer-events", "none");
-
-				//clear the VideoCanvas
-				requestAnimationFrame(function () {
-					var c = document.getElementById('VideoCanvas');
-					var ctx = c.getContext("2d");
-
-					var width = c.width;
-					var height = c.height;
-
-					ctx.clearRect(0, 0, width, height);
-					ctx.globalAlpha = 1.0;
-				});
-
-				if (va_count == 1) {
-					var elem = d3.select("#legend"); elem.attr("opacity", 0);
-				}
-				else {
-					for (let index = 1; index <= va_count; index++) {
-						var elem = d3.select("#legend" + index);
-						elem.attr("opacity", 0);
-					}
-				}
-
-				//if (videoFrame == null)
-				if (wasm_supported) {
-					try {
-						//init the HEVC encoder		
-						api.hevc_init();
-					} catch (e) { };
-
-					var offset = d3.mouse(this);
-					var freq = get_mouse_frequency(offset);
-
-					sent_vid_id++;
-
-					//for(let index=0;index<va_count;index++)
-					{
-						wsConn[0].send('[init_video] frame=' + freq + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate) + '&timestamp=' + performance.now());
-
-						video_stack[0] = [];
-					};
-				}
-
-				hide_navigation_bar();
-
-				d3.select("#scaling")
-					.style('cursor', '')
-					.attr("opacity", 0.0);
-
-				d3.select("#yaxis")
-					.style("fill", "#996699")
-					.style("stroke", "#996699");
-
-				d3.select(this).attr("opacity", 0.5);
-
-				let fillColour = 'white';
-
-				if (theme == 'bright')
-					fillColour = 'black';
-
-				d3.select("#xaxis")
-					.style("fill", fillColour)
-					.style("stroke", fillColour)
-					.attr("opacity", 1.0);
-
-				d3.select("#vaxis")
-					.style("fill", fillColour)
-					.style("stroke", fillColour)
-					.attr("opacity", 1.0);
-
-				fillColour = 'white';
-				let strokeColour = 'black';
-
-				if (theme == 'bright') {
-					fillColour = 'black';
-					strokeColour = 'white';
-				}
-
-				jvoText = d3.select("#FrontSVG").append("text")
-					.attr("id", "jvoText")
-					.attr("x", width / 2)
-					.attr("y", height / 2)
-					//.attr("font-family", "Arial")		
-					.attr("font-family", "Inconsolata")
-					.attr("font-weight", "regular")
-					.attr("font-size", "5em")
-					.attr("text-anchor", "middle")
-					.attr("fill", fillColour)
-					.attr("stroke", strokeColour)
-					.attr("pointer-events", "none")
-					.attr("opacity", 1.0);
-
-				shortcut.add("f", set_user_restfrq);
-				shortcut.add("Left", x_axis_left);
-				shortcut.add("Right", x_axis_right);
-				shortcut.add("Enter", go_to_splatalogue);
 			})
 			.on("mousemove", function () {
-				mol_pos = -1;
-
 				var offset = d3.mouse(this);
-
-				x_axis_move(offset);
+				x_axis_mousemove(offset);
 			})
 			.call(d3.drag()
 				.on("start", dragstart)
@@ -5390,6 +5317,216 @@ function setup_axes() {
 				.style("fill", fillColour)
 				.style("stroke", fillColour);
 		});
+}
+
+function x_axis_mouseenter(offset) {
+	//send an init_video command via WebSockets
+	streaming = true;
+	video_stack = new Array(va_count);
+
+	if (viewport_zoom_settings != null) {
+		d3.select("#upper").style("stroke", "Gray");
+		d3.select("#upperCross").attr("opacity", 0.75);
+		d3.select("#upperBeam").attr("opacity", 0.75);
+	}
+
+	d3.select("#lower").attr("pointer-events", "none");
+
+	//clear the VideoCanvas
+	requestAnimationFrame(function () {
+		var c = document.getElementById('VideoCanvas');
+		var ctx = c.getContext("2d");
+
+		var width = c.width;
+		var height = c.height;
+
+		ctx.clearRect(0, 0, width, height);
+		ctx.globalAlpha = 1.0;
+	});
+
+	if (va_count == 1) {
+		var elem = d3.select("#legend"); elem.attr("opacity", 0);
+	}
+	else {
+		for (let index = 1; index <= va_count; index++) {
+			var elem = d3.select("#legend" + index);
+			elem.attr("opacity", 0);
+		}
+	}
+
+	//if (videoFrame == null)
+	if (wasm_supported) {
+		try {
+			//init the HEVC encoder		
+			api.hevc_init();
+		} catch (e) { };
+
+		var freq = get_mouse_frequency(offset);
+
+		sent_vid_id++;
+
+		//for(let index=0;index<va_count;index++)
+		{
+			wsConn[0].send('[init_video] frame=' + freq + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate) + '&timestamp=' + performance.now());
+
+			video_stack[0] = [];
+		};
+	}
+
+	hide_navigation_bar();
+
+	d3.select("#scaling")
+		.style('cursor', '')
+		.attr("opacity", 0.0);
+
+	d3.select("#yaxis")
+		.style("fill", "#996699")
+		.style("stroke", "#996699");
+
+	d3.select("#frequency").attr("opacity", 0.5);
+
+	let fillColour = 'white';
+
+	if (theme == 'bright')
+		fillColour = 'black';
+
+	d3.select("#xaxis")
+		.style("fill", fillColour)
+		.style("stroke", fillColour)
+		.attr("opacity", 1.0);
+
+	d3.select("#vaxis")
+		.style("fill", fillColour)
+		.style("stroke", fillColour)
+		.attr("opacity", 1.0);
+
+	fillColour = 'white';
+	let strokeColour = 'black';
+
+	if (theme == 'bright') {
+		fillColour = 'black';
+		strokeColour = 'white';
+	}
+
+	var svg = d3.select("#BackSVG");
+	var width = parseFloat(svg.attr("width"));
+	var height = parseFloat(svg.attr("height"));
+
+	jvoText = d3.select("#FrontSVG").append("text")
+		.attr("id", "jvoText")
+		.attr("x", width / 2)
+		.attr("y", height / 2)
+		//.attr("font-family", "Arial")		
+		.attr("font-family", "Inconsolata")
+		.attr("font-weight", "regular")
+		.attr("font-size", "5em")
+		.attr("text-anchor", "middle")
+		.attr("fill", fillColour)
+		.attr("stroke", strokeColour)
+		.attr("pointer-events", "none")
+		.attr("opacity", 1.0);
+
+	shortcut.add("f", set_user_restfrq);
+	shortcut.add("Left", x_axis_left);
+	shortcut.add("Right", x_axis_right);
+	shortcut.add("Enter", go_to_splatalogue);
+}
+
+function x_axis_mouseleave() {
+	streaming = false;
+	video_stack = new Array(va_count);
+
+	//clear the VideoCanvas and reset the Zoom Viewport
+	d3.select("#upper").style("stroke", "transparent");
+	d3.select("#upperCross").attr("opacity", 0.0);
+	d3.select("#upperBeam").attr("opacity", 0.0);
+	d3.select("#lower").attr("pointer-events", "auto");
+
+	requestAnimationFrame(function () {
+		var c = document.getElementById('VideoCanvas');
+		var ctx = c.getContext("2d");
+
+		var width = c.width;
+		var height = c.height;
+
+		ctx.clearRect(0, 0, width, height);
+		ctx.globalAlpha = 0.0;
+	});
+
+	if (va_count == 1) {
+		var elem = d3.select("#legend");
+
+		if (displayLegend)
+			elem.attr("opacity", 1);
+		else
+			elem.attr("opacity", 0);
+	}
+	else {
+		for (let index = 1; index <= va_count; index++) {
+			var elem = d3.select("#legend" + index);
+
+			if (displayLegend)
+				elem.attr("opacity", 1);
+			else
+				elem.attr("opacity", 0);
+		}
+	}
+
+	d3.select("#fps").text("");
+
+	//send an end_video command via WebSockets
+	if (videoFrame != null) {
+		try {
+			api.hevc_destroy();
+		} catch (e) { };
+
+		Module._free(videoFrame.ptr);
+		Module._free(videoFrame.alpha_ptr);
+		videoFrame.img = null;
+		videoFrame.ptr = null;
+		videoFrame.alpha_ptr = null;
+		videoFrame = null;
+
+		//for(let index=0;index<va_count;index++)
+		{
+			wsConn[0].send('[end_video]');
+			video_stack[0] = [];
+		};
+	}
+
+	shortcut.remove("f");
+	shortcut.remove("Left");
+	shortcut.remove("Right");
+	shortcut.remove("Enter");
+
+	d3.select("#frequency").attr("opacity", 0.0);
+	d3.select("#freq_bar").attr("opacity", 0.0);
+
+	d3.select("#xaxis")
+		.style("fill", "#996699")
+		.style("stroke", "#996699");
+
+	/*d3.select("#yaxis")
+	  .style("fill", "#996699")
+	  .style("stroke", "#996699");*/
+
+	d3.select("#vaxis")
+		.style("fill", "#996699")
+		.style("stroke", "#996699");
+
+	//d3.select("#freq_bar").attr("opacity", 0.0);
+
+	d3.select("#jvoText").remove();
+
+	mol_pos = -1;
+	var modal = document.getElementById('molecularlist');
+	modal.style.display = "none";
+}
+
+function x_axis_mousemove(offset) {
+	mol_pos = -1;
+
+	x_axis_move(offset);
 }
 
 function x_axis_left() {
@@ -5460,6 +5597,32 @@ function x_axis_right() {
 
 	x_axis_move(offset);
 };
+
+function replay_video() {
+	if (!video_playback)
+		return;
+
+	x_axis_mousemove(video_offset);
+
+	//simulate a mouse advance
+	var width = parseFloat(d3.select("#frequency").attr("width"));
+	var offsetx = parseFloat(d3.select("#frequency").attr("x"));
+
+	let fps = 30;
+	let no_frames = fps * video_period;
+
+	let dx = width / no_frames;
+	let dt = 1000.0 / fps;
+
+	var new_video_offset = video_offset[0] + dx;
+	if (new_video_offset > offsetx + width)
+		new_video_offset = offsetx;
+
+	video_offset[0] = new_video_offset;
+	//var dt = video_period / width;
+
+	setTimeout(replay_video, dt);
+}
 
 function x_axis_move(offset) {
 	clearTimeout(idleVideo);
@@ -8175,6 +8338,14 @@ function display_menu() {
 			var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines';
 			d3.select(this).html(htmlStr);
 			//var elem = d3.selectAll("#contourPlot");
+
+			if (displayContours) {
+				d3.select('#contour_control_li').style("display", "block");
+			}
+			else {
+				d3.select('#contour_control_li').style("display", "none");
+			}
+
 			if (displayContours) {
 				document.getElementById("ContourSVG").style.display = "block";
 				//elem.attr("opacity",1);
@@ -8570,6 +8741,15 @@ function setup_help() {
 
 	bodyDiv.append("p")
 		.html("when disabled the FITS cube video frame will be requested after a 250ms delay since the last movement of the mouse");
+
+	bodyDiv.append("p")
+		.html('<span class="glyphicon glyphicon-play"></span>&nbsp; replay period 10s');
+
+	bodyDiv.append("p")
+		.html('<span class="glyphicon glyphicon-forward"></span>&nbsp; replay period 5s');
+
+	bodyDiv.append("p")
+		.html('<span class="glyphicon glyphicon-fast-forward"></span>&nbsp; replay period 2.5s');
 
 	bodyDiv.append("hr");
 
@@ -10122,6 +10302,8 @@ async*/ function mainRenderer() {
 		initKalmanFilter = false;
 		windowLeft = false;
 		streaming = false;
+		video_playback = false;
+		video_offset = null;
 		mol_pos = -1;
 		idleMouse = -1;
 		idleVideo = -1;
