@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-26.3";
+	return "JS2018-10-30.0";
 }
 
 const wasm_supported = (() => {
@@ -3181,7 +3181,7 @@ function image_refresh(index, refresh_histogram = true) {
 	wsConn[index - 1].send('[image]' + strRequest + '&timestamp=' + performance.now());
 }
 
-function display_scale_range_ui() {
+function display_scale_range_ui(called_from_menu = false) {
 	d3.select("#yaxis")
 		.style("fill", 'white')
 		.style("stroke", 'white')
@@ -3234,6 +3234,9 @@ function display_scale_range_ui() {
 		.style("color", "#a94442")
 		.html("you can disable showing this dialog via the <i>Preferences</i> menu, <i>display pop-up help</i> checkbox");
 
+	if (called_from_menu)
+		$('#scalingHelp').addClass("modal-center");
+
 	if (displayScalingHelp) {
 		show_scaling_help();
 		$('#scalingHelp').modal('show');
@@ -3255,7 +3258,7 @@ function display_scale_range_ui() {
 
 }
 
-function set_autoscale_range() {
+function set_autoscale_range(called_from_menu = false) {
 	autoscale = false;
 	var htmlStr = autoscale ? '<span class="glyphicon glyphicon-check"></span> autoscale y-axis' : '<span class="glyphicon glyphicon-unchecked"></span> autoscale y-axis';
 	d3.select("#autoscale").html(htmlStr);
@@ -3266,7 +3269,7 @@ function set_autoscale_range() {
 	plot_spectrum(last_spectrum);
 	replot_y_axis();
 
-	display_scale_range_ui();
+	display_scale_range_ui(called_from_menu);
 };
 
 function enable_autoscale() {
@@ -4162,8 +4165,6 @@ function display_preferences(index) {
 		.on("click", function () {
 			autoscale = !autoscale;
 			//localStorage_write_boolean("autoscale", autoscale) ;
-			var htmlStr = autoscale ? '<span class="glyphicon glyphicon-check"></span> autoscale y-axis' : '<span class="glyphicon glyphicon-unchecked"></span> autoscale y-axis';
-			d3.select(this).html(htmlStr);
 
 			d3.select("#yaxis")
 				.style("fill", "white")
@@ -4172,6 +4173,11 @@ function display_preferences(index) {
 				.duration(500)
 				.style("fill", "#996699")
 				.style("stroke", "#996699");
+
+			if (!autoscale)
+				set_autoscale_range(true);
+			else
+				enable_autoscale();
 		})
 		.html(htmlStr);
 
@@ -6619,7 +6625,9 @@ function setup_image_selection() {
 			d3.select("#pixel").text("").attr("opacity", 0.0);
 
 			document.addEventListener('copy', copy_coordinates);
-			shortcut.add("s", set_autoscale_range);
+			shortcut.add("s", function () {
+				set_autoscale_range(false);
+			});
 			shortcut.add("Meta+C", copy_coordinates);
 
 			windowLeft = false;
