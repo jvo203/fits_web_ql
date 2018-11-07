@@ -1123,10 +1123,32 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             integrated_spectrum,
                                         )) => {
                                             //get ord_pixels
-                                            let mut ord_pixels = pixels.clone();
+                                            //apply std::f32::NAN to masked pixels
+                                            let mut ord_pixels: Vec<f32> = pixels
+                                            .par_iter()
+                                            .zip(mask.par_iter())
+                                            .map(|(x, m)| if *m > 0 { *x } else { std::f32::NAN })
+                                            .collect();
 
-                                            ord_pixels.par_sort_unstable_by(|a, b| {
+                                            //let mut ord_pixels = pixels.clone();
+
+                                            /*ord_pixels.par_sort_unstable_by(|a, b| {
                                                 a.partial_cmp(b).unwrap_or(Equal)
+                                            });*/
+                                            ord_pixels.par_sort_unstable_by(|a, b| {
+                                                if a.is_finite() && b.is_finite() {
+                                                    a.partial_cmp(b).unwrap_or(Equal)
+                                                } else {
+                                                    if a.is_finite() {
+                                                        std::cmp::Ordering::Less
+                                                    } else {
+                                                        if b.is_finite() {
+                                                            std::cmp::Ordering::Greater
+                                                        } else {
+                                                            std::cmp::Ordering::Equal
+                                                        }
+                                                    }
+                                                }
                                             });
 
                                             match fits.get_image_histogram(
@@ -2190,9 +2212,9 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.0.2";
+static SERVER_STRING: &'static str = "FITSWebQL v4.0.3";
 
-static VERSION_STRING: &'static str = "SV2018-10-26.0";
+static VERSION_STRING: &'static str = "SV2018-11-07.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -3112,8 +3134,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                     .header("Cache-Control", "no-cache, no-store, must-revalidate")
                     .header("Pragma", "no-cache")
                     .header("Expires", "0")
-                    .content_type("application/force-download")                    
-                    .content_encoding(ContentEncoding::Identity)// disable compression
+                    .content_type("application/force-download")
+                    .content_encoding(ContentEncoding::Identity) // disable compression
                     .header("Content-Disposition", disposition_filename)
                     .header("Content-Transfer-Encoding", "binary")
                     .header("Accept-Ranges", "bytes")
@@ -3166,7 +3188,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                         .header("Pragma", "no-cache")
                         .header("Expires", "0")
                         .content_type("application/force-download")
-                        .content_encoding(ContentEncoding::Identity)// disable compression
+                        .content_encoding(ContentEncoding::Identity) // disable compression
                         .header("Content-Disposition", disposition_filename)
                         .header("Content-Transfer-Encoding", "binary")
                         .header("Accept-Ranges", "bytes")

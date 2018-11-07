@@ -48,11 +48,14 @@ fn main() {
     let builder = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
-        .raw_line(format!("pub unsafe fn x265_encoder_open(params: *mut x265_param) -> *mut x265_encoder {{
+        .raw_line(format!(
+            "pub unsafe fn x265_encoder_open(params: *mut x265_param) -> *mut x265_encoder {{
                                x265_encoder_open_{}(params)
-                          }}", apiver))
-        .header("wrapper.h")
-        .clang_arg("-I").clang_arg("/usr/local/include")
+                          }}",
+            apiver
+        )).header("wrapper.h")
+        .clang_arg("-I")
+        .clang_arg("/usr/local/include")
         .clang_args(["-x", "c++", "-std=c++11"].iter());
     //.enable_cxx_namespaces()
 
@@ -64,9 +67,10 @@ fn main() {
     }*/
 
     // Finish the builder and generate the bindings.
-    let bindings = builder.generate()
+    let bindings = builder
+        .generate()
         // Unwrap the Result and panic on failure.
-            .expect("Unable to generate bindings");
+        .expect("Unable to generate bindings");
 
     // Write the bindings to the $OUT_DIR/bindings.rs file.
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());

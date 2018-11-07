@@ -411,86 +411,111 @@ impl FITS {
         }
 
         //at first fill-in the self.data_f16 vector in parallel
-        let gather_f16 : Vec<_> = pool.install(|| (0 .. self.depth).into_par_iter().map(|frame| {
-            //frame is i32
-            let offset = (frame as usize) * frame_size ;
+        let gather_f16: Vec<_> = pool.install(|| {
+            (0..self.depth)
+                .into_par_iter()
+                .map(|frame| {
+                    //frame is i32
+                    let offset = (frame as usize) * frame_size;
 
-            let mut data_u8 : Vec<u8> = vec![0; frame_size];
+                    let mut data_u8: Vec<u8> = vec![0; frame_size];
 
-            //parallel read at offset
-            let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
-                Ok(size) => size,
-                Err(err) => {
-                    print!("read_at error: {}", err);
-                    0
-                },
-            };
+                    //parallel read at offset
+                    let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
+                        Ok(size) => size,
+                        Err(err) => {
+                            print!("read_at error: {}", err);
+                            0
+                        }
+                    };
 
-            let tid = match pool.current_thread_index() {
-                Some(tid) => tid,
-                None => 0,
-            };
+                    let tid = match pool.current_thread_index() {
+                        Some(tid) => tid,
+                        None => 0,
+                    };
 
-            //println!("tid: {}, frame: {}, offset: {}, bytes read: {}", tid, frame, offset, bytes_read);
+                    //println!("tid: {}, frame: {}, offset: {}, bytes read: {}", tid, frame, offset, bytes_read);
 
-            if bytes_read != frame_size {
-                println!("CRITICAL ERROR {:?}: read {} bytes @ frame {}, requested {} bytes", filepath, bytes_read, frame, frame_size);                
-            };
+                    if bytes_read != frame_size {
+                        println!(
+                            "CRITICAL ERROR {:?}: read {} bytes @ frame {}, requested {} bytes",
+                            filepath, bytes_read, frame, frame_size
+                        );
+                    };
 
-            //need to mutate data_u8 into vec_f16
-            let ptr = data_u8.as_ptr() as *mut f16;
-            let len = data_u8.len() ;
-            let capacity = data_u8.capacity() ;
-            mem::forget(data_u8) ;
+                    //need to mutate data_u8 into vec_f16
+                    let ptr = data_u8.as_ptr() as *mut f16;
+                    let len = data_u8.len();
+                    let capacity = data_u8.capacity();
+                    mem::forget(data_u8);
 
-            let data_f16 : Vec<f16> = unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) } ;
+                    let data_f16: Vec<f16> =
+                        unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) };
 
-            //parallel data processing
-            let mut frame_min = std::f32::MAX;
-            let mut frame_max = std::f32::MIN;
+                    //parallel data processing
+                    let mut frame_min = std::f32::MAX;
+                    let mut frame_max = std::f32::MIN;
 
-            let mut mean_spectrum = 0.0_f32;
-            let mut integrated_spectrum = 0.0_f32;
+                    let mut mean_spectrum = 0.0_f32;
+                    let mut integrated_spectrum = 0.0_f32;
 
-            let mut references: [f32; 4] = [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+                    let mut references: [f32; 4] =
+                        [frame_min, frame_max, mean_spectrum, integrated_spectrum];
 
-            let vec_ptr = data_f16.as_ptr() as *mut i16;
-            let vec_len = data_f16.len() ;
+                    let vec_ptr = data_f16.as_ptr() as *mut i16;
+                    let vec_len = data_f16.len();
 
-            let mut pixels = thread_pixels[tid].write();
-            let mask = thread_mask[tid].write();
-            let mask_ptr = mask.as_ptr() as *mut u8;
-            let mask_len = mask.len() ;
+                    let mut pixels = thread_pixels[tid].write();
+                    let mask = thread_mask[tid].write();
+                    let mask_ptr = mask.as_ptr() as *mut u8;
+                    let mask_len = mask.len();
 
-            unsafe {
-                let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
-                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                    unsafe {
+                        let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                        let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                ispc_make_image_spectrumF16_minmax( vec_raw.as_mut_ptr(), self.bzero, self.bscale, self.datamin, self.datamax, cdelt3, pixels.as_mut_ptr(), mask_raw.as_mut_ptr(), vec_len as u32, references.as_mut_ptr());
-            }
+                        ispc_make_image_spectrumF16_minmax(
+                            vec_raw.as_mut_ptr(),
+                            self.bzero,
+                            self.bscale,
+                            self.datamin,
+                            self.datamax,
+                            cdelt3,
+                            pixels.as_mut_ptr(),
+                            mask_raw.as_mut_ptr(),
+                            vec_len as u32,
+                            references.as_mut_ptr(),
+                        );
+                    }
 
-            frame_min = references[0] ;
-            frame_max = references[1] ;
-            mean_spectrum = references[2] ;
-            integrated_spectrum = references[3] ;
+                    frame_min = references[0];
+                    frame_max = references[1];
+                    mean_spectrum = references[2];
+                    integrated_spectrum = references[3];
 
-            thread_mean_spectrum[frame as usize].store(mean_spectrum, Ordering::SeqCst) ;
-            thread_integrated_spectrum[frame as usize].store(integrated_spectrum, Ordering::SeqCst) ;
+                    thread_mean_spectrum[frame as usize].store(mean_spectrum, Ordering::SeqCst);
+                    thread_integrated_spectrum[frame as usize]
+                        .store(integrated_spectrum, Ordering::SeqCst);
 
-            let current_min = thread_min[tid].load(Ordering::SeqCst);
-            thread_min[tid].store(frame_min.min(current_min), Ordering::SeqCst);
+                    let current_min = thread_min[tid].load(Ordering::SeqCst);
+                    thread_min[tid].store(frame_min.min(current_min), Ordering::SeqCst);
 
-            let current_max = thread_max[tid].load(Ordering::SeqCst);
-            thread_max[tid].store(frame_max.max(current_max), Ordering::SeqCst);
-            //end of parallel data processing
+                    let current_max = thread_max[tid].load(Ordering::SeqCst);
+                    thread_max[tid].store(frame_max.max(current_max), Ordering::SeqCst);
+                    //end of parallel data processing
 
-            let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32 ;
-            let current_frame_count = previous_frame_count + 1;
-            self.send_progress_notification(&server, &"loading FITS".to_owned(), total as i32, current_frame_count);
+                    let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32;
+                    let current_frame_count = previous_frame_count + 1;
+                    self.send_progress_notification(
+                        &server,
+                        &"loading FITS".to_owned(),
+                        total as i32,
+                        current_frame_count,
+                    );
 
-            data_f16
-        }).collect()
-        );
+                    data_f16
+                }).collect()
+        });
 
         self.data_f16 = gather_f16;
 
@@ -873,13 +898,36 @@ impl FITS {
         //we've gotten so far, we have the data, pixels, mask and spectrum
         fits.has_data = true;
 
-        if !fits.pixels.is_empty() {
+        if !fits.pixels.is_empty() && !fits.mask.is_empty() {
+            //apply std::f32::NAN to masked pixels
+            let mut ord_pixels: Vec<f32> = fits
+                .pixels
+                .par_iter()
+                .zip(fits.mask.par_iter())
+                .map(|(x, m)| if *m > 0 { *x } else { std::f32::NAN })
+                .collect();
+
             //sort the pixels in parallel using rayon
-            let mut ord_pixels = fits.pixels.clone();
+            //let mut ord_pixels = fits.pixels.clone();
             //println!("unordered pixels: {:?}", ord_pixels);
 
             let start = precise_time::precise_time_ns();
-            ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
+            //ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
+            ord_pixels.par_sort_unstable_by(|a, b| {
+                if a.is_finite() && b.is_finite() {
+                    a.partial_cmp(b).unwrap_or(Equal)
+                } else {
+                    if a.is_finite() {
+                        std::cmp::Ordering::Less
+                    } else {
+                        if b.is_finite() {
+                            std::cmp::Ordering::Greater
+                        } else {
+                            std::cmp::Ordering::Equal
+                        }
+                    }
+                }
+            });
             let stop = precise_time::precise_time_ns();
 
             println!(
@@ -1056,13 +1104,36 @@ impl FITS {
         );
 
         if fits.has_data {
-            if !fits.pixels.is_empty() {
+            if !fits.pixels.is_empty() && !fits.mask.is_empty() {
+                //apply std::f32::NAN to masked pixels
+                let mut ord_pixels: Vec<f32> = fits
+                    .pixels
+                    .par_iter()
+                    .zip(fits.mask.par_iter())
+                    .map(|(x, m)| if *m > 0 { *x } else { std::f32::NAN })
+                    .collect();
+
                 //sort the pixels in parallel using rayon
-                let mut ord_pixels = fits.pixels.clone();
+                //let mut ord_pixels = fits.pixels.clone();
                 //println!("unordered pixels: {:?}", ord_pixels);
 
                 let start = precise_time::precise_time_ns();
-                ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
+                //ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
+                ord_pixels.par_sort_unstable_by(|a, b| {
+                    if a.is_finite() && b.is_finite() {
+                        a.partial_cmp(b).unwrap_or(Equal)
+                    } else {
+                        if a.is_finite() {
+                            std::cmp::Ordering::Less
+                        } else {
+                            if b.is_finite() {
+                                std::cmp::Ordering::Greater
+                            } else {
+                                std::cmp::Ordering::Equal
+                            }
+                        }
+                    }
+                });
                 let stop = precise_time::precise_time_ns();
 
                 println!(
@@ -2113,51 +2184,86 @@ impl FITS {
             //init a local histogram
             let mut hist = vec![0; NBINS2];
 
-            //build a local histogram using frame data            
+            //build a local histogram using frame data
             match self.bitpix {
                 8 => {
                     for x in self.data_u8[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                        increment_histogram(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            self.dmin,
+                            self.dmax,
+                            &mut hist,
+                        );
                     }
-                },
+                }
                 16 => {
                     for x in self.data_i16[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                        increment_histogram(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            self.dmin,
+                            self.dmax,
+                            &mut hist,
+                        );
                     }
-                },
+                }
                 32 => {
                     for x in self.data_i32[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                        increment_histogram(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            self.dmin,
+                            self.dmax,
+                            &mut hist,
+                        );
                     }
-                },
+                }
                 -32 => {
                     /*self.data_f16[frame as usize].iter()
                         .zip(self.mask.iter())
                             .for_each(|(x, m)| {*/
                     for x in self.data_f16[frame as usize].iter().step_by(data_step) {
-                        //            if *m {                            
-                        let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
-                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                        //            if *m {
+                        let tmp = self.bzero + self.bscale * (*x).to_f32(); //convert from half to f32
+                        increment_histogram(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            self.dmin,
+                            self.dmax,
+                            &mut hist,
+                        );
                     }
-                        //    })
-                },
+                    //    })
+                }
                 -64 => {
                     for x in self.data_f64[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        increment_histogram(tmp, self.datamin, self.datamax, self.dmin, self.dmax, &mut hist);
+                        increment_histogram(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            self.dmin,
+                            self.dmax,
+                            &mut hist,
+                        );
                     }
-                },
+                }
                 _ => println!("unsupported bitpix: {}", self.bitpix),
             };
 
             //get a write lock to the global histogram, update it
-            let mut data_hist = self.data_hist.write() ;
+            let mut data_hist = self.data_hist.write();
 
             for i in 0..NBINS2 {
-                data_hist[i] = data_hist[i] + hist[i] ;
+                data_hist[i] = data_hist[i] + hist[i];
             }
         });
 
@@ -2193,59 +2299,104 @@ impl FITS {
         //into_par_iter or into_iter
         (0..self.depth).into_par_iter().for_each(|frame| {
             //init local madP, madN
-            let mut mad_p = 0.0_f32 ;
-            let mut mad_n = 0.0_f32 ;
-            let mut count_p = 0_i64 ;
-            let mut count_n = 0_i64 ;
+            let mut mad_p = 0.0_f32;
+            let mut mad_n = 0.0_f32;
+            let mut count_p = 0_i64;
+            let mut count_n = 0_i64;
 
-            //build a local histogram using frame data            
+            //build a local histogram using frame data
             match self.bitpix {
                 8 => {
                     for x in self.data_u8[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
+                        update_deviation(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            median,
+                            &mut mad_p,
+                            &mut mad_n,
+                            &mut count_p,
+                            &mut count_n,
+                        );
                     }
-                },
+                }
                 16 => {
                     for x in self.data_i16[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
+                        update_deviation(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            median,
+                            &mut mad_p,
+                            &mut mad_n,
+                            &mut count_p,
+                            &mut count_n,
+                        );
                     }
-                },
+                }
                 32 => {
                     for x in self.data_i32[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
+                        update_deviation(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            median,
+                            &mut mad_p,
+                            &mut mad_n,
+                            &mut count_p,
+                            &mut count_n,
+                        );
                     }
-                },
+                }
                 -32 => {
                     for x in self.data_f16[frame as usize].iter().step_by(data_step) {
-                        //            if *m {                            
-                        let tmp = self.bzero + self.bscale * (*x).to_f32();//convert from half to f32
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
+                        //            if *m {
+                        let tmp = self.bzero + self.bscale * (*x).to_f32(); //convert from half to f32
+                        update_deviation(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            median,
+                            &mut mad_p,
+                            &mut mad_n,
+                            &mut count_p,
+                            &mut count_n,
+                        );
                     }
-                },
+                }
                 -64 => {
                     for x in self.data_f64[frame as usize].iter().step_by(data_step) {
                         let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(tmp, self.datamin, self.datamax, median, &mut mad_p, &mut mad_n, &mut count_p, &mut count_n);
+                        update_deviation(
+                            tmp,
+                            self.datamin,
+                            self.datamax,
+                            median,
+                            &mut mad_p,
+                            &mut mad_n,
+                            &mut count_p,
+                            &mut count_n,
+                        );
                     }
-                },
+                }
                 _ => println!("unsupported bitpix: {}", self.bitpix),
             };
 
             //update global mad,count
-            let mut data_mad_p = self.data_mad_p.write() ;
-            let mut data_mad_n = self.data_mad_n.write() ;
+            let mut data_mad_p = self.data_mad_p.write();
+            let mut data_mad_n = self.data_mad_n.write();
 
-            let mut data_count_p = data_count_p.write() ;
-            let mut data_count_n = data_count_n.write() ;
+            let mut data_count_p = data_count_p.write();
+            let mut data_count_n = data_count_n.write();
 
-            *data_mad_p += mad_p ;
-            *data_mad_n += mad_n ;
+            *data_mad_p += mad_p;
+            *data_mad_n += mad_n;
 
-            *data_count_p += count_p ;
-            *data_count_n += count_n ;
+            *data_count_p += count_p;
+            *data_count_n += count_n;
         });
 
         let mut data_mad_p = self.data_mad_p.write();
@@ -2285,11 +2436,21 @@ impl FITS {
         pixels: &Vec<f32>,
         mask: &Vec<u8>,
     ) -> Option<(Vec<i32>, f32, f32, f32, f32, f32, f32)> {
-        let len = ord_pixels.len();
+        let mut len = ord_pixels.len();
         let mut hist: Vec<i32> = vec![0; NBINS];
 
-        //in the future need to take into account the mask and IGNRVAL
+        //in the future need to take into account IGNRVAL
         let pmin = ord_pixels[0];
+
+        //ignore all the NaNs at the end of the vector
+        while !ord_pixels[len - 1].is_finite() {
+            len = len - 1;
+
+            if len == 1 {
+                break;
+            }
+        }
+
         let pmax = ord_pixels[len - 1];
 
         let median = {
@@ -2309,6 +2470,9 @@ impl FITS {
         let mut count_p: i32 = 0;
 
         let start = precise_time::precise_time_ns();
+
+        //reset the length
+        len = self.pixels.len();
 
         for i in 0..len {
             if mask[i] > 0 {
@@ -2388,10 +2552,22 @@ impl FITS {
     }
 
     fn make_image_histogram(&mut self, ord_pixels: &Vec<f32>) {
-        let len = ord_pixels.len();
+        let mut len = ord_pixels.len();
 
-        //in the future need to take into account the mask and IGNRVAL
+        //println!("{:?}", ord_pixels);
+
+        //in the future need to take into account IGNRVAL
         let pmin = ord_pixels[0];
+
+        //ignore all the NaNs at the end of the vector
+        while !ord_pixels[len - 1].is_finite() {
+            len = len - 1;
+
+            if len == 1 {
+                break;
+            }
+        }
+
         let pmax = ord_pixels[len - 1];
 
         let median = {
@@ -2486,6 +2662,9 @@ impl FITS {
         let mut count_p: i32 = 0;
 
         let start = precise_time::precise_time_ns();
+
+        //reset the length
+        len = self.pixels.len();
 
         for i in 0..len {
             if self.mask[i] > 0 {
