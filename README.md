@@ -159,7 +159,7 @@ please be sure to have nasm installed beforehand when building from source, plus
 ##
 install sqlite3
 
-macOS: "brew install sqlite3"
+macOS: normally sqlite3 comes pre-installed in macOS, if not you may install it manually with "brew install sqlite3"
 
 Ubuntu Linux: "sudo apt install libsqlite3-dev"
 
