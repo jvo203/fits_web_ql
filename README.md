@@ -156,6 +156,13 @@ sudo make install
 
 please be sure to have nasm installed beforehand when building from source, plus NUMA API: numactl and numa development library libnuma (package libnuma-dev on Ubuntu)
 
+##
+install sqlite3
+
+macOS: "brew install sqlite3"
+
+Ubuntu Linux: "sudo apt install libsqlite3-dev"
+
 ## WARNING
 some Linux systems, for example Ubuntu, CentOS 6 and 7, need the following environment variable to be set before running fits_web_ql
 
