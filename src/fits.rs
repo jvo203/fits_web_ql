@@ -943,7 +943,7 @@ impl FITS {
                 fits.histogram_classifier();
             };
 
-            fits.make_jasper_image(); //was _vpx_, _j2k_
+            fits.make_wavelet_image(); //was _vpx_, _j2k_
         };
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
@@ -1149,7 +1149,7 @@ impl FITS {
                     fits.histogram_classifier();
                 };
 
-                fits.make_jasper_image(); //was _vpx_, _j2k_
+                fits.make_wavelet_image(); //was _vpx_, _j2k_
             };
 
             fits.send_progress_notification(&server, &"downloading FITS done".to_owned(), 0, 0);
@@ -3775,7 +3775,7 @@ impl FITS {
         Some(image_frame)
     }
 
-    fn make_jasper_image(&mut self) {
+    fn make_wavelet_image(&mut self) {
         //check if the .img binary image file is already in the IMAGECACHE
 
         let filename = format!("{}/{}.img", IMAGECACHE, self.dataset_id.replace("/", "_"));
