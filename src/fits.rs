@@ -7,6 +7,7 @@ use positioned_io::ReadAt;
 use precise_time;
 use regex::Regex;
 use std;
+use std::ffi::CString;
 use std::fs::File;
 use std::io::Cursor;
 use std::io::Seek;
@@ -942,7 +943,7 @@ impl FITS {
                 fits.histogram_classifier();
             };
 
-            fits.make_j2k_image(); //was _vpx_
+            fits.make_jasper_image(); //was _vpx_, _j2k_
         };
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
@@ -1148,7 +1149,7 @@ impl FITS {
                     fits.histogram_classifier();
                 };
 
-                fits.make_j2k_image(); //was _vpx_
+                fits.make_jasper_image(); //was _vpx_, _j2k_
             };
 
             fits.send_progress_notification(&server, &"downloading FITS done".to_owned(), 0, 0);
@@ -3774,6 +3775,187 @@ impl FITS {
         Some(image_frame)
     }
 
+    fn make_jasper_image(&mut self) {
+        //check if the .img binary image file is already in the IMAGECACHE
+
+        let filename = format!("{}/{}.img", IMAGECACHE, self.dataset_id.replace("/", "_"));
+        let filepath = std::path::Path::new(&filename);
+
+        if filepath.exists() {
+            return;
+        }
+
+        let start = precise_time::precise_time_ns();
+
+        let mut image_frame: Vec<u8> = Vec::new();
+
+        let mut w = self.width as u32;
+        let mut h = self.height as u32;
+        let pixel_count = (w as u64) * (h as u64);
+
+        if pixel_count > IMAGE_PIXEL_COUNT_LIMIT {
+            let ratio: f32 = ((pixel_count as f32) / (IMAGE_PIXEL_COUNT_LIMIT as f32)).sqrt();
+
+            if ratio > 4.5 {
+                //default scaling, no optimisations
+                w = ((w as f32) / ratio) as u32;
+                h = ((h as f32) / ratio) as u32;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{}, default ratio: {}",
+                    self.width, self.height, w, h, ratio
+                );
+            } else if ratio > 3.0 {
+                // 1/4
+                w = w / 4;
+                h = h / 4;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{} (1/4)",
+                    self.width, self.height, w, h
+                );
+            } else if ratio > 2.25 {
+                // 3/8
+                w = 3 * w / 8;
+                h = (h * 3 + 7) / 8;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{} (3/8)",
+                    self.width, self.height, w, h
+                );
+            } else if ratio > 1.5 {
+                // 1/2
+                w = w / 2;
+                h = h / 2;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{} (1/2)",
+                    self.width, self.height, w, h
+                );
+            } else if ratio > 1.0 {
+                // 3/4
+                w = 3 * w / 4;
+                h = 3 * h / 4;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{} (3/4)",
+                    self.width, self.height, w, h
+                );
+            }
+        }
+
+        let mut y: Vec<u8> = self.pixels_to_luminance(
+            &self.pixels,
+            &self.mask,
+            self.pmin,
+            self.pmax,
+            self.lmin,
+            self.lmax,
+            self.black,
+            self.white,
+            self.median,
+            self.sensitivity,
+            &self.flux,
+        );
+
+        {
+            let start = precise_time::precise_time_ns();
+
+            let mut dst = vec![0; (w as usize) * (h as usize)];
+            self.resize_and_invert(&y, &mut dst, w, h, libyuv_FilterMode_kFilterBox);
+            y = dst;
+
+            let stop = precise_time::precise_time_ns();
+
+            println!(
+                "wavelet image frame inverting/downscaling time: {} [ms]",
+                (stop - start) / 1000000
+            );
+        }
+
+        let alpha_frame = {
+            let start = precise_time::precise_time_ns();
+
+            //invert/downscale the mask (alpha channel) without interpolation
+            let mut alpha = vec![0; (w as usize) * (h as usize)];
+
+            self.resize_and_invert(&self.mask, &mut alpha, w, h, libyuv_FilterMode_kFilterNone);
+
+            let compressed_alpha = lz4_compress::compress(&alpha);
+
+            let stop = precise_time::precise_time_ns();
+
+            println!(
+                "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
+                alpha.len(),
+                compressed_alpha.len(),
+                (stop - start) / 1000000
+            );
+
+            compressed_alpha
+        };
+
+        //compress y, copy the output to image_frame
+
+        //copy y into a floating-point matrix
+
+        if image_frame.is_empty() {
+            println!("wavelet compression error: no image produced");
+            return;
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        println!(
+            "wavelet image compression time: {} [ms]",
+            (stop - start) / 1000000
+        );
+
+        let tmp_filename = format!(
+            "{}/{}.img.tmp",
+            IMAGECACHE,
+            self.dataset_id.replace("/", "_")
+        );
+        let tmp_filepath = std::path::Path::new(&tmp_filename);
+
+        let mut buffer = match File::create(tmp_filepath) {
+            Ok(f) => f,
+            Err(err) => {
+                println!("{}", err);
+                return;
+            }
+        };
+
+        let image_frame = FITSImage {
+            identifier: String::from("WAV"),
+            width: w,
+            height: h,
+            image: image_frame,
+            alpha: alpha_frame,
+        };
+
+        match serialize(&image_frame) {
+            Ok(bin) => {
+                println!("FITSImage binary length: {}", bin.len());
+
+                match buffer.write_all(&bin) {
+                    Ok(()) => {
+                        //remove (rename) the temporary file
+                        let _ = std::fs::rename(tmp_filepath, filepath);
+                    }
+                    Err(err) => {
+                        println!(
+                            "image cache write error: {}, removing the temporary file",
+                            err
+                        );
+                        let _ = std::fs::remove_file(tmp_filepath);
+                    }
+                }
+            }
+            Err(err) => println!("error serializing a FITSImage structure: {}", err),
+        }
+    }
+
     fn make_j2k_image(&mut self) {
         //check if the .img binary image file is already in the IMAGECACHE
 
@@ -3978,7 +4160,7 @@ impl FITS {
         /* OPJ_LRCP, OPJ_RLCP, OPJ_RPCL, PCRL, CPRL */
         l_param.prog_order = ffi::PROG_ORDER_OPJ_LRCP;
 
-        /* no "region" of interest, more precisally component */
+        /* no "region" of interest, more precisely component */
         /* l_param.roi_compno = -1; */
         /* l_param.roi_shift = 0; */
 
@@ -3987,9 +4169,21 @@ impl FITS {
         /* l_param.tp_flag = 0; */
 
         /* image definition */
-        //(...)
 
-        //opj_codec_t * l_codec;
+        let mut l_params: Vec<ffi::opj_image_cmptparm_t> = (0..num_comps)
+            .into_iter()
+            .map(|_| ffi::opj_image_cmptparm_t {
+                dx: 1,
+                dy: 1,
+                h: image_height,
+                w: image_width,
+                sgnd: 0,
+                prec: comp_prec,
+                bpp: comp_prec,
+                x0: offsetx,
+                y0: offsety,
+            }).collect();
+
         let mut l_codec = unsafe { ffi::opj_create_compress(ffi::CODEC_FORMAT_OPJ_CODEC_J2K) };
 
         if l_codec.is_null() {
@@ -3997,8 +4191,61 @@ impl FITS {
             return;
         }
 
+        let mut l_image = unsafe {
+            ffi::opj_image_tile_create(
+                num_comps,
+                l_params.as_mut_ptr(),
+                ffi::COLOR_SPACE_OPJ_CLRSPC_GRAY,
+            )
+        };
+
+        if l_image.is_null() {
+            println!("error creating a JPEG2000 image");
+            unsafe { ffi::opj_destroy_codec(l_codec) };
+
+            return;
+        }
+
+        unsafe {
+            (*l_image).x0 = offsetx;
+            (*l_image).y0 = offsety;
+            (*l_image).x1 = offsetx + image_width;
+            (*l_image).y1 = offsety + image_height;
+            (*l_image).color_space = ffi::COLOR_SPACE_OPJ_CLRSPC_GRAY;
+        }
+
+        let f = CString::new(format!("{}/test.j2k", IMAGECACHE)).unwrap();
+        let mut l_stream = unsafe {
+            ffi::opj_stream_create_default_file_stream(f.as_ptr(), ffi::OPJ_FALSE as i32)
+        };
+
+        if l_stream.is_null() {
+            println!("error creating a JPEG2000 stream");
+            unsafe { ffi::opj_destroy_codec(l_codec) };
+            unsafe { ffi::opj_image_destroy(l_image) };
+
+            return;
+        }
+
+        //start the compression process
+        let ret = unsafe { ffi::opj_start_compress(l_codec, l_image, l_stream) }; //this line segfaults
+
+        if ret > 0 {
+            //compress each tile
+            println!("JPEG2000 compression started");
+
+        //end the compression process
+        //unsafe { ffi::opj_end_compress(l_codec, l_stream) };
+        } else {
+            println!("error starting JPEG2000 compression");
+        }
+
         //free up the J2K encoder
-        unsafe { ffi::opj_destroy_codec(l_codec) };
+        unsafe {
+            ffi::opj_destroy_codec(l_codec);
+            ffi::opj_image_destroy(l_image);
+            ffi::opj_stream_destroy(l_stream);
+        }
 
         if image_frame.is_empty() {
             println!("JPEG2000 codec error: no image produced");
