@@ -61,4 +61,4 @@ tar = "*"
 #rulinalg = "*"
 #linearkalman = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }
-openjpeg2-sys = "*"
+#openjpeg2-sys = "*"

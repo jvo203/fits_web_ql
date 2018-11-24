@@ -7,7 +7,6 @@ use positioned_io::ReadAt;
 use precise_time;
 use regex::Regex;
 use std;
-use std::ffi::CString;
 use std::fs::File;
 use std::io::Cursor;
 use std::io::Seek;
@@ -40,7 +39,7 @@ use std::cmp::Ordering::Equal;
 
 use std::sync::atomic::{AtomicIsize, Ordering};
 
-use openjpeg2_sys as ffi;
+//use openjpeg2_sys as ffi;
 use vpx_sys::*;
 
 use ispc_calculate_radial_spectrumF16;
@@ -943,7 +942,7 @@ impl FITS {
                 fits.histogram_classifier();
             };
 
-            fits.make_wavelet_image(); //was _vpx_, _j2k_
+            fits.make_vpx_image(); //was _vpx_, _j2k_, _wavelet_
         };
 
         fits.send_progress_notification(&server, &"processing FITS done".to_owned(), 0, 0);
@@ -1149,7 +1148,7 @@ impl FITS {
                     fits.histogram_classifier();
                 };
 
-                fits.make_wavelet_image(); //was _vpx_, _j2k_
+                fits.make_vpx_image(); //was _vpx_, _j2k_, _wavelet_
             };
 
             fits.send_progress_notification(&server, &"downloading FITS done".to_owned(), 0, 0);
@@ -3775,6 +3774,7 @@ impl FITS {
         Some(image_frame)
     }
 
+    #[allow(dead_code)]
     fn make_wavelet_image(&mut self) {
         //check if the .img binary image file is already in the IMAGECACHE
 
@@ -3956,354 +3956,6 @@ impl FITS {
         }
     }
 
-    fn make_j2k_image(&mut self) {
-        //check if the .img binary image file is already in the IMAGECACHE
-
-        let filename = format!("{}/{}.img", IMAGECACHE, self.dataset_id.replace("/", "_"));
-        let filepath = std::path::Path::new(&filename);
-
-        if filepath.exists() {
-            return;
-        }
-
-        let start = precise_time::precise_time_ns();
-
-        let mut image_frame: Vec<u8> = Vec::new();
-
-        let mut w = self.width as u32;
-        let mut h = self.height as u32;
-        let pixel_count = (w as u64) * (h as u64);
-
-        if pixel_count > IMAGE_PIXEL_COUNT_LIMIT {
-            let ratio: f32 = ((pixel_count as f32) / (IMAGE_PIXEL_COUNT_LIMIT as f32)).sqrt();
-
-            if ratio > 4.5 {
-                //default scaling, no optimisations
-                w = ((w as f32) / ratio) as u32;
-                h = ((h as f32) / ratio) as u32;
-
-                println!(
-                    "downscaling the image from {}x{} to {}x{}, default ratio: {}",
-                    self.width, self.height, w, h, ratio
-                );
-            } else if ratio > 3.0 {
-                // 1/4
-                w = w / 4;
-                h = h / 4;
-
-                println!(
-                    "downscaling the image from {}x{} to {}x{} (1/4)",
-                    self.width, self.height, w, h
-                );
-            } else if ratio > 2.25 {
-                // 3/8
-                w = 3 * w / 8;
-                h = (h * 3 + 7) / 8;
-
-                println!(
-                    "downscaling the image from {}x{} to {}x{} (3/8)",
-                    self.width, self.height, w, h
-                );
-            } else if ratio > 1.5 {
-                // 1/2
-                w = w / 2;
-                h = h / 2;
-
-                println!(
-                    "downscaling the image from {}x{} to {}x{} (1/2)",
-                    self.width, self.height, w, h
-                );
-            } else if ratio > 1.0 {
-                // 3/4
-                w = 3 * w / 4;
-                h = 3 * h / 4;
-
-                println!(
-                    "downscaling the image from {}x{} to {}x{} (3/4)",
-                    self.width, self.height, w, h
-                );
-            }
-        }
-
-        let mut y: Vec<u8> = self.pixels_to_luminance(
-            &self.pixels,
-            &self.mask,
-            self.pmin,
-            self.pmax,
-            self.lmin,
-            self.lmax,
-            self.black,
-            self.white,
-            self.median,
-            self.sensitivity,
-            &self.flux,
-        );
-
-        {
-            let start = precise_time::precise_time_ns();
-
-            let mut dst = vec![0; (w as usize) * (h as usize)];
-            self.resize_and_invert(&y, &mut dst, w, h, libyuv_FilterMode_kFilterBox);
-            y = dst;
-
-            let stop = precise_time::precise_time_ns();
-
-            println!(
-                "JPEG2000 image frame inverting/downscaling time: {} [ms]",
-                (stop - start) / 1000000
-            );
-        }
-
-        let alpha_frame = {
-            let start = precise_time::precise_time_ns();
-
-            //invert/downscale the mask (alpha channel) without interpolation
-            let mut alpha = vec![0; (w as usize) * (h as usize)];
-
-            self.resize_and_invert(&self.mask, &mut alpha, w, h, libyuv_FilterMode_kFilterNone);
-
-            let compressed_alpha = lz4_compress::compress(&alpha);
-
-            let stop = precise_time::precise_time_ns();
-
-            println!(
-                "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
-                alpha.len(),
-                compressed_alpha.len(),
-                (stop - start) / 1000000
-            );
-
-            compressed_alpha
-        };
-
-        //compress y, copy the output to image_frame
-        let mut l_param: ffi::opj_cparameters_t = unsafe { mem::zeroed() };
-        unsafe { ffi::opj_set_default_encoder_parameters(&mut l_param) };
-
-        let num_comps: u32 = 1;
-        let image_width = w;
-        let image_height = h;
-
-        //one tile for now
-        let tile_width = image_width;
-        let tile_height = image_height;
-
-        let comp_prec = 8;
-        let irreversible = true;
-        let quality_loss = true;
-        let cblockw_init = 64;
-        let cblockh_init = 64;
-        let numresolution = 6;
-        let offsetx: u32 = 0;
-        let offsety: u32 = 0;
-
-        let l_nb_tiles_width = (offsetx + image_width + tile_width - 1) / tile_width;
-        let l_nb_tiles_height = (offsety + image_height + tile_height - 1) / tile_height;
-        let l_nb_tiles = l_nb_tiles_width * l_nb_tiles_height;
-        let l_data_size = tile_width * tile_height * num_comps * (comp_prec / 8);
-
-        println!(
-            "l_nb_tiles_width: {}, l_nb_tiles_height: {}, l_nb_tiles: {}, l_data_size: {}",
-            l_nb_tiles_width, l_nb_tiles_height, l_nb_tiles, l_data_size
-        );
-
-        if quality_loss {
-            l_param.tcp_numlayers = 1;
-            l_param.cp_fixed_quality = 1;
-            l_param.tcp_distoratio[0] = 20.0;
-        }
-
-        /* tile definitions parameters */
-        /* position of the tile grid aligned with the image */
-        l_param.cp_tx0 = 0;
-        l_param.cp_ty0 = 0;
-        /* tile size, we are using tile based encoding */
-        l_param.tile_size_on = ffi::OPJ_TRUE as i32;
-        l_param.cp_tdx = tile_width as i32;
-        l_param.cp_tdy = tile_height as i32;
-
-        /* code block size */
-        l_param.cblockw_init = cblockw_init;
-        l_param.cblockh_init = cblockh_init;
-
-        /* use irreversible encoding ?*/
-        l_param.irreversible = irreversible as i32;
-
-        /* do not bother with mct, the rsiz is set when calling opj_set_MCT*/
-        /*l_param.cp_rsiz = OPJ_STD_RSIZ;*/
-
-        /* no cinema */
-        /*l_param.cp_cinema = 0;*/
-
-        /* no not bother using SOP or EPH markers, do not use custom size precinct */
-        /* number of precincts to specify */
-        /* l_param.csty = 0;*/
-        /* l_param.res_spec = ... */
-        /* l_param.prch_init[i] = .. */
-        /* l_param.prcw_init[i] = .. */
-
-        /* do not use progression order changes */
-        /*l_param.numpocs = 0;*/
-        /* l_param.POC[i].... */
-
-        /* do not restrain the size for a component.*/
-        /* l_param.max_comp_size = 0; */
-
-        /* block encoding style for each component, do not use at the moment */
-        /* J2K_CCP_CBLKSTY_TERMALL, J2K_CCP_CBLKSTY_LAZY, J2K_CCP_CBLKSTY_VSC, J2K_CCP_CBLKSTY_SEGSYM, J2K_CCP_CBLKSTY_RESET */
-        /* l_param.mode = 0;*/
-
-        /* number of resolutions */
-        l_param.numresolution = numresolution;
-
-        /* progression order to use*/
-        /* OPJ_LRCP, OPJ_RLCP, OPJ_RPCL, PCRL, CPRL */
-        l_param.prog_order = ffi::PROG_ORDER_OPJ_LRCP;
-
-        /* no "region" of interest, more precisely component */
-        /* l_param.roi_compno = -1; */
-        /* l_param.roi_shift = 0; */
-
-        /* we are not using multiple tile parts for a tile. */
-        /* l_param.tp_on = 0; */
-        /* l_param.tp_flag = 0; */
-
-        /* image definition */
-
-        let mut l_params: Vec<ffi::opj_image_cmptparm_t> = (0..num_comps)
-            .into_iter()
-            .map(|_| ffi::opj_image_cmptparm_t {
-                dx: 1,
-                dy: 1,
-                h: image_height,
-                w: image_width,
-                sgnd: 0,
-                prec: comp_prec,
-                bpp: comp_prec,
-                x0: offsetx,
-                y0: offsety,
-            }).collect();
-
-        let mut l_codec = unsafe { ffi::opj_create_compress(ffi::CODEC_FORMAT_OPJ_CODEC_J2K) };
-
-        if l_codec.is_null() {
-            println!("error creating a JPEG2000 codec");
-            return;
-        }
-
-        let mut l_image = unsafe {
-            ffi::opj_image_tile_create(
-                num_comps,
-                l_params.as_mut_ptr(),
-                ffi::COLOR_SPACE_OPJ_CLRSPC_GRAY,
-            )
-        };
-
-        if l_image.is_null() {
-            println!("error creating a JPEG2000 image");
-            unsafe { ffi::opj_destroy_codec(l_codec) };
-
-            return;
-        }
-
-        unsafe {
-            (*l_image).x0 = offsetx;
-            (*l_image).y0 = offsety;
-            (*l_image).x1 = offsetx + image_width;
-            (*l_image).y1 = offsety + image_height;
-            (*l_image).color_space = ffi::COLOR_SPACE_OPJ_CLRSPC_GRAY;
-        }
-
-        let f = CString::new(format!("{}/test.j2k", IMAGECACHE)).unwrap();
-        let mut l_stream = unsafe {
-            ffi::opj_stream_create_default_file_stream(f.as_ptr(), ffi::OPJ_FALSE as i32)
-        };
-
-        if l_stream.is_null() {
-            println!("error creating a JPEG2000 stream");
-            unsafe { ffi::opj_destroy_codec(l_codec) };
-            unsafe { ffi::opj_image_destroy(l_image) };
-
-            return;
-        }
-
-        //start the compression process
-        let ret = unsafe { ffi::opj_start_compress(l_codec, l_image, l_stream) }; //this line segfaults
-
-        if ret > 0 {
-            //compress each tile
-            println!("JPEG2000 compression started");
-
-        //end the compression process
-        //unsafe { ffi::opj_end_compress(l_codec, l_stream) };
-        } else {
-            println!("error starting JPEG2000 compression");
-        }
-
-        //free up the J2K encoder
-        unsafe {
-            ffi::opj_destroy_codec(l_codec);
-            ffi::opj_image_destroy(l_image);
-            ffi::opj_stream_destroy(l_stream);
-        }
-
-        if image_frame.is_empty() {
-            println!("JPEG2000 codec error: no image produced");
-            return;
-        }
-
-        let stop = precise_time::precise_time_ns();
-
-        println!(
-            "JPEG2000 image compression time: {} [ms]",
-            (stop - start) / 1000000
-        );
-
-        let tmp_filename = format!(
-            "{}/{}.img.tmp",
-            IMAGECACHE,
-            self.dataset_id.replace("/", "_")
-        );
-        let tmp_filepath = std::path::Path::new(&tmp_filename);
-
-        let mut buffer = match File::create(tmp_filepath) {
-            Ok(f) => f,
-            Err(err) => {
-                println!("{}", err);
-                return;
-            }
-        };
-
-        let image_frame = FITSImage {
-            identifier: String::from("J2K"),
-            width: w,
-            height: h,
-            image: image_frame,
-            alpha: alpha_frame,
-        };
-
-        match serialize(&image_frame) {
-            Ok(bin) => {
-                println!("FITSImage binary length: {}", bin.len());
-
-                match buffer.write_all(&bin) {
-                    Ok(()) => {
-                        //remove (rename) the temporary file
-                        let _ = std::fs::rename(tmp_filepath, filepath);
-                    }
-                    Err(err) => {
-                        println!(
-                            "image cache write error: {}, removing the temporary file",
-                            err
-                        );
-                        let _ = std::fs::remove_file(tmp_filepath);
-                    }
-                }
-            }
-            Err(err) => println!("error serializing a FITSImage structure: {}", err),
-        }
-    }
-
     fn make_vpx_image(&mut self) {
         //check if the .img binary image file is already in the IMAGECACHE
 
@@ -4386,7 +4038,12 @@ impl FITS {
 
         let align = 1;
 
-        let ret = unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) }; //I420 or I444
+        //a workaround a bug in libvpx triggered when h > w
+        let ret = if w > h {
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) } //I420 or I444
+        } else {
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, h, w, align) } //I420 or I444
+        };
 
         if ret.is_null() {
             println!("VP9 image frame error: image allocation failed");
@@ -4477,7 +4134,8 @@ impl FITS {
         raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
         raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
 
-        raw.stride[0] = w as i32;
+        //a workaround a bug in libvpx triggered when h > w
+        raw.stride[0] = if w > h { w as i32 } else { h as i32 };
         /*raw.stride[1] = (w/2) as i32 ;
         raw.stride[2] = (h/2) as i32 ;*/
 
@@ -4499,8 +4157,14 @@ impl FITS {
             return;
         }
 
-        cfg.g_w = w;
-        cfg.g_h = h;
+        //a workaround a bug in libvpx triggered when h > w
+        if w > h {
+            cfg.g_w = w;
+            cfg.g_h = h;
+        } else {
+            cfg.g_w = h;
+            cfg.g_h = w;
+        }
 
         cfg.rc_min_quantizer = 10;
         cfg.rc_max_quantizer = 42;

@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-10-30.0";
+	return "JS2018-11-24.0";
 }
 
 const wasm_supported = (() => {
@@ -682,9 +682,9 @@ function replot_y_axis() {
 	d3.select("#ylabel").text(yLabel + ' ' + fitsData.BTYPE.trim() + " [" + bunit + "]");
 }
 
-function process_image(w, h, bytes, stride, alpha, index) {
+function process_image(width, height, w, h, bytes, stride, alpha, index) {
 	//let image_bounding_dims = {x1: 0, y1: 0, width: w, height: h};
-	let image_bounding_dims = true_image_dimensions(alpha, w, h);
+	let image_bounding_dims = true_image_dimensions(alpha, width, height);
 	var pixel_range = image_pixel_range(bytes, w, h, stride);
 	console.log("min pixel:", pixel_range.min_pixel, "max pixel:", pixel_range.max_pixel);
 
@@ -692,11 +692,11 @@ function process_image(w, h, bytes, stride, alpha, index) {
 	imageCanvas.style.visibility = "hidden";
 	var context = imageCanvas.getContext('2d');
 
-	imageCanvas.width = w;
-	imageCanvas.height = h;
+	imageCanvas.width = width;
+	imageCanvas.height = height;
 	console.log(imageCanvas.width, imageCanvas.height);
 
-	let imageData = context.createImageData(w, h);
+	let imageData = context.createImageData(width, height);
 	let imageFrame = { bytes: new Uint8ClampedArray(bytes), w: w, h: h, stride: stride };
 
 	apply_colourmap(imageData, colourmap, bytes, w, h, stride, alpha);
@@ -1317,7 +1317,7 @@ function open_websocket_connection(datasetId, index) {
 
 							decoder.init(function () { console.log("init callback done"); });
 							decoder.processFrame(frame, function () {
-								process_image(decoder.frameBuffer.format.displayWidth,
+								process_image(width, height, decoder.frameBuffer.format.displayWidth,
 									decoder.frameBuffer.format.displayHeight,
 									decoder.frameBuffer.y.bytes,
 									decoder.frameBuffer.y.stride,
@@ -7298,7 +7298,7 @@ function fetch_image(datasetId, index, add_timestamp) {
 
 					decoder.init(function () { console.log("init callback done"); });
 					decoder.processFrame(frame, function () {
-						process_image(decoder.frameBuffer.format.displayWidth,
+						process_image(width, height, decoder.frameBuffer.format.displayWidth,
 							decoder.frameBuffer.format.displayHeight,
 							decoder.frameBuffer.y.bytes,
 							decoder.frameBuffer.y.stride,

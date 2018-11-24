@@ -41,7 +41,7 @@ extern crate timer;
 extern crate uuid;
 extern crate vpx_sys;
 
-extern crate openjpeg2_sys;
+//extern crate openjpeg2_sys;
 
 #[macro_use]
 extern crate scan_fmt;
@@ -2215,7 +2215,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.4";
-static VERSION_STRING: &'static str = "SV2018-11-22.0";
+static VERSION_STRING: &'static str = "SV2018-11-24.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
