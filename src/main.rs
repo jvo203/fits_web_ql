@@ -1315,15 +1315,28 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                 let align = 1;
 
-                                let ret = unsafe {
-                                    vpx_img_alloc(
-                                        &mut raw,
-                                        vpx_img_fmt::VPX_IMG_FMT_I420,
-                                        w,
-                                        h,
-                                        align,
-                                    )
-                                }; //I420 or I444
+                                //a workaround around a bug in libvpx triggered when h > w
+                                let ret = if w > h {
+                                    unsafe {
+                                        vpx_img_alloc(
+                                            &mut raw,
+                                            vpx_img_fmt::VPX_IMG_FMT_I420,
+                                            w,
+                                            h,
+                                            align,
+                                        )
+                                    } //I420 or I444
+                                } else {
+                                    unsafe {
+                                        vpx_img_alloc(
+                                            &mut raw,
+                                            vpx_img_fmt::VPX_IMG_FMT_I420,
+                                            h,
+                                            w,
+                                            align,
+                                        )
+                                    } //I420 or I444
+                                };
 
                                 if ret.is_null() {
                                     println!("VP9 image frame error: image allocation failed");
@@ -1408,7 +1421,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
                                 raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
 
-                                raw.stride[0] = w as i32;
+                                //a workaround around a bug in libvpx triggered when h > w
+                                raw.stride[0] = if w > h { w as i32 } else { h as i32 };
 
                                 let mut cfg = vpx_codec_enc_cfg::default();
                                 let mut ret = unsafe {
@@ -1424,8 +1438,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     return;
                                 }
 
-                                cfg.g_w = w;
-                                cfg.g_h = h;
+                                //a workaround around a bug in libvpx triggered when h > w
+                                if w > h {
+                                    cfg.g_w = w;
+                                    cfg.g_h = h;
+                                } else {
+                                    cfg.g_w = h;
+                                    cfg.g_h = w;
+                                }
 
                                 cfg.rc_min_quantizer = 10;
                                 cfg.rc_max_quantizer = 42;
@@ -2215,7 +2235,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.4";
-static VERSION_STRING: &'static str = "SV2018-11-24.0";
+static VERSION_STRING: &'static str = "SV2018-11-24.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

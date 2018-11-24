@@ -1410,3 +1410,184 @@ export LIBCLANG_PATH=/opt/llvm-3.9.0/lib64
             Err(err) => println!("error serializing a FITSImage structure: {}", err),
         }
     }
+
+    fn make_wavelet_image(&mut self) {
+        //check if the .img binary image file is already in the IMAGECACHE
+
+        let filename = format!("{}/{}.img", IMAGECACHE, self.dataset_id.replace("/", "_"));
+        let filepath = std::path::Path::new(&filename);
+
+        if filepath.exists() {
+            return;
+        }
+
+        let start = precise_time::precise_time_ns();
+
+        let mut image_frame: Vec<u8> = Vec::new();
+
+        let mut w = self.width as u32;
+        let mut h = self.height as u32;
+        let pixel_count = (w as u64) * (h as u64);
+
+        if pixel_count > IMAGE_PIXEL_COUNT_LIMIT {
+            let ratio: f32 = ((pixel_count as f32) / (IMAGE_PIXEL_COUNT_LIMIT as f32)).sqrt();
+
+            if ratio > 4.5 {
+                //default scaling, no optimisations
+                w = ((w as f32) / ratio) as u32;
+                h = ((h as f32) / ratio) as u32;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{}, default ratio: {}",
+                    self.width, self.height, w, h, ratio
+                );
+            } else if ratio > 3.0 {
+                // 1/4
+                w = w / 4;
+                h = h / 4;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{} (1/4)",
+                    self.width, self.height, w, h
+                );
+            } else if ratio > 2.25 {
+                // 3/8
+                w = 3 * w / 8;
+                h = (h * 3 + 7) / 8;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{} (3/8)",
+                    self.width, self.height, w, h
+                );
+            } else if ratio > 1.5 {
+                // 1/2
+                w = w / 2;
+                h = h / 2;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{} (1/2)",
+                    self.width, self.height, w, h
+                );
+            } else if ratio > 1.0 {
+                // 3/4
+                w = 3 * w / 4;
+                h = 3 * h / 4;
+
+                println!(
+                    "downscaling the image from {}x{} to {}x{} (3/4)",
+                    self.width, self.height, w, h
+                );
+            }
+        }
+
+        let mut y: Vec<u8> = self.pixels_to_luminance(
+            &self.pixels,
+            &self.mask,
+            self.pmin,
+            self.pmax,
+            self.lmin,
+            self.lmax,
+            self.black,
+            self.white,
+            self.median,
+            self.sensitivity,
+            &self.flux,
+        );
+
+        {
+            let start = precise_time::precise_time_ns();
+
+            let mut dst = vec![0; (w as usize) * (h as usize)];
+            self.resize_and_invert(&y, &mut dst, w, h, libyuv_FilterMode_kFilterBox);
+            y = dst;
+
+            let stop = precise_time::precise_time_ns();
+
+            println!(
+                "wavelet image frame inverting/downscaling time: {} [ms]",
+                (stop - start) / 1000000
+            );
+        }
+
+        let alpha_frame = {
+            let start = precise_time::precise_time_ns();
+
+            //invert/downscale the mask (alpha channel) without interpolation
+            let mut alpha = vec![0; (w as usize) * (h as usize)];
+
+            self.resize_and_invert(&self.mask, &mut alpha, w, h, libyuv_FilterMode_kFilterNone);
+
+            let compressed_alpha = lz4_compress::compress(&alpha);
+
+            let stop = precise_time::precise_time_ns();
+
+            println!(
+                "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
+                alpha.len(),
+                compressed_alpha.len(),
+                (stop - start) / 1000000
+            );
+
+            compressed_alpha
+        };
+
+        //compress y, copy the output to image_frame
+
+        //copy y into a floating-point matrix
+
+        if image_frame.is_empty() {
+            println!("wavelet compression error: no image produced");
+            return;
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        println!(
+            "wavelet image compression time: {} [ms]",
+            (stop - start) / 1000000
+        );
+
+        let tmp_filename = format!(
+            "{}/{}.img.tmp",
+            IMAGECACHE,
+            self.dataset_id.replace("/", "_")
+        );
+        let tmp_filepath = std::path::Path::new(&tmp_filename);
+
+        let mut buffer = match File::create(tmp_filepath) {
+            Ok(f) => f,
+            Err(err) => {
+                println!("{}", err);
+                return;
+            }
+        };
+
+        let image_frame = FITSImage {
+            identifier: String::from("WAV"),
+            width: w,
+            height: h,
+            image: image_frame,
+            alpha: alpha_frame,
+        };
+
+        match serialize(&image_frame) {
+            Ok(bin) => {
+                println!("FITSImage binary length: {}", bin.len());
+
+                match buffer.write_all(&bin) {
+                    Ok(()) => {
+                        //remove (rename) the temporary file
+                        let _ = std::fs::rename(tmp_filepath, filepath);
+                    }
+                    Err(err) => {
+                        println!(
+                            "image cache write error: {}, removing the temporary file",
+                            err
+                        );
+                        let _ = std::fs::remove_file(tmp_filepath);
+                    }
+                }
+            }
+            Err(err) => println!("error serializing a FITSImage structure: {}", err),
+        }
+    }
