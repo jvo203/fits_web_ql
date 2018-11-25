@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-11-24.0";
+	return "JS2018-11-25.0";
 }
 
 const wasm_supported = (() => {
@@ -697,7 +697,7 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 	console.log(imageCanvas.width, imageCanvas.height);
 
 	let imageData = context.createImageData(width, height);
-	let imageFrame = { bytes: new Uint8ClampedArray(bytes), w: w, h: h, stride: stride };
+	let imageFrame = { width: width, height: height, bytes: new Uint8ClampedArray(bytes), w: w, h: h, stride: stride };
 
 	apply_colourmap(imageData, colourmap, bytes, w, h, stride, alpha);
 	context.putImageData(imageData, 0, 0);
@@ -1634,8 +1634,8 @@ function open_websocket_connection(datasetId, index) {
 										img: img,
 										ptr: ptr,
 										alpha: alpha_ptr,
-										scaleX: imageFrame.w / width,
-										scaleY: imageFrame.h / height,
+										scaleX: imageFrame.width / width,
+										scaleY: imageFrame.height / height,
 										image_bounding_dims: image_bounding_dims,
 									}
 								}
