@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-11-25.0";
+	return "JS2018-11-26.4";
 }
 
 const wasm_supported = (() => {
@@ -696,8 +696,26 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 	imageCanvas.height = height;
 	console.log(imageCanvas.width, imageCanvas.height);
 
+	var imageFrame;
 	let imageData = context.createImageData(width, height);
-	let imageFrame = { width: width, height: height, bytes: new Uint8ClampedArray(bytes), w: w, h: h, stride: stride };
+
+	if (width >= height)
+		imageFrame = { bytes: new Uint8ClampedArray(bytes), w: w, h: h, stride: stride };
+	else {
+		//re-arrange the bytes array
+		var buffer = new Uint8Array(w * h);
+
+		let dst_offset = 0;
+
+		for (var j = 0; j < h; j++) {
+			let offset = j * stride;
+
+			for (var i = 0; i < w; i++)
+				buffer[dst_offset++] = bytes[offset++];
+		}
+
+		imageFrame = { bytes: buffer, w: width, h: height, stride: width };
+	}
 
 	apply_colourmap(imageData, colourmap, bytes, w, h, stride, alpha);
 	context.putImageData(imageData, 0, 0);
@@ -1634,8 +1652,8 @@ function open_websocket_connection(datasetId, index) {
 										img: img,
 										ptr: ptr,
 										alpha: alpha_ptr,
-										scaleX: imageFrame.width / width,
-										scaleY: imageFrame.height / height,
+										scaleX: imageFrame.w / width,
+										scaleY: imageFrame.h / height,
 										image_bounding_dims: image_bounding_dims,
 									}
 								}
@@ -6825,8 +6843,8 @@ function setup_image_selection() {
 				var max_pixel = pixel_range.max_pixel;
 				var imageFrame = imageContainer[index - 1].imageFrame;
 
-				var pixel_coord = Math.round(y) * imageFrame.stride + Math.round(x);
 				var alpha_coord = Math.round(y) * imageFrame.w + Math.round(x);
+				var pixel_coord = Math.round(y) * imageFrame.stride + Math.round(x);
 
 				var pixel = imageFrame.bytes[pixel_coord];
 				var alpha = imageContainer[index - 1].alpha[alpha_coord];
@@ -9947,6 +9965,7 @@ function contour_surface_webworker() {
 			data.push(row);
 		}
 	else //use imageFrame
+	{
 		for (var h = image_bounding_dims.height - 1; h >= 0; h--) {
 			var row = [];
 
@@ -9969,7 +9988,7 @@ function contour_surface_webworker() {
 
 			data.push(row);
 		};
-
+	}
 
 	//console.log(data);
 
