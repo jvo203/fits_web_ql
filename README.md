@@ -176,6 +176,10 @@ cd into the fits_web_ql directory and execute
 
 cargo run --release
 
+after a successful compilation (it may take some time!) point your web browser to http://localhost:8080
+
+to exit the program press CTRL+C
+
 # How to Run the Production Server (only at the Japanese Virtual Observatory)
 cd into the fits_web_ql directory and execute
 

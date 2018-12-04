@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-11-26.4";
+	return "JS2018-12-04.0";
 }
 
 const wasm_supported = (() => {
@@ -4727,6 +4727,8 @@ function dragstart() {
 		if (has_velocity_info)
 			session_freq_start = frequency;
 
+	session_freq_end = session_freq_start;//added by Chris on 2018/12/04
+
 	//session_frame_start = get_mouse_frame(offset) ;
 
 	if (has_frequency_info)
@@ -4752,6 +4754,11 @@ function dragend() {
 	var freq_start = session_freq_start;
 	var freq_end = session_freq_end;
 	var tmp = freq_start;
+
+	if (freq_start == freq_end) {
+		console.log("ignoring a single-channel region selection!");
+		return;
+	}
 
 	if (freq_end < freq_start) {
 		freq_start = freq_end;
