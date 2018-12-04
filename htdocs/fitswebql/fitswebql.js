@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-04.0";
+	return "JS2018-12-04.1";
 }
 
 const wasm_supported = (() => {
@@ -4757,6 +4757,18 @@ function dragend() {
 
 	if (freq_start == freq_end) {
 		console.log("ignoring a single-channel region selection!");
+
+		freq_mouse_start = 0;
+		freqdrag = false;
+		session_freq_start = 0;
+		session_freq_end = 0;
+
+		shortcut.remove("f");
+		shortcut.remove("Left");
+		shortcut.remove("Right");
+		shortcut.remove("Enter");
+		mol_pos = -1;
+
 		return;
 	}
 
