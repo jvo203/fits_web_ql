@@ -3792,6 +3792,11 @@ impl FITS {
         let mut h = self.height as u32;
         let pixel_count = (w as u64) * (h as u64);
 
+        //multithreading
+        let mut num_threads = 1;
+        let mut thread_height = self.height;
+        let mut thread_h = self.height;
+
         if pixel_count > IMAGE_PIXEL_COUNT_LIMIT {
             let ratio: f32 = ((pixel_count as f32) / (IMAGE_PIXEL_COUNT_LIMIT as f32)).sqrt();
 
@@ -3803,6 +3808,15 @@ impl FITS {
                 println!(
                     "downscaling the image from {}x{} to {}x{}, default ratio: {}",
                     self.width, self.height, w, h, ratio
+                );
+                
+                num_threads = num_cpus::get();
+                thread_height = self.height / num_threads;
+                thread_h = (h as usize) / num_threads;
+
+                println!(
+                    "multi-threaded downscaling: thread_height = {}, thread_h = {}, #threads = {}",
+                    thread_height, thread_h, num_threads
                 );
             } else if ratio > 3.0 {
                 // 1/4
