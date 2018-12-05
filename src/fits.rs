@@ -3126,6 +3126,43 @@ impl FITS {
         let ptr = vec.as_ptr() as *mut i16;
         let len = vec.len();
 
+        let tmp = (len / (1024 * 1024)).max(1);
+        let num_threads = tmp.min(num_cpus::get());
+        let work_size = len / num_threads;
+
+        println!(
+            "data_to_luminance: tmp = {}, num_threads = {}, work_size = {}",
+            tmp, num_threads, work_size
+        );
+
+        let gather: Vec<_> = (0..num_threads)
+            .into_par_iter()
+            .map(|index| {
+                let offset = index * work_size;
+
+                let work_size = if index == num_threads - 1 {
+                    len - offset
+                } else {
+                    work_size
+                };
+
+                let vec = &vec[offset..offset + work_size];
+                let mask = &self.mask[offset..offset + work_size];
+
+                println!(
+                    "index: {}, offset: {}, work_size: {}, vec.len = {}, mask.len = {}",
+                    index,
+                    offset,
+                    work_size,
+                    vec.len(),
+                    mask.len()
+                );
+
+                (offset, work_size)
+            }).collect();
+
+        println!("{:?}", gather);
+
         let mask_ptr = self.mask.as_ptr() as *mut u8;
         let mask_len = self.mask.len();
 
@@ -3809,7 +3846,7 @@ impl FITS {
                     "downscaling the image from {}x{} to {}x{}, default ratio: {}",
                     self.width, self.height, w, h, ratio
                 );
-                
+
                 num_threads = num_cpus::get();
                 thread_height = self.height / num_threads;
                 thread_h = (h as usize) / num_threads;
@@ -3882,21 +3919,34 @@ impl FITS {
             return;
         }
         mem::forget(ret); // img and ret are the same
-        print!("{:#?}", raw);
+        println!("{:#?}", raw);
 
-        let mut y: Vec<u8> = self.pixels_to_luminance(
-            &self.pixels,
-            &self.mask,
-            self.pmin,
-            self.pmax,
-            self.lmin,
-            self.lmax,
-            self.black,
-            self.white,
-            self.median,
-            self.sensitivity,
-            &self.flux,
-        );
+        let mut y: Vec<u8> = {
+            let start = precise_time::precise_time_ns();
+
+            let mut y: Vec<u8> = self.pixels_to_luminance(
+                &self.pixels,
+                &self.mask,
+                self.pmin,
+                self.pmax,
+                self.lmin,
+                self.lmax,
+                self.black,
+                self.white,
+                self.median,
+                self.sensitivity,
+                &self.flux,
+            );
+
+            let stop = precise_time::precise_time_ns();
+
+            println!(
+                "VP9 image frame pixels to luminance time: {} [ms]",
+                (stop - start) / 1000000
+            );
+
+            y
+        };
 
         {
             let start = precise_time::precise_time_ns();
