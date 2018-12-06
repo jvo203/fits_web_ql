@@ -3135,7 +3135,7 @@ impl FITS {
             tmp, num_threads, work_size
         );
 
-        let custom: Vec<u8> = vec![0; len];
+        let y: Vec<u8> = vec![0; len];
 
         (0..num_threads).into_par_iter().for_each(|index| {
             let offset = index * work_size;
@@ -3159,7 +3159,7 @@ impl FITS {
             let mask_ptr = mask.as_ptr() as *mut u8;
             let mask_len = mask.len();
 
-            let y = &custom[offset..offset + work_size]; //partial outputs go in here
+            let y = &y[offset..offset + work_size]; //partial outputs go in here
             let y_ptr = y.as_ptr() as *mut u8;
 
             match flux.as_ref() {
@@ -3253,7 +3253,7 @@ impl FITS {
             }
         });
 
-        let mask_ptr = self.mask.as_ptr() as *mut u8;
+        /*let mask_ptr = self.mask.as_ptr() as *mut u8;
         let mask_len = self.mask.len();
         let mut y: Vec<u8> = vec![0; len];
         //end of interface
@@ -3341,7 +3341,7 @@ impl FITS {
                     len as u32,
                 );
             },
-        }
+        }*/
 
         y
     }
