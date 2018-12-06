@@ -2229,7 +2229,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
-static VERSION_STRING: &'static str = "SV2018-12-06.0";
+static VERSION_STRING: &'static str = "SV2018-12-06.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -3648,6 +3648,7 @@ fn main() {
 
     let mut server_port = SERVER_PORT;
     let mut server_path = String::from(SERVER_PATH);
+    let mut server_address = String::from(SERVER_ADDRESS);
 
     let args: Vec<String> = env::args().collect();
 
@@ -3671,10 +3672,14 @@ fn main() {
 
                 create_server_path(value);
             }
+
+            if key == "--interface" {
+                server_address = value.clone();
+            }
         }
     }
 
-    println!("server port: {}, path: {}", server_port, server_path);
+    println!("server interface: {}, port: {}, path: {}", server_address, server_port, server_path);
 
     remove_symlinks(None);
 
@@ -3723,7 +3728,7 @@ fn main() {
                 .resource("/{path}/get_fits", |r| {r.method(http::Method::GET).f(get_fits)})
                 .handler("/", fs::StaticFiles::new("htdocs").unwrap().index_file(index_file))
         })
-        .bind(&format!("{}:{}", SERVER_ADDRESS, server_port)).expect(&format!("Cannot bind to localhost:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_port))        
+        .bind(&format!("{}:{}", server_address, server_port)).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port))        
         .start();
 
     println!("detected number of CPUs: {}", num_cpus::get());

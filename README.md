@@ -197,3 +197,7 @@ cargo run --features 'server production' --release -- --path fitswebql_v4
 combined options
 
 cargo run --features 'server production' --release -- --port 8000 --path fitswebql_v4
+
+an alternative network interface (only needed to make the local version run in a quasi-server mode)
+
+cargo run --release -- --interface 0.0.0.0
