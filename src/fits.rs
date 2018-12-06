@@ -3122,8 +3122,7 @@ impl FITS {
         let sensitivity = 1.0 / (white - black);
 
         //interfacing with Intel SPMD Program Compiler
-        let vec = &self.data_f16[frame];
-        let ptr = vec.as_ptr() as *mut i16;
+        let vec = &self.data_f16[frame];        
         let len = vec.len();
 
         let tmp = (len / (1024 * 1024)).max(1);
@@ -3252,96 +3251,6 @@ impl FITS {
                 },
             }
         });
-
-        /*let mask_ptr = self.mask.as_ptr() as *mut u8;
-        let mask_len = self.mask.len();
-        let mut y: Vec<u8> = vec![0; len];
-        //end of interface
-
-        match flux.as_ref() {
-            "linear" => {
-                let slope = 1.0 / (white - black);
-
-                unsafe {
-                    let mut raw = slice::from_raw_parts_mut(ptr, len);
-                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-
-                    ispc_data_to_luminance_f16_linear(
-                        raw.as_mut_ptr(),
-                        mask_raw.as_mut_ptr(),
-                        self.bzero,
-                        self.bscale,
-                        black,
-                        slope,
-                        y.as_mut_ptr(),
-                        len as u32,
-                    );
-                }
-            }
-            "logistic" => unsafe {
-                let mut raw = slice::from_raw_parts_mut(ptr, len);
-                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-
-                ispc_data_to_luminance_f16_logistic(
-                    raw.as_mut_ptr(),
-                    mask_raw.as_mut_ptr(),
-                    self.bzero,
-                    self.bscale,
-                    median,
-                    sensitivity,
-                    y.as_mut_ptr(),
-                    len as u32,
-                );
-            },
-            "ratio" => unsafe {
-                let mut raw = slice::from_raw_parts_mut(ptr, len);
-                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-
-                ispc_data_to_luminance_f16_ratio(
-                    raw.as_mut_ptr(),
-                    mask_raw.as_mut_ptr(),
-                    self.bzero,
-                    self.bscale,
-                    black,
-                    sensitivity,
-                    y.as_mut_ptr(),
-                    len as u32,
-                );
-            },
-            "square" => unsafe {
-                let mut raw = slice::from_raw_parts_mut(ptr, len);
-                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-
-                ispc_data_to_luminance_f16_square(
-                    raw.as_mut_ptr(),
-                    mask_raw.as_mut_ptr(),
-                    self.bzero,
-                    self.bscale,
-                    black,
-                    sensitivity,
-                    y.as_mut_ptr(),
-                    len as u32,
-                );
-            },
-            //by default assume "legacy"
-            _ => unsafe {
-                let mut raw = slice::from_raw_parts_mut(ptr, len);
-                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-
-                ispc_data_to_luminance_f16_legacy(
-                    raw.as_mut_ptr(),
-                    mask_raw.as_mut_ptr(),
-                    self.bzero,
-                    self.bscale,
-                    self.dmin,
-                    self.dmax,
-                    self.lmin,
-                    self.lmax,
-                    y.as_mut_ptr(),
-                    len as u32,
-                );
-            },
-        }*/
 
         y
     }
@@ -3919,9 +3828,9 @@ impl FITS {
         let pixel_count = (w as u64) * (h as u64);
 
         //multithreading
-        let mut num_threads = 1;
+        /*let mut num_threads = 1;
         let mut thread_height = self.height;
-        let mut thread_h = self.height;
+        let mut thread_h = self.height;*/
 
         if pixel_count > IMAGE_PIXEL_COUNT_LIMIT {
             let ratio: f32 = ((pixel_count as f32) / (IMAGE_PIXEL_COUNT_LIMIT as f32)).sqrt();
@@ -3936,14 +3845,14 @@ impl FITS {
                     self.width, self.height, w, h, ratio
                 );
 
-                num_threads = num_cpus::get();
+                /*num_threads = num_cpus::get();
                 thread_height = self.height / num_threads;
                 thread_h = (h as usize) / num_threads;
 
                 println!(
                     "multi-threaded downscaling: thread_height = {}, thread_h = {}, #threads = {}",
                     thread_height, thread_h, num_threads
-                );
+                );*/
             } else if ratio > 3.0 {
                 // 1/4
                 w = w / 4;

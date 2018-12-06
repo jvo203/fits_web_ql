@@ -2219,12 +2219,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
     }
 }
 
-/*lazy_static! {
-    static ref DATASETS: RwLock<HashMap<String, fits::FITS>> = {
-        RwLock::new(HashMap::new())
-    };
-}*/
-
 //FITS datasets
 lazy_static! {
     static ref DATASETS: Arc<RwLock<HashMap<String, Arc<RwLock<Box<fits::FITS>>>>>> =
