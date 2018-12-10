@@ -1,3 +1,7 @@
+# IMPORTANT: Rust 2018 Edition Upgrade
+
+The codebase has been upgraded to Rust 2018. It requires Rust version 1.31.0 or higher. If you have an older version you can upgrade it by running "rustup update" in the command-line.
+
 # fits_web_ql
 A next-generation re-write of the C/C++ FITSWebQL in Rust. The previous C/C++ version can still be found here:
 
@@ -30,7 +34,7 @@ and placed inside the fits_web_ql directory
 (for example "wget http://jvo.nao.ac.jp/~chris/splatalogue_v3.db")
 
 # How to Build, Prerequisites
-First and foremost the Rust language must be installed:
+First and foremost the Rust language version 1.31.0 or higher (Rust 2018 edition) must be installed:
 
 https://www.rust-lang.org/install.html
 

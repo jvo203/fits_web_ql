@@ -2025,7 +2025,7 @@ impl FITS {
                         let mask_len = mask.len();
 
                         unsafe {
-                            let mut vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                            let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
                             let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
                             ispc_make_image_spectrumF16_minmax(
@@ -3166,7 +3166,7 @@ impl FITS {
                     let slope = 1.0 / (white - black);
 
                     unsafe {
-                        let mut raw = slice::from_raw_parts_mut(ptr, len);
+                        let raw = slice::from_raw_parts_mut(ptr, len);
                         let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                         let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
@@ -3183,7 +3183,7 @@ impl FITS {
                     }
                 }
                 "logistic" => unsafe {
-                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                     let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
@@ -3199,7 +3199,7 @@ impl FITS {
                     );
                 },
                 "ratio" => unsafe {
-                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                     let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
@@ -3215,7 +3215,7 @@ impl FITS {
                     );
                 },
                 "square" => unsafe {
-                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                     let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
@@ -3232,7 +3232,7 @@ impl FITS {
                 },
                 //by default assume "legacy"
                 _ => unsafe {
-                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let raw = slice::from_raw_parts_mut(ptr, len);
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                     let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
@@ -3922,7 +3922,7 @@ impl FITS {
         let mut y: Vec<u8> = {
             let start = precise_time::precise_time_ns();
 
-            let mut y: Vec<u8> = self.pixels_to_luminance(
+            let y: Vec<u8> = self.pixels_to_luminance(
                 &self.pixels,
                 &self.mask,
                 self.pmin,
@@ -4228,7 +4228,7 @@ impl FITS {
         let mut mask: Vec<u8> = vec![0; (dimx as usize) * (dimy as usize)];
 
         for j in y1..y2 + 1 {
-            let mut src_offset = (j * width) as usize;
+            let src_offset = (j * width) as usize;
             let mut dst_offset = (((dimy - 1) - (j - y1)) * dimx) as usize;
 
             for i in x1..x2 + 1 {
@@ -4401,7 +4401,7 @@ impl FITS {
                 let len = vec.len();
 
                 unsafe {
-                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let raw = slice::from_raw_parts_mut(ptr, len);
 
                     let spectrum = ispc_calculate_radial_spectrumF16(
                         raw.as_mut_ptr(),
@@ -4589,7 +4589,7 @@ impl FITS {
                 let len = vec.len();
 
                 unsafe {
-                    let mut raw = slice::from_raw_parts_mut(ptr, len);
+                    let raw = slice::from_raw_parts_mut(ptr, len);
 
                     let spectrum = ispc_calculate_square_spectrumF16(
                         raw.as_mut_ptr(),
