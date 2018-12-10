@@ -33,6 +33,24 @@ function view_alma()
 	alert("no datasetId found !");
 }
 
+function view_hsc()
+{
+    var datasetId = document.getElementById("datasetid").value.trim();
+    var db = document.getElementById("hsc_db").value.trim();
+    var table = document.getElementById("hsc_table").value.trim();
+    
+    if(datasetId != "")
+    {
+	var url = null ;
+
+	url = "/fitswebql/FITSWebQL.html?" + "db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table) + "&datasetId=" + encodeURIComponent(datasetId) ;
+	
+	window.location.href = url;
+    }
+    else
+	alert("no datasetId found !");
+}
+
 function view_nro45m()
 {
     var va_count = 0 ;

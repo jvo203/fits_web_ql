@@ -215,10 +215,14 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
                 {
                     apply_colourmap(canvas, luma, w, h, stride, false, viridis_r, viridis_g, viridis_b, alpha);
                 }
+                else if (strcmp(colourmap, "negative") == 0)
+                {
+                    apply_greyscale(canvas, luma, w, h, stride, alpha, true);
+                }
                 else
                 {
                     //no colour by default
-                    apply_greyscale(canvas, luma, w, h, stride, alpha);
+                    apply_greyscale(canvas, luma, w, h, stride, alpha, false);
                 };
             }
             else
@@ -388,10 +392,14 @@ static double hevc_decode_nal_stream(const unsigned char *data, size_t data_len,
                     {
                         apply_colourmap(canvas, luma, w, h, stride, false, viridis_r, viridis_g, viridis_b, alpha);
                     }
+                    else if (strcmp(colourmap, "negative") == 0)
+                    {
+                        apply_greyscale(canvas, luma, w, h, stride, alpha, true);
+                    }
                     else
                     {
                         //no colour by default
-                        apply_greyscale(canvas, luma, w, h, stride, alpha);
+                        apply_greyscale(canvas, luma, w, h, stride, alpha, false);
                     };
                 }
                 else

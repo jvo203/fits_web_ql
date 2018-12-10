@@ -336,8 +336,9 @@ impl Handler<WsMessage> for SessionServer {
                         "type" : "progress",
                         "message" : msg.notification,
                         "total" : msg.total,
-                        "running" : msg.running            
-                    }).to_string();
+                        "running" : msg.running
+                    })
+                    .to_string();
 
                     for id in dataset {
                         if let Some(addr) = self.sessions.get(id) {

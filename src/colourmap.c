@@ -39,7 +39,7 @@ void apply_colourmap(unsigned char* canvas, const unsigned char* luma, int w, in
 	}
 }
 
-void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, const unsigned char* alpha)
+void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, const unsigned char* alpha, bool invert)
 {
 	if(canvas == NULL || luma == NULL || alpha == NULL)
 		return;
@@ -53,7 +53,7 @@ void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, in
 
 	  for(int i=0;i<w;i++)
 	  {			
-			unsigned char pixel = luma[offset++] ;
+			unsigned char pixel = invert ? (255 - luma[offset++]) : luma[offset++] ;
 			
 			canvas[dst_offset++] = pixel ;
 			canvas[dst_offset++] = pixel ;

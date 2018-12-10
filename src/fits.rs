@@ -1,10 +1,10 @@
+use crate::precise_time;
 use atomic;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use half::f16;
 use num_cpus;
 use parking_lot::RwLock;
 use positioned_io::ReadAt;
-use crate::precise_time;
 use regex::Regex;
 use std;
 use std::fs::File;
@@ -21,11 +21,11 @@ use std::{mem, ptr};
 use bincode::serialize;
 use lz4_compress;
 
+use crate::server;
+use crate::UserParams;
 use actix::*;
 use rayon;
 use rayon::prelude::*;
-use crate::server;
-use crate::UserParams;
 
 #[cfg(feature = "server")]
 use curl::easy::Easy;
@@ -217,6 +217,10 @@ pub struct FITS {
     crpix3: f64,
     cunit3: String,
     ctype3: String,
+    cd1_1: f64,
+    cd1_2: f64,
+    cd2_1: f64,
+    cd2_2: f64,
     dmin: f32,
     dmax: f32,
     data_hist: RwLock<Vec<i64>>,
@@ -313,6 +317,10 @@ impl FITS {
             crpix3: 0.0,
             cunit3: String::from(""),
             ctype3: String::from(""),
+            cd1_1: std::f64::NAN,
+            cd1_2: std::f64::NAN,
+            cd2_1: std::f64::NAN,
+            cd2_2: std::f64::NAN,
             dmin: std::f32::MAX, //no mistake here
             dmax: std::f32::MIN, //no mistake here
             data_hist: RwLock::new(Vec::new()),
@@ -515,7 +523,8 @@ impl FITS {
                     );
 
                     data_f16
-                }).collect()
+                })
+                .collect()
         });
 
         self.data_f16 = gather_f16;
@@ -773,6 +782,32 @@ impl FITS {
                     return fits;
                 }
             };
+        }
+
+        //try again, there may be an image extension
+        if fits.naxis == 0 {
+            header = Vec::new();
+            end = false;
+            no_hu = 0;
+
+            while !end {
+                //read a FITS chunk
+                let mut chunk = [0; FITS_CHUNK_LENGTH];
+
+                match f.read_exact(&mut chunk) {
+                    Ok(()) => {
+                        no_hu = no_hu + 1;
+
+                        //parse a FITS header chunk
+                        end = fits.parse_fits_header_chunk(&chunk);
+                        header.extend_from_slice(&chunk);
+                    }
+                    Err(err) => {
+                        println!("CRITICAL ERROR reading FITS header: {}", err);
+                        return fits;
+                    }
+                };
+            }
         }
 
         //test for frequency/velocity
@@ -1093,7 +1128,8 @@ impl FITS {
                     };
 
                     Ok(data.len())
-                }).unwrap();
+                })
+                .unwrap();
 
             transfer.perform().unwrap();
         }
@@ -1347,7 +1383,8 @@ impl FITS {
                 let new_value = format!(
                     "CRPIX3  = {} / modified by fits_web_ql",
                     self.crpix3 - start
-                ).into_bytes();
+                )
+                .into_bytes();
 
                 for i in 0..new_value.len().min(FITS_LINE_LENGTH) {
                     buf[offset + i] = new_value[i];
@@ -1774,6 +1811,54 @@ impl FITS {
                 self.ctype3 = match scan_fmt!(line, "CTYPE3  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
+                }
+            }
+
+            if line.contains("CD1_1   = ") {
+                let s = match scan_fmt!(line, "CD1_1   = {}", String) {
+                    Some(x) => x,
+                    _ => String::from(""),
+                };
+
+                self.cd1_1 = match s.parse::<f64>() {
+                    Ok(x) => x,
+                    Err(_) => 0.0,
+                }
+            }
+
+            if line.contains("CD1_2   = ") {
+                let s = match scan_fmt!(line, "CD1_2   = {}", String) {
+                    Some(x) => x,
+                    _ => String::from(""),
+                };
+
+                self.cd1_2 = match s.parse::<f64>() {
+                    Ok(x) => x,
+                    Err(_) => 0.0,
+                }
+            }
+
+            if line.contains("CD2_1   = ") {
+                let s = match scan_fmt!(line, "CD2_1   = {}", String) {
+                    Some(x) => x,
+                    _ => String::from(""),
+                };
+
+                self.cd2_1 = match s.parse::<f64>() {
+                    Ok(x) => x,
+                    Err(_) => 0.0,
+                }
+            }
+
+            if line.contains("CD2_2   = ") {
+                let s = match scan_fmt!(line, "CD2_2   = {}", String) {
+                    Some(x) => x,
+                    _ => String::from(""),
+                };
+
+                self.cd2_2 = match s.parse::<f64>() {
+                    Ok(x) => x,
+                    Err(_) => 0.0,
                 }
             }
 
@@ -2228,8 +2313,8 @@ impl FITS {
                 }
                 -32 => {
                     /*self.data_f16[frame as usize].iter()
-                        .zip(self.mask.iter())
-                            .for_each(|(x, m)| {*/
+                    .zip(self.mask.iter())
+                        .for_each(|(x, m)| {*/
                     for x in self.data_f16[frame as usize].iter().step_by(data_step) {
                         //            if *m {
                         let tmp = self.bzero + self.bscale * (*x).to_f32(); //convert from half to f32
@@ -2590,8 +2675,8 @@ impl FITS {
             || {
             self.mask.par_iter()
                 .map(|&m| m as i32)
-                .sum()            
-            }           
+                .sum()
+            }
         );
 
         let (mut mad_p, count_p) : (f32, i32) = rayon::join(
@@ -2600,13 +2685,13 @@ impl FITS {
                 .zip(self.mask.iter())
                 .map(|(x, m)| {
                     if *m && x > &median {
-                        x - median                        
+                        x - median
                     }
                     else {
                         0.0
-                    }                    
+                    }
                 })
-                .sum()                
+                .sum()
             },
             || {
             ord_pixels.iter()
@@ -2617,7 +2702,7 @@ impl FITS {
                     }
                     else {
                         0
-                    }                    
+                    }
                 })
                 .sum()
             }
@@ -2633,9 +2718,9 @@ impl FITS {
                     }
                     else {
                         0.0
-                    }                    
+                    }
                 })
-                .sum()                
+                .sum()
             },
             || {
             ord_pixels.iter()
@@ -2646,11 +2731,11 @@ impl FITS {
                     }
                     else {
                         0
-                    }                    
+                    }
                 })
                 .sum()
             }
-        );       
+        );
 
         let stop = precise_time::precise_time_ns();*/
 
@@ -2818,7 +2903,8 @@ impl FITS {
                         } else {
                             0
                         }
-                    }).collect()
+                    })
+                    .collect()
             }
             "logistic" => self.data_u8[frame]
                 .par_iter()
@@ -2835,7 +2921,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "ratio" => self.data_u8[frame]
                 .par_iter()
                 .zip(self.mask.par_iter())
@@ -2852,7 +2939,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "square" => self.data_u8[frame]
                 .par_iter()
                 .zip(self.mask.par_iter())
@@ -2869,7 +2957,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             //by default assume "legacy"
             _ => self.data_u8[frame]
                 .par_iter()
@@ -2880,18 +2969,20 @@ impl FITS {
                         let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
 
                         if pixel > 0.0 {
-                            (255.0 * num::clamp(
-                                (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
-                                0.0,
-                                1.0,
-                            )) as u8
+                            (255.0
+                                * num::clamp(
+                                    (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
+                                    0.0,
+                                    1.0,
+                                )) as u8
                         } else {
                             0
                         }
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
         }
     }
 
@@ -2924,7 +3015,8 @@ impl FITS {
                         } else {
                             0
                         }
-                    }).collect()
+                    })
+                    .collect()
             }
             "logistic" => self.data_i16[frame]
                 .par_iter()
@@ -2941,7 +3033,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "ratio" => self.data_i16[frame]
                 .par_iter()
                 .zip(self.mask.par_iter())
@@ -2958,7 +3051,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "square" => self.data_i16[frame]
                 .par_iter()
                 .zip(self.mask.par_iter())
@@ -2975,7 +3069,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             //by default assume "legacy"
             _ => self.data_i16[frame]
                 .par_iter()
@@ -2986,18 +3081,20 @@ impl FITS {
                         let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
 
                         if pixel > 0.0 {
-                            (255.0 * num::clamp(
-                                (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
-                                0.0,
-                                1.0,
-                            )) as u8
+                            (255.0
+                                * num::clamp(
+                                    (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
+                                    0.0,
+                                    1.0,
+                                )) as u8
                         } else {
                             0
                         }
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
         }
     }
 
@@ -3030,7 +3127,8 @@ impl FITS {
                         } else {
                             0
                         }
-                    }).collect()
+                    })
+                    .collect()
             }
             "logistic" => self.data_i32[frame]
                 .par_iter()
@@ -3047,7 +3145,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "ratio" => self.data_i32[frame]
                 .par_iter()
                 .zip(self.mask.par_iter())
@@ -3064,7 +3163,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "square" => self.data_i32[frame]
                 .par_iter()
                 .zip(self.mask.par_iter())
@@ -3081,7 +3181,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             //by default assume "legacy"
             _ => self.data_i32[frame]
                 .par_iter()
@@ -3092,18 +3193,20 @@ impl FITS {
                         let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
 
                         if pixel > 0.0 {
-                            (255.0 * num::clamp(
-                                (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
-                                0.0,
-                                1.0,
-                            )) as u8
+                            (255.0
+                                * num::clamp(
+                                    (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
+                                    0.0,
+                                    1.0,
+                                )) as u8
                         } else {
                             0
                         }
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
         }
     }
 
@@ -3122,7 +3225,7 @@ impl FITS {
         let sensitivity = 1.0 / (white - black);
 
         //interfacing with Intel SPMD Program Compiler
-        let vec = &self.data_f16[frame];        
+        let vec = &self.data_f16[frame];
         let len = vec.len();
 
         let tmp = (len / (1024 * 1024)).max(1);
@@ -3284,7 +3387,8 @@ impl FITS {
                         } else {
                             0
                         }
-                    }).collect()
+                    })
+                    .collect()
             }
             "logistic" => self.data_f64[frame]
                 .par_iter()
@@ -3301,7 +3405,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "ratio" => self.data_f64[frame]
                 .par_iter()
                 .zip(self.mask.par_iter())
@@ -3318,7 +3423,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "square" => self.data_f64[frame]
                 .par_iter()
                 .zip(self.mask.par_iter())
@@ -3335,7 +3441,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             //by default assume "legacy"
             _ => self.data_f64[frame]
                 .par_iter()
@@ -3346,18 +3453,20 @@ impl FITS {
                         let pixel = 0.5 + (x - self.dmin) / (self.dmax - self.dmin);
 
                         if pixel > 0.0 {
-                            (255.0 * num::clamp(
-                                (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
-                                0.0,
-                                1.0,
-                            )) as u8
+                            (255.0
+                                * num::clamp(
+                                    (pixel.ln() - self.lmin) / (self.lmax - self.lmin),
+                                    0.0,
+                                    1.0,
+                                )) as u8
                         } else {
                             0
                         }
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
         }
     }
 
@@ -3403,7 +3512,8 @@ impl FITS {
                         } else {
                             0
                         }
-                    }).collect()
+                    })
+                    .collect()
             }
             "logistic" => pixels
                 .par_iter()
@@ -3419,7 +3529,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "ratio" => pixels
                 .par_iter()
                 .zip(mask.par_iter())
@@ -3435,7 +3546,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             "square" => pixels
                 .par_iter()
                 .zip(mask.par_iter())
@@ -3451,7 +3563,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
             //by default assume "legacy"
             _ => pixels
                 .par_iter()
@@ -3469,7 +3582,8 @@ impl FITS {
                     } else {
                         0
                     }
-                }).collect(),
+                })
+                .collect(),
         }
     }
 
@@ -3660,7 +3774,8 @@ impl FITS {
 
                 dst[(dst_y*width + dst_x) as usize] = num::clamp( (pixel / accum).round() as i32, 0, 255) as u8;
             }
-        }*/    }
+        }*/
+    }
 
     fn make_vpx_viewport(&self, dimx: u32, dimy: u32, y: &Vec<u8>) -> Option<Vec<u8>> {
         let start = precise_time::precise_time_ns();
@@ -3845,14 +3960,14 @@ impl FITS {
                     self.width, self.height, w, h, ratio
                 );
 
-                /*num_threads = num_cpus::get();
-                thread_height = self.height / num_threads;
-                thread_h = (h as usize) / num_threads;
+            /*num_threads = num_cpus::get();
+            thread_height = self.height / num_threads;
+            thread_h = (h as usize) / num_threads;
 
-                println!(
-                    "multi-threaded downscaling: thread_height = {}, thread_h = {}, #threads = {}",
-                    thread_height, thread_h, num_threads
-                );*/
+            println!(
+                "multi-threaded downscaling: thread_height = {}, thread_h = {}, #threads = {}",
+                thread_height, thread_h, num_threads
+            );*/
             } else if ratio > 3.0 {
                 // 1/4
                 w = w / 4;
@@ -3983,7 +4098,7 @@ impl FITS {
             compressed_alpha
         };
 
-        /*let u : Vec<u8> = {            
+        /*let u : Vec<u8> = {
             self.mask.par_iter()
                 .map(|&m| if m {
                     255
@@ -4345,7 +4460,8 @@ impl FITS {
                                     mean,
                                     cdelt3 as f32,
                                 )
-                            }).collect()
+                            })
+                            .collect()
                     }
                     _ => (start..end + 1)
                         .into_par_iter()
@@ -4359,7 +4475,8 @@ impl FITS {
                                 mean,
                                 cdelt3 as f32,
                             )
-                        }).collect(),
+                        })
+                        .collect(),
                 };
 
                 let stop_watch = precise_time::precise_time_ns();
@@ -4942,6 +5059,10 @@ impl FITS {
                 "CTYPE1" : self.ctype1,
                 "CTYPE2" : self.ctype2,
                 "CTYPE3" : self.ctype3,
+                "CD1_1" : self.cd1_1,
+                "CD1_2" : self.cd1_2,
+                "CD2_1" : self.cd2_1,
+                "CD2_2" : self.cd2_2,
                 "BMAJ" : self.bmaj,
                 "BMIN" : self.bmin,
                 "BPA" : self.bpa,
@@ -4959,7 +5080,7 @@ impl FITS {
                 "integrated_spectrum" : &self.integrated_spectrum,
                 /* the histogram part, pixel min, max etc... */
                 "min" : self.pmin,
-                "max" : self.pmax, 
+                "max" : self.pmax,
                 "median" : self.median,
                 "sensitivity" : self.sensitivity,
                 "black" : self.black,

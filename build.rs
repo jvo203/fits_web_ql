@@ -53,7 +53,8 @@ fn main() {
                                x265_encoder_open_{}(params)
                           }}",
             apiver
-        )).header("wrapper.h")
+        ))
+        .header("wrapper.h")
         .clang_arg("-I")
         .clang_arg("/usr/local/include")
         .clang_args(["-x", "c++", "-std=c++11"].iter());

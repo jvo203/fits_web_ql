@@ -781,7 +781,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         None => {
                             let msg = json!({
                                 "type" : "spectrum",
-                                "message" : "unavailable",                  
+                                "message" : "unavailable",
                             });
 
                             ctx.text(msg.to_string());
@@ -953,7 +953,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         None => {
                             let msg = json!({
                                 "type" : "image",
-                                "message" : "unavailable",                  
+                                "message" : "unavailable",
                             });
 
                             ctx.text(msg.to_string());
@@ -968,7 +968,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     if fits.is_dummy {
                         let msg = json!({
                             "type" : "image",
-                            "message" : "unavailable",                  
+                            "message" : "unavailable",
                         });
 
                         ctx.text(msg.to_string());
@@ -1080,10 +1080,18 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             //get ord_pixels
                                             //apply std::f32::NAN to masked pixels
                                             let mut ord_pixels: Vec<f32> = pixels
-                                            .par_iter()
-                                            .zip(mask.par_iter())
-                                            .map(|(x, m)| if *m > 0 { *x } else { std::f32::NAN })
-                                            .collect();
+                                                .par_iter()
+                                                .zip(mask.par_iter())
+                                                .map(
+                                                    |(x, m)| {
+                                                        if *m > 0 {
+                                                            *x
+                                                        } else {
+                                                            std::f32::NAN
+                                                        }
+                                                    },
+                                                )
+                                                .collect();
 
                                             //let mut ord_pixels = pixels.clone();
 
@@ -1619,9 +1627,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             Some(x) => x,
                             None => {
                                 let msg = json!({
-                                "type" : "video",
-                                "message" : "unavailable",                  
-                            });
+                                    "type" : "video",
+                                    "message" : "unavailable",
+                                });
 
                                 ctx.text(msg.to_string());
                                 return;
@@ -1856,9 +1864,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     };
 
                                     //call encode_frame with a valid frame image
-                                    let mut video_frame: Vec<
-                                        u8,
-                                    > = Vec::new();
+                                    let mut video_frame: Vec<u8> = Vec::new();
 
                                     match fits::encode_frame(
                                         self.ctx,
@@ -1976,7 +1982,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 } else {
                                     vec![0; (width * height) as usize]
                                 }
-                            }).collect();
+                            })
+                            .collect();
 
                         //HEVC (x265)
                         #[cfg(feature = "hevc")]
@@ -2534,7 +2541,8 @@ fn fitswebql_entry(
             if v.is_empty() {
                 return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                     format!("<p><b>Critical Error</b>: no {} available</p>", dataset),
-                ))).responder();
+                )))
+                .responder();
             };
 
             v
@@ -2580,7 +2588,8 @@ fn fitswebql_entry(
         composite,
         &flux,
         &server,
-    ))).responder();
+    )))
+    .responder();
 
     //local (Personal Edition)
     #[cfg(not(feature = "server"))]
@@ -2594,7 +2603,8 @@ fn fitswebql_entry(
         composite,
         &flux,
         &server,
-    ))).responder();
+    )))
+    .responder();
 }
 
 fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
@@ -2607,7 +2617,8 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpRespons
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"),
-            ))).responder()
+            )))
+            .responder()
         }
     };
 
@@ -2685,7 +2696,8 @@ fn get_spectrum(
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"),
-            ))).responder()
+            )))
+            .responder()
         }
     };
 
@@ -2747,7 +2759,8 @@ fn get_molecules(
                 format!(
                     "<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"
                 ),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -2759,7 +2772,8 @@ fn get_molecules(
                 format!(
                     "<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"
                 ),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -2774,7 +2788,8 @@ fn get_molecules(
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -2798,7 +2813,8 @@ fn get_molecules(
             let resp = server
                 .send(server::GetMolecules {
                     dataset_id: dataset_id.to_owned(),
-                }).wait();
+                })
+                .wait();
 
             match resp {
                 Ok(content) => {
@@ -2829,7 +2845,8 @@ fn get_molecules(
                 .content_type("application/json")
                 .body(format!("{{\"molecules\" : {}}}", content))
         }
-    })).responder()
+    }))
+    .responder()
 }
 
 struct FITSDataStream {
@@ -2901,7 +2918,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                         "<p><b>Critical Error</b>: get_fits/{} parameter not found</p>",
                         dataset
                     ),
-                ))).responder();
+                )))
+                .responder();
             };
 
             v
@@ -2914,7 +2932,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_fits/x1 parameter not found</p>"),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -2929,7 +2948,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_fits/x2 parameter not found</p>"),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -2944,7 +2964,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_fits/y1 parameter not found</p>"),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -2959,7 +2980,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_fits/y2 parameter not found</p>"),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -2974,7 +2996,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_fits/frame_start parameter not found</p>"),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -2989,7 +3012,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_fits/frame_end parameter not found</p>"),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -3004,7 +3028,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_fits/ref_freq parameter not found</p>"),
-            ))).responder();
+            )))
+            .responder();
         }
     };
 
@@ -3037,7 +3062,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                             "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
                             entry
                         ),
-                    ))).responder();
+                    )))
+                    .responder();
                 }
             };
 
@@ -3059,7 +3085,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                                 .body(format!(
                                     "<p><b>Critical Error</b>: get_fits/tar/set_path error: {}</p>",
                                     err
-                                )))).responder();
+                                ))))
+                            .responder();
                         }
 
                         header.set_mode(420);
@@ -3079,7 +3106,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                                 .body(format!(
                                     "<p><b>Critical Error</b>: get_fits/tar/append error: {}</p>",
                                     err
-                                )))).responder();
+                                ))))
+                            .responder();
                         }
                     }
                     None => println!(
@@ -3107,14 +3135,16 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                     .header("Content-Disposition", disposition_filename)
                     .header("Content-Transfer-Encoding", "binary")
                     .header("Accept-Ranges", "bytes")
-                    .body(tarball))).responder()
+                    .body(tarball)))
+                .responder()
             }
             Err(err) => result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!(
                     "<p><b>Critical Error</b>: get_fits tarball creation error: {}</p>",
                     err
                 ),
-            ))).responder(),
+            )))
+            .responder(),
         }
     } else {
         //only one dataset, no need to use tarball, stream the data instead
@@ -3132,7 +3162,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                         "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
                         entry
                     ),
-                ))).responder();
+                )))
+                .responder();
             }
         };
 
@@ -3160,7 +3191,8 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                         .header("Content-Disposition", disposition_filename)
                         .header("Content-Transfer-Encoding", "binary")
                         .header("Accept-Ranges", "bytes")
-                        .streaming(fits_stream))).responder();
+                        .streaming(fits_stream)))
+                    .responder();
                 }
                 None => {
                     return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
@@ -3168,48 +3200,51 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
                             "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
                             entry
                         ),
-                    ))).responder();
+                    )))
+                    .responder();
                 }
             }
 
         //non-streaming version (stores the whole FITS cutout in memory, delayed response)
         /*match fits.get_cutout_data(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
-                Some(region) => {
-                    let disposition_filename = format!(
-                        "attachment; filename={}-subregion.fits",
-                        entry.replace("/", "_")
-                    );
+            Some(region) => {
+                let disposition_filename = format!(
+                    "attachment; filename={}-subregion.fits",
+                    entry.replace("/", "_")
+                );
 
-                    result(Ok(HttpResponse::Ok()
-                        .header("Cache-Control", "no-cache, no-store, must-revalidate")
-                        .header("Pragma", "no-cache")
-                        .header("Expires", "0")
-                        .content_type("application/force-download")
-                        .content_encoding(ContentEncoding::Identity)// disable compression
-                        .header("Content-Disposition", disposition_filename)
-                        .header("Content-Transfer-Encoding", "binary")
-                        .header("Accept-Ranges", "bytes")
-                        .body(region))).responder()
-                }
-                None => {
-                    println!(
-                        "partial FITS cut-out for {} did not produce any data",
-                        entry
-                    );
-                    result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!(
-                    "<p><b>Critical Error</b>: partial FITS cut-out for {} did not produce any data</p>",
+                result(Ok(HttpResponse::Ok()
+                    .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                    .header("Pragma", "no-cache")
+                    .header("Expires", "0")
+                    .content_type("application/force-download")
+                    .content_encoding(ContentEncoding::Identity)// disable compression
+                    .header("Content-Disposition", disposition_filename)
+                    .header("Content-Transfer-Encoding", "binary")
+                    .header("Accept-Ranges", "bytes")
+                    .body(region))).responder()
+            }
+            None => {
+                println!(
+                    "partial FITS cut-out for {} did not produce any data",
                     entry
-                ),
-            ))).responder()
-                }
-            }*/        } else {
+                );
+                result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+            format!(
+                "<p><b>Critical Error</b>: partial FITS cut-out for {} did not produce any data</p>",
+                entry
+            ),
+        ))).responder()
+            }
+        }*/
+        } else {
             result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!(
                     "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
                     entry
                 ),
-            ))).responder()
+            )))
+            .responder()
         }
     }
 }
@@ -3632,7 +3667,10 @@ fn main() {
         }
     }
 
-    println!("server interface: {}, port: {}, path: {}", server_address, server_port, server_path);
+    println!(
+        "server interface: {}, port: {}, path: {}",
+        server_address, server_port, server_path
+    );
 
     remove_symlinks(None);
 

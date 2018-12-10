@@ -74,7 +74,7 @@ static const float haxby_b[] = { 0.6862745098039216,0.7335823218176158,0.7808901
 
 void apply_colourmap(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, bool invert, const float* r, const float* g, const float* b, const unsigned char* alpha) ;
 
-void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, const unsigned char* alpha) ;
+void apply_greyscale(unsigned char* canvas, const unsigned char* luma, int w, int h, int stride, const unsigned char* alpha, bool invert) ;
 
 void apply_yuv(unsigned char* canvas,  const unsigned char* _y, const unsigned char* _u, const unsigned char* _v, int w, int h, int stride, const unsigned char* alpha);
 

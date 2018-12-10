@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-04.1";
+	return "JS2018-12-10.0";
 }
 
 const wasm_supported = (() => {
@@ -4455,7 +4455,7 @@ function display_histogram(index) {
 			.style("padding-left", "0");
 	}
 
-	var colourmap_string = "<option>red</option><option>green</option><option>blue</option><option>greyscale</option><option disabled>---</option><option>cubehelix</option><option>haxby</option><option>hot</option><option>rainbow</option><option>parula</option><option disabled>---</option><option>inferno</option><option>magma</option><option>plasma</option><option>viridis</option>";
+	var colourmap_string = "<option>red</option><option>green</option><option>blue</option><option>greyscale</option><option>negative</option><option disabled>---</option><option>cubehelix</option><option>haxby</option><option>hot</option><option>rainbow</option><option>parula</option><option disabled>---</option><option>inferno</option><option>magma</option><option>plasma</option><option>viridis</option>";
 
 	tmpA = imageDropdown.append("li")
 		//.style("background-color", "#FFF")
