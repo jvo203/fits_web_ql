@@ -5,44 +5,6 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-extern crate actix;
-extern crate actix_web;
-extern crate lz4_compress;
-
-//extern crate rulinalg;
-//extern crate linearkalman;
-
-#[cfg(feature = "server")]
-extern crate postgres;
-
-#[macro_use]
-extern crate log;
-extern crate atomic;
-extern crate byteorder;
-extern crate bytes;
-extern crate chrono;
-extern crate curl;
-extern crate dirs;
-extern crate flexi_logger;
-extern crate futures;
-extern crate half;
-extern crate num;
-extern crate num_cpus;
-extern crate num_integer;
-extern crate num_rational;
-extern crate percent_encoding;
-extern crate positioned_io;
-extern crate rayon;
-extern crate regex;
-extern crate rusqlite;
-extern crate tar;
-extern crate time as precise_time;
-extern crate timer;
-extern crate uuid;
-extern crate vpx_sys;
-
-//extern crate openjpeg2_sys;
-
 #[macro_use]
 extern crate scan_fmt;
 
@@ -52,19 +14,10 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_json;
 
-extern crate parking_lot;
-
-//extern crate rav1e;
-//use rav1e::*;
-
 #[macro_use]
 extern crate serde_derive;
 
-extern crate bincode;
-extern crate serde;
-
 use bincode::serialize;
-
 use chrono::Local;
 use std::collections::BTreeMap;
 use std::ffi::CString;
@@ -75,7 +28,7 @@ use std::thread;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
 
-use actix::*;
+use ::actix::*;
 use actix_web::http::header::HeaderValue;
 use actix_web::http::ContentEncoding;
 use actix_web::middleware::Logger;
@@ -93,9 +46,9 @@ use std::sync::mpsc;
 use rayon::prelude::*;
 use std::cmp::Ordering::Equal;
 
-/*use linearkalman::KalmanFilter;
-use rulinalg::matrix::Matrix;
-use rulinalg::vector::Vector;*/
+use log::info;
+use time as precise_time;
+//use rav1e::*;
 
 #[cfg(feature = "server")]
 use postgres::{Connection, TlsMode};
