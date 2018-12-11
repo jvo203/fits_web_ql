@@ -27,6 +27,8 @@ use actix::*;
 use rayon;
 use rayon::prelude::*;
 
+use flate2::read::GzDecoder;
+
 #[cfg(feature = "server")]
 use curl::easy::Easy;
 
@@ -714,13 +716,14 @@ impl FITS {
         id: &String,
         flux: &String,
         filepath: &std::path::Path,
+        is_compressed: bool,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux);
         fits.is_dummy = false;
 
         //load data from filepath
-        let mut f = match File::open(filepath) {
+        let f = match File::open(filepath) {
             Ok(x) => x,
             Err(x) => {
                 println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
@@ -757,9 +760,13 @@ impl FITS {
         };
 
         //OK, we have a FITS file with at least one chunk
-        println!("{}: reading FITS header...", id);
+        println!("{}: reading a FITS file header...", id);
 
-        //let mut f = BufReader::with_capacity(FITS_CHUNK_LENGTH, f);
+        let mut f: Box<Read + Send> = if is_compressed {
+            Box::new(GzDecoder::new(f))
+        } else {
+            Box::new(f)
+        };
 
         let mut header: Vec<u8> = Vec::new();
         let mut end: bool = false;
@@ -2525,8 +2532,17 @@ impl FITS {
         let mut len = ord_pixels.len();
         let mut hist: Vec<i32> = vec![0; NBINS];
 
-        //in the future need to take into account IGNRVAL
-        let pmin = ord_pixels[0];
+        //ignore pixels with IGNRVAL
+        let mut start = 0;
+        while ord_pixels[start] <= self.ignrval {
+            start = start + 1;
+
+            if start == len - 1 {
+                break;
+            }
+        }
+
+        let pmin = ord_pixels[start];
 
         //ignore all the NaNs at the end of the vector
         while !ord_pixels[len - 1].is_finite() {
@@ -2642,8 +2658,17 @@ impl FITS {
 
         //println!("{:?}", ord_pixels);
 
-        //in the future need to take into account IGNRVAL
-        let pmin = ord_pixels[0];
+        //ignore pixels with IGNRVAL
+        let mut start = 0;
+        while ord_pixels[start] <= self.ignrval {
+            start = start + 1;
+
+            if start == len - 1 {
+                break;
+            }
+        }
+
+        let pmin = ord_pixels[start];
 
         //ignore all the NaNs at the end of the vector
         while !ord_pixels[len - 1].is_finite() {
@@ -5151,6 +5176,24 @@ impl FITS {
             }
         };
 
+        //CANNOT SEEK A COMPRESSED FILE!!!
+        //check if a file is compressed (try it with GzDecode)
+        let is_compressed = {
+            let gunzip = GzDecoder::new(&f);
+
+            match gunzip.header() {
+                Some(_) => true,
+                None => false,
+            }
+        };
+
+        if is_compressed {
+            println!(
+                "seek() is not available for a compressed file, aborting a partial FITS cut-out"
+            );
+            return None;
+        }
+
         let mut header_end: bool = false;
 
         while !header_end {
@@ -5320,6 +5363,24 @@ impl FITS {
                 return None;
             }
         };
+
+        //CANNOT SEEK A COMPRESSED FILE!!!
+        //check if a file is compressed (try it with GzDecode)
+        let is_compressed = {
+            let gunzip = GzDecoder::new(&f);
+
+            match gunzip.header() {
+                Some(_) => true,
+                None => false,
+            }
+        };
+
+        if is_compressed {
+            println!(
+                "seek() is not available for a compressed file, aborting a partial FITS cut-out"
+            );
+            return None;
+        }
 
         let mut header_end: bool = false;
 

@@ -2189,7 +2189,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
-static VERSION_STRING: &'static str = "SV2018-12-10.0";
+static VERSION_STRING: &'static str = "SV2018-12-11.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -2371,7 +2371,11 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
                     let path = entry.path();
                     let ext = path.extension().and_then(std::ffi::OsStr::to_str);
 
-                    if ext == Some("fits") || ext == Some("FITS") {
+                    if ext == Some("fits")
+                        || ext == Some("FITS")
+                        || path.to_str().unwrap().ends_with(".fits.gz")
+                        || path.to_str().unwrap().ends_with(".FITS.GZ")
+                    {
                         let ts = match metadata.modified() {
                             Ok(x) => x,
                             Err(_) => std::time::UNIX_EPOCH,
@@ -2883,11 +2887,11 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
 
     let query = req.query();
 
-    #[cfg(not(feature = "server"))]
+    /*#[cfg(not(feature = "server"))]
     let dataset = "filename";
 
-    #[cfg(feature = "server")]
-    let dataset = "datasetId";
+    #[cfg(feature = "server")]*/
+    let dataset = "datasetId"; //JavaScript get_fits? always uses datasetId
 
     let dataset_id = match query.get(dataset) {
         Some(x) => vec![x.as_str()],
@@ -3250,7 +3254,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
 }
 
 #[cfg(feature = "server")]
-fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path::PathBuf> {
+fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> (Option<std::path::PathBuf>, bool) {
     let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
 
     println!("PostgreSQL connection URL: {}", connection_url);
@@ -3288,10 +3292,16 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
                         };
 
                         let filepath = std::path::PathBuf::from(&filename);
+                        let ext = filepath.extension().and_then(std::ffi::OsStr::to_str);
                         println!("filepath: {:?}", filepath);
 
                         if filepath.exists() {
-                            return Some(filepath);
+                            let is_compressed = if ext == Some("gz") || ext == Some("GZ") {
+                                true
+                            } else {
+                                false
+                            };
+                            return (Some(filepath), is_compressed);
                         }
                     }
                 }
@@ -3301,7 +3311,7 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
         Err(err) => println!("error connecting to PostgreSQL: {}", err),
     }
 
-    return None;
+    return (None, false);
 }
 
 fn execute_fits(
@@ -3357,18 +3367,30 @@ fn execute_fits(
             //load FITS data in a new thread
             thread::spawn(move || {
                 #[cfg(not(feature = "server"))]
-                let filepath =
-                    std::path::PathBuf::from(&format!("{}/{}.{}", my_dir, my_data_id, my_ext));
+                let (filepath, is_compressed) = (
+                    std::path::PathBuf::from(&format!("{}/{}.{}", my_dir, my_data_id, my_ext)),
+                    if my_ext == "gz" || my_ext == "GZ" {
+                        true
+                    } else {
+                        false
+                    },
+                );
 
                 #[cfg(feature = "server")]
-                let filepath = {
+                let (filepath, is_compressed) = {
                     //try to read a directory from the PostgreSQL database
-                    match get_jvo_path(&my_data_id.to_string(), &my_db, &my_table) {
-                        Some(buf) => buf,
-                        None => std::path::PathBuf::from(&format!(
-                            "{}/{}.{}",
-                            my_dir, my_data_id, my_ext
-                        )),
+                    let (buf, is_compressed) =
+                        get_jvo_path(&my_data_id.to_string(), &my_db, &my_table);
+
+                    match buf {
+                        Some(buf) => (buf, is_compressed),
+                        None => (
+                            std::path::PathBuf::from(&format!(
+                                "{}/{}.{}",
+                                my_dir, my_data_id, my_ext
+                            )),
+                            false,
+                        ),
                     }
                 };
 
@@ -3378,6 +3400,7 @@ fn execute_fits(
                     &my_data_id.clone(),
                     &my_flux.clone(),
                     filepath.as_path(),
+                    is_compressed,
                     &my_server,
                 ); //from_path or from_path_mmap
 

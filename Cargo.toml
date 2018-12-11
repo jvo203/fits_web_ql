@@ -59,6 +59,7 @@ regex = "*"
 lz4-compress = "*"
 postgres = "*"
 tar = "*"
+flate2 = "*"
 #rulinalg = "*"
 #linearkalman = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }
