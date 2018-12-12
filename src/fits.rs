@@ -267,7 +267,7 @@ impl FITS {
             dataset_id: id.clone(),
             data_id: format!("{}_00_00_00", id),
             filesize: 0,
-            obj_name: String::from(""),
+            obj_name: id.clone().replace(".fits", "").replace(".FITS", ""),
             obs_date: String::from(""),
             timesys: String::from(""),
             specsys: String::from(""),

@@ -278,7 +278,7 @@ img {
 svg {
     fill: currentColor;
     stroke: currentColor;
-    shape-rendering: auto;/*optimizeSpeed;*/
+    shape-rendering: auto;/*auto or optimizeSpeed;*/
 }
 
 .histogramDiv {

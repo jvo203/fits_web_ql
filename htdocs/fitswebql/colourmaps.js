@@ -136,6 +136,10 @@ function interpolate_colourmap(value, colourmap, alpha) {
 		case "viridis":
 			strValue = interpolate_rgb(value, viridis_r, viridis_g, viridis_b, alpha);
 			break;
+		case "negative":
+			var pixelValue = 255 - Math.round(value);
+			strValue = 'rgba(' + pixelValue + ',' + pixelValue + ',' + pixelValue + ',' + alpha + ')';
+			break;
 		default:
 			var pixelValue = Math.round(value);
 			strValue = 'rgba(' + pixelValue + ',' + pixelValue + ',' + pixelValue + ',' + alpha + ')';

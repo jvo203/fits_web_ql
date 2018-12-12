@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-10.0";
+	return "JS2018-12-12.0";
 }
 
 const wasm_supported = (() => {
@@ -6485,7 +6485,10 @@ function setup_image_selection() {
 		.style("stroke", fillColour)
 		.style("stroke-dasharray", ("1, 5, 1"))
 		.style("stroke-width", emStrokeWidth)
-		.attr("opacity", 0.0);
+		.attr("opacity", 0.0);	
+
+	if(colourmap == "greyscale" || colourmap == "negative")
+		fillColour = "#C4A000";
 
 	if (zoom_shape == "square") {
 		//zoom selection rectangle
