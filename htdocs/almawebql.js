@@ -40,6 +40,9 @@ function view_hsc() {
 
         url = "/fitswebql/FITSWebQL.html?" + "db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table) + "&datasetId=" + encodeURIComponent(dataId);
 
+        var flux = document.getElementById("flux").value.trim();
+        url += "&flux=" + encodeURIComponent(flux);
+
         window.location.href = url;
     }
     else
