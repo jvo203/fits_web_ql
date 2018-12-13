@@ -121,6 +121,18 @@ pub struct WsImage {
     pub alpha: Vec<u8>,
 }
 
+#[derive(Serialize, Debug)]
+pub struct WsViewport {
+    pub ts: f32,
+    pub seq_id: u32,
+    pub msg_type: u32,
+    pub identifier: String,
+    pub width: u32,
+    pub height: u32,
+    pub image: Vec<Vec<u8>>,
+    pub alpha: Vec<u8>,
+}
+
 struct WsSessionState {
     addr: Addr<server::SessionServer>,
 }
@@ -147,6 +159,7 @@ struct UserSession {
     user: Option<UserParams>,
     timestamp: std::time::Instant,
     log: std::io::Result<File>,
+    wasm: bool,
     //hevc: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t, //VP9 encoder config
     ctx: vpx_codec_ctx_t,     //VP9 encoder context
@@ -198,6 +211,7 @@ impl UserSession {
             user: None,
             timestamp: std::time::Instant::now(), //SpawnHandle::default(),
             log: log,
+            wasm: false,
             //hevc: hevc,
             cfg: vpx_codec_enc_cfg::default(),
             ctx: vpx_codec_ctx_t {
@@ -316,6 +330,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
             ws::Message::Text(text) => {
                 if (&text).contains("[debug]") {
                     println!("{}", text);
+                }
+
+                //check if WebAssembly is supported
+                if (&text).contains("WebAssembly is supported") {
+                    self.wasm = true;
                 }
 
                 if (&text).contains("[heartbeat]") {
@@ -834,14 +853,20 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         if image {
-                            match fits.get_viewport(x1, y1, x2, y2, &self.user) {
+                            let (method, identifier) = if self.wasm {
+                                (fits::Codec::HEVC, String::from("HEVC"))
+                            } else {
+                                (fits::Codec::VPX, String::from("VP9"))
+                            };
+
+                            match fits.get_viewport(x1, y1, x2, y2, &self.user, method) {
                                 Some((width, height, frame, alpha)) => {
                                     //send a binary response message (serialize a structure to a binary stream)
-                                    let ws_viewport = WsImage {
+                                    let ws_viewport = WsViewport {
                                         ts: timestamp as f32,
                                         seq_id: seq_id as u32,
                                         msg_type: 1,
-                                        identifier: String::from("VP9"),
+                                        identifier: identifier,
                                         width: width,
                                         height: height,
                                         image: frame,
@@ -2189,7 +2214,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
-static VERSION_STRING: &'static str = "SV2018-12-12.0";
+static VERSION_STRING: &'static str = "SV2018-12-13.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

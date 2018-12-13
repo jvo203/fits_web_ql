@@ -7,6 +7,7 @@ use parking_lot::RwLock;
 use positioned_io::ReadAt;
 use regex::Regex;
 use std;
+use std::ffi::CString;
 use std::fs::File;
 use std::io::Cursor;
 use std::io::Seek;
@@ -23,7 +24,7 @@ use lz4_compress;
 
 use crate::server;
 use crate::UserParams;
-use actix::*;
+use ::actix::*;
 use rayon;
 use rayon::prelude::*;
 
@@ -44,21 +45,7 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 //use openjpeg2_sys as ffi;
 use vpx_sys::*;
 
-use crate::ispc_calculate_radial_spectrumF16;
-use crate::ispc_calculate_square_spectrumF16;
-use crate::ispc_data_to_luminance_f16_legacy;
-use crate::ispc_data_to_luminance_f16_linear;
-use crate::ispc_data_to_luminance_f16_logistic;
-use crate::ispc_data_to_luminance_f16_ratio;
-use crate::ispc_data_to_luminance_f16_square;
-use crate::ispc_join_pixels_masks;
-use crate::ispc_make_image_spectrumF16_minmax;
-
-use crate::libyuv_FilterMode_kFilterNone;
-use crate::libyuv_ScalePlane;
-//use libyuv_FilterMode_kFilterLinear;
-//use libyuv_FilterMode_kFilterBilinear;
-use crate::libyuv_FilterMode_kFilterBox;
+use crate::*; //bindings to local C libraries
 
 fn get_packets(mut ctx: vpx_codec_ctx_t) -> Option<Vec<u8>> {
     unsafe {
@@ -147,6 +134,12 @@ const FITS_LINE_LENGTH: usize = 80;
 
 const NBINS: usize = 1024;
 const NBINS2: usize = 16 * 1024;
+
+#[derive(Debug)]
+pub enum Codec {
+    HEVC,
+    VPX,
+}
 
 #[derive(Debug)]
 pub enum Beam {
@@ -3802,7 +3795,136 @@ impl FITS {
         }*/
     }
 
-    fn make_vpx_viewport(&self, dimx: u32, dimy: u32, y: &Vec<u8>) -> Option<Vec<u8>> {
+    fn make_hevc_viewport(&self, dimx: u32, dimy: u32, y: &Vec<u8>) -> Option<Vec<Vec<u8>>> {
+        let param: *mut x265_param = unsafe { x265_param_alloc() };
+
+        if param.is_null() {
+            return None;
+        }
+
+        unsafe {
+            x265_param_default_preset(
+                param,
+                CString::new("superfast").unwrap().as_ptr(),
+                CString::new("zerolatency").unwrap().as_ptr(),
+            );
+
+            (*param).fpsNum = 10;
+            (*param).fpsDenom = 1;
+        };
+
+        //HEVC config
+        unsafe {
+            (*param).bRepeatHeaders = 1;
+            (*param).internalCsp = X265_CSP_I400 as i32;
+            (*param).internalBitDepth = 8;
+            (*param).sourceWidth = dimx as i32;
+            (*param).sourceHeight = dimy as i32;
+
+            //constant quality
+            /*(*param).rc.rateControlMode = X265_RC_METHODS_X265_RC_CQP as i32;
+            (*param).rc.qp = 31;*/
+        };
+
+        let pic: *mut x265_picture = unsafe { x265_picture_alloc() };
+        let enc: *mut x265_encoder = unsafe { x265_encoder_open(param) };
+        unsafe { x265_picture_init(param, pic) };
+
+        //HEVC-encode a still viewport
+        let start = precise_time::precise_time_ns();
+
+        unsafe {
+            (*pic).stride[0] = dimx as i32;
+            (*pic).planes[0] = y.as_ptr() as *mut std::os::raw::c_void;
+        }
+
+        let mut nal_count: u32 = 0;
+        let mut p_nal: *mut x265_nal = ptr::null_mut();
+
+        //encode
+        let ret =
+            unsafe { x265_encoder_encode(enc, &mut p_nal, &mut nal_count, pic, ptr::null_mut()) };
+
+        let stop = precise_time::precise_time_ns();
+
+        println!("x265 hevc viewport encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (stop-start)/1000000, 1000000000/(stop-start), ret, nal_count);
+
+        //y falls out of scope
+        unsafe {
+            (*pic).stride[0] = 0 as i32;
+            (*pic).planes[0] = ptr::null_mut();
+        }
+
+        let mut frames: Vec<Vec<u8>> = Vec::new();
+
+        //process all NAL units one by one
+        if nal_count > 0 {
+            let nal_units = unsafe { std::slice::from_raw_parts(p_nal, nal_count as usize) };
+
+            for unit in nal_units {
+                println!("NAL unit type: {}, size: {}", unit.type_, unit.sizeBytes);
+
+                let payload =
+                    unsafe { std::slice::from_raw_parts(unit.payload, unit.sizeBytes as usize) };
+
+                frames.push(payload.to_vec());
+            }
+        }
+      
+        //flush the encoder to signal the end
+        loop {
+            let ret = unsafe {
+                x265_encoder_encode(
+                    enc,
+                    &mut p_nal,
+                    &mut nal_count,
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                )
+            };
+
+            if ret > 0 {
+                println!("flushing the encoder, residual nal_count = {}", nal_count);
+
+                let nal_units = unsafe { std::slice::from_raw_parts(p_nal, nal_count as usize) };
+
+                for unit in nal_units {
+                    println!("NAL unit type: {}, size: {}", unit.type_, unit.sizeBytes);
+
+                    let payload = unsafe {
+                        std::slice::from_raw_parts(unit.payload, unit.sizeBytes as usize)
+                    };
+
+                    frames.push(payload.to_vec());
+                }
+            } else {
+                break;
+            }
+        }
+
+        //release memory
+        unsafe {
+            if !param.is_null() {
+                x265_param_free(param);
+            }
+
+            if !enc.is_null() {
+                x265_encoder_close(enc);
+            }
+
+            if !pic.is_null() {
+                x265_picture_free(pic);
+            }
+        }
+
+        if frames.len() > 0 {
+            Some(frames)
+        } else {
+            None
+        }
+    }
+
+    fn make_vpx_viewport(&self, dimx: u32, dimy: u32, y: &Vec<u8>) -> Option<Vec<Vec<u8>>> {
         let start = precise_time::precise_time_ns();
 
         let mut image_frame: Vec<u8> = Vec::new();
@@ -3946,7 +4068,7 @@ impl FITS {
         unsafe { vpx_img_free(&mut raw) };
         unsafe { vpx_codec_destroy(&mut ctx) };
 
-        Some(image_frame)
+        Some(vec![image_frame; 1])
     }
 
     fn make_vpx_image(&mut self) {
@@ -4329,7 +4451,8 @@ impl FITS {
         x2: i32,
         y2: i32,
         user: &Option<UserParams>,
-    ) -> Option<(u32, u32, Vec<u8>, Vec<u8>)> {
+        method: Codec,
+    ) -> Option<(u32, u32, Vec<Vec<u8>>, Vec<u8>)> {
         //spatial range checks
         let width = self.width as i32;
         let height = self.height as i32;
@@ -4412,13 +4535,17 @@ impl FITS {
             ),
         };
 
-        match self.make_vpx_viewport(dimx as u32, dimy as u32, &y) {
-            Some(frame) => {
-                let alpha = lz4_compress::compress(&mask);
+        let alpha = lz4_compress::compress(&mask);
 
-                Some((dimx as u32, dimy as u32, frame, alpha))
-            }
-            None => None,
+        match method {
+            Codec::VPX => match self.make_vpx_viewport(dimx as u32, dimy as u32, &y) {
+                Some(frame) => Some((dimx as u32, dimy as u32, frame, alpha)),
+                None => None,
+            },
+            Codec::HEVC => match self.make_hevc_viewport(dimx as u32, dimy as u32, &y) {
+                Some(frame) => Some((dimx as u32, dimy as u32, frame, alpha)),
+                None => None,
+            },
         }
     }
 

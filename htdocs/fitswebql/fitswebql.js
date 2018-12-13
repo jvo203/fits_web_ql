@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-12.0";
+	return "JS2018-12-13.1";
 }
 
 const wasm_supported = (() => {
@@ -1026,7 +1026,7 @@ function process_viewport(w, h, bytes, stride, alpha, index) {
 		px = Math.round(px);
 		py = Math.round(py);
 
-		if (recv_seq_id == sent_seq_id /*&& !dragging*/ && !moving) {
+		if (/*recv_seq_id == sent_seq_id*/ /*&& !dragging*/ /*&&*/ !moving) {
 			ctx.clearRect(px, py, zoomed_size, zoomed_size);
 
 			if (zoom_shape == "square") {
@@ -1049,6 +1049,9 @@ function process_viewport(w, h, bytes, stride, alpha, index) {
 				ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, px, py, zoomed_size, zoomed_size);
 				ctx.restore();
 			}
+		}
+		else {
+			console.log("cancelled a viewport refresh; recv_seq_id =", recv_seq_id, " sent_seq_id =", sent_seq_id, " moving:", moving);
 		}
 	}
 }
@@ -1259,17 +1262,26 @@ function open_websocket_connection(datasetId, index) {
 						var height = dv.getUint32(offset, endianness);
 						offset += 4;
 
-						var image_length = dv.getUint32(offset, endianness);
+						var no_frames = dv.getUint32(offset, endianness);
 						offset += 8;
 
-						var frame = new Uint8Array(received_msg, offset, image_length);//offset by 8 bytes
-						offset += image_length;
+						var frames = new Array(no_frames);
+
+						for (let i = 0; i < no_frames; i++) {
+							var image_length = dv.getUint32(offset, endianness);
+							offset += 8;
+
+							var frame = new Uint8Array(received_msg, offset, image_length);
+							offset += image_length;
+
+							frames[i] = frame;
+						}
 
 						var alpha_length = dv.getUint32(offset, endianness);
 						offset += 8;
 
 						var alpha = new Uint8Array(received_msg, offset);
-						console.log("image frame identifier: ", identifier, "width:", width, "height:", height, "compressed alpha length:", alpha.length);
+						console.log("image frame identifier: ", identifier, "width:", width, "height:", height, "no. frames:", no_frames, "compressed alpha length:", alpha.length);
 
 						var Buffer = require('buffer').Buffer;
 						var LZ4 = require('lz4');
@@ -1282,14 +1294,17 @@ function open_websocket_connection(datasetId, index) {
 							var decoder = new OGVDecoderVideoVP9();
 
 							decoder.init(function () { console.log("init callback done"); });
-							decoder.processFrame(frame, function () {
-								process_viewport(decoder.frameBuffer.format.displayWidth,
-									decoder.frameBuffer.format.displayHeight,
-									decoder.frameBuffer.y.bytes,
-									decoder.frameBuffer.y.stride,
-									alpha,
-									index);
-							});
+
+							for (let i = 0; i < no_frames; i++) {
+								decoder.processFrame(frames[i], function () {
+									process_viewport(decoder.frameBuffer.format.displayWidth,
+										decoder.frameBuffer.format.displayHeight,
+										decoder.frameBuffer.y.bytes,
+										decoder.frameBuffer.y.stride,
+										alpha,
+										index);
+								});
+							}
 						}
 
 						return;
@@ -6485,9 +6500,9 @@ function setup_image_selection() {
 		.style("stroke", fillColour)
 		.style("stroke-dasharray", ("1, 5, 1"))
 		.style("stroke-width", emStrokeWidth)
-		.attr("opacity", 0.0);	
+		.attr("opacity", 0.0);
 
-	if(colourmap == "greyscale" || colourmap == "negative")
+	if (colourmap == "greyscale" || colourmap == "negative")
 		fillColour = "#C4A000";
 
 	if (zoom_shape == "square") {
