@@ -853,14 +853,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         if image {
-                            let (method, identifier) = if self.wasm {
-                                (fits::Codec::HEVC, String::from("HEVC"))
+                            let method = if self.wasm {
+                                fits::Codec::HEVC
                             } else {
-                                (fits::Codec::VPX, String::from("VP9"))
+                                fits::Codec::VPX
                             };
 
                             match fits.get_viewport(x1, y1, x2, y2, &self.user, method) {
-                                Some((width, height, frame, alpha)) => {
+                                Some((width, height, frame, alpha, identifier)) => {
                                     //send a binary response message (serialize a structure to a binary stream)
                                     let ws_viewport = WsViewport {
                                         ts: timestamp as f32,
@@ -2214,7 +2214,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
-static VERSION_STRING: &'static str = "SV2018-12-13.0";
+static VERSION_STRING: &'static str = "SV2018-12-14.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";

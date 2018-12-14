@@ -129,7 +129,7 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
         enum AVColorSpace cs = av_frame_get_colorspace(avframe);
         int format = avframe->format;
 
-        printf("[wasm hevc] decoded a %d x %d frame with in a colourspace:format %d:%d, elapsed time %5.2f [ms], applying %s colourmap\n", avframe->width, avframe->height, cs, format, (stop - start), colourmap);
+        printf("[wasm hevc] decoded a %d x %d frame in a colourspace:format %d:%d, elapsed time %5.2f [ms], applying %s colourmap\n", avframe->width, avframe->height, cs, format, (stop - start), colourmap);
 
         if (format == AV_PIX_FMT_YUV444P)
         {

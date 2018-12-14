@@ -3822,8 +3822,8 @@ impl FITS {
             (*param).sourceHeight = dimy as i32;
 
             //constant quality
-            /*(*param).rc.rateControlMode = X265_RC_METHODS_X265_RC_CQP as i32;
-            (*param).rc.qp = 31;*/
+            (*param).rc.rateControlMode = X265_RC_METHODS_X265_RC_CQP as i32;
+            (*param).rc.qp = 31;
         };
 
         let pic: *mut x265_picture = unsafe { x265_picture_alloc() };
@@ -3870,7 +3870,7 @@ impl FITS {
                 frames.push(payload.to_vec());
             }
         }
-      
+
         //flush the encoder to signal the end
         loop {
             let ret = unsafe {
@@ -4452,7 +4452,7 @@ impl FITS {
         y2: i32,
         user: &Option<UserParams>,
         method: Codec,
-    ) -> Option<(u32, u32, Vec<Vec<u8>>, Vec<u8>)> {
+    ) -> Option<(u32, u32, Vec<Vec<u8>>, Vec<u8>, String)> {
         //spatial range checks
         let width = self.width as i32;
         let height = self.height as i32;
@@ -4535,15 +4535,22 @@ impl FITS {
             ),
         };
 
+        //x265 can only work with dimensions >= 32
+        let method = if dimx < 32 || dimy < 32 {
+            Codec::VPX
+        } else {
+            method
+        };
+
         let alpha = lz4_compress::compress(&mask);
 
         match method {
             Codec::VPX => match self.make_vpx_viewport(dimx as u32, dimy as u32, &y) {
-                Some(frame) => Some((dimx as u32, dimy as u32, frame, alpha)),
+                Some(frame) => Some((dimx as u32, dimy as u32, frame, alpha, String::from("VP9"))),
                 None => None,
             },
             Codec::HEVC => match self.make_hevc_viewport(dimx as u32, dimy as u32, &y) {
-                Some(frame) => Some((dimx as u32, dimy as u32, frame, alpha)),
+                Some(frame) => Some((dimx as u32, dimy as u32, frame, alpha, String::from("HEVC"))),
                 None => None,
             },
         }
