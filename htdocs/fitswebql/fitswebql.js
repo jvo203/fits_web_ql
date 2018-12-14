@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-13.1";
+	return "JS2018-12-14.0";
 }
 
 const wasm_supported = (() => {
@@ -943,6 +943,81 @@ function process_video(index) {
 	}
 }
 
+function process_viewport_canvas(viewportCanvas, index) {
+	if (streaming)
+		return;
+
+	console.log("process_viewport_canvas(" + index + ")");
+
+	document.getElementById('welcome').style.display = "none";
+
+	viewport_count++;
+
+	if (viewport_count == va_count) {
+		//place the viewport onto the ZOOM Canvas
+		var c = document.getElementById("ZOOMCanvas");
+		var ctx = c.getContext("2d");
+
+		ctx.mozImageSmoothingEnabled = false;
+		ctx.webkitImageSmoothingEnabled = false;
+		ctx.msImageSmoothingEnabled = false;
+		ctx.imageSmoothingEnabled = false;
+
+		var width = c.width;
+		var height = c.height;
+
+		var imageCanvas = imageContainer[index - 1].imageCanvas;
+		var scale = get_image_scale(width, height, imageCanvas.width, imageCanvas.height);
+		var img_width = scale * imageCanvas.width;
+		var img_height = scale * imageCanvas.height;
+
+		var px, py;
+
+		var zoomed_size = get_zoomed_size(width, height, img_width, img_height);
+
+		if (zoom_location == "upper") {
+			px = emStrokeWidth;
+			py = emStrokeWidth;
+		}
+		else {
+			px = width - 1 - emStrokeWidth - zoomed_size;
+			py = height - 1 - emStrokeWidth - zoomed_size;
+		}
+
+		zoomed_size = Math.round(zoomed_size);
+		px = Math.round(px);
+		py = Math.round(py);
+
+		if (/*recv_seq_id == sent_seq_id*/ /*&& !dragging*/ /*&&*/ !moving) {
+			ctx.clearRect(px, py, zoomed_size, zoomed_size);
+
+			if (zoom_shape == "square") {
+				ctx.fillStyle = "rgba(0,0,0,0.3)";
+				ctx.fillRect(px, py, zoomed_size, zoomed_size);
+
+				ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, px, py, zoomed_size, zoomed_size);
+			}
+
+			if (zoom_shape == "circle") {
+				ctx.save();
+				ctx.beginPath();
+				ctx.arc(px + zoomed_size / 2, py + zoomed_size / 2, zoomed_size / 2, 0, 2 * Math.PI, true);
+
+				ctx.fillStyle = "rgba(0,0,0,0.3)";
+				ctx.fill();
+
+				ctx.closePath();
+				ctx.clip();
+				ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, px, py, zoomed_size, zoomed_size);
+				ctx.restore();
+			}
+		}
+		else {
+			console.log("cancelled a viewport refresh; recv_seq_id =", recv_seq_id, " sent_seq_id =", sent_seq_id, " moving:", moving);
+		}
+	}
+}
+
 function process_viewport(w, h, bytes, stride, alpha, index) {
 	if (streaming)
 		return;
@@ -1304,6 +1379,71 @@ function open_websocket_connection(datasetId, index) {
 										alpha,
 										index);
 								});
+							}
+						}
+
+						if (identifier == 'HEVC') {
+							if (!composite_view) {
+								let viewportCanvas = document.createElement('canvas');
+								viewportCanvas.style.visibility = "hidden";
+								var context = viewportCanvas.getContext('2d');
+
+								viewportCanvas.width = width;
+								viewportCanvas.height = height;
+								console.log(viewportCanvas.width, viewportCanvas.height);
+
+								//set up canvas_ptr, alpha_ptr and img
+								var len = width * height * 4;
+								var canvas_ptr = Module._malloc(len);
+
+								var data = new Uint8ClampedArray(Module.HEAPU8.buffer, canvas_ptr, len);
+								var img = new ImageData(data, width, height);
+
+								var alpha_ptr = Module._malloc(width * height);
+								Module.HEAPU8.set(alpha, alpha_ptr);
+
+								console.log("Module._malloc canvas_ptr=", canvas_ptr, "ImageData=", img, "alpha_ptr=", alpha_ptr);
+
+								try {
+									//init the HEVC encoder		
+									api.hevc_init();
+								} catch (e) { };
+
+								//hevc decoding
+								for (let i = 0; i < no_frames; i++) {
+									let frame = frames[i];
+									var len = frame.length;
+									var ptr = Module._malloc(len);
+
+									Module.HEAPU8.set(frame, ptr);
+
+									try {
+										//HEVC
+										api.hevc_decode_nal_unit(ptr, len, canvas_ptr, img.width, img.height, alpha_ptr, colourmap);
+									} catch (e) { };
+
+									if (img.data.length == 0) {
+										//detect detached data due to WASM memory growth
+										console.log("detached WASM buffer detected, refreshing img:ImageData");
+
+										//WASM buffers have changed, need to refresh the ImageData.data buffer
+										var len = img.width * img.height * 4;
+										var data = new Uint8ClampedArray(Module.HEAPU8.buffer, videoFrame.ptr, len);
+										img = new ImageData(data, img.width, img.height);
+									}
+
+									Module._free(ptr);
+								}
+
+								context.putImageData(img, 0, 0);
+								process_viewport_canvas(viewportCanvas, index);
+
+								try {
+									api.hevc_destroy();
+								} catch (e) { };
+
+								Module._free(canvas_ptr);
+								Module._free(alpha_ptr);
 							}
 						}
 
