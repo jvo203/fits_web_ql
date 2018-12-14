@@ -2215,6 +2215,7 @@ static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
 static VERSION_STRING: &'static str = "SV2018-12-14.0";
+static WASM_STRING: &'static str = "WASM2018-12-14.0";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -3506,14 +3507,17 @@ fn http_fits_response(
     //custom hevc wasm decoder
     #[cfg(feature = "hevc")]
     {
-        html.push_str("<script src=\"hevc.js\"></script>\n");
+        html.push_str(&format!(
+            "<script src=\"hevc_{}.js\"></script>\n",
+            WASM_STRING
+        ));
+
         html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {                
                 hevc_init: Module.cwrap('hevc_init', '', []), 
                 hevc_destroy: Module.cwrap('hevc_destroy', '', []),                
-                hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'string']),
-                /*hevc_decode_nal_stream: Module.cwrap('hevc_decode_nal_stream', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'string']),*/
+                hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'string']),               
             };            
         };
         </script>\n");

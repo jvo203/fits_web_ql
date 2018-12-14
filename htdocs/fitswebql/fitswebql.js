@@ -1419,7 +1419,7 @@ function open_websocket_connection(datasetId, index) {
 
 									try {
 										//HEVC
-										api.hevc_decode_nal_unit(ptr, len, canvas_ptr, img.width, img.height, alpha_ptr, colourmap);
+										api.hevc_decode_nal_unit(ptr, len, canvas_ptr, img.width, img.height, alpha_ptr, null, colourmap);
 									} catch (e) { };
 
 									if (img.data.length == 0) {
@@ -1636,7 +1636,7 @@ function open_websocket_connection(datasetId, index) {
 
 								try {
 									//HEVC
-									api.hevc_decode_nal_unit(ptr, len, videoFrame.ptr, img.width, img.height, videoFrame.alpha, colourmap);
+									api.hevc_decode_nal_unit(ptr, len, videoFrame.ptr, img.width, img.height, videoFrame.alpha, null, colourmap);
 								} catch (e) { };
 
 								if (img.data.length == 0) {
@@ -1663,7 +1663,7 @@ function open_websocket_connection(datasetId, index) {
 
 								try {
 									//HEVC
-									api.hevc_decode_nal_unit(ptr, len, null, 0, 0, null, 'greyscale');
+									api.hevc_decode_nal_unit(ptr, len, null, 0, 0, null, null, 'greyscale');
 								} catch (e) { };
 							}
 
