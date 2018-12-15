@@ -2124,7 +2124,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     }
                                 }
 
-                                if keyframe {
+                                /*if keyframe {
                                     //flush the encoder to signal the end
                                     loop {
                                         let ret = unsafe {
@@ -2192,7 +2192,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             break;
                                         }
                                     }
-                                }
+                                }*/
                             }
                         }
                     }
@@ -2214,7 +2214,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
-static VERSION_STRING: &'static str = "SV2018-12-15.0";
+static VERSION_STRING: &'static str = "SV2018-12-15.1";
 static WASM_STRING: &'static str = "WASM2018-12-14.0";
 
 #[cfg(not(feature = "server"))]
