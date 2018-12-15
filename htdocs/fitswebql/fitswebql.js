@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-15.2";
+	return "JS2018-12-15.3";
 }
 
 const wasm_supported = (() => {
@@ -877,7 +877,7 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 
 
 function process_video(index) {
-	if (!streaming || videoFrame == null)
+	if (!streaming || videoFrame == null || videoFrame.img == null || videoFrame.ptr == null || videoFrame.alpha == null)
 		return;
 
 	//let image_bounding_dims = imageContainer[index-1].image_bounding_dims;
