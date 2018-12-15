@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-15.1";
+	return "JS2018-12-15.2";
 }
 
 const wasm_supported = (() => {
@@ -1628,10 +1628,10 @@ function open_websocket_connection(datasetId, index) {
 							if (streaming && videoFrame != null && videoFrame.img != null && videoFrame.ptr != null && videoFrame.alpha != null) {
 								var img = videoFrame.img;
 
-								try {
+								/*try {
 									//VP9
 									api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height, videoFrame.alpha, colourmap);
-								} catch (e) { };
+								} catch (e) { };*/
 
 
 								try {
@@ -1656,10 +1656,10 @@ function open_websocket_connection(datasetId, index) {
 								});
 							}
 							else {
-								try {
+								/*try {
 									//VP9
 									api.vpx_decode_frame(ptr, len, null, 0, 0, null, 'greyscale');
-								} catch (e) { };
+								} catch (e) { };*/
 
 								try {
 									//HEVC
