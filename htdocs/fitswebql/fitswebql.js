@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-15.0";
+	return "JS2018-12-15.1";
 }
 
 const wasm_supported = (() => {
@@ -1625,7 +1625,7 @@ function open_websocket_connection(datasetId, index) {
 
 							Module.HEAPU8.set(frame, ptr);
 
-							if (streaming && videoFrame != null) {
+							if (streaming && videoFrame != null && videoFrame.img != null && videoFrame.ptr != null && videoFrame.alpha != null) {
 								var img = videoFrame.img;
 
 								try {
