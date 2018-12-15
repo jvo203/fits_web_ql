@@ -1782,7 +1782,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         }
                                     }
 
-                                    if keyframe {
+                                    /*if keyframe {
                                         //flush the encoder to signal the end
                                         loop {
                                             let ret = unsafe {
@@ -1850,7 +1850,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 break;
                                             }
                                         }
-                                    }
+                                    }*/
                                 }
                                 None => {}
                             }
