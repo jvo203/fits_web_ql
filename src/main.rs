@@ -2214,7 +2214,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
-static VERSION_STRING: &'static str = "SV2018-12-17.0";
+static VERSION_STRING: &'static str = "SV2018-12-17.1";
 static WASM_STRING: &'static str = "WASM2018-12-14.0";
 
 #[cfg(not(feature = "server"))]
@@ -3518,13 +3518,7 @@ fn http_fits_response(
                 hevc_init: Module.cwrap('hevc_init', '', []), 
                 hevc_destroy: Module.cwrap('hevc_destroy', '', []),                
                 hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'string']),               
-            };
-            /*try {
-			    //init the HEVC encoder		
-				api.hevc_init();
-			} catch (e) {
-                console.log(e);
-            };*/          
+            };                   
         };
         </script>\n");
     }

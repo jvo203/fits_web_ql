@@ -4535,8 +4535,8 @@ impl FITS {
             ),
         };
 
-        //x265 can only work with dimensions >= 32
-        let method = if dimx < 32 || dimy < 32 {
+        //x265 can only work with dimensions >= 32; in addition libxpv seems more efficient compression-size-wise for small images...
+        let method = if dimx < 128 || dimy < 128 {
             Codec::VPX
         } else {
             method

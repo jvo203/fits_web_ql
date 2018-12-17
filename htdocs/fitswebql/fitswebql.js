@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-17.1";
+	return "JS2018-12-17.2";
 }
 
 const wasm_supported = (() => {
@@ -8936,7 +8936,7 @@ function setup_help() {
 		.html("<i>Kalman Filter</i> is used to predict the mouse movement after taking into account a latency of a network connection to Japan");
 
 	bodyDiv.append("p")
-		.html("when disabled the spectrum refresh will be requested after a 100ms delay since the last movement of the mouse");
+		.html("when disabled the spectrum refresh will be requested after a 250ms delay since the last movement of the mouse");
 
 	bodyDiv.append("hr");
 
