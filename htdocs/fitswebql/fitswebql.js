@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-17.2";
+	return "JS2018-12-17.6";
 }
 
 const wasm_supported = (() => {
@@ -1226,13 +1226,11 @@ function open_websocket_connection(datasetId, index) {
 
 				ALMAWS.binaryType = 'arraybuffer';
 
+				let log = wasm_supported ? "WebAssembly is supported" : "WebAssembly is not supported";
+				ALMAWS.send('[debug] ' + log);
+
 				if (index == va_count) {
 					send_ping();
-
-
-					let log = wasm_supported ? "WebAssembly is supported" : "WebAssembly is not supported";
-
-					ALMAWS.send('[debug] ' + log);
 				}
 			});
 
@@ -1356,7 +1354,7 @@ function open_websocket_connection(datasetId, index) {
 						offset += 8;
 
 						var alpha = new Uint8Array(received_msg, offset);
-						console.log("image frame identifier: ", identifier, "width:", width, "height:", height, "no. frames:", no_frames, "compressed alpha length:", alpha.length);
+						console.log("viewport frame identifier: ", identifier, "width:", width, "height:", height, "no. frames:", no_frames, "compressed alpha length:", alpha.length);
 
 						var Buffer = require('buffer').Buffer;
 						var LZ4 = require('lz4');
@@ -1448,6 +1446,42 @@ function open_websocket_connection(datasetId, index) {
 
 								Module._free(canvas_ptr);
 								Module._free(alpha_ptr);
+							} else {
+								var bytes_ptr = Module._malloc(width * height);
+								var bytes = new Uint8ClampedArray(Module.HEAPU8.buffer, bytes_ptr, width * height);
+								for (let i = 0; i < width * height; i++)
+									bytes[i] = 0;
+
+								console.log("Module._malloc bytes_ptr=", bytes_ptr);
+
+								try {
+									//init the HEVC encoder		
+									api.hevc_init();
+								} catch (e) { };
+
+								//hevc decoding
+								for (let i = 0; i < no_frames; i++) {
+									let frame = frames[i];
+									var len = frame.length;
+									var ptr = Module._malloc(len);
+
+									Module.HEAPU8.set(frame, ptr);
+
+									try {
+										//HEVC
+										api.hevc_decode_nal_unit(ptr, len, null, width, height, null, bytes_ptr, "greyscale");
+									} catch (e) { };
+
+									Module._free(ptr);
+								}
+
+								try {
+									api.hevc_destroy();
+								} catch (e) { };
+
+								process_viewport(width, height, bytes, width, alpha, index);
+
+								Module._free(bytes_ptr);
 							}
 						}
 
@@ -1480,7 +1514,7 @@ function open_websocket_connection(datasetId, index) {
 						offset += 8;
 
 						var alpha = new Uint8Array(received_msg, offset);
-						console.log("image frame identifier: ", identifier, "width:", width, "height:", height, "compressed alpha length:", alpha.length);
+						console.log("image frame identifier (WS): ", identifier, "width:", width, "height:", height, "compressed alpha length:", alpha.length);
 
 						var Buffer = require('buffer').Buffer;
 						var LZ4 = require('lz4');
@@ -1632,11 +1666,10 @@ function open_websocket_connection(datasetId, index) {
 							if (streaming && videoFrame != null && videoFrame.img != null && videoFrame.ptr != null && videoFrame.alpha != null) {
 								var img = videoFrame.img;
 
-								/*try {
+								try {
 									//VP9
 									api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height, videoFrame.alpha, colourmap);
-								} catch (e) { };*/
-
+								} catch (e) { };
 
 								try {
 									//HEVC
@@ -1660,10 +1693,10 @@ function open_websocket_connection(datasetId, index) {
 								});
 							}
 							else {
-								/*try {
+								try {
 									//VP9
 									api.vpx_decode_frame(ptr, len, null, 0, 0, null, 'greyscale');
-								} catch (e) { };*/
+								} catch (e) { };
 
 								try {
 									//HEVC
@@ -7482,7 +7515,7 @@ function fetch_image(datasetId, index, add_timestamp) {
 				offset += 8;
 
 				var alpha = new Uint8Array(received_msg, offset);
-				console.log("image frame identifier: ", identifier, "width:", width, "height:", height, "compressed alpha length:", alpha.length);
+				console.log("image frame identifier (HTTP): ", identifier, "width:", width, "height:", height, "compressed alpha length:", alpha.length);
 
 				var Buffer = require('buffer').Buffer;
 				var LZ4 = require('lz4');

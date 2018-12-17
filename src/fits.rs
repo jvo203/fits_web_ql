@@ -4537,11 +4537,17 @@ impl FITS {
 
         //x265 can only work with dimensions >= 32; in addition libxpv seems more efficient compression-size-wise for small images...
         let method = if !wasm {
+            println!("wasm unsupported, switching over to VP9");
             fits::Codec::VPX
         } else {
             if dimx < 128 || dimy < 128 {
+                println!(
+                    "viewport too small ({}x{}), switching over to VP9",
+                    dimx, dimy
+                );
                 Codec::VPX
             } else {
+                println!("wasm supported, using HEVC");
                 fits::Codec::HEVC
             }
         };

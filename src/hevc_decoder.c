@@ -89,7 +89,7 @@ static void hevc_destroy()
 }
 
 EMSCRIPTEN_KEEPALIVE
-static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, const char *bytes, const char *colourmap)
+static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap)
 {
     if (avctx == NULL || avpkt == NULL || avframe == NULL)
         return 0.0;
@@ -129,7 +129,7 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
         enum AVColorSpace cs = av_frame_get_colorspace(avframe);
         int format = avframe->format;
 
-        printf("[wasm hevc] decoded a %d x %d frame in a colourspace:format %d:%d, elapsed time %5.2f [ms], applying %s colourmap\n", avframe->width, avframe->height, cs, format, (stop - start), colourmap);
+        printf("[wasm hevc] decoded a %d x %d frame in a colourspace:format %d:%d, elapsed time %5.2f [ms], colourmap: %s\n", avframe->width, avframe->height, cs, format, (stop - start), colourmap);
 
         if (format == AV_PIX_FMT_YUV444P)
         {
@@ -176,7 +176,7 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
                         size_t offset = j * stride;
 
                         for (int i = 0; i < w; i++)
-                            canvas[dst_offset++] = luma[offset++];
+                            bytes[dst_offset++] = luma[offset++];
                     }
                 }
 
