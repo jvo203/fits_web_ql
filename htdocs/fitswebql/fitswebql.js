@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-15.3";
+	return "JS2018-12-17.0";
 }
 
 const wasm_supported = (() => {
@@ -1404,10 +1404,10 @@ function open_websocket_connection(datasetId, index) {
 
 								console.log("Module._malloc canvas_ptr=", canvas_ptr, "ImageData=", img, "alpha_ptr=", alpha_ptr);
 
-								/*try {
+								try {
 									//init the HEVC encoder		
 									api.hevc_init();
-								} catch (e) { };*/
+								} catch (e) { };
 
 								//hevc decoding
 								for (let i = 0; i < no_frames; i++) {
@@ -1438,9 +1438,9 @@ function open_websocket_connection(datasetId, index) {
 								context.putImageData(img, 0, 0);
 								process_viewport_canvas(viewportCanvas, index);
 
-								/*try {
+								try {
 									api.hevc_destroy();
-								} catch (e) { };*/
+								} catch (e) { };
 
 								Module._free(canvas_ptr);
 								Module._free(alpha_ptr);
@@ -5518,6 +5518,7 @@ function setup_axes() {
 }
 
 function x_axis_mouseenter(offset) {
+	console.log("x_axis_mouse_enter");
 	//send an init_video command via WebSockets
 	streaming = true;
 	video_stack = new Array(va_count);
@@ -5554,10 +5555,10 @@ function x_axis_mouseenter(offset) {
 
 	//if (videoFrame == null)
 	if (wasm_supported) {
-		/*try {
+		try {
 			//init the HEVC encoder		
 			api.hevc_init();
-		} catch (e) { };*/
+		} catch (e) { };
 
 		var freq = get_mouse_frequency(offset);
 
@@ -5674,9 +5675,9 @@ function x_axis_mouseleave() {
 
 	//send an end_video command via WebSockets
 	if (videoFrame != null) {
-		/*try {
+		try {
 			api.hevc_destroy();
-		} catch (e) { };*/
+		} catch (e) { };
 
 		Module._free(videoFrame.ptr);
 		Module._free(videoFrame.alpha_ptr);
@@ -6852,6 +6853,7 @@ function setup_image_selection() {
 			resetKalman();
 		})
 		.on("mouseleave", function () {
+			console.log("image mouse leave");
 			clearTimeout(idleMouse);
 
 			if (!d3.event.shiftKey)
