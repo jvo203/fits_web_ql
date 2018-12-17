@@ -853,13 +853,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         if image {
-                            let method = if self.wasm {
-                                fits::Codec::HEVC
-                            } else {
-                                fits::Codec::VPX
-                            };
-
-                            match fits.get_viewport(x1, y1, x2, y2, &self.user, method) {
+                            match fits.get_viewport(x1, y1, x2, y2, &self.user, self.wasm) {
                                 Some((width, height, frame, alpha, identifier)) => {
                                     //send a binary response message (serialize a structure to a binary stream)
                                     let ws_viewport = WsViewport {
@@ -1783,73 +1777,73 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     }
 
                                     /*if keyframe {
-                                        //flush the encoder to signal the end
-                                        loop {
-                                            let ret = unsafe {
-                                                x265_encoder_encode(
-                                                    self.enc,
-                                                    &mut p_nal,
-                                                    &mut nal_count,
-                                                    ptr::null_mut(),
-                                                    ptr::null_mut(),
+                                    //flush the encoder to signal the end
+                                    loop {
+                                        let ret = unsafe {
+                                            x265_encoder_encode(
+                                                self.enc,
+                                                &mut p_nal,
+                                                &mut nal_count,
+                                                ptr::null_mut(),
+                                                ptr::null_mut(),
+                                            )
+                                        };
+
+                                        if ret > 0 {
+                                            println!(
+                                                "flushing the encoder, residual nal_count = {}",
+                                                nal_count
+                                            );
+
+                                            let nal_units = unsafe {
+                                                std::slice::from_raw_parts(
+                                                    p_nal,
+                                                    nal_count as usize,
                                                 )
                                             };
 
-                                            if ret > 0 {
+                                            for unit in nal_units {
                                                 println!(
-                                                    "flushing the encoder, residual nal_count = {}",
-                                                    nal_count
+                                                    "NAL unit type: {}, size: {}",
+                                                    unit.type_, unit.sizeBytes
                                                 );
 
-                                                let nal_units = unsafe {
+                                                let payload = unsafe {
                                                     std::slice::from_raw_parts(
-                                                        p_nal,
-                                                        nal_count as usize,
+                                                        unit.payload,
+                                                        unit.sizeBytes as usize,
                                                     )
                                                 };
 
-                                                for unit in nal_units {
-                                                    println!(
-                                                        "NAL unit type: {}, size: {}",
-                                                        unit.type_, unit.sizeBytes
-                                                    );
+                                                let ws_frame = WsFrame {
+                                                    ts: timestamp as f32,
+                                                    seq_id: seq_id as u32,
+                                                    msg_type: 5, //an hevc video frame
+                                                    //length: video_frame.len() as u32,
+                                                    elapsed: elapsed as f32,
+                                                    frame: payload.to_vec(),
+                                                };
 
-                                                    let payload = unsafe {
-                                                        std::slice::from_raw_parts(
-                                                            unit.payload,
-                                                            unit.sizeBytes as usize,
-                                                        )
-                                                    };
-
-                                                    let ws_frame = WsFrame {
-                                                        ts: timestamp as f32,
-                                                        seq_id: seq_id as u32,
-                                                        msg_type: 5, //an hevc video frame
-                                                        //length: video_frame.len() as u32,
-                                                        elapsed: elapsed as f32,
-                                                        frame: payload.to_vec(),
-                                                    };
-
-                                                    match serialize(&ws_frame) {
-                                                        Ok(bin) => {
-                                                        println!("WsFrame binary length: {}", bin.len());
-                                                        //println!("{}", bin);
-                                                        ctx.binary(bin);
-                                                        },
-                                                        Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
-                                                    }
-
-                                                    /*match self.hevc {
-                                                        Ok(ref mut file) => {
-                                                            let _ = file.write_all(payload);
-                                                        }
-                                                        Err(_) => {}
-                                                    }*/
+                                                match serialize(&ws_frame) {
+                                                    Ok(bin) => {
+                                                    println!("WsFrame binary length: {}", bin.len());
+                                                    //println!("{}", bin);
+                                                    ctx.binary(bin);
+                                                    },
+                                                    Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
                                                 }
-                                            } else {
-                                                break;
-                                            }
-                                        }
+
+                                                /*match self.hevc {
+                                                    Ok(ref mut file) => {
+                                                        let _ = file.write_all(payload);
+                                                    }
+                                                    Err(_) => {}
+                                                }*/
+                                    }
+                                    } else {
+                                    break;
+                                    }
+                                    }
                                     }*/
                                 }
                                 None => {}
@@ -2125,73 +2119,73 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }
 
                                 /*if keyframe {
-                                    //flush the encoder to signal the end
-                                    loop {
-                                        let ret = unsafe {
-                                            x265_encoder_encode(
-                                                self.enc,
-                                                &mut p_nal,
-                                                &mut nal_count,
-                                                ptr::null_mut(),
-                                                ptr::null_mut(),
+                                //flush the encoder to signal the end
+                                loop {
+                                    let ret = unsafe {
+                                        x265_encoder_encode(
+                                            self.enc,
+                                            &mut p_nal,
+                                            &mut nal_count,
+                                            ptr::null_mut(),
+                                            ptr::null_mut(),
+                                        )
+                                    };
+
+                                    if ret > 0 {
+                                        println!(
+                                            "flushing the encoder, residual nal_count = {}",
+                                            nal_count
+                                        );
+
+                                        let nal_units = unsafe {
+                                            std::slice::from_raw_parts(
+                                                p_nal,
+                                                nal_count as usize,
                                             )
                                         };
 
-                                        if ret > 0 {
+                                        for unit in nal_units {
                                             println!(
-                                                "flushing the encoder, residual nal_count = {}",
-                                                nal_count
+                                                "NAL unit type: {}, size: {}",
+                                                unit.type_, unit.sizeBytes
                                             );
 
-                                            let nal_units = unsafe {
+                                            let payload = unsafe {
                                                 std::slice::from_raw_parts(
-                                                    p_nal,
-                                                    nal_count as usize,
+                                                    unit.payload,
+                                                    unit.sizeBytes as usize,
                                                 )
                                             };
 
-                                            for unit in nal_units {
-                                                println!(
-                                                    "NAL unit type: {}, size: {}",
-                                                    unit.type_, unit.sizeBytes
-                                                );
+                                            let ws_frame = WsFrame {
+                                                ts: timestamp as f32,
+                                                seq_id: seq_id as u32,
+                                                msg_type: 5, //an hevc video frame
+                                                //length: video_frame.len() as u32,
+                                                elapsed: elapsed as f32,
+                                                frame: payload.to_vec(),
+                                            };
 
-                                                let payload = unsafe {
-                                                    std::slice::from_raw_parts(
-                                                        unit.payload,
-                                                        unit.sizeBytes as usize,
-                                                    )
-                                                };
-
-                                                let ws_frame = WsFrame {
-                                                    ts: timestamp as f32,
-                                                    seq_id: seq_id as u32,
-                                                    msg_type: 5, //an hevc video frame
-                                                    //length: video_frame.len() as u32,
-                                                    elapsed: elapsed as f32,
-                                                    frame: payload.to_vec(),
-                                                };
-
-                                                match serialize(&ws_frame) {
-                                                    Ok(bin) => {
-                                                    println!("WsFrame binary length: {}", bin.len());
-                                                    //println!("{}", bin);
-                                                    ctx.binary(bin);
-                                                    },
-                                                    Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
-                                                }
-
-                                                /*match self.hevc {
-                                                    Ok(ref mut file) => {
-                                                        let _ = file.write_all(payload);
-                                                    }
-                                                    Err(_) => {}
-                                                }*/
+                                            match serialize(&ws_frame) {
+                                                Ok(bin) => {
+                                                println!("WsFrame binary length: {}", bin.len());
+                                                //println!("{}", bin);
+                                                ctx.binary(bin);
+                                                },
+                                                Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
                                             }
-                                        } else {
-                                            break;
-                                        }
-                                    }
+
+                                            /*match self.hevc {
+                                                Ok(ref mut file) => {
+                                                    let _ = file.write_all(payload);
+                                                }
+                                                Err(_) => {}
+                                            }*/
+                                }
+                                } else {
+                                break;
+                                }
+                                }
                                 }*/
                             }
                         }
@@ -2214,7 +2208,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
-static VERSION_STRING: &'static str = "SV2018-12-17.1";
+static VERSION_STRING: &'static str = "SV2018-12-17.2";
 static WASM_STRING: &'static str = "WASM2018-12-14.0";
 
 #[cfg(not(feature = "server"))]

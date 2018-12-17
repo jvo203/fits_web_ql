@@ -4451,7 +4451,7 @@ impl FITS {
         x2: i32,
         y2: i32,
         user: &Option<UserParams>,
-        method: Codec,
+        wasm: bool,
     ) -> Option<(u32, u32, Vec<Vec<u8>>, Vec<u8>, String)> {
         //spatial range checks
         let width = self.width as i32;
@@ -4536,10 +4536,14 @@ impl FITS {
         };
 
         //x265 can only work with dimensions >= 32; in addition libxpv seems more efficient compression-size-wise for small images...
-        let method = if dimx < 128 || dimy < 128 {
-            Codec::VPX
+        let method = if !wasm {
+            fits::Codec::VPX
         } else {
-            method
+            if dimx < 128 || dimy < 128 {
+                Codec::VPX
+            } else {
+                fits::Codec::HEVC
+            }
         };
 
         let alpha = lz4_compress::compress(&mask);
