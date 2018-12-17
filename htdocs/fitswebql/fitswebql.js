@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-17.0";
+	return "JS2018-12-17.1";
 }
 
 const wasm_supported = (() => {
@@ -1397,6 +1397,8 @@ function open_websocket_connection(datasetId, index) {
 								var canvas_ptr = Module._malloc(len);
 
 								var data = new Uint8ClampedArray(Module.HEAPU8.buffer, canvas_ptr, len);
+								for (let i = 0; i < len; i++)
+									data[i] = 0;
 								var img = new ImageData(data, width, height);
 
 								var alpha_ptr = Module._malloc(width * height);
@@ -1429,6 +1431,8 @@ function open_websocket_connection(datasetId, index) {
 										//WASM buffers have changed, need to refresh the ImageData.data buffer
 										var len = img.width * img.height * 4;
 										var data = new Uint8ClampedArray(Module.HEAPU8.buffer, videoFrame.ptr, len);
+										for (let i = 0; i < len; i++)
+											data[i] = 0;
 										img = new ImageData(data, img.width, img.height);
 									}
 
@@ -1796,6 +1800,8 @@ function open_websocket_connection(datasetId, index) {
 									var ptr = Module._malloc(len);
 
 									var data = new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, len);
+									for (let i = 0; i < len; i++)
+										data[i] = 0;
 									var img = new ImageData(data, width, height);
 
 									var alpha_ptr = Module._malloc(width * height);
@@ -5518,7 +5524,6 @@ function setup_axes() {
 }
 
 function x_axis_mouseenter(offset) {
-	console.log("x_axis_mouse_enter");
 	//send an init_video command via WebSockets
 	streaming = true;
 	video_stack = new Array(va_count);
@@ -6853,7 +6858,6 @@ function setup_image_selection() {
 			resetKalman();
 		})
 		.on("mouseleave", function () {
-			console.log("image mouse leave");
 			clearTimeout(idleMouse);
 
 			if (!d3.event.shiftKey)
