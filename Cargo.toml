@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.0.5"
+version = "4.0.6"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2018"
 
@@ -11,6 +11,7 @@ use-intrinsics = []
 hevc = []
 vp9 = []
 production = []
+opencl = ["ocl"]
 
 [build-dependencies]
 bindgen = "*"
@@ -60,7 +61,8 @@ lz4-compress = "*"
 postgres = "*"
 tar = "*"
 flate2 = "*"
-ocl = "*"
+ocl = {version = "*", optional = true}
+
 #rulinalg = "*"
 #linearkalman = "*"
 #rav1e = { git = "https://github.com/xiph/rav1e.git", branch = "master" }

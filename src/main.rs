@@ -55,7 +55,7 @@ use postgres::{Connection, TlsMode};
 
 use vpx_sys::*;
 
-//use ocl::ProQue;
+#[cfg(feature = "opencl")]
 use ocl::core;
 
 use std::collections::HashMap;
@@ -2210,8 +2210,8 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.0.5";
-static VERSION_STRING: &'static str = "SV2018-12-17.4";
+static SERVER_STRING: &'static str = "FITSWebQL v4.0.6";
+static VERSION_STRING: &'static str = "SV2018-12-21.1";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -3773,6 +3773,7 @@ fn main() {
 
     println!("detected number of CPUs: {}", num_cpus::get());
 
+    #[cfg(feature = "opencl")]
     match core::default_platform() {
         Ok(platform_id) => match core::get_device_ids(&platform_id, None, None) {
             Ok(device_ids) => println!("OpenCL device list: {:?}", device_ids),

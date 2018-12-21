@@ -286,7 +286,18 @@ impl Handler<Disconnect> for SessionServer {
                             //molecules will be taken care of later on in the orphan garbage collection
                             if !is_dummy {
                                 molecules.write().remove(&msg.dataset_id);
-                                DATASETS.write().remove(&msg.dataset_id);
+                                let entry = { DATASETS.write().remove_entry(&msg.dataset_id) } ;
+                                match entry {
+                                    Some((key,value)) => {
+                                        std::thread::spawn(move || {
+                                            let fits = value.read();
+                                            println!("non-blocking drop for {}", fits.dataset_id);
+                                        });
+
+                                        println!("resuming the actix server thread");
+                                    },
+                                    None => println!("{} not found in the DATASETS", &msg.dataset_id),
+                                }
                             }
                         }
                     };

@@ -30,6 +30,9 @@ use rayon::prelude::*;
 
 use flate2::read::GzDecoder;
 
+#[cfg(feature = "opencl")]
+use ocl::ProQue;
+
 #[cfg(feature = "server")]
 use curl::easy::Easy;
 
@@ -155,7 +158,7 @@ pub enum Intensity {
 
 #[derive(Debug)]
 pub struct FITS {
-    dataset_id: String,
+    pub dataset_id: String,
     data_id: String,
     filesize: u64,
     //basic header/votable
@@ -5667,6 +5670,22 @@ impl FITS {
 
         Some(stream_rx)
     }
+
+    #[cfg(feature = "opencl")]
+    fn compress_rbf(&mut self) {
+        //check if the RBF file already exists in the FITSCACHE
+        let filename = format!("{}/{}.rbf", FITSCACHE, self.dataset_id.replace("/", "_"));
+        let filepath = std::path::Path::new(&filename);
+
+        if filepath.exists() {
+            return;
+        }
+
+        println!(
+            "{}: compressing a FITS data cube with Radial Basis Functions",
+            self.dataset_id
+        );
+    }
 }
 
 impl Drop for FITS {
@@ -5721,6 +5740,13 @@ impl Drop for FITS {
                     }
 
                     let _ = std::fs::rename(tmp_filepath, filepath);
+                }
+            }
+
+            #[cfg(feature = "opencl")]
+            {
+                if self.depth > 1 {
+                    self.compress_rbf();
                 }
             }
 
