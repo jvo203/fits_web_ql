@@ -163,7 +163,18 @@ impl Default for SessionServer {
                         //println!("[orphaned dataset cleanup]: no active sessions found, {} will be expunged from memory", key);
 
                         molecules_copy.write().remove(&key);
-                        DATASETS.write().remove(&key);//cannot get a lock!                        
+                        let entry = DATASETS.write().remove(&key);
+                        match entry {
+                            Some(value) => {
+                                std::thread::spawn(move || {
+                                        let fits = value.read();
+                                        println!("non-blocking drop for {}", fits.dataset_id);
+                                    });
+
+                                    println!("resuming the actix server thread");
+                                },
+                            None => println!("{} not found in the DATASETS", &key),
+                        };
 
                         println!("[orphaned dataset cleanup]: {} has been expunged from memory", key);
                     },
@@ -286,7 +297,7 @@ impl Handler<Disconnect> for SessionServer {
                             //molecules will be taken care of later on in the orphan garbage collection
                             if !is_dummy {
                                 molecules.write().remove(&msg.dataset_id);
-                                let entry = { DATASETS.write().remove(&msg.dataset_id) } ;
+                                let entry = DATASETS.write().remove(&msg.dataset_id) ;
                                 match entry {
                                     Some(value) => {
                                         std::thread::spawn(move || {
@@ -297,7 +308,7 @@ impl Handler<Disconnect> for SessionServer {
                                         println!("resuming the actix server thread");
                                     },
                                     None => println!("{} not found in the DATASETS", &msg.dataset_id),
-                                }
+                                };
                             }
                         }
                     };
