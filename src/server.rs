@@ -171,8 +171,8 @@ impl Default for SessionServer {
                                         println!("non-blocking drop for {}", fits.dataset_id);
                                     });
 
-                                    println!("resuming the actix server thread");
-                                },
+                                println!("resuming the actix server thread");
+                            },
                             None => println!("{} not found in the DATASETS", &key),
                         };
 
