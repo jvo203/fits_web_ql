@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-17.6";
+	return "JS2018-12-21.0";
 }
 
 const wasm_supported = (() => {
@@ -2972,6 +2972,9 @@ function display_dataset_info() {
 				displayMolecules = displayMolecules_bak;
 
 				video_playback = false;
+				clearTimeout(video_timeout);
+				video_timeout = -1;
+
 				document.getElementById('videoPlay').style.display = "inline-block";
 				document.getElementById('videoPause').style.display = "none";
 
@@ -3000,18 +3003,24 @@ function display_dataset_info() {
 			if (!streaming)
 				x_axis_mouseenter(video_offset);
 
-			replay_video();
+			if (video_timeout < 0)
+				replay_video();
 		};
 
 		document.getElementById('videoPause').onclick = function () {
 			video_playback = false;
+			clearTimeout(video_timeout);
+			video_timeout = -1;
+
 			document.getElementById('videoPlay').style.display = "inline-block";
 			document.getElementById('videoPause').style.display = "none";
 		};
 
 		document.getElementById('videoStop').onclick = function () {
-			video_playback = true;
+			video_playback = false;
 			video_offset = null;
+			clearTimeout(video_timeout);
+			video_timeout = -1;
 
 			document.getElementById('videoPlay').style.display = "inline-block";
 			document.getElementById('videoPause').style.display = "none";
@@ -3033,7 +3042,8 @@ function display_dataset_info() {
 			if (!streaming)
 				x_axis_mouseenter(video_offset);
 
-			replay_video();
+			if (video_timeout < 0)
+				replay_video();
 		};
 
 		document.getElementById('videoFastForward').onclick = function () {
@@ -3049,7 +3059,8 @@ function display_dataset_info() {
 			if (!streaming)
 				x_axis_mouseenter(video_offset);
 
-			replay_video();
+			if (video_timeout < 0)
+				replay_video();
 		};
 	}
 
@@ -5858,7 +5869,7 @@ function replay_video() {
 	video_offset[0] = new_video_offset;
 	//var dt = video_period / width;
 
-	setTimeout(replay_video, dt);
+	video_timeout = setTimeout(replay_video, dt);
 }
 
 function x_axis_move(offset) {
@@ -10547,6 +10558,7 @@ async*/ function mainRenderer() {
 		streaming = false;
 		video_playback = false;
 		video_offset = null;
+		video_timeout = -1;
 		mol_pos = -1;
 		idleMouse = -1;
 		idleVideo = -1;
