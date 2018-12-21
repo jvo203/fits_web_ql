@@ -55,6 +55,9 @@ use postgres::{Connection, TlsMode};
 
 use vpx_sys::*;
 
+//use ocl::ProQue;
+use ocl::core;
+
 use std::collections::HashMap;
 //use std::sync::RwLock;
 use parking_lot::RwLock;
@@ -3769,6 +3772,14 @@ fn main() {
         .start();
 
     println!("detected number of CPUs: {}", num_cpus::get());
+
+    match core::default_platform() {
+        Ok(platform_id) => match core::get_device_ids(&platform_id, None, None) {
+            Ok(device_ids) => println!("OpenCL device list: {:?}", device_ids),
+            Err(err) => println!("{}", err),
+        },
+        Err(err) => println!("{}", err),
+    }
 
     #[cfg(not(feature = "server"))]
     {
