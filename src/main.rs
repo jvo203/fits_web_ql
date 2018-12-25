@@ -2211,7 +2211,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.6";
-static VERSION_STRING: &'static str = "SV2018-12-21.3";
+static VERSION_STRING: &'static str = "SV2018-12-25.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -3776,7 +3776,15 @@ fn main() {
     #[cfg(feature = "opencl")]
     match core::default_platform() {
         Ok(platform_id) => match core::get_device_ids(&platform_id, None, None) {
-            Ok(device_ids) => println!("OpenCL device list: {:?}", device_ids),
+            Ok(device_ids) => {
+                println!("OpenCL device list: {:?}", device_ids);
+
+                for dev in device_ids {
+                    let dev_version = core::get_device_info(&dev, core::DeviceInfo::Version).unwrap();
+                    let dev_type = core::get_device_info(&dev, core::DeviceInfo::Type).unwrap();
+                    println!("Device type: {}, OpenCL version: {}", dev_type, dev_version);
+                }
+            },
             Err(err) => println!("{}", err),
         },
         Err(err) => println!("{}", err),
