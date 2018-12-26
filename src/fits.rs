@@ -219,6 +219,8 @@ pub struct FITS {
     cd1_2: f64,
     cd2_1: f64,
     cd2_2: f64,
+    frame_min: Vec<f32>,
+    frame_max: Vec<f32>,
     dmin: f32,
     dmax: f32,
     data_hist: RwLock<Vec<i64>>,
@@ -319,6 +321,8 @@ impl FITS {
             cd1_2: std::f64::NAN,
             cd2_1: std::f64::NAN,
             cd2_2: std::f64::NAN,
+            frame_min: Vec::new(),
+            frame_max: Vec::new(),
             dmin: std::f32::MAX, //no mistake here
             dmax: std::f32::MIN, //no mistake here
             data_hist: RwLock::new(Vec::new()),
@@ -411,10 +415,17 @@ impl FITS {
             Vec::with_capacity(self.depth as usize);
         let mut thread_integrated_spectrum: Vec<atomic::Atomic<f32>> =
             Vec::with_capacity(self.depth as usize);
+        let mut thread_frame_min: Vec<atomic::Atomic<f32>> =
+            Vec::with_capacity(self.depth as usize);
+        let mut thread_frame_max: Vec<atomic::Atomic<f32>> =
+            Vec::with_capacity(self.depth as usize);
 
         for _ in 0..self.depth {
             thread_mean_spectrum.push(atomic::Atomic::new(0.0));
             thread_integrated_spectrum.push(atomic::Atomic::new(0.0));
+
+            thread_frame_min.push(atomic::Atomic::new(std::f32::MAX));
+            thread_frame_max.push(atomic::Atomic::new(std::f32::MIN));
         }
 
         //at first fill-in the self.data_f16 vector in parallel
@@ -504,6 +515,14 @@ impl FITS {
                     thread_integrated_spectrum[frame as usize]
                         .store(integrated_spectrum, Ordering::SeqCst);
 
+                    let current_frame_min = thread_frame_min[frame as usize].load(Ordering::SeqCst);
+                    thread_frame_min[frame as usize]
+                        .store(frame_min.min(current_frame_min), Ordering::SeqCst);
+
+                    let current_frame_max = thread_frame_max[frame as usize].load(Ordering::SeqCst);
+                    thread_frame_max[frame as usize]
+                        .store(frame_max.max(current_frame_max), Ordering::SeqCst);
+
                     let current_min = thread_min[tid].load(Ordering::SeqCst);
                     thread_min[tid].store(frame_min.min(current_min), Ordering::SeqCst);
 
@@ -526,6 +545,16 @@ impl FITS {
         });
 
         self.data_f16 = gather_f16;
+
+        self.frame_min = thread_frame_min
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        self.frame_max = thread_frame_max
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
 
         self.mean_spectrum = thread_mean_spectrum
             .iter()
@@ -1238,6 +1267,9 @@ impl FITS {
 
         self.mean_spectrum.resize(self.depth as usize, 0.0);
         self.integrated_spectrum.resize(self.depth as usize, 0.0);
+
+        self.frame_min.resize(self.depth as usize, std::f32::MAX);
+        self.frame_max.resize(self.depth as usize, std::f32::MIN);
 
         match self.bitpix {
             8 => self
@@ -2005,6 +2037,9 @@ impl FITS {
 
             _ => println!("unsupported bitpix: {}", self.bitpix),
         };
+
+        self.frame_min[frame] = self.frame_min[frame].min(frame_min);
+        self.frame_max[frame] = self.frame_max[frame].max(frame_max);
 
         self.dmin = self.dmin.min(frame_min);
         self.dmax = self.dmax.max(frame_max);
@@ -5685,6 +5720,58 @@ impl FITS {
             "{}: compressing a FITS data cube with Radial Basis Functions",
             self.dataset_id
         );
+
+        for frame in 0..1/*self.depth*/ {
+            //prepare the training data
+            let capacity = self.width * self.height;
+            let mut data: Vec<f32> = Vec::with_capacity(capacity);
+            let mut x1: Vec<f32> = Vec::with_capacity(capacity);
+            let mut x2: Vec<f32> = Vec::with_capacity(capacity);
+            let mut y: Vec<f32> = Vec::with_capacity(capacity);
+            let mut e: Vec<f32> = Vec::with_capacity(capacity);
+
+            let frame_min = self.frame_min[frame];
+            let frame_max = self.frame_max[frame];
+
+            let mut offset: usize = 0;
+
+            //log-transform the data
+            match self.bitpix {
+                -32 => {
+                    let vec = &self.data_f16[frame];
+
+                    for iy in 0..self.height {
+                        for ix in 0..self.width {
+                            let tmp = self.bzero + self.bscale * vec[offset].to_f32(); //convert from half to f32
+                            offset = offset + 1;
+
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
+                                data.push(pixel.ln());
+                                x1.push((ix as f32) / ((self.width - 1) as f32));
+                                x2.push((iy as f32) / ((self.height - 1) as f32));
+                                y.push(0.0);
+                                e.push(0.0);
+                            }
+                        }
+                    }
+                }
+                _ => println!("unsupported bitpix: {}", self.bitpix),
+            };
+
+            println!(
+                "frame {}, min: {}, max: {}, capacity: {}, length: {}/{}/{}/{}/{}",
+                frame,
+                frame_min,
+                frame_max,
+                capacity,
+                data.len(),
+                x1.len(),
+                x2.len(),
+                y.len(),
+                e.len()
+            );
+        }
     }
 }
 
