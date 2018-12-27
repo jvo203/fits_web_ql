@@ -5721,6 +5721,12 @@ impl FITS {
             self.dataset_id
         );
 
+        let ocl_src = r#"
+            __kernel void add(__global float* buffer, float scalar) {
+                buffer[get_global_id(0)] += scalar;
+            }
+        "#;
+
         for frame in 0..1
         /*self.depth*/
         {
@@ -5773,6 +5779,36 @@ impl FITS {
                 y.len(),
                 e.len()
             );
+
+            //init RBF clusters
+            let XCLUST = self.width / 16;
+            let YCLUST = self.height / 16;
+            let NCLUST = XCLUST * YCLUST;
+
+            println!(
+                "plane dimensions: {}x{}, RBF clusters: {}x{}, total = {}",
+                self.width, self.height, XCLUST, YCLUST, NCLUST
+            );
+
+            //init OpenCL buffers
+            let len = data.len();
+            let pro_que = ProQue::builder().src(ocl_src).dims(len).build().unwrap();
+
+            let ocl_data = pro_que.create_buffer::<f32>().unwrap();
+            ocl_data.write(&data).enq().unwrap();
+
+            let ocl_x1 = pro_que.create_buffer::<f32>().unwrap();
+            ocl_x1.write(&x1).enq().unwrap();
+
+            let ocl_x2 = pro_que.create_buffer::<f32>().unwrap();
+            ocl_x2.write(&x2).enq().unwrap();
+
+            let ocl_y = pro_que.create_buffer::<f32>().unwrap();
+            let ocl_e = pro_que.create_buffer::<f32>().unwrap();
+
+            /*let mut vec = vec![0.0f32; len];
+            ocl_x2.read(&mut vec).enq().unwrap();
+            println!("{:?}", vec);*/
         }
     }
 }
