@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-27.3";
+	return "JS2018-12-27.5";
 }
 
 const wasm_supported = (() => {
@@ -2019,7 +2019,8 @@ function display_hourglass() {
 		.attr("id", "hourglass")
 		.attr("x", (width - img_width) / 2)
 		.attr("y", (height - img_height) / 2)
-		.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/loading.gif")
+		//.attr("xlink:href", ROOT_PATH + "loading.gif")
+		.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/loading.gif")		
 		.attr("width", img_width)
 		.attr("height", img_height)
 		.attr("opacity", 1.0);
