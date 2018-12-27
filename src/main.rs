@@ -2210,8 +2210,8 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.0.6";
-static VERSION_STRING: &'static str = "SV2018-12-26.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.0.7";
+static VERSION_STRING: &'static str = "SV2018-12-27.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -3469,24 +3469,63 @@ fn http_fits_response(
     );
 
     html.push_str("<script src=\"https://d3js.org/d3.v4.min.js\"></script>\n");
+
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"reconnecting-websocket.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/reconnecting-websocket.js\"></script>\n");
+
     html.push_str("<script src=\"//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js\"></script>\n");
 
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"ra_dec_conversion.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/ra_dec_conversion.js\"></script>\n");
+
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"sylvester.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/sylvester.js\"></script>\n");
+
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"shortcut.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/shortcut.js\"></script>\n");
+
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"colourmaps.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/colourmaps.js\"></script>\n");
+
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"lz4.min.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/lz4.min.js\"></script>\n");
+
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"marchingsquares-isocontours.min.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/marchingsquares-isocontours.min.js\"></script>\n");
+
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"marchingsquares-isobands.min.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/marchingsquares-isobands.min.js\"></script>\n");
 
     //VP9 decoder
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"ogv-decoder-video-vp9.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/ogv-decoder-video-vp9.js\"></script>\n");
 
     //custom vpx wasm decoder
     #[cfg(feature = "vp9")]
     {
+        #[cfg(not(feature = "cdn"))]
         html.push_str("<script src=\"vpx.js\"></script>\n");
+        #[cfg(feature = "cdn")]
+        html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/vpx.js\"></script>\n");
+
         html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {
@@ -3504,8 +3543,15 @@ fn http_fits_response(
     //custom hevc wasm decoder
     #[cfg(feature = "hevc")]
     {
+        #[cfg(not(feature = "cdn"))]
         html.push_str(&format!(
             "<script src=\"hevc_{}.js\"></script>\n",
+            WASM_STRING
+        ));
+
+        #[cfg(feature = "cdn")]
+        html.push_str(&format!(
+            "<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/hevc_{}.js\"></script>\n",
             WASM_STRING
         ));
 
@@ -3532,7 +3578,10 @@ fn http_fits_response(
         VERSION_STRING
     ));
     //custom css styles
+    #[cfg(not(feature = "cdn"))]
     html.push_str("<link rel=\"stylesheet\" href=\"fitswebql.css\"/>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/fitswebql.css\"/>\n");
 
     html.push_str("<title>FITSWebQL</title></head><body>\n");
     html.push_str(&format!(

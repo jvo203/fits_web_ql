@@ -133,7 +133,7 @@ function init_surface()
     div.append("img")
 	.attr("id", "hourglassThreeJS")
 	.attr("class", "hourglass")
-	.attr("src", ROOT_PATH + "loading.gif")
+	.attr("src", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/loading.gif")
 	.attr("alt", "hourglass")
 	.style("width", 200)
 	.style("height", 200);	

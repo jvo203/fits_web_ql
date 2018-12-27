@@ -187,20 +187,20 @@ to exit the program press CTRL+C
 # How to Run the Production Server (only at the Japanese Virtual Observatory)
 cd into the fits_web_ql directory and execute
 
-cargo run --features 'server production' --release
+cargo run --features 'server production cdn' --release
 
 # extra options
 an alternative HTTP port
 
-cargo run --features 'server production' --release -- --port 8000
+cargo run --features 'server production cdn' --release -- --port 8000
 
 an alternative server URL path
 
-cargo run --features 'server production' --release -- --path fitswebql_v4
+cargo run --features 'server production cdn' --release -- --path fitswebql_v4
 
 combined options
 
-cargo run --features 'server production' --release -- --port 8000 --path fitswebql_v4
+cargo run --features 'server production cdn' --release -- --port 8000 --path fitswebql_v4
 
 an alternative network interface (only needed to make the local version run in a quasi-server mode)
 

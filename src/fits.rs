@@ -5721,7 +5721,9 @@ impl FITS {
             self.dataset_id
         );
 
-        for frame in 0..1/*self.depth*/ {
+        for frame in 0..1
+        /*self.depth*/
+        {
             //prepare the training data
             let capacity = self.width * self.height;
             let mut data: Vec<f32> = Vec::with_capacity(capacity);

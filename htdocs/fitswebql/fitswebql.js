@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-21.0";
+	return "JS2018-12-27.3";
 }
 
 const wasm_supported = (() => {
@@ -2019,7 +2019,7 @@ function display_hourglass() {
 		.attr("id", "hourglass")
 		.attr("x", (width - img_width) / 2)
 		.attr("y", (height - img_height) / 2)
-		.attr("xlink:href", "loading.gif")
+		.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/loading.gif")
 		.attr("width", img_width)
 		.attr("height", img_height)
 		.attr("opacity", 1.0);
@@ -6186,7 +6186,8 @@ function setup_viewports() {
 		.attr("id", "upperCross")
 		.attr("x", (emStrokeWidth + (zoomed_size - crossSize) / 2))
 		.attr("y", (emStrokeWidth + (zoomed_size - crossSize) / 2))
-		.attr("xlink:href", ROOT_PATH + "plainicon.com-crosshair_white.svg")
+		//.attr("xlink:href", ROOT_PATH + "plainicon.com-crosshair_white.svg")
+		.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/plainicon.com-crosshair_white.svg")
 		.attr("width", crossSize)
 		.attr("height", crossSize)
 		.attr("opacity", 0.0);
@@ -6196,7 +6197,8 @@ function setup_viewports() {
 		.attr("id", "lowerCross")
 		.attr("x", (width - 1 - emStrokeWidth - (zoomed_size + crossSize) / 2))
 		.attr("y", (height - 1 - emStrokeWidth - (zoomed_size + crossSize) / 2))
-		.attr("xlink:href", ROOT_PATH + "plainicon.com-crosshair_white.svg")
+		//.attr("xlink:href", ROOT_PATH + "plainicon.com-crosshair_white.svg")
+		.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/plainicon.com-crosshair_white.svg")
 		.attr("width", crossSize)
 		.attr("height", crossSize)
 		.attr("opacity", 0.0);
@@ -8305,7 +8307,7 @@ function display_menu() {
 		.attr("href", "https://www.nao.ac.jp/")
 		.append("img")
 		.attr("class", "navbar-left")
-		.attr("src", "logo_naoj_nothing_s.png")
+		.attr("src", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/logo_naoj_nothing_s.png")
 		.attr("alt", "NAOJ")
 		.attr("max-height", "100%")
 		.attr("height", 50);//2.5*emFontSize);//50
@@ -9106,7 +9108,7 @@ function setup_help() {
 		.attr("preload", "metadata");
 
 	vid.append("source")
-		.attr("src", "fixed_scale_y_axis.mp4");
+		.attr("src", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/fixed_scale_y_axis.mp4");
 
 	vid.append("p")
 		.html("Your browser does not support the video tag.");
@@ -10333,61 +10335,6 @@ function enable_3d_view() {
 
 		/*(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			//po.src = 'http://stemkoski.github.io/Three.js/js/Three.js';
-			po.src = 'stemkoski/Three.js';
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
-
-		(function () {
-			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			//po.src = 'http://stemkoski.github.io/Three.js/js/Detector.js';
-			po.src = 'stemkoski/Detector.js';
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
-
-		(function () {
-			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			//po.src = 'http://stemkoski.github.io/Three.js/js/Stats.js';
-			po.src = 'stemkoski/Stats.js';
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
-
-		(function () {
-			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			//po.src = 'http://stemkoski.github.io/Three.js/js/TrackballControls.js';
-			po.src = 'stemkoski/TrackballControls.js';
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
-
-		(function () {
-			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			//po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.KeyboardState.js';
-			po.src = 'stemkoski/THREEx.KeyboardState.js';
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
-
-		(function () {
-			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			//po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.FullScreen.js';
-			po.src = 'stemkoski/THREEx.FullScreen.js';
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
-
-		(function () {
-			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			//po.src = 'http://stemkoski.github.io/Three.js/js/THREEx.WindowResize.js';
-			po.src = 'stemkoski/THREEx.WindowResize.js';
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();
-
-		(function () {
-			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			po.src = 'surface.js' + '?' + encodeURIComponent(get_js_version());
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-		})();*/
-
-		(function () {
-			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'three.min.js' + '?' + encodeURIComponent(get_js_version());
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
@@ -10419,6 +10366,42 @@ function enable_3d_view() {
 		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
 			po.src = 'TrackballControls.js' + '?' + encodeURIComponent(get_js_version());
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+		})();*/
+
+		(function () {
+			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/three.min.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+		})();
+
+		(function () {
+			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/Detector.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+		})();
+
+		(function () {
+			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/threex.keyboardstate.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+		})();
+
+		(function () {
+			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/threex.windowresize.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+		})();
+
+		(function () {
+			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/THREEx.FullScreen.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+		})();
+
+		(function () {
+			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/TrackballControls.js';
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
 

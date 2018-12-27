@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.0.6"
+version = "4.0.7"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2018"
 
@@ -11,6 +11,7 @@ use-intrinsics = []
 hevc = []
 vp9 = []
 production = []
+cdn = []
 opencl = ["ocl"]
 
 [build-dependencies]
