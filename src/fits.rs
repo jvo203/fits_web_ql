@@ -5956,7 +5956,7 @@ impl FITS {
             //init OpenCL buffers
             let len = data.len();
             let pro_que = ProQue::builder()
-                //.cmplr_def("LEN", NCLUST)
+                //.cmplr_def("NCLUST", NCLUST)
                 .src(ocl_src.clone())
                 .dims(len)
                 .build()
