@@ -33,6 +33,9 @@ use flate2::read::GzDecoder;
 #[cfg(feature = "opencl")]
 use ocl::ProQue;
 
+#[cfg(feature = "opencl")]
+use rand::distributions::{Distribution, StandardNormal, Uniform};
+
 #[cfg(feature = "server")]
 use curl::easy::Easy;
 
@@ -5721,11 +5724,102 @@ impl FITS {
             self.dataset_id
         );
 
-        let ocl_src = r#"
-            __kernel void add(__global float* buffer, float scalar) {
-                buffer[get_global_id(0)] += scalar;
+        let XCLUST = self.width / 16;
+        let YCLUST = self.height / 16;
+        let NCLUST = XCLUST * YCLUST;
+
+        println!(
+            "plane dimensions: {}x{}, RBF clusters: {}x{}, total = {}",
+            self.width, self.height, XCLUST, YCLUST, NCLUST
+        );
+
+        //define NCLUST dynamically
+        let mut ocl_src = format!("#define NCLUST {}", NCLUST);
+
+        ocl_src.push_str(r#"
+            inline void atomicAdd_l_f(volatile __local float *addr, float val)
+            {
+                union {
+                    unsigned int u32;
+                    float        f32;
+                } next, expected, current;
+   	            current.f32    = *addr;
+                do {
+   	                expected.f32 = current.f32;
+                    next.f32     = expected.f32 + val;
+   		            current.u32  = atomic_cmpxchg( (volatile __local unsigned int *)addr, 
+                               expected.u32, next.u32);
+                } while( current.u32 != expected.u32 );
             }
-        "#;
+
+            inline void atomicAdd_g_f(volatile __global float *addr, float val)
+            {
+                union {
+                    unsigned int u32;
+                    float        f32;
+                } next, expected, current;
+   	            current.f32    = *addr;
+                do {
+   	                expected.f32 = current.f32;
+                    next.f32     = expected.f32 + val;
+   		            current.u32  = atomic_cmpxchg( (volatile __global unsigned int *)addr, 
+                               expected.u32, next.u32);
+                } while( current.u32 != expected.u32 );
+            }
+
+            __kernel void rbf_forward_pass(__global float* _x1, __global float* _x2, __global float* _y, __global float* _data, __global float* _e, __constant float* c1, __constant float* c2, __constant float* p0, __constant float* p1, __constant float* p2, __constant float* w, __global float* _grad_w) {              
+
+                __local float tid_grad_w[NCLUST+1];
+                float grad_w[NCLUST+1];
+
+                size_t local_index = get_local_id(0);
+
+                if(local_index == 0)
+                {
+                    for(int i=0;i<NCLUST+1;i++)
+                        tid_grad_w[i]=0.0;
+                };
+                barrier(CLK_LOCAL_MEM_FENCE);
+
+                size_t index = get_global_id(0);
+
+                float x1 = _x1[index];
+                float x2 = _x2[index];
+
+                float tmp = w[NCLUST];
+                grad_w[NCLUST] = 1.0;//bias
+
+                for(int i=0;i<NCLUST;i++)
+                {
+                    float a = native_exp(p0[i]) ;
+		            float b = p1[i] ;
+		            float c = native_exp(p2[i]) ;
+
+		            float tmp1 = (x1 - c1[i]) ;
+		            float tmp2 = (x2 - c2[i]) ;
+		            float dist = a*tmp1*tmp1 - 2.0f*b*tmp1*tmp2 + c*tmp2*tmp2 ;
+		            float act = native_exp( - dist ) ;
+
+		            tmp += w[i] * act ;
+                    grad_w[i] = act ;
+                }
+
+                float e = tmp - _data[index] ;
+                _y[index] = tmp ;                
+	            _e[index] = e ;
+
+                //gradients
+	            for(int i=0;i<NCLUST+1;i++)
+		            atomicAdd_l_f(&(tid_grad_w[i]), e * grad_w[i]) ;
+
+                barrier(CLK_LOCAL_MEM_FENCE);
+                if(local_index == (get_local_size(0)-1))
+                {
+                    for(int i=0;i<NCLUST+1;i++)
+                        atomicAdd_g_f(&(_grad_w[i]), tid_grad_w[i]);
+                }
+            }
+        "#);
 
         for frame in 0..1
         /*self.depth*/
@@ -5740,6 +5834,11 @@ impl FITS {
 
             let frame_min = self.frame_min[frame];
             let frame_max = self.frame_max[frame];
+
+            let mut x1min = std::f32::MAX;
+            let mut x1max = std::f32::MIN;
+            let mut x2min = std::f32::MAX;
+            let mut x2max = std::f32::MIN;
 
             let mut offset: usize = 0;
 
@@ -5756,8 +5855,28 @@ impl FITS {
                             if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
                                 let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
                                 data.push(pixel.ln());
-                                x1.push((ix as f32) / ((self.width - 1) as f32));
-                                x2.push((iy as f32) / ((self.height - 1) as f32));
+
+                                let val1 = (ix as f32) / ((self.width - 1) as f32);
+                                let val2 = (iy as f32) / ((self.height - 1) as f32);
+
+                                if val1 < x1min {
+                                    x1min = val1;
+                                }
+
+                                if val1 > x1max {
+                                    x1max = val1;
+                                }
+
+                                if val2 < x2min {
+                                    x2min = val2;
+                                }
+
+                                if val2 > x2max {
+                                    x2max = val2;
+                                }
+
+                                x1.push(val1);
+                                x2.push(val2);
                                 y.push(0.0);
                                 e.push(0.0);
                             }
@@ -5781,18 +5900,69 @@ impl FITS {
             );
 
             //init RBF clusters
-            let XCLUST = self.width / 16;
-            let YCLUST = self.height / 16;
-            let NCLUST = XCLUST * YCLUST;
-
             println!(
-                "plane dimensions: {}x{}, RBF clusters: {}x{}, total = {}",
-                self.width, self.height, XCLUST, YCLUST, NCLUST
+                "x1min: {}, x1max: {}, x2min: {}, x2max: {}",
+                x1min, x1max, x2min, x2max
             );
+
+            let mut c1: Vec<f32> = Vec::with_capacity(NCLUST);
+            let mut c2: Vec<f32> = Vec::with_capacity(NCLUST);
+            let mut p0: Vec<f32> = Vec::with_capacity(NCLUST);
+            let mut p1: Vec<f32> = Vec::with_capacity(NCLUST);
+            let mut p2: Vec<f32> = Vec::with_capacity(NCLUST);
+
+            let mut rng = rand::thread_rng();
+            let angle = Uniform::new(0.0f32, 2.0 * std::f32::consts::PI);
+
+            for i in 0..XCLUST {
+                for j in 0..YCLUST {
+                    let i = (i as f32) / ((XCLUST - 1) as f32);
+                    let j = (j as f32) / ((YCLUST - 1) as f32);
+
+                    c1.push(i * (x1max - x1min));
+                    c2.push(j * (x2max - x2min));
+
+                    let sigmaX = 0.1f32 / ((XCLUST - 1) as f32);
+                    let sigmaY = 0.1f32 / ((YCLUST - 1) as f32);
+                    let theta = angle.sample(&mut rng);
+
+                    let a = 0.5 * theta.cos() * theta.cos() / (sigmaX * sigmaX)
+                        + 0.5 * theta.sin() * theta.sin() / (sigmaY * sigmaY);
+                    let b = -0.25 * (2.0 * theta).sin() / (sigmaX * sigmaX)
+                        + 0.25 * (2.0 * theta).sin() / (sigmaY * sigmaY);
+                    let c = 0.5 * theta.sin() * theta.sin() / (sigmaX * sigmaX)
+                        + 0.5 * theta.cos() * theta.cos() / (sigmaY * sigmaY);
+
+                    p0.push(a.ln());
+                    p1.push(b);
+                    p2.push(c.ln());
+                }
+            }
+
+            let normal = StandardNormal;
+            //no. clusters plus a bias term
+            let mut w: Vec<f32> = (0..NCLUST + 1)
+                .map(|_| normal.sample(&mut rng) as f32)
+                .collect();
+
+            //gradients
+            let mut grad_c1: Vec<f32> = vec![0.0; NCLUST];
+            let mut grad_c2: Vec<f32> = vec![0.0; NCLUST];
+            let mut grad_p0: Vec<f32> = vec![0.0; NCLUST];
+            let mut grad_p1: Vec<f32> = vec![0.0; NCLUST];
+            let mut grad_p2: Vec<f32> = vec![0.0; NCLUST];
+            let mut grad_w: Vec<f32> = vec![0.0; NCLUST + 1];
 
             //init OpenCL buffers
             let len = data.len();
-            let pro_que = ProQue::builder().src(ocl_src).dims(len).build().unwrap();
+            let pro_que = ProQue::builder()
+                //.cmplr_def("LEN", NCLUST)
+                .src(ocl_src.clone())
+                .dims(len)
+                .build()
+                .unwrap();
+            /*let mut pro_que = ProQue::builder().src(ocl_src).build().unwrap();
+            pro_que.set_dims(len);*/
 
             let ocl_data = pro_que.create_buffer::<f32>().unwrap();
             ocl_data.write(&data).enq().unwrap();
@@ -5806,9 +5976,69 @@ impl FITS {
             let ocl_y = pro_que.create_buffer::<f32>().unwrap();
             let ocl_e = pro_que.create_buffer::<f32>().unwrap();
 
-            /*let mut vec = vec![0.0f32; len];
-            ocl_x2.read(&mut vec).enq().unwrap();
-            println!("{:?}", vec);*/
+            let ocl_c1 = pro_que.buffer_builder::<f32>().len(NCLUST).build().unwrap();
+            ocl_c1.write(&c1).enq().unwrap();
+
+            let ocl_c2 = pro_que.buffer_builder::<f32>().len(NCLUST).build().unwrap();
+            ocl_c2.write(&c2).enq().unwrap();
+
+            let ocl_p0 = pro_que.buffer_builder::<f32>().len(NCLUST).build().unwrap();
+            ocl_p0.write(&p0).enq().unwrap();
+
+            let ocl_p1 = pro_que.buffer_builder::<f32>().len(NCLUST).build().unwrap();
+            ocl_p1.write(&p1).enq().unwrap();
+
+            let ocl_p2 = pro_que.buffer_builder::<f32>().len(NCLUST).build().unwrap();
+            ocl_p2.write(&p2).enq().unwrap();
+
+            let ocl_w = pro_que
+                .buffer_builder::<f32>()
+                .len(NCLUST + 1)
+                .build()
+                .unwrap();
+            ocl_w.write(&w).enq().unwrap();
+
+            let ocl_grad_w = pro_que
+                .buffer_builder::<f32>()
+                .len(NCLUST + 1)
+                .build()
+                .unwrap();
+
+            let kernel = pro_que
+                .kernel_builder("rbf_forward_pass")
+                .arg(&ocl_x1)
+                .arg(&ocl_x2)
+                .arg(&ocl_y)
+                .arg(&ocl_data)
+                .arg(&ocl_e)
+                .arg(&ocl_c1)
+                .arg(&ocl_c2)
+                .arg(&ocl_p0)
+                .arg(&ocl_p1)
+                .arg(&ocl_p2)
+                .arg(&ocl_w)
+                .arg(&ocl_grad_w)
+                //.arg(NCLUST as i32)
+                //.arg_local::<f32>(NCLUST + 1)
+                .build()
+                .unwrap();
+
+            //batch training
+            let NITER = 1;
+
+            for iter in 0..NITER {
+                print!("{} ", iter);
+
+                unsafe {
+                    kernel.enq().unwrap();
+                }
+
+                ocl_y.read(&mut y).enq().unwrap();
+                ocl_e.read(&mut e).enq().unwrap();
+                ocl_grad_w.read(&mut grad_w).enq().unwrap();
+            }
+
+            println!("grad_w: {:?}", grad_w);
         }
     }
 }

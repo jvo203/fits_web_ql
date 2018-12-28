@@ -12,7 +12,7 @@ hevc = []
 vp9 = []
 production = []
 cdn = []
-opencl = ["ocl"]
+opencl = ["ocl", "rand"]
 
 [build-dependencies]
 bindgen = "*"
@@ -63,6 +63,7 @@ postgres = "*"
 tar = "*"
 flate2 = "*"
 ocl = {version = "*", optional = true}
+rand = {version = "*", optional = true}
 
 #rulinalg = "*"
 #linearkalman = "*"

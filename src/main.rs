@@ -2211,7 +2211,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.7";
-static VERSION_STRING: &'static str = "SV2018-12-27.1";
+static VERSION_STRING: &'static str = "SV2018-12-28.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
