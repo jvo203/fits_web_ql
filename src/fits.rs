@@ -380,8 +380,8 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
-        //let num_threads = num_cpus::get();
-        let num_threads = (num_cpus::get() / 2).max(1);
+        let num_threads = num::clamp(num_cpus::get(), 1, 16);
+        //let num_threads = (num_cpus::get() / 2).max(1);
 
         let pool = match rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
