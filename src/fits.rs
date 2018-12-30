@@ -358,6 +358,25 @@ impl FITS {
         fits
     }
 
+    //a parallel multi-threaded read from the FITS file
+    fn read_from_fits_par(
+        &mut self,
+        filepath: &std::path::Path,
+        offset: usize,
+        frame_size: usize,
+        cdelt3: f32,
+        server: &Addr<server::SessionServer>,
+    ) {
+        //load data from filepath
+        let f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(err) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, err);
+                return;
+            }
+        };
+    }
+
     //a parallel multi-threaded read from the cache file
     fn read_from_cache_par(
         &mut self,
@@ -798,7 +817,7 @@ impl FITS {
 
         let mut header: Vec<u8> = Vec::new();
         let mut end: bool = false;
-        let mut no_hu: i32 = 0;
+        let mut no_hdu: i32 = 0;
 
         while !end {
             //read a FITS chunk
@@ -806,7 +825,7 @@ impl FITS {
 
             match f.read_exact(&mut chunk) {
                 Ok(()) => {
-                    no_hu = no_hu + 1;
+                    no_hdu = no_hdu + 1;
 
                     //parse a FITS header chunk
                     end = fits.parse_fits_header_chunk(&chunk);
@@ -823,7 +842,6 @@ impl FITS {
         if fits.naxis == 0 {
             header = Vec::new();
             end = false;
-            no_hu = 0;
 
             while !end {
                 //read a FITS chunk
@@ -831,7 +849,7 @@ impl FITS {
 
                 match f.read_exact(&mut chunk) {
                     Ok(()) => {
-                        no_hu = no_hu + 1;
+                        no_hdu = no_hdu + 1;
 
                         //parse a FITS header chunk
                         end = fits.parse_fits_header_chunk(&chunk);
@@ -855,7 +873,7 @@ impl FITS {
 
         fits.has_header = true;
 
-        println!("{}/#hu = {}, {:?}", id, no_hu, fits);
+        println!("{}/#hdu = {}, {:?}", id, no_hdu, fits);
 
         fits.header = match String::from_utf8(header) {
             Ok(x) => x,
@@ -909,58 +927,69 @@ impl FITS {
                 }
             }
         } else {
-            let (tx, rx) = mpsc::channel();
+            if fits.bitpix == -32 && fits.depth > 1 && !is_compressed {
+                let offset = (no_hdu as usize) * FITS_CHUNK_LENGTH;
+                println!(
+                    "{}: reading FITS data in parallel at an offset of {} bytes",
+                    id, offset
+                );
 
-            thread::spawn(move || {
+                fits.read_from_fits_par(filepath, offset, frame_size, cdelt3 as f32, &server);
+            } else {
+                //sequential reading
+                let (tx, rx) = mpsc::channel();
+
+                thread::spawn(move || {
+                    let mut frame: usize = 0;
+
+                    while frame < total {
+                        //println!("requesting a cube frame {}/{}", frame, fits.depth);
+                        let mut data: Vec<u8> = vec![0; frame_size];
+
+                        //read a FITS cube frame
+                        match f.read_exact(&mut data) {
+                            Ok(()) => {
+                                //println!("sending a cube frame for processing {}/{}", frame+1, total);
+                                //send data for processing -> tx
+                                match tx.send(data) {
+                                    Ok(()) => {}
+                                    Err(err) => {
+                                        println!("file reading thread: {}", err);
+                                        return;
+                                    }
+                                };
+
+                                frame = frame + 1;
+                            }
+                            Err(err) => {
+                                println!("CRITICAL ERROR reading FITS data: {}", err);
+                                return;
+                            }
+                        };
+                    }
+                });
+
                 let mut frame: usize = 0;
 
-                while frame < total {
-                    //println!("requesting a cube frame {}/{}", frame, fits.depth);
-                    let mut data: Vec<u8> = vec![0; frame_size];
-
-                    //read a FITS cube frame
-                    match f.read_exact(&mut data) {
-                        Ok(()) => {
-                            //println!("sending a cube frame for processing {}/{}", frame+1, total);
-                            //send data for processing -> tx
-                            match tx.send(data) {
-                                Ok(()) => {}
-                                Err(err) => {
-                                    println!("file reading thread: {}", err);
-                                    return;
-                                }
-                            };
-
-                            frame = frame + 1;
-                        }
-                        Err(err) => {
-                            println!("CRITICAL ERROR reading FITS data: {}", err);
-                            return;
-                        }
-                    };
+                for data in rx {
+                    fits.process_cube_frame(&data, cdelt3 as f32, frame);
+                    frame = frame + 1;
+                    fits.send_progress_notification(
+                        &server,
+                        &"processing FITS".to_owned(),
+                        total as i32,
+                        frame as i32,
+                    );
                 }
-            });
 
-            let mut frame: usize = 0;
-
-            for data in rx {
-                fits.process_cube_frame(&data, cdelt3 as f32, frame);
-                frame = frame + 1;
-                fits.send_progress_notification(
-                    &server,
-                    &"processing FITS".to_owned(),
-                    total as i32,
-                    frame as i32,
-                );
+                if frame != fits.depth {
+                    println!(
+                        "CRITICAL ERROR not all FITS cube frames have been read: {}/{}",
+                        frame, fits.depth
+                    );
+                    return fits;
+                }
             }
-
-            if frame != fits.depth {
-                println!(
-                    "CRITICAL ERROR not all FITS cube frames have been read: {}/{}",
-                    frame, fits.depth
-                );
-                return fits;
-            };
         }
 
         //println!("mean spectrum: {:?}", fits.mean_spectrum);
@@ -1061,7 +1090,7 @@ impl FITS {
 
         let mut header: Vec<u8> = Vec::new();
         let mut end: bool = false;
-        let mut no_hu: i32 = 0;
+        let mut no_hdu: i32 = 0;
         let mut frame: usize = 0;
         let mut frame_size: usize = 0;
 
@@ -1093,7 +1122,7 @@ impl FITS {
                         while buffer.len() >= FITS_CHUNK_LENGTH && !fits.has_header {
                             let chunk: Vec<u8> = buffer.drain(0..FITS_CHUNK_LENGTH).collect();
 
-                            no_hu = no_hu + 1;
+                            no_hdu = no_hdu + 1;
 
                             //parse a FITS header chunk
                             end = fits.parse_fits_header_chunk(&chunk);
@@ -1110,7 +1139,7 @@ impl FITS {
 
                                 fits.has_header = true;
 
-                                println!("{}/#hu = {}, {:?}", id, no_hu, fits);
+                                println!("{}/#hdu = {}, {:?}", id, no_hdu, fits);
 
                                 fits.header = match String::from_utf8(header.clone()) {
                                     Ok(x) => x,
