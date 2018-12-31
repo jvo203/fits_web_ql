@@ -358,27 +358,271 @@ impl FITS {
         fits
     }
 
-    //a parallel multi-threaded read from the FITS file
-    fn read_from_fits_par(
+    //a parallel multi-threaded read from the FITS file or half-float cache
+    fn read_from_fits_or_cache_par(
         &mut self,
         filepath: &std::path::Path,
-        offset: usize,
+        header_offset: usize,
         frame_size: usize,
+        is_cache: bool,
         cdelt3: f32,
         server: &Addr<server::SessionServer>,
-    ) {
+    ) -> bool {
         //load data from filepath
         let f = match File::open(filepath) {
             Ok(x) => x,
             Err(err) => {
                 println!("CRITICAL ERROR {:?}: {:?}", filepath, err);
-                return;
+                return false;
             }
         };
+
+        let total = self.depth;
+        let frame_count: AtomicIsize = AtomicIsize::new(0);
+
+        let start = precise_time::precise_time_ns();
+
+        //let num_threads = (num_cpus::get() / 2).max(1);
+        let num_threads = if is_cache {
+            num::clamp(num_cpus::get(), 1, 16)
+        } else {
+            //reduce the number of threads for NFS
+            num::clamp(num_cpus::get(), 1, 8)
+        };
+
+        let pool = match rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build()
+        {
+            Ok(pool) => pool,
+            Err(err) => {
+                println!(
+                    "{:?}, switching to a non-optimised function read_from_cache()",
+                    err
+                );
+                return false;
+            }
+        };
+
+        println!("custom thread pool: {:?}", pool);
+
+        //set up thread-local vectors
+        let mut thread_pixels: Vec<RwLock<Vec<f32>>> = Vec::with_capacity(num_threads);
+        let mut thread_mask: Vec<RwLock<Vec<u8>>> = Vec::with_capacity(num_threads);
+
+        let mut thread_min: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
+        let mut thread_max: Vec<atomic::Atomic<f32>> = Vec::with_capacity(num_threads);
+
+        for _ in 0..num_threads {
+            thread_pixels.push(RwLock::new(vec![0.0; self.pixels.len()]));
+            thread_mask.push(RwLock::new(vec![0; self.mask.len()]));
+
+            thread_min.push(atomic::Atomic::new(std::f32::MAX));
+            thread_max.push(atomic::Atomic::new(std::f32::MIN));
+        }
+
+        let mut thread_mean_spectrum: Vec<atomic::Atomic<f32>> =
+            Vec::with_capacity(self.depth as usize);
+        let mut thread_integrated_spectrum: Vec<atomic::Atomic<f32>> =
+            Vec::with_capacity(self.depth as usize);
+        let mut thread_frame_min: Vec<atomic::Atomic<f32>> =
+            Vec::with_capacity(self.depth as usize);
+        let mut thread_frame_max: Vec<atomic::Atomic<f32>> =
+            Vec::with_capacity(self.depth as usize);
+
+        for _ in 0..self.depth {
+            thread_mean_spectrum.push(atomic::Atomic::new(0.0));
+            thread_integrated_spectrum.push(atomic::Atomic::new(0.0));
+
+            thread_frame_min.push(atomic::Atomic::new(std::f32::MAX));
+            thread_frame_max.push(atomic::Atomic::new(std::f32::MIN));
+        }
+
+        //at first fill-in the self.data_f16 vector in parallel
+        let gather_f16: Vec<_> = pool.install(|| {
+            (0..self.depth)
+                .into_par_iter()
+                .map(|frame| {
+                    //frame is i32
+                    let offset = header_offset + (frame as usize) * frame_size;
+
+                    let mut data_u8: Vec<u8> = vec![0; frame_size];
+
+                    //parallel read at offset
+                    let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
+                        Ok(size) => size,
+                        Err(err) => {
+                            print!("read_at error: {}", err);
+                            0
+                        }
+                    };
+
+                    let tid = match pool.current_thread_index() {
+                        Some(tid) => tid,
+                        None => 0,
+                    };
+
+                    //println!("tid: {}, frame: {}, offset: {}, bytes read: {}", tid, frame, offset, bytes_read);
+
+                    if bytes_read != frame_size {
+                        println!(
+                            "CRITICAL ERROR {:?}: read {} bytes @ frame {}, requested {} bytes",
+                            filepath, bytes_read, frame, frame_size
+                        );
+                    };
+
+                    //need to mutate data_u8 into vec_f16
+                    let ptr = data_u8.as_ptr() as *mut f16;
+                    let len = data_u8.len();
+                    let capacity = data_u8.capacity();
+                    mem::forget(data_u8);
+
+                    let data_f16: Vec<f16> = if is_cache {
+                        //half-float occupies 2 bytes
+                        unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) }
+                    } else {
+                        //float32 takes up 4 bytes
+                        let no_bytes = (self.bitpix.abs() / 8) as usize;
+                        unsafe { Vec::from_raw_parts(ptr, len / no_bytes, capacity / no_bytes) }
+                    };
+
+                    //parallel data processing
+                    let mut frame_min = std::f32::MAX;
+                    let mut frame_max = std::f32::MIN;
+
+                    let mut mean_spectrum = 0.0_f32;
+                    let mut integrated_spectrum = 0.0_f32;
+
+                    let mut references: [f32; 4] =
+                        [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+
+                    let vec_ptr = data_f16.as_ptr() as *mut i16;
+                    let vec_len = data_f16.len();
+
+                    let mut pixels = thread_pixels[tid].write();
+                    let mask = thread_mask[tid].write();
+                    let mask_ptr = mask.as_ptr() as *mut u8;
+                    let mask_len = mask.len();
+
+                    unsafe {
+                        let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                        let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                        ispc_make_image_spectrumF16_minmax(
+                            vec_raw.as_mut_ptr(),
+                            self.bzero,
+                            self.bscale,
+                            self.datamin,
+                            self.datamax,
+                            cdelt3,
+                            pixels.as_mut_ptr(),
+                            mask_raw.as_mut_ptr(),
+                            vec_len as u32,
+                            references.as_mut_ptr(),
+                        );
+                    }
+
+                    frame_min = references[0];
+                    frame_max = references[1];
+                    mean_spectrum = references[2];
+                    integrated_spectrum = references[3];
+
+                    thread_mean_spectrum[frame as usize].store(mean_spectrum, Ordering::SeqCst);
+                    thread_integrated_spectrum[frame as usize]
+                        .store(integrated_spectrum, Ordering::SeqCst);
+
+                    let current_frame_min = thread_frame_min[frame as usize].load(Ordering::SeqCst);
+                    thread_frame_min[frame as usize]
+                        .store(frame_min.min(current_frame_min), Ordering::SeqCst);
+
+                    let current_frame_max = thread_frame_max[frame as usize].load(Ordering::SeqCst);
+                    thread_frame_max[frame as usize]
+                        .store(frame_max.max(current_frame_max), Ordering::SeqCst);
+
+                    let current_min = thread_min[tid].load(Ordering::SeqCst);
+                    thread_min[tid].store(frame_min.min(current_min), Ordering::SeqCst);
+
+                    let current_max = thread_max[tid].load(Ordering::SeqCst);
+                    thread_max[tid].store(frame_max.max(current_max), Ordering::SeqCst);
+                    //end of parallel data processing
+
+                    let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32;
+                    let current_frame_count = previous_frame_count + 1;
+                    self.send_progress_notification(
+                        &server,
+                        &"loading FITS".to_owned(),
+                        total as i32,
+                        current_frame_count,
+                    );
+
+                    data_f16
+                })
+                .collect()
+        });
+
+        self.data_f16 = gather_f16;
+
+        self.frame_min = thread_frame_min
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        self.frame_max = thread_frame_max
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        self.mean_spectrum = thread_mean_spectrum
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        self.integrated_spectrum = thread_integrated_spectrum
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        //then fuse self.pixels and self.mask with the local thread versions
+        for tid in 0..num_threads {
+            self.dmin = self.dmin.min(thread_min[tid].load(Ordering::SeqCst));
+            self.dmax = self.dmax.max(thread_max[tid].load(Ordering::SeqCst));
+
+            let mut pixels_tid = thread_pixels[tid].write();
+
+            let mask_tid = thread_mask[tid].read();
+            let mask_tid_ptr = mask_tid.as_ptr() as *mut u8;
+
+            let mask_ptr = self.mask.as_ptr() as *mut u8;
+
+            let total_size = self.pixels.len();
+
+            unsafe {
+                let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
+                let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
+
+                ispc_join_pixels_masks(
+                    self.pixels.as_mut_ptr(),
+                    pixels_tid.as_mut_ptr(),
+                    mask_raw.as_mut_ptr(),
+                    mask_tid_raw.as_mut_ptr(),
+                    cdelt3,
+                    total_size as u32,
+                );
+            }
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        println!(
+            "[read_from_cache_par] elapsed time: {} [ms]",
+            (stop - start) / 1000000
+        );
+
+        true
     }
 
     //a parallel multi-threaded read from the cache file
-    fn read_from_cache_par(
+    fn read_from_cache_par_old(
         &mut self,
         filepath: &std::path::Path,
         frame_size: usize,
@@ -918,7 +1162,14 @@ impl FITS {
         if fits.bitpix == -32 && binpath.exists() {
             println!("{}: reading half-float f16 data from cache", id);
 
-            if !fits.read_from_cache_par(binpath, frame_size / 2, cdelt3 as f32, &server) {
+            if !fits.read_from_fits_or_cache_par(
+                binpath,
+                0,
+                frame_size / 2,
+                true,
+                cdelt3 as f32,
+                &server,
+            ) {
                 println!("CRITICAL ERROR parallel reading from half-float cache");
 
                 if !fits.read_from_cache(binpath, frame_size / 2, cdelt3 as f32, &server) {
@@ -934,7 +1185,14 @@ impl FITS {
                     id, offset
                 );
 
-                fits.read_from_fits_par(filepath, offset, frame_size, cdelt3 as f32, &server);
+                fits.read_from_fits_or_cache_par(
+                    filepath,
+                    offset,
+                    frame_size,
+                    false,
+                    cdelt3 as f32,
+                    &server,
+                );
             } else {
                 //sequential reading
                 let (tx, rx) = mpsc::channel();

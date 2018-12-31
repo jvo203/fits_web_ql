@@ -18,6 +18,8 @@ use serde_json;
 
 use crate::DATASETS;
 
+const PROGRESS_INTERVAL: u64 = 500; //[ms]
+
 #[cfg(feature = "server")]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60
 
@@ -190,7 +192,8 @@ impl Default for SessionServer {
             conn_res: rusqlite::Connection::open(path::Path::new("splatalogue_v3.db")),
             timer: timer,
             _guard: guard,
-            progress_timestamp: std::time::Instant::now(),
+            progress_timestamp: std::time::Instant::now()
+                - std::time::Duration::from_millis(PROGRESS_INTERVAL),
         }
     }
 }
@@ -342,7 +345,7 @@ impl Handler<WsMessage> for SessionServer {
                 let sending = {
                     if msg.running < msg.total {
                         if std::time::Instant::now().duration_since(self.progress_timestamp)
-                            > std::time::Duration::from_millis(500)
+                            >= std::time::Duration::from_millis(PROGRESS_INTERVAL)
                         {
                             true
                         } else {
