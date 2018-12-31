@@ -475,15 +475,14 @@ impl FITS {
                     let ptr = data_u8.as_ptr() as *mut f16;
                     let len = data_u8.len();
                     let capacity = data_u8.capacity();
-                    mem::forget(data_u8);
 
-                    let data_f16: Vec<f16> = if is_cache {
+                    let mut data_f16: Vec<f16> = if is_cache {
                         //half-float occupies 2 bytes
                         unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) }
                     } else {
                         //float32 takes up 4 bytes
                         let no_bytes = (self.bitpix.abs() / 8) as usize;
-                        unsafe { Vec::from_raw_parts(ptr, len / no_bytes, capacity / no_bytes) }
+                        Vec::with_capacity(len / no_bytes)
                     };
 
                     //parallel data processing
@@ -493,39 +492,84 @@ impl FITS {
                     let mut mean_spectrum = 0.0_f32;
                     let mut integrated_spectrum = 0.0_f32;
 
-                    let mut references: [f32; 4] =
-                        [frame_min, frame_max, mean_spectrum, integrated_spectrum];
-
-                    let vec_ptr = data_f16.as_ptr() as *mut i16;
-                    let vec_len = data_f16.len();
-
                     let mut pixels = thread_pixels[tid].write();
-                    let mask = thread_mask[tid].write();
-                    let mask_ptr = mask.as_ptr() as *mut u8;
-                    let mask_len = mask.len();
+                    let mut mask = thread_mask[tid].write();
 
-                    unsafe {
-                        let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
-                        let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                    if is_cache {
+                        mem::forget(data_u8);
 
-                        ispc_make_image_spectrumF16_minmax(
-                            vec_raw.as_mut_ptr(),
-                            self.bzero,
-                            self.bscale,
-                            self.datamin,
-                            self.datamax,
-                            cdelt3,
-                            pixels.as_mut_ptr(),
-                            mask_raw.as_mut_ptr(),
-                            vec_len as u32,
-                            references.as_mut_ptr(),
-                        );
-                    }
+                        let mut references: [f32; 4] =
+                            [frame_min, frame_max, mean_spectrum, integrated_spectrum];
 
-                    frame_min = references[0];
-                    frame_max = references[1];
-                    mean_spectrum = references[2];
-                    integrated_spectrum = references[3];
+                        let vec_ptr = data_f16.as_ptr() as *mut i16;
+                        let vec_len = data_f16.len();
+
+                        let mask_ptr = mask.as_ptr() as *mut u8;
+                        let mask_len = mask.len();
+
+                        unsafe {
+                            let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                            ispc_make_image_spectrumF16_minmax(
+                                vec_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                self.datamin,
+                                self.datamax,
+                                cdelt3,
+                                pixels.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                vec_len as u32,
+                                references.as_mut_ptr(),
+                            );
+                        }
+
+                        frame_min = references[0];
+                        frame_max = references[1];
+                        mean_spectrum = references[2];
+                        integrated_spectrum = references[3];
+                    } else {
+                        //a code from process_cube_frame
+                        let mut rdr = Cursor::new(data_u8);
+                        let len = self.width * self.height;
+
+                        let mut sum: f32 = 0.0;
+                        let mut count: i32 = 0;
+
+                        for i in 0..len {
+                            match rdr.read_f32::<BigEndian>() {
+                                Ok(float32) => {
+                                    let float16 = f16::from_f32(float32);
+                                    //println!("f32 = {} <--> f16 = {}", float32, float16);
+                                    data_f16.push(float16);
+
+                                    let tmp = self.bzero + self.bscale * float32;
+                                    if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax
+                                    {
+                                        pixels[i as usize] += tmp * cdelt3;
+                                        mask[i as usize] = 255;
+
+                                        frame_min = frame_min.min(tmp);
+                                        frame_max = frame_max.max(tmp);
+
+                                        sum += tmp;
+                                        count += 1;
+                                    }
+                                }
+                                Err(err) => println!(
+                                    "BigEndian --> LittleEndian f32 conversion error: {}",
+                                    err
+                                ),
+                            }
+                        }
+
+                        //mean and integrated intensities @ frame
+                        if count > 0 {
+                            mean_spectrum = sum / (count as f32);
+                            integrated_spectrum = sum * cdelt3;
+                        }
+                    };
 
                     thread_mean_spectrum[frame as usize].store(mean_spectrum, Ordering::SeqCst);
                     thread_integrated_spectrum[frame as usize]
@@ -622,7 +666,7 @@ impl FITS {
     }
 
     //a parallel multi-threaded read from the cache file
-    fn read_from_cache_par_old(
+    fn _read_from_cache_par(
         &mut self,
         filepath: &std::path::Path,
         frame_size: usize,
@@ -1185,14 +1229,17 @@ impl FITS {
                     id, offset
                 );
 
-                fits.read_from_fits_or_cache_par(
+                if !fits.read_from_fits_or_cache_par(
                     filepath,
                     offset,
                     frame_size,
                     false,
                     cdelt3 as f32,
                     &server,
-                );
+                ) {
+                    println!("CRITICAL ERROR reading from FITS file");
+                    return fits;
+                }
             } else {
                 //sequential reading
                 let (tx, rx) = mpsc::channel();
