@@ -66,14 +66,7 @@ https://ispc.github.io
 
 in the "Downloads" section select the binary corresponding to your platform
 
-then place the extracted executable "ispc" in your PATH (for example ~/bin/)
-
-##
-compile the native SIMD code with ispc
-
-cd <your_projects_folder>/fits_web_ql
-
-run "make" (from within the fits_web_ql directory where the Makefile is located)
+then place the extracted executable "ispc" in your PATH (for example ~/bin/ or /usr/local/bin)
 
 ##
 install clang

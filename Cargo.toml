@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.0.8"
+version = "4.0.9"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2018"
 
@@ -17,7 +17,8 @@ opencl = ["ocl", "rand"]
 [build-dependencies]
 bindgen = "*"
 metadeps = "*"
-clang = "*"
+#clang = "*"
+ispc = "*"
 
 [package.metadata.pkg-config]
 x265 = "2.8"
@@ -64,6 +65,7 @@ tar = "*"
 flate2 = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
+ispc = "*"
 
 #rulinalg = "*"
 #linearkalman = "*"

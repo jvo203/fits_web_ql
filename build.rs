@@ -1,14 +1,23 @@
 extern crate bindgen;
+extern crate ispc;
 extern crate metadeps;
 
 use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    let mut cfg = ispc::Config::new();
+    cfg.optimization_opt(ispc::opt::OptimizationOpt::FastMath);
+    cfg.addressing(ispc::opt::Addressing::A32);
+    let ispc_files = vec!["src/fits.ispc"];
+    for s in &ispc_files[..] {
+        cfg.file(*s);
+    }
+    cfg.compile("spmd");
+    //ispc::compile_library("ispc", &["src/fits.ispc"]);
     // Tell cargo to tell rustc to link the ISPC object file turned into a static library
-    println!("cargo:rustc-link-search=native=native");
-    println!("cargo:rustc-link-lib=static=fits");
-    //println!("cargo:rustc-link-lib=static=thorenc");
+    //println!("cargo:rustc-link-search=native=native");
+    //println!("cargo:rustc-link-lib=static=fits");
 
     println!("cargo:rustc-link-search=native=/usr/local/lib");
     println!("cargo:rustc-link-lib=yuv");

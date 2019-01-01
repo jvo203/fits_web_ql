@@ -512,7 +512,7 @@ impl FITS {
                         mem::forget(data_u8);
 
                         unsafe {
-                            ispc_make_image_spectrumF16_minmax(
+                            spmd::make_image_spectrumF16_minmax(
                                 vec_raw.as_mut_ptr(),
                                 self.bzero,
                                 self.bscale,
@@ -527,7 +527,7 @@ impl FITS {
                         }
                     } else {
                         unsafe {
-                            ispc_make_image_spectrumF32_minmax(
+                            spmd::make_image_spectrumF32_minmax(
                                 data_u8.as_ptr() as *mut i32,
                                 vec_raw.as_mut_ptr(),
                                 self.bzero,
@@ -621,7 +621,7 @@ impl FITS {
                 let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
                 let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
 
-                ispc_join_pixels_masks(
+                spmd::join_pixels_masks(
                     self.pixels.as_mut_ptr(),
                     pixels_tid.as_mut_ptr(),
                     mask_raw.as_mut_ptr(),
@@ -779,7 +779,7 @@ impl FITS {
                         let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
                         let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                        ispc_make_image_spectrumF16_minmax(
+                        spmd::make_image_spectrumF16_minmax(
                             vec_raw.as_mut_ptr(),
                             self.bzero,
                             self.bscale,
@@ -871,7 +871,7 @@ impl FITS {
                 let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
                 let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
 
-                ispc_join_pixels_masks(
+                spmd::join_pixels_masks(
                     self.pixels.as_mut_ptr(),
                     pixels_tid.as_mut_ptr(),
                     mask_raw.as_mut_ptr(),
@@ -2465,7 +2465,7 @@ impl FITS {
                             let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
                             let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
 
-                            ispc_make_image_spectrumF16_minmax(
+                            spmd::make_image_spectrumF16_minmax(
                                 vec_raw.as_mut_ptr(),
                                 self.bzero,
                                 self.bscale,
@@ -2527,7 +2527,7 @@ impl FITS {
                 let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
                 let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
 
-                ispc_join_pixels_masks(
+                spmd::join_pixels_masks(
                     pixels.as_mut_ptr(),
                     pixels_tid.as_mut_ptr(),
                     mask_raw.as_mut_ptr(),
@@ -3643,7 +3643,7 @@ impl FITS {
                         let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                         let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
-                        ispc_data_to_luminance_f16_linear(
+                        spmd::data_to_luminance_f16_linear(
                             raw.as_mut_ptr(),
                             mask_raw.as_mut_ptr(),
                             self.bzero,
@@ -3660,7 +3660,7 @@ impl FITS {
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                     let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
-                    ispc_data_to_luminance_f16_logistic(
+                    spmd::data_to_luminance_f16_logistic(
                         raw.as_mut_ptr(),
                         mask_raw.as_mut_ptr(),
                         self.bzero,
@@ -3676,7 +3676,7 @@ impl FITS {
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                     let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
-                    ispc_data_to_luminance_f16_ratio(
+                    spmd::data_to_luminance_f16_ratio(
                         raw.as_mut_ptr(),
                         mask_raw.as_mut_ptr(),
                         self.bzero,
@@ -3692,7 +3692,7 @@ impl FITS {
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                     let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
-                    ispc_data_to_luminance_f16_square(
+                    spmd::data_to_luminance_f16_square(
                         raw.as_mut_ptr(),
                         mask_raw.as_mut_ptr(),
                         self.bzero,
@@ -3709,7 +3709,7 @@ impl FITS {
                     let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
                     let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
-                    ispc_data_to_luminance_f16_legacy(
+                    spmd::data_to_luminance_f16_legacy(
                         raw.as_mut_ptr(),
                         mask_raw.as_mut_ptr(),
                         self.bzero,
@@ -5041,7 +5041,7 @@ impl FITS {
                 unsafe {
                     let raw = slice::from_raw_parts_mut(ptr, len);
 
-                    let spectrum = ispc_calculate_radial_spectrumF16(
+                    let spectrum = spmd::calculate_radial_spectrumF16(
                         raw.as_mut_ptr(),
                         self.bzero,
                         self.bscale,
@@ -5229,7 +5229,7 @@ impl FITS {
                 unsafe {
                     let raw = slice::from_raw_parts_mut(ptr, len);
 
-                    let spectrum = ispc_calculate_square_spectrumF16(
+                    let spectrum = spmd::calculate_square_spectrumF16(
                         raw.as_mut_ptr(),
                         self.bzero,
                         self.bscale,
