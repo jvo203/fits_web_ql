@@ -2216,8 +2216,8 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.0.9";
-static VERSION_STRING: &'static str = "SV2019-01-01.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.0.10";
+static VERSION_STRING: &'static str = "SV2019-01-07.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -2245,7 +2245,54 @@ const WEBSOCKET_TIMEOUT: u64 = 60 * 60; //[s]; a websocket inactivity timeout
 
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
-fn fetch_molecules(freq_start: f64, freq_end: f64) -> String {
+fn stream_molecules(freq_start: f64, freq_end: f64) -> Option<mpsc::Receiver<Molecule>> {
+    //splatalogue sqlite db integration
+
+    let (stream_tx, stream_rx): (mpsc::Sender<Molecule>, mpsc::Receiver<Molecule>) =
+        mpsc::channel();
+
+    thread::spawn(move || {
+        let splat_path = std::path::Path::new("splatalogue_v3.db");
+
+        match rusqlite::Connection::open(splat_path) {
+            Ok(splat_db) => {
+                println!("[stream_molecules] connected to splatalogue sqlite");
+
+                match splat_db.prepare(&format!(
+                    "SELECT * FROM lines WHERE frequency>={} AND frequency<={};",
+                    freq_start, freq_end
+                )) {
+                    Ok(mut stmt) => {
+                        let molecule_iter = stmt
+                            .query_map(rusqlite::NO_PARAMS, |row| Molecule::from_sqlite_row(row))
+                            .unwrap();
+
+                        for molecule in molecule_iter {
+                            //println!("molecule {:?}", molecule.unwrap());
+                            let mol = molecule.unwrap();
+
+                            match stream_tx.send(mol) {
+                                Ok(()) => {}
+                                Err(err) => {
+                                    println!("CRITICAL ERROR sending a molecule: {}", err);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => println!("sqlite prepare error: {}", err),
+                }
+            }
+            Err(err) => {
+                println!("error connecting to splatalogue sqlite: {}", err);
+            }
+        };
+    });
+
+    Some(stream_rx)
+}
+
+fn _fetch_molecules(freq_start: f64, freq_end: f64) -> String {
     //splatalogue sqlite db integration
     let mut molecules: Vec<serde_json::Value> = Vec::new();
 
@@ -2778,6 +2825,67 @@ fn get_spectrum(
     .responder()
 }
 
+struct MoleculeStream {
+    rx: mpsc::Receiver<Molecule>,
+    first: bool,
+    end_transmission: bool,
+}
+
+impl MoleculeStream {
+    pub fn new(rx: mpsc::Receiver<Molecule>) -> MoleculeStream {
+        MoleculeStream {
+            rx: rx,
+            first: true,
+            end_transmission: false,
+        }
+    }
+}
+
+impl Stream for MoleculeStream {
+    type Item = Bytes;
+    type Error = actix_web::Error;
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        match self.rx.recv() {
+            Ok(molecule) => {
+                //println!("{:?}", molecule);
+
+                if self.first {
+                    self.first = false;
+
+                    //the first molecule
+                    Ok(Async::Ready(Some(Bytes::from(format!(
+                        "{{\"molecules\" : [{}",
+                        molecule.to_json().to_string()
+                    )))))
+                } else {
+                    //subsequent molecules
+                    Ok(Async::Ready(Some(Bytes::from(format!(
+                        ",{}",
+                        molecule.to_json().to_string()
+                    )))))
+                }
+            }
+            Err(err) => {
+                if self.end_transmission {
+                    println!("MoleculeStream: {}, terminating transmission", err);
+                    Ok(Async::Ready(None))
+                } else {
+                    self.end_transmission = true;
+
+                    if self.first {
+                        //no molecules received; send an empty JSON array
+                        Ok(Async::Ready(Some(Bytes::from("{\"molecules\" : []}"))))
+                    } else {
+                        //end a JSON array
+                        Ok(Async::Ready(Some(Bytes::from("]}"))))
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn get_molecules(
     req: &HttpRequest<WsSessionState>,
 ) -> Box<Future<Item = HttpResponse, Error = Error>> {
@@ -2871,12 +2979,26 @@ fn get_molecules(
                     )),
             }
         } else {
-            //fetch molecules from sqlite without waiting for a FITS header
-            let content = fetch_molecules(freq_start, freq_end);
+            //stream molecules from sqlite without waiting for a FITS header
+
+            match stream_molecules(freq_start, freq_end) {
+                Some(rx) => {
+                    let molecules_stream = MoleculeStream::new(rx);
+
+                    HttpResponse::Ok()
+                        .content_type("application/json")
+                        .streaming(molecules_stream)
+                }
+                None => HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(format!("{{\"molecules\" : []}}")),
+            }
+
+            /*let content = fetch_molecules(freq_start, freq_end);
 
             HttpResponse::Ok()
-                .content_type("application/json")
-                .body(format!("{{\"molecules\" : {}}}", content))
+            .content_type("application/json")
+            .body(format!("{{\"molecules\" : {}}}", content))*/
         }
     }))
     .responder()
