@@ -14,7 +14,7 @@ fn main() {
         cfg.file(*s);
     }
     cfg.compile("spmd");
-    //ispc::compile_library("ispc", &["src/fits.ispc"]);
+    
     // Tell cargo to tell rustc to link the ISPC object file turned into a static library
     //println!("cargo:rustc-link-search=native=native");
     //println!("cargo:rustc-link-lib=static=fits");
@@ -22,9 +22,6 @@ fn main() {
     println!("cargo:rustc-link-search=native=/usr/local/lib");
     println!("cargo:rustc-link-lib=yuv");
     //println!("cargo:rustc-link-lib=x265");
-
-    //println!("cargo:rustc-link-lib=stdc++");//causes problems on macOS (cannot be found!)
-    //println!("cargo:rustc-link-lib=numa");//causes problems on macOS (cannot be found!)
 
     let libs = metadeps::probe().unwrap();
     let x265 = libs.get("x265").unwrap();
@@ -68,13 +65,6 @@ fn main() {
         .clang_arg("/usr/local/include")
         .clang_args(["-x", "c++", "-std=c++11"].iter());
     //.enable_cxx_namespaces()
-
-    /*let yuv = libs.get("yuv").unwrap();
-    let headers = yuv.include_paths.clone();
-
-    for header in headers {
-        builder = builder.clang_arg("-I").clang_arg(header.to_str().unwrap());
-    }*/
 
     // Finish the builder and generate the bindings.
     let bindings = builder
