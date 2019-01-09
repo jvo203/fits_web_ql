@@ -1,6 +1,5 @@
 use parking_lot::RwLock;
 use std::collections::{HashMap, HashSet};
-use std::path;
 use std::sync::Arc;
 
 use chrono;
@@ -10,11 +9,8 @@ use std::time::SystemTime;
 use timer;
 
 use actix::*;
-use rusqlite;
-use uuid::Uuid;
-
-use crate::molecule::Molecule;
 use serde_json;
+use uuid::Uuid;
 
 use crate::DATASETS;
 
@@ -88,8 +84,6 @@ pub struct SessionServer {
     sessions: HashMap<Uuid, Recipient<Message>>,
     datasets: Arc<RwLock<HashMap<String, HashSet<Uuid>>>>,
     molecules: Arc<RwLock<HashMap<String, String>>>,
-    //splatalogue db
-    conn_res: rusqlite::Result<rusqlite::Connection>,
     timer: timer::Timer,
     _guard: timer::Guard,
     //WebSocket progress timestamp
@@ -189,7 +183,6 @@ impl Default for SessionServer {
             sessions: HashMap::new(),
             datasets: datasets,
             molecules: molecules,
-            conn_res: rusqlite::Connection::open(path::Path::new("splatalogue_v3.db")),
             timer: timer,
             _guard: guard,
             progress_timestamp: std::time::Instant::now()
@@ -405,58 +398,12 @@ impl Handler<FrequencyRangeMessage> for SessionServer {
 
         let (freq_start, freq_end) = msg.freq_range;
 
-        if freq_start == 0.0 || freq_end == 0.0 {
-            //insert an empty JSON array into self.molecules
-            self.molecules
-                .write()
-                .insert(msg.dataset_id, String::from("[]"));
-            return;
-        }
+        let freq_range = json!({
+            "freq_start" : freq_start,
+            "freq_end" : freq_end
+        })
+        .to_string();
 
-        let mut molecules: Vec<serde_json::Value> = Vec::new();
-
-        match self.conn_res {
-            Ok(ref splat_db) => {
-                println!("[SessionServer] splatalogue sqlite connection Ok");
-
-                match splat_db.prepare(&format!(
-                    "SELECT * FROM lines WHERE frequency>={} AND frequency<={};",
-                    freq_start, freq_end
-                )) {
-                    Ok(mut stmt) => {
-                        let molecule_iter = stmt
-                            .query_map(rusqlite::NO_PARAMS, |row| Molecule::from_sqlite_row(row))
-                            .unwrap();
-
-                        for molecule in molecule_iter {
-                            //println!("molecule {:?}", molecule.unwrap());
-                            let mol = molecule.unwrap();
-                            molecules.push(mol.to_json());
-                        }
-                    }
-                    Err(err) => println!("sqlite prepare error: {}", err),
-                }
-            }
-            Err(ref err) => println!(
-                "[SessionServer] error connecting to splatalogue sqlite: {}",
-                err
-            ),
-        }
-
-        let mut contents = String::from("[");
-
-        for entry in &molecules {
-            contents.push_str(&entry.to_string());
-            contents.push(',');
-        }
-
-        if !molecules.is_empty() {
-            contents.pop();
-        }
-
-        contents.push(']');
-
-        //println!("{}", contents);
-        self.molecules.write().insert(msg.dataset_id, contents);
+        self.molecules.write().insert(msg.dataset_id, freq_range);
     }
 }

@@ -14,7 +14,7 @@ fn main() {
         cfg.file(*s);
     }
     cfg.compile("spmd");
-    
+
     // Tell cargo to tell rustc to link the ISPC object file turned into a static library
     //println!("cargo:rustc-link-search=native=native");
     //println!("cargo:rustc-link-lib=static=fits");

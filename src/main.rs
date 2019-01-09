@@ -2216,8 +2216,8 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.0.10";
-static VERSION_STRING: &'static str = "SV2019-01-07.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.0.11";
+static VERSION_STRING: &'static str = "SV2019-01-09.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -2967,9 +2967,42 @@ fn get_molecules(
                                 dataset_id
                             ))
                     } else {
-                        HttpResponse::Ok()
-                            .content_type("application/json")
-                            .body(format!("{{\"molecules\" : {}}}", content))
+                        #[derive(Serialize, Deserialize)]
+                        struct freq_range {
+                            freq_start: f64,
+                            freq_end: f64,
+                        }
+
+                        let res: std::result::Result<freq_range, serde_json::Error> =
+                            serde_json::from_str(&content);
+
+                        match res {
+                            Ok(range) => {
+                                let freq_start = range.freq_start;
+                                let freq_end = range.freq_end;
+
+                                //stream molecules from sqlite
+                                match stream_molecules(freq_start, freq_end) {
+                                    Some(rx) => {
+                                        let molecules_stream = MoleculeStream::new(rx);
+
+                                        HttpResponse::Ok()
+                                            .content_type("application/json")
+                                            .streaming(molecules_stream)
+                                    }
+                                    None => HttpResponse::Ok()
+                                        .content_type("application/json")
+                                        .body(format!("{{\"molecules\" : []}}")),
+                                }
+                            }
+                            Err(_) => {
+                                HttpResponse::NotFound()
+                                    .content_type("text/html")
+                                    .body(format!(
+                                        "<p><b>Critical Error</b>: spectral lines not found</p>"
+                                    ))
+                            }
+                        }
                     }
                 }
                 Err(_) => HttpResponse::NotFound()
@@ -2980,7 +3013,6 @@ fn get_molecules(
             }
         } else {
             //stream molecules from sqlite without waiting for a FITS header
-
             match stream_molecules(freq_start, freq_end) {
                 Some(rx) => {
                     let molecules_stream = MoleculeStream::new(rx);
@@ -2993,12 +3025,6 @@ fn get_molecules(
                     .content_type("application/json")
                     .body(format!("{{\"molecules\" : []}}")),
             }
-
-            /*let content = fetch_molecules(freq_start, freq_end);
-
-            HttpResponse::Ok()
-            .content_type("application/json")
-            .body(format!("{{\"molecules\" : {}}}", content))*/
         }
     }))
     .responder()
