@@ -4475,6 +4475,9 @@ impl FITS {
             }
         }
 
+        //an approximate solution
+        sensitivity = (a + b) / 2.0;
+
         let stop = precise_time::precise_time_ns();
 
         println!(
