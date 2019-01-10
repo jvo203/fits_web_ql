@@ -4459,7 +4459,7 @@ impl FITS {
 
             brightness = self.get_brightness(self.black, sensitivity);
             println!(
-                "iteration: {}, sensitivity: {}, brightness: {} error: {}",
+                "iteration: {}, sensitivity: {}, brightness: {} divergence: {}",
                 iter,
                 sensitivity,
                 brightness,
