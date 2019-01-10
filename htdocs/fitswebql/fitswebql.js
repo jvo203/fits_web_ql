@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2018-12-27.5";
+	return "JS2019-01-10.0";
 }
 
 const wasm_supported = (() => {
@@ -2020,7 +2020,7 @@ function display_hourglass() {
 		.attr("x", (width - img_width) / 2)
 		.attr("y", (height - img_height) / 2)
 		//.attr("xlink:href", ROOT_PATH + "loading.gif")
-		.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/loading.gif")		
+		.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/loading.gif")
 		.attr("width", img_width)
 		.attr("height", img_height)
 		.attr("opacity", 1.0);
@@ -10516,6 +10516,14 @@ async*/ function mainRenderer() {
 
 	if (colourmap === null)
 		colourmap = "green";
+
+	//add a colourmap URL override
+	let pos = window.location.search.indexOf('colourmap');
+	if (pos > 0) {
+		//extract the colourmap parameter
+		let params = window.location.search.substr(pos);
+		console.log("colourmap parameters:", params);
+	}
 
 	if (localStorage.getItem("video_fps_control") === null) {
 		video_fps_control = "auto";

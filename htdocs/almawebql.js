@@ -40,8 +40,11 @@ function view_hsc() {
 
         url = "/fitswebql/FITSWebQL.html?" + "db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table) + "&datasetId=" + encodeURIComponent(dataId);
 
-        var flux = document.getElementById("flux").value.trim();
+        var flux = document.getElementById("hsc_flux").value.trim();
         url += "&flux=" + encodeURIComponent(flux);
+
+        var colourmap = document.getElementById("hsc_colourmap").value.trim();
+        url += "&colourmap=" + encodeURIComponent(colourmap);
 
         window.location.href = url;
     }
@@ -92,7 +95,7 @@ function view_nro45m() {
         }
     }
 
-    var flux = document.getElementById("flux").value.trim();
+    var flux = document.getElementById("nro_flux").value.trim();
 
     //enforce a tone mapping
     //if(table == "fugin.fugin_meta")    
