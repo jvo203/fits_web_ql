@@ -10530,7 +10530,11 @@ async*/ function mainRenderer() {
 			result[item[0]] = decodeURIComponent(item[1]);
 		});
 
-		console.log("colourmap:", params["colourmap"]);
+		var tmp = result["colourmap"];
+		if (tmp !== undefined)
+			colourmap = tmp;
+
+		console.log("colourmap:", result["colourmap"]);
 	}
 
 	if (localStorage.getItem("video_fps_control") === null) {
