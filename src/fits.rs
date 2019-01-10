@@ -1323,6 +1323,10 @@ impl FITS {
                 fits.histogram_classifier();
             };
 
+            if fits.flux == "ratio" {
+                fits.auto_brightness();
+            };
+
             fits.make_vpx_image(); //was _vpx_, _j2k_, _wavelet_
         };
 
@@ -1528,6 +1532,10 @@ impl FITS {
 
                 if fits.flux == "" {
                     fits.histogram_classifier();
+                };
+
+                if fits.flux == "ratio" {
+                    fits.auto_brightness();
                 };
 
                 fits.make_vpx_image(); //was _vpx_, _j2k_, _wavelet_
@@ -3597,7 +3605,6 @@ impl FITS {
         //interfacing with Intel SPMD Program Compiler
         let vec = &self.data_f16[frame];
         let len = vec.len();
-
         let tmp = (len / (1024 * 1024)).max(1);
         let num_threads = tmp.min(num_cpus::get());
         let work_size = len / num_threads;
@@ -4421,6 +4428,120 @@ impl FITS {
         unsafe { vpx_codec_destroy(&mut ctx) };
 
         Some(vec![image_frame; 1])
+    }
+
+    fn auto_brightness(&mut self) {
+        println!("auto-adjusting brightness");
+        let start = precise_time::precise_time_ns();
+
+        let mut brightness = self.get_brightness(self.black, self.sensitivity);
+        println!(
+            "sensitivity: {}, brightness: {}",
+            self.sensitivity, brightness
+        );
+
+        let target_brightness: f32 = 0.25;
+        let max_iter = 20;
+        let mut iter = 0;
+
+        let mut sensitivity = self.sensitivity;
+        let mut a = 0.01 * sensitivity;
+        let mut b = 100.0 * sensitivity;
+
+        while (target_brightness - brightness).abs() > 0.1 * target_brightness {
+            iter = iter + 1;
+
+            if iter > max_iter {
+                break;
+            }
+
+            sensitivity = (a + b) / 2.0;
+
+            brightness = self.get_brightness(self.black, sensitivity);
+            println!(
+                "iteration: {}, sensitivity: {}, brightness: {} error: {}",
+                iter,
+                sensitivity,
+                brightness,
+                (target_brightness - brightness).abs()
+            );
+
+            if brightness > target_brightness {
+                b = sensitivity
+            }
+
+            if brightness < target_brightness {
+                a = sensitivity
+            }
+        }
+
+        let stop = precise_time::precise_time_ns();
+
+        println!(
+            "final sensitivity: {}, elapsed time: {} [ms]",
+            sensitivity,
+            (stop - start) / 1000000
+        );
+
+        self.sensitivity = sensitivity;
+    }
+
+    fn get_brightness(&self, black: f32, sensitivity: f32) -> f32 {
+        let pixels = &self.pixels;
+        let mask = &self.mask;
+
+        let len = pixels.len();
+        let tmp = (len / (1024 * 1024)).max(1);
+        let num_threads = tmp.min(num_cpus::get());
+        let work_size = len / num_threads;
+
+        /*println!(
+            "get_brightness: tmp = {}, num_threads = {}, work_size = {}",
+            tmp, num_threads, work_size
+        );*/
+
+        let sum: f32 = (0..num_threads)
+            .into_par_iter()
+            .map(|index| {
+                let offset = index * work_size;
+
+                let work_size = if index == num_threads - 1 {
+                    len - offset
+                } else {
+                    work_size
+                };
+
+                let vec = &pixels[offset..offset + work_size];
+                let ptr = vec.as_ptr() as *mut f32;
+                let len = vec.len();
+
+                let mask = &mask[offset..offset + work_size];
+                let mask_ptr = mask.as_ptr() as *mut u8;
+                let mask_len = mask.len();
+
+                let brightness = unsafe {
+                    let vec_raw = slice::from_raw_parts_mut(ptr, len);
+                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                    spmd::pixels_mean_brightness_ratio(
+                        vec_raw.as_mut_ptr(),
+                        mask_raw.as_mut_ptr(),
+                        black,
+                        sensitivity,
+                        len as u32,
+                    )
+                };
+
+                /*println!(
+                    "index: {}, offset: {}, work_size: {}, len = {}, brightness: {}",
+                    index, offset, work_size, len, brightness
+                );*/
+
+                brightness
+            })
+            .sum();
+
+        sum / (num_threads as f32)
     }
 
     fn make_vpx_image(&mut self) {

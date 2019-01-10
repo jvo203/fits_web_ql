@@ -17,6 +17,30 @@ uint32_t bswap32(uint32_t u)
   return ((u&0xFF)<<24) | (((u>>8)&0xFF)<<16) | (((u>>16)&0xFF)<<8) | (((u>>24)&0xFF)<<0);
 }
 
+export uniform float pixels_mean_brightness_ratio(uniform float pixels[], uniform unsigned int8 mask[], uniform float black, uniform float sensitivity, uniform unsigned int total_size)
+{
+  float partial_sum = 0.0f ;
+  unsigned int partial_count = 0 ;
+
+  foreach(j=0 ... total_size)
+  {
+    cif(mask[j] > 0)
+    {      
+      float pixel = 5.0f * (pixels[j] - black) * sensitivity ;
+      partial_sum += pixel > 0.0f ? pixel/(1.0f + pixel) : 0.0f ;       
+      partial_count += 1 ;
+    }   
+  }
+
+  uniform float sum = reduce_add(partial_sum) ;
+  uniform int count = reduce_add(partial_count) ;
+
+  if(count > 0)
+    return sum / (float) count ;
+  else
+    return 0.0f;
+} ;
+
 export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform float bzero, uniform float bscale, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
 {
   uniform float frame_min = references[0];
@@ -247,7 +271,7 @@ export void data_to_luminance_f16_ratio(uniform int16 cubeData[], uniform unsign
     cif(mask[j] > 0)
     {
       float tmp = bzero + half_to_float_fast(cubeData[j]) * bscale ;
-      float pixel = 5.0 * (tmp - black) * sensitivity ;
+      float pixel = 5.0f * (tmp - black) * sensitivity ;
       pixels[j] = pixel > 0.0f ? (int) (255.0f*pixel/(1.0f + pixel)) : 0 ;
     }
     else
