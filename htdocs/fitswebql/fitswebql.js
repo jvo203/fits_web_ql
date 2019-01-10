@@ -10518,11 +10518,19 @@ async*/ function mainRenderer() {
 		colourmap = "green";
 
 	//add a colourmap URL override
-	let pos = window.location.search.indexOf('colourmap');
+	let pos = window.location.search.indexOf('colourmap=');
 	if (pos > 0) {
 		//extract the colourmap parameter
 		let params = window.location.search.substr(pos);
 		console.log("colourmap parameters:", params);
+
+		var result = {};
+		params.split("&").forEach(function (part) {
+			var item = part.split("=");
+			result[item[0]] = decodeURIComponent(item[1]);
+		});
+
+		console.log("colourmap:", params["colourmap"]);
 	}
 
 	if (localStorage.getItem("video_fps_control") === null) {
