@@ -1323,9 +1323,9 @@ impl FITS {
                 fits.histogram_classifier();
             };
 
-            if fits.flux == "ratio" {
+            /*if fits.flux == "ratio" {
                 fits.auto_brightness();
-            };
+            };*/
 
             fits.make_vpx_image(); //was _vpx_, _j2k_, _wavelet_
         };
@@ -1534,9 +1534,9 @@ impl FITS {
                     fits.histogram_classifier();
                 };
 
-                if fits.flux == "ratio" {
+                /*if fits.flux == "ratio" {
                     fits.auto_brightness();
-                };
+                };*/
 
                 fits.make_vpx_image(); //was _vpx_, _j2k_, _wavelet_
             };
