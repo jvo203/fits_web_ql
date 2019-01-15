@@ -2958,12 +2958,19 @@ impl FITS {
             mad
         };
 
+        //ALMAWebQL-style
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
-
         let black = pmin.max(median - u * mad_n);
         let white = pmax.min(median + u * mad_p);
         let sensitivity = 1.0 / (white - black);
+
+        //SubaruWebQL-style
+        /*let u = 0.5_f32;
+        let v = 15.0_f32;
+        let black = pmin.max(median - u * mad);
+        let white = pmax.min(median + u * mad);
+        let sensitivity = 1.0 / (v * mad);*/
 
         let ratio_sensitivity = match self.auto_brightness(pixels, mask, black, sensitivity) {
             Some(x) => x,
@@ -3173,12 +3180,19 @@ impl FITS {
             mad
         };
 
+        //ALMAWebQL-style
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
-
         let black = pmin.max(median - u * mad_n);
         let white = pmax.min(median + u * mad_p);
         let sensitivity = 1.0 / (white - black);
+
+        //SubaruWebQL-style
+        /*let u = 0.5_f32;
+        let v = 15.0_f32;
+        let black = pmin.max(median - u * mad);
+        let white = pmax.min(median + u * mad);
+        let sensitivity = 1.0 / (v * mad);*/
 
         let ratio_sensitivity =
             match self.auto_brightness(&self.pixels, &self.mask, black, sensitivity) {
