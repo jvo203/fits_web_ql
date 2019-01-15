@@ -243,6 +243,7 @@ pub struct FITS {
     black: f32,
     white: f32,
     pub sensitivity: f32,
+    pub ratio_sensitivity: f32,
     pub flux: String,
     has_frequency: bool,
     has_velocity: bool,
@@ -345,6 +346,7 @@ impl FITS {
             black: 0.0,
             white: 0.0,
             sensitivity: 0.0,
+            ratio_sensitivity: 0.0,
             flux: flux.clone(),
             has_frequency: false,
             has_velocity: false,
@@ -1323,10 +1325,6 @@ impl FITS {
                 fits.histogram_classifier();
             };
 
-            /*if fits.flux == "ratio" {
-                fits.auto_brightness();
-            };*/
-
             fits.make_vpx_image(); //was _vpx_, _j2k_, _wavelet_
         };
 
@@ -1533,10 +1531,6 @@ impl FITS {
                 if fits.flux == "" {
                     fits.histogram_classifier();
                 };
-
-                /*if fits.flux == "ratio" {
-                    fits.auto_brightness();
-                };*/
 
                 fits.make_vpx_image(); //was _vpx_, _j2k_, _wavelet_
             };
@@ -2881,7 +2875,7 @@ impl FITS {
         ord_pixels: &Vec<f32>,
         pixels: &Vec<f32>,
         mask: &Vec<u8>,
-    ) -> Option<(Vec<i32>, f32, f32, f32, f32, f32, f32)> {
+    ) -> Option<(Vec<i32>, f32, f32, f32, f32, f32, f32, f32)> {
         let mut len = ord_pixels.len();
         let mut hist: Vec<i32> = vec![0; NBINS];
 
@@ -2971,6 +2965,11 @@ impl FITS {
         let white = pmax.min(median + u * mad_p);
         let sensitivity = 1.0 / (white - black);
 
+        let ratio_sensitivity = match self.auto_brightness(pixels, mask, black, sensitivity) {
+            Some(x) => x,
+            None => sensitivity,
+        };
+
         println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
 
         //the histogram part
@@ -3003,7 +3002,16 @@ impl FITS {
             (stop - start) / 1000
         );
 
-        Some((hist, pmin, pmax, black, white, median, sensitivity))
+        Some((
+            hist,
+            pmin,
+            pmax,
+            black,
+            white,
+            median,
+            sensitivity,
+            ratio_sensitivity,
+        ))
     }
 
     fn make_image_histogram(&mut self, ord_pixels: &Vec<f32>) {
@@ -3172,6 +3180,12 @@ impl FITS {
         let white = pmax.min(median + u * mad_p);
         let sensitivity = 1.0 / (white - black);
 
+        let ratio_sensitivity =
+            match self.auto_brightness(&self.pixels, &self.mask, black, sensitivity) {
+                Some(x) => x,
+                None => sensitivity,
+            };
+
         println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
 
         self.pmin = pmin;
@@ -3180,6 +3194,7 @@ impl FITS {
         self.black = black;
         self.white = white;
         self.sensitivity = sensitivity;
+        self.ratio_sensitivity = ratio_sensitivity;
         self.mad = mad;
         self.mad_n = mad_n;
         self.mad_p = mad_p;
@@ -3873,6 +3888,7 @@ impl FITS {
         white: f32,
         median: f32,
         sensitivity: f32,
+        ratio_sensitivity: f32,
         flux: &String,
     ) -> Vec<u8> {
         match flux.as_ref() {
@@ -3913,7 +3929,7 @@ impl FITS {
                 .zip(mask.par_iter())
                 .map(|(x, m)| {
                     if *m > 0 {
-                        let pixel = 5.0 * (x - black) * sensitivity;
+                        let pixel = 5.0 * (x - black) * ratio_sensitivity;
 
                         if pixel > 0.0 {
                             (255.0 * pixel / (1.0 + pixel)) as u8
@@ -4430,34 +4446,37 @@ impl FITS {
         Some(vec![image_frame; 1])
     }
 
-    fn auto_brightness(&mut self) {
+    fn auto_brightness(
+        &self,
+        pixels: &Vec<f32>,
+        mask: &Vec<u8>,
+        black: f32,
+        initial_sensitivity: f32,
+    ) -> Option<f32> {
         println!("auto-adjusting brightness");
         let start = precise_time::precise_time_ns();
 
-        let mut brightness = self.get_brightness(self.black, self.sensitivity);
-        println!(
-            "sensitivity: {}, brightness: {}",
-            self.sensitivity, brightness
-        );
-
-        let target_brightness: f32 = 0.25;
+        let target_brightness: f32 = 0.5;
         let max_iter = 20;
         let mut iter = 0;
 
-        let mut sensitivity = self.sensitivity;
+        let mut sensitivity = initial_sensitivity;
         let mut a = 0.01 * sensitivity;
         let mut b = 100.0 * sensitivity;
 
-        while (target_brightness - brightness).abs() > 0.1 * target_brightness {
+        //perform the first step manually (verify that br(a) <= target_brightness <= br(b) )
+        let a_brightness = self.get_brightness(pixels, mask, black, a);
+        let b_brightness = self.get_brightness(pixels, mask, black, b);
+
+        if target_brightness < a_brightness || target_brightness > b_brightness {
+            return None;
+        }
+
+        loop {
             iter = iter + 1;
-
-            if iter > max_iter {
-                break;
-            }
-
             sensitivity = (a + b) / 2.0;
+            let brightness = self.get_brightness(pixels, mask, black, sensitivity);
 
-            brightness = self.get_brightness(self.black, sensitivity);
             println!(
                 "iteration: {}, sensitivity: {}, brightness: {} divergence: {}",
                 iter,
@@ -4473,6 +4492,14 @@ impl FITS {
             if brightness < target_brightness {
                 a = sensitivity
             }
+
+            if iter > max_iter {
+                break;
+            }
+
+            if (target_brightness - brightness).abs() < 0.1 * target_brightness {
+                break;
+            }
         }
 
         //an approximate solution
@@ -4486,13 +4513,16 @@ impl FITS {
             (stop - start) / 1000000
         );
 
-        self.sensitivity = sensitivity;
+        Some(sensitivity)
     }
 
-    fn get_brightness(&self, black: f32, sensitivity: f32) -> f32 {
-        let pixels = &self.pixels;
-        let mask = &self.mask;
-
+    fn get_brightness(
+        &self,
+        pixels: &Vec<f32>,
+        mask: &Vec<u8>,
+        black: f32,
+        sensitivity: f32,
+    ) -> f32 {
         let len = pixels.len();
         let tmp = (len / (1024 * 1024)).max(1);
         let num_threads = tmp.min(num_cpus::get());
@@ -4671,6 +4701,7 @@ impl FITS {
                 self.white,
                 self.median,
                 self.sensitivity,
+                self.ratio_sensitivity,
                 &self.flux,
             );
 
@@ -4994,6 +5025,7 @@ impl FITS {
                 params.white,
                 params.median,
                 params.sensitivity,
+                params.ratio_sensitivity,
                 &params.flux,
             ),
             None => self.pixels_to_luminance(
@@ -5007,6 +5039,7 @@ impl FITS {
                 self.white,
                 self.median,
                 self.sensitivity,
+                self.ratio_sensitivity,
                 &self.flux,
             ),
         };
@@ -5728,6 +5761,7 @@ impl FITS {
                 "max" : self.pmax,
                 "median" : self.median,
                 "sensitivity" : self.sensitivity,
+                "ratio_sensitivity" : self.ratio_sensitivity,
                 "black" : self.black,
                 "white" : self.white,
                 "flux" : self.flux,

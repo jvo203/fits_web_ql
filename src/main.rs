@@ -106,6 +106,7 @@ pub struct WsHistogram {
     pub white: f32,
     pub median: f32,
     pub sensitivity: f32,
+    pub ratio_sensitivity: f32,
     pub hist: Vec<i32>,
 }
 
@@ -155,6 +156,7 @@ pub struct UserParams {
     white: f32,
     median: f32,
     sensitivity: f32,
+    ratio_sensitivity: f32,
     flux: String,
     start: usize,
     end: usize,
@@ -1028,6 +1030,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 user.white = white;
                                 user.median = median;
                                 user.sensitivity = noise * fits.sensitivity;
+                                user.ratio_sensitivity = noise * fits.ratio_sensitivity;
                                 user.flux = flux.clone();
                                 user.start = start;
                                 user.end = end;
@@ -1083,6 +1086,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     white: white,
                                     median: median,
                                     sensitivity: noise * fits.sensitivity,
+                                    ratio_sensitivity: noise * fits.ratio_sensitivity,
                                     flux: flux.clone(),
                                     start: start,
                                     end: end,
@@ -1155,6 +1159,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     white,
                                                     median,
                                                     sensitivity,
+                                                    ratio_sensitivity,
                                                 )) => {
                                                     user.pmin = pmin;
                                                     user.pmax = pmax;
@@ -1162,6 +1167,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     user.white = white;
                                                     user.median = median;
                                                     user.sensitivity = sensitivity;
+                                                    user.ratio_sensitivity = ratio_sensitivity;
                                                     user.pixels = pixels;
                                                     user.mask = mask;
 
@@ -1204,6 +1210,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                         white: white,
                                                         median: median,
                                                         sensitivity: sensitivity,
+                                                        ratio_sensitivity: ratio_sensitivity,
                                                         hist: hist,
                                                     };
 
@@ -1346,6 +1353,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     user.white,
                                     user.median,
                                     user.sensitivity,
+                                    user.ratio_sensitivity,
                                     &user.flux,
                                 );
 
@@ -2217,7 +2225,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.12";
-static VERSION_STRING: &'static str = "SV2019-01-10.1";
+static VERSION_STRING: &'static str = "SV2019-01-15.1";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
