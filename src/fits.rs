@@ -251,6 +251,7 @@ pub struct FITS {
     pub has_header: bool,
     pub has_data: bool,
     pub timestamp: RwLock<SystemTime>, //last access time
+    is_optical: bool,
     pub is_dummy: bool,
 }
 
@@ -354,6 +355,7 @@ impl FITS {
             has_header: false,
             has_data: false,
             timestamp: RwLock::new(SystemTime::now()),
+            is_optical: false,
             is_dummy: true,
         };
 
@@ -1029,12 +1031,14 @@ impl FITS {
     pub fn from_path(
         id: &String,
         flux: &String,
+        is_optical: bool,
         filepath: &std::path::Path,
         is_compressed: bool,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux);
         fits.is_dummy = false;
+        fits.is_optical = is_optical;
 
         //load data from filepath
         let f = match File::open(filepath) {
@@ -1050,7 +1054,7 @@ impl FITS {
                 {
                     let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
 
-                    return FITS::from_url(&id, &flux, &url, &server);
+                    return FITS::from_url(&id, &flux, is_optical, &url, &server);
                 }
             }
         };
@@ -1346,11 +1350,13 @@ impl FITS {
     fn from_url(
         id: &String,
         flux: &String,
+        is_optical: bool,
         url: &String,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux);
         fits.is_dummy = false;
+        fits.is_optical = is_optical;
 
         println!("FITS::from_url({})", url);
 
@@ -2960,18 +2966,20 @@ impl FITS {
 
         //ALMAWebQL-style
         let u = 7.5_f32;
-        //let v = 15.0_f32 ;
-        let black = pmin.max(median - u * mad_n);
-        let white = pmax.min(median + u * mad_p);
-        let sensitivity = 1.0 / (white - black);
+        let mut black = pmin.max(median - u * mad_n);
+        let mut white = pmax.min(median + u * mad_p);
+        let mut sensitivity = 1.0 / (white - black);
 
         //SubaruWebQL-style
-        /*let u = 0.5_f32;
-        let v = 15.0_f32;
-        let black = pmin.max(median - u * mad);
-        let white = pmax.min(median + u * mad);
-        let sensitivity = 1.0 / (v * mad);*/
+        if self.is_optical {
+            let u = 0.5_f32;
+            let v = 15.0_f32;
+            black = pmin.max(median - u * mad);
+            white = pmax.min(median + u * mad);
+            sensitivity = 1.0 / (v * mad);
+        };
 
+        //let ratio_sensitivity = sensitivity;
         let ratio_sensitivity = match self.auto_brightness(pixels, mask, black, sensitivity) {
             Some(x) => x,
             None => sensitivity,
@@ -3182,18 +3190,20 @@ impl FITS {
 
         //ALMAWebQL-style
         let u = 7.5_f32;
-        //let v = 15.0_f32 ;
-        let black = pmin.max(median - u * mad_n);
-        let white = pmax.min(median + u * mad_p);
-        let sensitivity = 1.0 / (white - black);
+        let mut black = pmin.max(median - u * mad_n);
+        let mut white = pmax.min(median + u * mad_p);
+        let mut sensitivity = 1.0 / (white - black);
 
         //SubaruWebQL-style
-        /*let u = 0.5_f32;
-        let v = 15.0_f32;
-        let black = pmin.max(median - u * mad);
-        let white = pmax.min(median + u * mad);
-        let sensitivity = 1.0 / (v * mad);*/
+        if self.is_optical {
+            let u = 0.5_f32;
+            let v = 15.0_f32;
+            black = pmin.max(median - u * mad);
+            white = pmax.min(median + u * mad);
+            sensitivity = 1.0 / (v * mad);
+        };
 
+        //let ratio_sensitivity = sensitivity;
         let ratio_sensitivity =
             match self.auto_brightness(&self.pixels, &self.mask, black, sensitivity) {
                 Some(x) => x,

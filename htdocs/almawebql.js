@@ -45,6 +45,7 @@ function view_hsc() {
 
         var colourmap = document.getElementById("hsc_colourmap").value.trim();
         url += "&colourmap=" + encodeURIComponent(colourmap);
+        url += "&view=optical";
 
         window.location.href = url;
     }

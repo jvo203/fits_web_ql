@@ -2225,7 +2225,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.12";
-static VERSION_STRING: &'static str = "SV2019-01-15.2";
+static VERSION_STRING: &'static str = "SV2019-01-16.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -2645,6 +2645,14 @@ fn fitswebql_entry(
         None => false,
     };
 
+    let optical = match query.get("view") {
+        Some(x) => match x.as_ref() {
+            "optical" => true,
+            _ => false,
+        },
+        None => false,
+    };
+
     let flux = match query.get("flux") {
         Some(x) => x,
         None => "", //nothing by default
@@ -2652,14 +2660,14 @@ fn fitswebql_entry(
 
     #[cfg(feature = "server")]
     let resp = format!(
-        "FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}, flux: {}",
-        fitswebql_path, db, table, dataset_id, composite, flux
+        "FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}, pptical: {}, flux: {}",
+        fitswebql_path, db, table, dataset_id, composite, optical, flux
     );
 
     #[cfg(not(feature = "server"))]
     let resp = format!(
-        "FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}, composite: {}, flux: {}",
-        fitswebql_path, dir, ext, dataset_id, composite, flux
+        "FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}, composite: {}, optical: {}, flux: {}",
+        fitswebql_path, dir, ext, dataset_id, composite, optical, flux
     );
 
     println!("{}", resp);
@@ -2674,6 +2682,7 @@ fn fitswebql_entry(
         "fits",
         &dataset_id,
         composite,
+        optical,
         &flux,
         &server,
     )))
@@ -2689,6 +2698,7 @@ fn fitswebql_entry(
         &ext,
         &dataset_id,
         composite,
+        optical,
         &flux,
         &server,
     )))
@@ -3507,6 +3517,7 @@ fn execute_fits(
     ext: &str,
     dataset_id: &Vec<&str>,
     composite: bool,
+    is_optical: bool,
     flux: &str,
     server: &Addr<server::SessionServer>,
 ) -> HttpResponse {
@@ -3584,6 +3595,7 @@ fn execute_fits(
                 let fits = fits::FITS::from_path(
                     &my_data_id.clone(),
                     &my_flux.clone(),
+                    is_optical,
                     filepath.as_path(),
                     is_compressed,
                     &my_server,
@@ -3609,13 +3621,20 @@ fn execute_fits(
         };
     }
 
-    http_fits_response(&fitswebql_path, &dataset_id, composite, has_fits)
+    http_fits_response(
+        &fitswebql_path,
+        &dataset_id,
+        composite,
+        is_optical,
+        has_fits,
+    )
 }
 
 fn http_fits_response(
     fitswebql_path: &String,
     dataset_id: &Vec<&str>,
     composite: bool,
+    is_optical: bool,
     has_fits: bool,
 ) -> HttpResponse {
     println!("calling http_fits_response for {:?}", dataset_id);
@@ -3763,7 +3782,7 @@ fn http_fits_response(
         }
     }
 
-    html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits));
+    html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}' data-is-optical='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits, is_optical));
 
     #[cfg(not(feature = "server"))]
     {
