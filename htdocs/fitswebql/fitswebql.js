@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-15.0";
+	return "JS2019-01-16.0";
 }
 
 const wasm_supported = (() => {
@@ -2047,13 +2047,59 @@ function copy_coordinates(e) {
 	e.preventDefault();
 }
 
+function CD_coordinates(X, Y) {
+	let fitsData = fitsContainer[va_count - 1];
+
+	if (fitsData == null)
+		return;
+
+	var CRPIX1 = fitsData.CRPIX1;
+	var CRPIX2 = fitsData.CRPIX2;
+
+	var CRVAL1 = fitsData.CRVAL1;
+	var CRVAL2 = fitsData.CRVAL2;
+
+	//console.log(CRPIX1, CRVAL1, CRPIX2, CRVAL2) ;
+
+	//convert to radians
+	CRVAL1 = CRVAL1 / toDegrees;
+	CRVAL2 = CRVAL2 / toDegrees;
+
+	var CD1_1 = fitsData.CD1_1;
+	var CD1_2 = fitsData.CD1_2;
+	var CD2_1 = fitsData.CD2_1;
+	var CD2_2 = fitsData.CD2_2;
+
+	var x = CD1_1 * (X - CRPIX1) + CD1_2 * (Y - CRPIX2);
+	var y = CD2_1 * (X - CRPIX1) + CD2_2 * (Y - CRPIX2);
+
+	//convert to radians
+	x = x / toDegrees;
+	y = y / toDegrees;
+
+	//console.log("x: ", x, "y: ", y, "X: ", X, "Y: ", Y) ;
+
+	var a = Math.atan((x / Math.cos(CRVAL2)) / (1 - y * Math.tan(CRVAL2)));
+	var ra = a + CRVAL1;
+	var dec = Math.atan((y + Math.tan(CRVAL2)) * Math.cos(a) / (1 - y * Math.tan(CRVAL2)));
+
+	var newradec = new Array(ra, dec);
+
+	//console.log(RadiansPrintHMS(ra), RadiansPrintDMS(dec)) ;
+
+	return newradec;
+}
+
 function x2ra(x) {
 	let fitsData = fitsContainer[va_count - 1];
 
 	if (fitsData == null)
 		return "";
-	else
+
+	if (fitsData.CDELT1 != null)
 		return RadiansPrintHMS((fitsData.CRVAL1 + (x - fitsData.CRPIX1) * fitsData.CDELT1) / toDegrees);
+	else
+		throw "CDELT1 is not available";
 };
 
 function x2glon(x) {
@@ -2061,8 +2107,11 @@ function x2glon(x) {
 
 	if (fitsData == null)
 		return "";
-	else
+
+	if (fitsData.CDELT1 != null)
 		return RadiansPrintDMS((fitsData.CRVAL1 + (x - fitsData.CRPIX1) * fitsData.CDELT1) / toDegrees);
+	else
+		throw "CDELT1 is not available";
 };
 
 function y2dec(y) {
@@ -2070,8 +2119,11 @@ function y2dec(y) {
 
 	if (fitsData == null)
 		return "";
-	else
+
+	if (fitsData.CDELT2 != null)
 		return RadiansPrintDMS((fitsData.CRVAL2 + (fitsData.height - y - fitsData.CRPIX2) * fitsData.CDELT2) / toDegrees);
+	else
+		throw "CDELT2 is not available";
 };
 
 function display_gridlines() {
@@ -2154,11 +2206,16 @@ function display_gridlines() {
 				var tmp = image_bounding_dims.x1 + d * (image_bounding_dims.width - 1);
 				var orig_x = tmp * fitsData.width / imageCanvas.width;
 
-				if (fitsData.CTYPE1.indexOf("RA") > -1)
-					return x2ra(orig_x);
+				try {
+					if (fitsData.CTYPE1.indexOf("RA") > -1)
+						return x2ra(orig_x);
 
-				if (fitsData.CTYPE1.indexOf("GLON") > -1)
-					return x2glon(orig_x);
+					if (fitsData.CTYPE1.indexOf("GLON") > -1)
+						return x2glon(orig_x);
+				}
+				catch (err) {
+					console.log(err);
+				}
 
 				return "";
 			});
@@ -2192,11 +2249,16 @@ function display_gridlines() {
 				var tmp = image_bounding_dims.x1 + d * (image_bounding_dims.width - 1);
 				var orig_x = tmp * fitsData.width / imageCanvas.width;
 
-				if (fitsData.CTYPE1.indexOf("RA") > -1)
-					return x2ra(orig_x);
+				try {
+					if (fitsData.CTYPE1.indexOf("RA") > -1)
+						return x2ra(orig_x);
 
-				if (fitsData.CTYPE1.indexOf("GLON") > -1)
-					return x2glon(orig_x);
+					if (fitsData.CTYPE1.indexOf("GLON") > -1)
+						return x2glon(orig_x);
+				}
+				catch (err) {
+					console.log(err);
+				}
 
 				return "";
 			});
@@ -2230,7 +2292,15 @@ function display_gridlines() {
 			var imageCanvas = imageContainer[va_count - 1].imageCanvas;
 			var tmp = image_bounding_dims.y1 + d * (image_bounding_dims.height - 1);
 			var orig_y = tmp * fitsData.height / imageCanvas.height;
-			return y2dec(orig_y);
+
+			try {
+				return y2dec(orig_y);
+			}
+			catch (err) {
+				console.log(err);
+			}
+
+			return "";
 		});
 
 	if (!composite_view) {
@@ -7058,14 +7128,29 @@ function setup_image_selection() {
 			var orig_x = x * fitsData.width / imageCanvas.width;
 			var orig_y = y * fitsData.height / imageCanvas.height;
 
-			if (fitsData.CTYPE1.indexOf("RA") > -1)
-				d3.select("#ra").text(x2ra(orig_x));
+			try {
+				if (fitsData.CTYPE1.indexOf("RA") > -1)
+					d3.select("#ra").text(x2ra(orig_x));
 
-			if (fitsData.CTYPE1.indexOf("GLON") > -1)
-				d3.select("#ra").text(x2glon(orig_x));
+				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+					d3.select("#ra").text(x2glon(orig_x));
 
-			if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
-				d3.select("#dec").text(y2dec(orig_y));
+				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+					d3.select("#dec").text(y2dec(orig_y));
+			}
+			catch (err) {
+				//use CD_coordinates
+				let radec = CD_coordinates(orig_x, orig_y);
+
+				if (fitsData.CTYPE1.indexOf("RA") > -1)
+					d3.select("#ra").text(RadiansPrintHMS(radec[0]));
+
+				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+					d3.select("#ra").text(RadiansPrintDMS(radec[0]));
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
+			}
 
 			//for each image
 			var pixelText = '';
