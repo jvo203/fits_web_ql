@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-16.0";
+	return "JS2019-01-16.1";
 }
 
 const wasm_supported = (() => {
@@ -2047,7 +2047,157 @@ function copy_coordinates(e) {
 	e.preventDefault();
 }
 
-function CD_coordinates(X, Y) {
+// Returns the inverse of matrix `M`.
+function matrix_invert(M) {
+	// I use Guassian Elimination to calculate the inverse:
+	// (1) 'augment' the matrix (left) by the identity (on the right)
+	// (2) Turn the matrix on the left into the identity by elemetry row ops
+	// (3) The matrix on the right is the inverse (was the identity matrix)
+	// There are 3 elemtary row ops: (I combine b and c in my code)
+	// (a) Swap 2 rows
+	// (b) Multiply a row by a scalar
+	// (c) Add 2 rows
+
+	//if the matrix isn't square: exit (error)
+	if (M.length !== M[0].length) { return; }
+
+	//create the identity matrix (I), and a copy (C) of the original
+	var i = 0, ii = 0, j = 0, dim = M.length, e = 0, t = 0;
+	var I = [], C = [];
+	for (i = 0; i < dim; i += 1) {
+		// Create the row
+		I[I.length] = [];
+		C[C.length] = [];
+		for (j = 0; j < dim; j += 1) {
+
+			//if we're on the diagonal, put a 1 (for identity)
+			if (i == j) { I[i][j] = 1; }
+			else { I[i][j] = 0; }
+
+			// Also, make the copy of the original
+			C[i][j] = M[i][j];
+		}
+	}
+
+	// Perform elementary row operations
+	for (i = 0; i < dim; i += 1) {
+		// get the element e on the diagonal
+		e = C[i][i];
+
+		// if we have a 0 on the diagonal (we'll need to swap with a lower row)
+		if (e == 0) {
+			//look through every row below the i'th row
+			for (ii = i + 1; ii < dim; ii += 1) {
+				//if the ii'th row has a non-0 in the i'th col
+				if (C[ii][i] != 0) {
+					//it would make the diagonal have a non-0 so swap it
+					for (j = 0; j < dim; j++) {
+						e = C[i][j];       //temp store i'th row
+						C[i][j] = C[ii][j];//replace i'th row by ii'th
+						C[ii][j] = e;      //repace ii'th by temp
+						e = I[i][j];       //temp store i'th row
+						I[i][j] = I[ii][j];//replace i'th row by ii'th
+						I[ii][j] = e;      //repace ii'th by temp
+					}
+					//don't bother checking other rows since we've swapped
+					break;
+				}
+			}
+			//get the new diagonal
+			e = C[i][i];
+			//if it's still 0, not invertable (error)
+			if (e == 0) { return }
+		}
+
+		// Scale this row down by e (so we have a 1 on the diagonal)
+		for (j = 0; j < dim; j++) {
+			C[i][j] = C[i][j] / e; //apply to original matrix
+			I[i][j] = I[i][j] / e; //apply to identity
+		}
+
+		// Subtract this row (scaled appropriately for each row) from ALL of
+		// the other rows so that there will be 0's in this column in the
+		// rows above and below this one
+		for (ii = 0; ii < dim; ii++) {
+			// Only apply to other rows (we want a 1 on the diagonal)
+			if (ii == i) { continue; }
+
+			// We want to change this element to 0
+			e = C[ii][i];
+
+			// Subtract (the row above(or below) scaled by e) from (the
+			// current row) but start at the i'th column and assume all the
+			// stuff left of diagonal is 0 (which it should be if we made this
+			// algorithm correctly)
+			for (j = 0; j < dim; j++) {
+				C[ii][j] -= e * C[i][j]; //apply to original matrix
+				I[ii][j] -= e * I[i][j]; //apply to identity
+			}
+		}
+	}
+
+	//we've done all operations, C should be the identity
+	//matrix I should be the inverse:
+	return I;
+}
+
+function inverse_CD_matrix(arcx, arcy) {
+	let fitsData = fitsContainer[va_count - 1];
+
+	if (fitsData == null)
+		return;
+
+	//convert from arc seconds to radians
+	var dx = (arcx / 86400.0) * 2 * pi;//[s]
+	var dy = (arcy / 3600.0) / toDegrees;//["]
+
+	var CRPIX1 = fitsData.CRPIX1;
+	var CRPIX2 = fitsData.CRPIX2;
+
+	//convert to radians
+	var CRVAL1 = fitsData.CRVAL1 / toDegrees;
+	var CRVAL2 = fitsData.CRVAL2 / toDegrees;
+
+	var RA = CRVAL1 + dx;
+	var DEC = CRVAL2 + dy;
+
+	//console.log(RadiansPrintHMS(CRVAL1), RadiansPrintHMS(RA)) ;
+	//console.log(RadiansPrintDMS(CRVAL2), RadiansPrintDMS(DEC)) ;
+
+	var y = (1 - Math.tan(CRVAL2) * Math.cos(dx) / Math.tan(DEC)) / (Math.tan(CRVAL2) + Math.cos(dx) / Math.tan(DEC));
+	var x = Math.tan(dx) * Math.cos(CRVAL2) * (1 - y * Math.tan(CRVAL2));
+
+	//convert from radians to degrees
+	x = x * toDegrees;
+	y = y * toDegrees;
+
+	console.log("inverse: x = ", x, "y = ", y);
+
+	var CD1_1 = fitsData.CD1_1;
+	var CD1_2 = fitsData.CD1_2;
+	var CD2_1 = fitsData.CD2_1;
+	var CD2_2 = fitsData.CD2_2;
+
+	//convert the North/East rotation angle from radians to degrees
+	var theta = Math.atan(CD1_2 / CD1_1) * toDegrees;
+
+	var M = [[CD1_1, CD1_2], [CD2_1, CD2_2]];
+	var invM = matrix_invert(M);
+
+	var DC1_1 = invM[0][0];
+	var DC1_2 = invM[0][1];
+	var DC2_1 = invM[1][0];
+	var DC2_2 = invM[1][1];
+
+	var DX = DC1_1 * x + DC1_2 * y;
+	var DY = DC2_1 * x + DC2_2 * y;
+
+	var gridScale = new Array(DX / fitsData.width, Math.sign(CD2_2) * Math.abs(DY) / fitsData.height, theta);
+
+	return gridScale;
+}
+
+function CD_matrix(X, Y) {
 	let fitsData = fitsContainer[va_count - 1];
 
 	if (fitsData == null)
@@ -7139,8 +7289,8 @@ function setup_image_selection() {
 					d3.select("#dec").text(y2dec(orig_y));
 			}
 			catch (err) {
-				//use CD_coordinates
-				let radec = CD_coordinates(orig_x, fitsData.height - orig_y);
+				//use the CD scale matrix
+				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
 
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
 					d3.select("#ra").text(RadiansPrintHMS(radec[0]));
