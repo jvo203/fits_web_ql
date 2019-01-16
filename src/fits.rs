@@ -2969,6 +2969,10 @@ impl FITS {
         let mut black = pmin.max(median - u * mad_n);
         let mut white = pmax.min(median + u * mad_p);
         let mut sensitivity = 1.0 / (white - black);
+        let mut ratio_sensitivity = match self.auto_brightness(pixels, mask, black, sensitivity) {
+            Some(x) => x,
+            None => sensitivity,
+        };
 
         //SubaruWebQL-style
         if self.is_optical {
@@ -2977,12 +2981,7 @@ impl FITS {
             black = pmin.max(median - u * mad);
             white = pmax.min(median + u * mad);
             sensitivity = 1.0 / (v * mad);
-        };
-
-        //let ratio_sensitivity = sensitivity;
-        let ratio_sensitivity = match self.auto_brightness(pixels, mask, black, sensitivity) {
-            Some(x) => x,
-            None => sensitivity,
+            ratio_sensitivity = sensitivity;
         };
 
         println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
@@ -3193,6 +3192,11 @@ impl FITS {
         let mut black = pmin.max(median - u * mad_n);
         let mut white = pmax.min(median + u * mad_p);
         let mut sensitivity = 1.0 / (white - black);
+        let mut ratio_sensitivity =
+            match self.auto_brightness(&self.pixels, &self.mask, black, sensitivity) {
+                Some(x) => x,
+                None => sensitivity,
+            };
 
         //SubaruWebQL-style
         if self.is_optical {
@@ -3201,14 +3205,8 @@ impl FITS {
             black = pmin.max(median - u * mad);
             white = pmax.min(median + u * mad);
             sensitivity = 1.0 / (v * mad);
+            ratio_sensitivity = sensitivity;
         };
-
-        //let ratio_sensitivity = sensitivity;
-        let ratio_sensitivity =
-            match self.auto_brightness(&self.pixels, &self.mask, black, sensitivity) {
-                Some(x) => x,
-                None => sensitivity,
-            };
 
         println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
 
