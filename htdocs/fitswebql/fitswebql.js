@@ -7140,7 +7140,7 @@ function setup_image_selection() {
 			}
 			catch (err) {
 				//use CD_coordinates
-				let radec = CD_coordinates(orig_x, orig_y);
+				let radec = CD_coordinates(orig_x, fitsData.height - orig_y);
 
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
 					d3.select("#ra").text(RadiansPrintHMS(radec[0]));
