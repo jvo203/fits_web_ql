@@ -2225,7 +2225,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.12";
-static VERSION_STRING: &'static str = "SV2019-01-16.1";
+static VERSION_STRING: &'static str = "SV2019-01-17.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -4036,7 +4036,7 @@ fn main() {
             "started a fits_web_ql server process on port {}",
             server_port
         );
-        println!("send SIGINT to shutdown, i.e. killall -s SIGINT fits_web_ql");
+        println!("send SIGINT to shut down, i.e. killall -s SIGINT fits_web_ql");
     }
 
     let _ = sys.run();
