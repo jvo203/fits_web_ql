@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-18.2";
+	return "JS2019-01-18.3";
 }
 
 const wasm_supported = (() => {
@@ -9232,12 +9232,19 @@ function display_menu() {
 				var htmlStr = composite_view ? '<span class="glyphicon glyphicon-check"></span> RGB composite mode' : '<span class="glyphicon glyphicon-unchecked"></span> RGB composite mode';
 				d3.select(this).html(htmlStr);
 
-				var loc = window.location.href.replace("&view=composite", "");
+				var new_loc = window.location.href.replace("&view=", "&dummy=");
 
-				if (composite_view)
-					window.location.replace(loc + "&view=composite");
-				else
-					window.location.replace(loc);
+				if (composite_view && optical_view)
+					new_loc += "&view=composite,optical";
+				else {
+					if (composite_view)
+						new_loc += "&view=composite";
+
+					if (optical_view)
+						new_loc += "&view=optical";
+				}
+
+				window.location.replace(new_loc);
 			})
 			.html(htmlStr);
 	}
@@ -11209,6 +11216,9 @@ async*/ function mainRenderer() {
 
 	composite_view = (parseInt(votable.getAttribute('data-composite')) == 1) ? true : false;
 	console.log("composite view:", composite_view);
+
+	optical_view = (parseInt(votable.getAttribute('data-is-optical')) == 1) ? true : false;
+	console.log("optical view:", optical_view);
 
 	if (firstTime) {
 		fps = 60;//target fps; 60 is OK in Chrome but a bit laggish in Firefox
