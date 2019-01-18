@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-18.0";
+	return "JS2019-01-18.1";
 }
 
 const wasm_supported = (() => {
@@ -3270,7 +3270,7 @@ function display_dataset_info() {
 		.attr("id", "information");
 
 	var object = fitsData.OBJECT;
-	var filter = fitsData.FILTER.trim();
+	var filter = fitsData.FILTER.trim().toUpperCase();
 
 	if (object == '')
 		object = 'OBJECT N/A';
@@ -7103,9 +7103,14 @@ function display_composite_legend() {
 
 		let fitsData = fitsContainer[index];
 		let line = fitsData.LINE.trim();
+		let filter = fitsData.FILTER.trim();
 
-		if (line == "")
-			line = "line-" + (index + 1);
+		if (filter != "")
+			line = filter;
+		else {
+			if (line == "")
+				line = "line-" + (index + 1);
+		}
 
 		//<canvas id="LEG' + line + '" style="width:2em;height:1em;display:inline-block"></canvas>
 
@@ -7148,9 +7153,14 @@ function display_composite_legend() {
 	for (let index = 0; index < va_count; index++) {
 		let fitsData = fitsContainer[index];
 		let line = fitsData.LINE.trim();
+		let filter = fitsData.FILTER.trim();
 
-		if (line == "")
-			line = "line-" + (index + 1);
+		if (filter != "")
+			line = filter;
+		else {
+			if (line == "")
+				line = "line-" + (index + 1);
+		}
 
 		let lineCanvas = document.createElement('canvas');
 		lineCanvas.style.visibility = "hidden";
@@ -10190,9 +10200,14 @@ function display_rgb_legend() {
 			bunit = 'N/A';*/
 
 		let line = fitsData.LINE.trim();
+		let filter = fitsData.FILTER.trim();
 
-		if (line == "")
-			line = "line-" + index;
+		if (filter != "")
+			line = filter;
+		else {
+			if (line == "")
+				line = "line-" + index;
+		}
 
 		group.append("foreignObject")
 			.attr("x", (x + 0.0 * rectWidth))
