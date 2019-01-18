@@ -9,7 +9,6 @@ use std::time::SystemTime;
 use timer;
 
 use actix::*;
-use serde_json;
 use uuid::Uuid;
 
 use crate::DATASETS;

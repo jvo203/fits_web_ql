@@ -2,12 +2,12 @@
 pub struct KalmanFilter {
     estimate_position: f64,
     estimate_velocity: f64,
-    P_xx: f64,
-    P_xv: f64,
-    P_vv: f64,
+    p_xx: f64,
+    p_xv: f64,
+    p_vv: f64,
     position_variance: f64,
     velocity_variance: f64,
-    R: f64,
+    r: f64,
     has_velocity: bool,
 }
 
@@ -16,12 +16,12 @@ impl KalmanFilter {
         KalmanFilter {
             estimate_position: position,
             estimate_velocity: 0.0,
-            P_xx: 0.1 * position,
-            P_xv: 1.0,
-            P_vv: 1.0,
+            p_xx: 0.1 * position,
+            p_xv: 1.0,
+            p_vv: 1.0,
             position_variance: 0.1 * position,
             velocity_variance: 0.01 * position / 1000.0,
-            R: 0.01 * position,
+            r: 0.01 * position,
             has_velocity: false,
         }
     }
@@ -46,24 +46,24 @@ impl KalmanFilter {
             self.estimate_position += self.estimate_velocity * deltat;
 
             // Update covariance
-            self.P_xx += deltat * (2.0 * self.P_xv + deltat * self.P_vv);
-            self.P_xv += deltat * self.P_vv;
+            self.p_xx += deltat * (2.0 * self.p_xv + deltat * self.p_vv);
+            self.p_xv += deltat * self.p_vv;
 
-            self.P_xx += deltat * self.position_variance;
-            self.P_vv += deltat * self.velocity_variance;
+            self.p_xx += deltat * self.position_variance;
+            self.p_vv += deltat * self.velocity_variance;
 
             // Observational update (reactive)
-            let vi = 1.0 / (self.P_xx + self.R);
+            let vi = 1.0 / (self.p_xx + self.r);
 
-            let kx = self.P_xx * vi;
-            let kv = self.P_xv * vi;
+            let kx = self.p_xx * vi;
+            let kv = self.p_xv * vi;
 
             self.estimate_position += (position - self.estimate_position) * kx;
             self.estimate_velocity += (position - self.estimate_position) * kv;
 
-            self.P_xx *= 1.0 - kx;
-            self.P_xv *= 1.0 - kx;
-            self.P_vv -= kv * self.P_xv;
+            self.p_xx *= 1.0 - kx;
+            self.p_xv *= 1.0 - kx;
+            self.p_vv -= kv * self.p_xv;
         }
     }
 

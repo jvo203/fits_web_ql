@@ -3,6 +3,9 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[macro_use]
@@ -2225,7 +2228,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.0.12";
-static VERSION_STRING: &'static str = "SV2019-01-17.0";
+static VERSION_STRING: &'static str = "SV2019-01-18.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -2637,24 +2640,26 @@ fn fitswebql_entry(
         }
     };
 
-    let composite = match query.get("view") {
-        Some(x) => match x.as_ref() {
-            "composite" => true,
-            _ => false,
-        },
-        None => false,
-    };
+    let (composite, optical) = match query.get("view") {
+        Some(value) => {
+            let mut composite = false;
+            let mut optical = false;
 
-    let optical = match query.get("view") {
-        Some(x) => match x.as_ref() {
-            "optical" => true,
-            _ => false,
-        },
-        None => false,
+            if value.contains("composite") {
+                composite = true;
+            }
+
+            if value.contains("optical") {
+                optical = true;
+            }
+
+            (composite, optical)
+        }
+        None => (false, false),
     };
 
     let flux = match query.get("flux") {
-        Some(x) => x,
+        Some(value) => value,
         None => "", //nothing by default
     };
 
@@ -2716,7 +2721,7 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpRespons
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"),
             )))
-            .responder()
+            .responder();
         }
     };
 
@@ -2795,7 +2800,7 @@ fn get_spectrum(
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
                 format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"),
             )))
-            .responder()
+            .responder();
         }
     };
 
@@ -2986,12 +2991,12 @@ fn get_molecules(
                             ))
                     } else {
                         #[derive(Serialize, Deserialize)]
-                        struct freq_range {
+                        struct FreqRange {
                             freq_start: f64,
                             freq_end: f64,
                         }
 
-                        let res: std::result::Result<freq_range, serde_json::Error> =
+                        let res: std::result::Result<FreqRange, serde_json::Error> =
                             serde_json::from_str(&content);
 
                         match res {

@@ -31,26 +31,72 @@ function view_alma() {
 }
 
 function view_hsc() {
-    var dataId = document.getElementById("dataid").value.trim();
+    var dataId = document.getElementById("hsc_dataid").value.trim();
+
+    if (dataId == "") {
+        alert("no datasetId found !");
+        return;
+    }
+
+    var va_count = 0;
+
+    var elems = document.getElementsByClassName("hsc_filter");
+
+    for (let i = 0; i < elems.length; i++) {
+        if (elems[i].checked)
+            va_count++;
+    }
+
+    if (va_count == 0) {
+        alert("no filter selected !");
+        return;
+    }
+
+    console.log("va_count = ", va_count);
+
     var db = document.getElementById("hsc_db").value.trim();
     var table = document.getElementById("hsc_table").value.trim();
+    var composite = false;
+    var optical = true;
 
-    if (dataId != "") {
-        var url = null;
+    var url = "/fitswebql/FITSWebQL.html?db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table);
 
-        url = "/fitswebql/FITSWebQL.html?" + "db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table) + "&datasetId=" + encodeURIComponent(dataId);
-
-        var flux = document.getElementById("hsc_flux").value.trim();
-        url += "&flux=" + encodeURIComponent(flux);
-
-        var colourmap = document.getElementById("hsc_colourmap").value.trim();
-        url += "&colourmap=" + encodeURIComponent(colourmap);
-        url += "&view=optical";
-
-        window.location.href = url;
+    if (va_count == 1) {
+        for (let i = 0; i < elems.length; i++)
+            if (elems[i].checked)
+                url += "&datasetId=" + encodeURIComponent(dataId + "_" + elems[i].getAttribute("id").trim());
     }
-    else
-        alert("no datasetId found !");
+
+    if (va_count > 1) {
+        va_count = 0;
+
+        for (let i = 0; i < elems.length; i++)
+            if (elems[i].checked)
+                url += "&datasetId" + (++va_count) + "=" + encodeURIComponent(dataId + "_" + elems[i].getAttribute("id").trim());
+
+        if (va_count <= 3) {
+            composite = document.getElementById("hsc_composite").checked;
+        }
+    }
+
+    var flux = document.getElementById("hsc_flux").value.trim();
+    url += "&flux=" + encodeURIComponent(flux);
+
+    var colourmap = document.getElementById("hsc_colourmap").value.trim();
+    url += "&colourmap=" + encodeURIComponent(colourmap);
+
+    if (composite && optical) {
+        url += "&view=composite,optical";
+    } else {
+        if (composite)
+            url += "&view=composite";
+
+        if (optical)
+            url += "&view=optical";
+    }
+
+    window.location.href = url;
+
 }
 
 function view_nro45m() {
