@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-18.1";
+	return "JS2019-01-18.2";
 }
 
 const wasm_supported = (() => {
@@ -675,11 +675,11 @@ function replot_y_axis() {
 
 		if (intensity_mode == "integrated" && has_velocity_info)
 			bunit += '•km/s';
-	}
-	/*else
-		bunit = 'N/A';*/
 
-	d3.select("#ylabel").text(yLabel + ' ' + fitsData.BTYPE.trim() + " [" + bunit + "]");
+		bunit = "[" + bunit + "]";
+	}
+
+	d3.select("#ylabel").text(yLabel + ' ' + fitsData.BTYPE.trim() + " " + bunit);
 }
 
 function process_image(width, height, w, h, bytes, stride, alpha, index) {
@@ -5980,9 +5980,9 @@ function setup_axes() {
 
 		if (intensity_mode == "integrated" && has_velocity_info)
 			bunit += '•km/s';
+
+		bunit = "[" + bunit + "]";
 	}
-	/*else
-		bunit = 'N/A';*/
 
 	svg.append("text")
 		.attr("id", "ylabel")
@@ -5995,7 +5995,7 @@ function setup_axes() {
 		//.style("opacity", 0.7)
 		.attr("stroke", "none")
 		.attr("transform", "rotate(-90)")
-		.text(yLabel + ' ' + fitsData.BTYPE.trim() + " [" + bunit + "]");
+		.text(yLabel + ' ' + fitsData.BTYPE.trim() + " " + bunit);
 
 	// Add the Y Axis
 	svg.append("g")
@@ -10195,9 +10195,9 @@ function display_rgb_legend() {
 
 			if (fitsData.depth > 1 && has_velocity_info)
 				bunit += '•km/s';
+
+			bunit = "[" + bunit + "]";
 		}
-		/*else
-			bunit = 'N/A';*/
 
 		let line = fitsData.LINE.trim();
 		let filter = fitsData.FILTER.trim();
@@ -10215,7 +10215,7 @@ function display_rgb_legend() {
 			.attr("width", 5 * emFontSize)
 			.attr("height", 2 * emFontSize)
 			.append("xhtml:div")
-			.html('<p style="text-align: left">' + plain2chem(line, false) + '&nbsp[' + bunit + ']</p>');
+			.html('<p style="text-align: left">' + plain2chem(line, false) + '&nbsp;' + bunit + '</p>');
 	}
 }
 
@@ -10367,9 +10367,9 @@ function display_legend() {
 
 		if (fitsData.depth > 1 && has_velocity_info)
 			bunit += '•km/s';
+
+		bunit = "[" + bunit + "]";
 	}
-	/*else
-		bunit = 'N/A';*/
 
 	group.append("text")
 		.attr("id", "colourlabel")
@@ -10380,7 +10380,7 @@ function display_legend() {
 		.attr("text-anchor", "middle")
 		.attr("stroke", "none")
 		.attr("opacity", 0.8)
-		.text("[" + bunit + "]");
+		.text(bunit);
 
 	//add a close button
     /*var svg = d3.select("#FrontSVG") ;    
