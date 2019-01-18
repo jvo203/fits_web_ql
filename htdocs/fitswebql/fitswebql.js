@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-18.5";
+	return "JS2019-01-18.7";
 }
 
 const wasm_supported = (() => {
@@ -10159,10 +10159,11 @@ function display_rgb_legend() {
 			.append('rect')
 			.attr("x", x)
 			.attr("y", function (d, i) { return (0.9 * height - (i + 1) * rectHeight); })
-			.attr("height", rectHeight)
+			.attr("height", (rectHeight+1))
 			.attr("width", rectWidth)
-			.attr("stroke", strokeColour)
-			.attr("stroke-width", 0.1)
+			//.attr("stroke", strokeColour)
+			//.attr("stroke-width", 0.1)
+			.attr("stroke", "none")
 			//.attr('fill', function(d, i) { return pixel2rgba(1.0*d, index-1, 0.8);});
 			.attr('fill', function (d, i) { return interpolate_colourmap(d, rgb[index - 1], 0.8); });
 
@@ -10332,10 +10333,11 @@ function display_legend() {
 		.append('rect')
 		.attr("x", x)
 		.attr("y", function (d, i) { return (0.9 * height - (i + 1) * rectHeight); })
-		.attr("height", rectHeight)
+		.attr("height", (rectHeight+1))
 		.attr("width", rectWidth)
-		.attr("stroke", strokeColour)
-		.attr("stroke-width", 0.1)
+		//.attr("stroke", strokeColour)
+		//.attr("stroke-width", 0.1)
+		.attr("stroke", "none")		
 		.attr('fill', function (d, i) { return interpolate_colourmap(d, colourmap, 1.0); });
 
 	var colourScale = d3.scaleLinear()
