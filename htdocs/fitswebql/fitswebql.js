@@ -3270,9 +3270,12 @@ function display_dataset_info() {
 		.attr("id", "information");
 
 	var object = fitsData.OBJECT;
+	var filter = fitsData.filter.trim();
 
 	if (object == '')
 		object = 'OBJECT N/A';
+	else
+		object = object.replace('_' + filter, '');
 
 	var line = '';
 

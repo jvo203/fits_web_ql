@@ -177,6 +177,7 @@ pub struct FITS {
     bpa: f64,
     restfrq: f64,
     line: String,
+    filter: String,
     obsra: f64,
     obsdec: f64,
     datamin: f32,
@@ -282,6 +283,7 @@ impl FITS {
             bpa: 0.0,
             restfrq: 0.0,
             line: String::from(""),
+            filter: String::from(""),
             obsra: 0.0,
             obsdec: 0.0,
             datamin: std::f32::MIN,
@@ -1787,6 +1789,13 @@ impl FITS {
 
             if line.contains("LINE    = ") {
                 self.line = match scan_fmt!(line, "LINE    = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from(""),
+                }
+            }
+
+            if line.contains("FILTER  = ") {
+                self.filter = match scan_fmt!(line, "FILTER  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
@@ -5776,6 +5785,7 @@ impl FITS {
                 "DATEOBS" : self.obs_date,
                 "TIMESYS" : self.timesys,
                 "LINE" : self.line,
+                "FILTER" : self.filter,
                 "mean_spectrum" : &self.mean_spectrum,
                 "integrated_spectrum" : &self.integrated_spectrum,
                 /* the histogram part, pixel min, max etc... */
