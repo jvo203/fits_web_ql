@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-17.0";
+	return "JS2019-01-18.0";
 }
 
 const wasm_supported = (() => {
@@ -669,15 +669,15 @@ function replot_y_axis() {
 
 	let fitsData = fitsContainer[va_count - 1];
 
-	var bunit;
+	var bunit = '';
 	if (fitsData.BUNIT != '') {
 		bunit = fitsData.BUNIT.trim();
 
 		if (intensity_mode == "integrated" && has_velocity_info)
 			bunit += '•km/s';
 	}
-	else
-		bunit = 'N/A';
+	/*else
+		bunit = 'N/A';*/
 
 	d3.select("#ylabel").text(yLabel + ' ' + fitsData.BTYPE.trim() + " [" + bunit + "]");
 }
@@ -3270,7 +3270,7 @@ function display_dataset_info() {
 		.attr("id", "information");
 
 	var object = fitsData.OBJECT;
-	var filter = fitsData.filter.trim();
+	var filter = fitsData.FILTER.trim();
 
 	if (object == '')
 		object = 'OBJECT N/A';
@@ -5397,9 +5397,13 @@ function display_histogram(index) {
 		var imageTag = document.getElementById('imageTag#' + index);
 
 		let line = fitsData.LINE.trim();
+		let filter = fitsData.FILTER.trim();
 
 		if (line != "")
 			imageTag.innerHTML = plain2chem(line, true);
+
+		if (filter != "")
+			imageTag.innerHTML = filter;
 	}
 
 	redraw_histogram(index);
@@ -5970,15 +5974,15 @@ function setup_axes() {
 	if (intensity_mode == "mean")
 		yLabel = "Mean";
 
-	var bunit;
+	var bunit = '';
 	if (fitsData.BUNIT != '') {
 		bunit = fitsData.BUNIT.trim();
 
 		if (intensity_mode == "integrated" && has_velocity_info)
 			bunit += '•km/s';
 	}
-	else
-		bunit = 'N/A';
+	/*else
+		bunit = 'N/A';*/
 
 	svg.append("text")
 		.attr("id", "ylabel")
@@ -7037,12 +7041,20 @@ function add_line_label(index) {
 		return;
 
 	let line = fitsData.LINE.trim();
+	let filter = fitsData.FILTER.trim();
 
 	if (line == "")
 		//line = "line #" + index ;
 		line = datasetId[index - 1];
 
-	console.log("SPECTRAL LINE:", line);
+	console.log("SPECTRAL LINE:", line, "FILTER:", filter);
+
+	var label;
+
+	if (filter == "")
+		label = plain2chem(line, false);
+	else
+		label = filter;
 
 	if (imageContainer[index - 1] == null)
 		return;
@@ -7072,7 +7084,7 @@ function add_line_label(index) {
 		.attr("height", 2 * emFontSize)
 		.append("xhtml:div")
 		.attr("id", "line_display")
-		.html('<p style="text-align: center;font-size:1.5em; font-family: Inconsolata; font-weight: bold">' + plain2chem(line, false) + '</p>');
+		.html('<p style="text-align: center;font-size:1.5em; font-family: Inconsolata; font-weight: bold">' + label + '</p>');
 };
 
 function display_composite_legend() {
@@ -10167,15 +10179,15 @@ function display_rgb_legend() {
 
 		let fitsData = fitsContainer[index - 1];
 
-		var bunit;
+		var bunit = '';
 		if (fitsData.BUNIT != '') {
 			bunit = fitsData.BUNIT.trim();
 
 			if (fitsData.depth > 1 && has_velocity_info)
 				bunit += '•km/s';
 		}
-		else
-			bunit = 'N/A';
+		/*else
+			bunit = 'N/A';*/
 
 		let line = fitsData.LINE.trim();
 
@@ -10334,15 +10346,15 @@ function display_legend() {
 
 	let fitsData = fitsContainer[va_count - 1];
 
-	var bunit;
+	var bunit = '';
 	if (fitsData.BUNIT != '') {
 		bunit = fitsData.BUNIT.trim();
 
 		if (fitsData.depth > 1 && has_velocity_info)
 			bunit += '•km/s';
 	}
-	else
-		bunit = 'N/A';
+	/*else
+		bunit = 'N/A';*/
 
 	group.append("text")
 		.attr("id", "colourlabel")
