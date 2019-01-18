@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-18.4";
+	return "JS2019-01-18.5";
 }
 
 const wasm_supported = (() => {
@@ -3274,8 +3274,16 @@ function display_dataset_info() {
 
 	if (object == '')
 		object = 'OBJECT N/A';
-	else
-		object = object.replace('_' + filter, '');
+	else {
+		//object = object.replace('_' + filter, '');//filter names are inconsistent!!!
+
+		if (filter != "") {
+			var pos = object.lastIndexOf('_');
+
+			if (pos >= 0)
+				object = object.substr(0, pos);
+		}
+	}
 
 	var line = '';
 
