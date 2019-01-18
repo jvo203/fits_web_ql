@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-18.3";
+	return "JS2019-01-18.4";
 }
 
 const wasm_supported = (() => {
@@ -11217,7 +11217,7 @@ async*/ function mainRenderer() {
 	composite_view = (parseInt(votable.getAttribute('data-composite')) == 1) ? true : false;
 	console.log("composite view:", composite_view);
 
-	optical_view = (parseInt(votable.getAttribute('data-is-optical')) == 1) ? true : false;
+	optical_view = votable.getAttribute('data-is-optical');
 	console.log("optical view:", optical_view);
 
 	if (firstTime) {
