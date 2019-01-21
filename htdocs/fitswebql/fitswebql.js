@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-21.3";
+	return "JS2019-01-21.4";
 }
 
 const wasm_supported = (() => {
@@ -2664,6 +2664,8 @@ function display_cd_gridlines() {
 	//scale
 	var gridScale = inverse_CD_matrix(10, 60);
 	var angle = gridScale[2] * Math.sign(gridScale[0]);
+	//a manual override for testing purposes
+	angle = 45;
 
 	for (let i = 0; i < gridScale.length; i++)
 		if (isNaN(gridScale[i]))
@@ -2704,12 +2706,14 @@ function display_cd_gridlines() {
 	var y_offset = parseFloat(elem.attr("y"));
 
 	var x = d3.scaleLinear()
-		.range([x_offset, x_offset + width])
+		//.range([x_offset, x_offset + width])
+		.range([0, width])
 		.domain([0, 1]);
 	//.domain([image_bounding_dims.x1, image_bounding_dims.x1 + image_bounding_dims.width-1]);
 
 	var y = d3.scaleLinear()
-		.range([y_offset + height, y_offset])
+		//.range([y_offset + height, y_offset])
+		.range([height, 0])
 		.domain([1, 0]);
 	//.domain([image_bounding_dims.y1, image_bounding_dims.y1 + image_bounding_dims.height-1]);    
 
@@ -2740,7 +2744,7 @@ function display_cd_gridlines() {
 				var tmp = image_bounding_dims.x1 + d * (image_bounding_dims.width - 1);
 				var orig_x = tmp * fitsData.width / imageCanvas.width;
 
-				try {
+				/*try {
 					if (fitsData.CTYPE1.indexOf("RA") > -1)
 						return x2ra(orig_x);
 
@@ -2749,9 +2753,9 @@ function display_cd_gridlines() {
 				}
 				catch (err) {
 					console.log(err);
-				}
+				}*/
 
-				return "";
+				return d;
 			});
 
 		svg.append("g")
@@ -2783,7 +2787,7 @@ function display_cd_gridlines() {
 				var tmp = image_bounding_dims.x1 + d * (image_bounding_dims.width - 1);
 				var orig_x = tmp * fitsData.width / imageCanvas.width;
 
-				try {
+				/*try {
 					if (fitsData.CTYPE1.indexOf("RA") > -1)
 						return x2ra(orig_x);
 
@@ -2792,9 +2796,9 @@ function display_cd_gridlines() {
 				}
 				catch (err) {
 					console.log(err);
-				}
+				}*/
 
-				return "";
+				return d;
 			});
 
 		svg.append("g")
@@ -2804,13 +2808,17 @@ function display_cd_gridlines() {
 			.style("stroke", strokeColour)
 			.style("stroke-width", 0.5)
 			.attr("opacity", 1.0)
-			.attr("transform", "translate(0," + (height + y_offset) + ")")
+			//.attr("transform", "translate(" + (x_offset) + "," + (height + y_offset) + ")")
+			.attr("transform", ' rotate(' + angle + ' ' + (width/2) + ' ' + (height/2) + ')' + " translate(" + (0*x_offset) + "," + (height + 0*y_offset) + ")")
+			//.attr("transform", "translate(" + (x_offset) + "," + (height + y_offset) + ")" + ' rotate(' + angle + ' ' + (width/2) + ' ' + (height/2) + ')')
+			//.attr("transform", " translate(" + (x_offset) + "," + 0 + ")" + ' rotate(' + angle + ' ' + (width/2) + ' ' + (height/2) + ')')
+			//.attr("transform", " translate(" + 0 + "," + (0*height + y_offset) + ")" + ' rotate(' + angle + ' ' + (x_offset+width/2) + ' ' + (y_offset+height/2) + ')')
 			.call(xAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
 			//.attr("dx", ".35em")
-			.attr("dy", ".35em")
+			//.attr("dy", ".35em")
 			.attr("transform", "rotate(-45)")
 			.style("text-anchor", "middle");
 	}
@@ -2827,14 +2835,14 @@ function display_cd_gridlines() {
 			var tmp = image_bounding_dims.y1 + d * (image_bounding_dims.height - 1);
 			var orig_y = tmp * fitsData.height / imageCanvas.height;
 
-			try {
+			/*try {
 				return y2dec(orig_y);
 			}
 			catch (err) {
 				console.log(err);
-			}
+			}*/
 
-			return "";
+			return d;
 		});
 
 	if (!composite_view) {
@@ -2845,12 +2853,15 @@ function display_cd_gridlines() {
 			.style("stroke", strokeColour)
 			.style("stroke-width", 0.5)
 			.attr("opacity", 1.0)
-			.attr("transform", "translate(" + (x_offset) + ",0)")
+			//.attr("transform", "translate(" + (x_offset) + "," + (y_offset) + ")")
+			.attr("transform", ' rotate(' + angle + ' ' + (width/2) + ' ' + (height/2) + ')' + " translate(" + (0*x_offset) + "," + (0*y_offset) + ")")
+			//.attr("transform", ' rotate(' + angle + ' ' + (0*x_offset+width/2) + ' ' + (0*y_offset+height/2) + ')' + " translate(" + (x_offset) + "," + (y_offset) + ")")
+			//.attr("transform", " translate(" + (x_offset) + "," + 0 + ")" + ' rotate(' + angle + ' ' + (x_offset+width/2) + ' ' + (y_offset+height/2) + ')')
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
-			.attr("dx", "-.35em")
+			//.attr("dx", "-.35em")
 			//.attr("dy", "-0.35em")
 			//.attr("transform", "rotate(-45)")
 			.style("text-anchor", "end");//was end, dx -.35, dy 0
