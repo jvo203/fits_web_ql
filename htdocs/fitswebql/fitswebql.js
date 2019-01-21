@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-21.0";
+	return "JS2019-01-21.1";
 }
 
 const wasm_supported = (() => {
@@ -17,16 +17,6 @@ const wasm_supported = (() => {
 })();
 
 console.log(wasm_supported ? "WebAssembly is supported" : "WebAssembly is not supported");
-
-var generateUid = function () {
-	function S4() {
-		return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
-	}
-
-	var st = ((new Date).getTime().toString(16)).slice(0, 11) + (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1, 2);
-
-	return (S4() + S4() + S4() + S4() + S4() + st);
-}
 
 Array.prototype.rotate = function (n) {
 	return this.slice(n, this.length).concat(this.slice(0, n));
@@ -785,7 +775,7 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 			//ctx.globalAlpha=0.9;
 
 			var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-			scale = 2.0 * scale / va_count;
+			scale = 3.0 * scale / va_count;
 
 			var img_width = scale * image_bounding_dims.width;
 			var img_height = scale * image_bounding_dims.height;
@@ -4264,7 +4254,7 @@ function change_colourmap(index, recursive) {
 			//ctx.globalAlpha=0.9;
 
 			var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-			scale = 2.0 * scale / va_count;
+			scale = 3.0 * scale / va_count;
 
 			var img_width = scale * image_bounding_dims.width;
 			var img_height = scale * image_bounding_dims.height;
@@ -7074,7 +7064,7 @@ function add_line_label(index) {
 	let height = c.height;
 
 	let scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-	scale = 2.0 * scale / va_count;
+	scale = 3.0 * scale / va_count;
 
 	let img_width = scale * image_bounding_dims.width;
 	let img_height = scale * image_bounding_dims.height;
@@ -10131,7 +10121,7 @@ function display_rgb_legend() {
 		let max_pixel = pixel_range.max_pixel;
 
 		let scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-		scale = 2.0 * scale / va_count;
+		scale = 3.0 * scale / va_count;
 
 		let img_width = scale * image_bounding_dims.width;
 		let img_height = scale * image_bounding_dims.height;
