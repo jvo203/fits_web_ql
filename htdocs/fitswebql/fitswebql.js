@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-21.2";
+	return "JS2019-01-21.3";
 }
 
 const wasm_supported = (() => {
@@ -2294,6 +2294,9 @@ function display_scale_info() {
 	if (fitsData == null)
 		return;
 
+	if (fitsData.depth > 1)
+		return;
+
 	var elem = d3.select("#image_rectangle");
 	var img_height = parseFloat(elem.attr("height"));
 	var img_y = parseFloat(elem.attr("y"));
@@ -2310,6 +2313,7 @@ function display_scale_info() {
 
 	var svg = d3.select("#BackgroundSVG");
 	var width = parseFloat(svg.attr("width"));
+	var height = parseFloat(svg.attr("height"));
 
 	var defs = svg.append("defs");
 
@@ -2340,7 +2344,8 @@ function display_scale_info() {
 	//vertical scale
 	var L = Math.abs(gridScale[1]) * scale * img_height;
 	var X = 2 * emFontSize;
-	var Y = L + img_y;//1.75 * emFontSize;
+	//var Y = L + img_y;//1.75 * emFontSize;
+	var Y = img_y + img_height;
 
 	var vert = svg.append("g")
 		.attr("id", "verticalScale");
@@ -2362,10 +2367,10 @@ function display_scale_info() {
 		.text("60\"");
 
 	//N-E compass
-	var L = 4 * emFontSize;//*Math.sign(gridScale[0]) ;
+	var L = 3 * emFontSize;//*Math.sign(gridScale[0]) ;
 	var X = 0.02 * width + L + 2 * emFontSize;
 	//var Y = 0.01*width + L + emFontSize;
-	var Y = L + img_y;//Math.max(Y - 1.5 * emFontSize, 0.01 * width + L + emFontSize);
+	//var Y = L + img_y;//Math.max(Y - 1.5 * emFontSize, 0.01 * width + L + emFontSize);
 
 	//rotation
 	var compass = svg.append("g")
