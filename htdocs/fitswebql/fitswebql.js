@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-18.7";
+	return "JS2019-01-21.0";
 }
 
 const wasm_supported = (() => {
@@ -9314,6 +9314,7 @@ function display_menu() {
 		.style('cursor', 'pointer')
 		.on("click", function () {
 			displayLegend = !displayLegend;
+			localStorage_write_boolean("displayLegend", displayLegend);
 			var htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
 			d3.select(this).html(htmlStr);
 
@@ -10159,7 +10160,7 @@ function display_rgb_legend() {
 			.append('rect')
 			.attr("x", x)
 			.attr("y", function (d, i) { return (0.9 * height - (i + 1) * rectHeight); })
-			.attr("height", (rectHeight+1))
+			.attr("height", (rectHeight + 1))
 			.attr("width", rectWidth)
 			//.attr("stroke", strokeColour)
 			//.attr("stroke-width", 0.1)
@@ -10232,6 +10233,25 @@ function display_rgb_legend() {
 			.attr("height", 2 * emFontSize)
 			.append("xhtml:div")
 			.html('<p style="text-align: left">' + plain2chem(line, false) + '&nbsp;' + bunit + '</p>');
+	}
+
+	if (va_count == 1) {
+		var elem = d3.select("#legend");
+
+		if (displayLegend)
+			elem.attr("opacity", 1);
+		else
+			elem.attr("opacity", 0);
+	}
+	else {
+		for (let index = 1; index <= va_count; index++) {
+			var elem = d3.select("#legend" + index);
+
+			if (displayLegend)
+				elem.attr("opacity", 1);
+			else
+				elem.attr("opacity", 0);
+		}
 	}
 }
 
@@ -10333,11 +10353,11 @@ function display_legend() {
 		.append('rect')
 		.attr("x", x)
 		.attr("y", function (d, i) { return (0.9 * height - (i + 1) * rectHeight); })
-		.attr("height", (rectHeight+1))
+		.attr("height", (rectHeight + 1))
 		.attr("width", rectWidth)
 		//.attr("stroke", strokeColour)
 		//.attr("stroke-width", 0.1)
-		.attr("stroke", "none")		
+		.attr("stroke", "none")
 		.attr('fill', function (d, i) { return interpolate_colourmap(d, colourmap, 1.0); });
 
 	var colourScale = d3.scaleLinear()
@@ -10399,26 +10419,24 @@ function display_legend() {
 		.attr("opacity", 0.8)
 		.text(bunit);
 
-	//add a close button
-    /*var svg = d3.select("#FrontSVG") ;    
-    svg.append("foreignObject")
-	.attr("id", "legendButton")
-	.attr("x", x-1.5*emFontSize)
-	.attr("y", 0.1*height-0.5*emFontSize)
-	.attr("width", 2*emFontSize)
-	.attr("height", 2*emFontSize)
-	.attr("opacity", 1.0)
-	.append("xhtml:div")
-	.attr("id", "legendClose")
-	.attr("class", "container-fluid")	
-	.append("button")
-	.attr("class", "btn btn-default btn-xs")	
-	.on("click", function() {
-	    var legend = d3.select("#legend");
-	    var opacity = legend.attr("opacity") ;	    
-	    legend.attr("opacity",1-opacity);
-	})	
-	.html("×") ;*/
+	if (va_count == 1) {
+		var elem = d3.select("#legend");
+
+		if (displayLegend)
+			elem.attr("opacity", 1);
+		else
+			elem.attr("opacity", 0);
+	}
+	else {
+		for (let index = 1; index <= va_count; index++) {
+			var elem = d3.select("#legend" + index);
+
+			if (displayLegend)
+				elem.attr("opacity", 1);
+			else
+				elem.attr("opacity", 0);
+		}
+	}
 }
 
 function get_slope_from_multiplier(value) {
@@ -11103,9 +11121,6 @@ function enable_3d_view() {
 }
 
 async*/ function mainRenderer() {
-    /*sessionID = generateUid() ;
-    console.log("sessionID:", sessionID) ;*/
-
 	try {
 		enable_3d_view();
 	}
@@ -11334,7 +11349,7 @@ async*/ function mainRenderer() {
 		last_spectrum = null;
 
 		displayContours = false;
-		displayLegend = true;
+		displayLegend = localStorage_read_boolean("displayLegend", true);
 		displayMolecules = true;
 		displaySpectrum = true;
 		//displayGridlines = false ;

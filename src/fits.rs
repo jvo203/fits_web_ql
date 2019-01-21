@@ -4487,7 +4487,7 @@ impl FITS {
         println!("auto-adjusting brightness");
         let start = precise_time::precise_time_ns();
 
-        let target_brightness: f32 = 0.2;
+        let target_brightness: f32 = 0.1;
         let max_iter = 20;
         let mut iter = 0;
 
