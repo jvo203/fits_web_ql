@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-21.1";
+	return "JS2019-01-21.2";
 }
 
 const wasm_supported = (() => {
@@ -739,8 +739,7 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 		setup_viewports();
 
 		try {
-			if (index == va_count)
-				display_scale_info();
+			display_scale_info();
 		}
 		catch (err) {
 		};
@@ -854,6 +853,12 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 				setup_viewports();
 
 				console.log(imageContainer);
+
+				try {
+					display_scale_info();
+				}
+				catch (err) {
+				};
 
 				display_rgb_legend();
 
@@ -8269,11 +8274,13 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
 			if (index == va_count)
 				display_dataset_info();
 
-			try {
-				if (index == va_count)
-					display_scale_info();
-			}
-			catch (err) {
+			if (va_count == 1 || composite_view) {
+				try {
+					if (index == va_count)
+						display_scale_info();
+				}
+				catch (err) {
+				};
 			};
 
 			display_histogram(index);
