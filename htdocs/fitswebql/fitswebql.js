@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-22.2";
+	return "JS2019-01-22.3";
 }
 
 const wasm_supported = (() => {
@@ -2894,7 +2894,7 @@ function display_cd_gridlines() {
 			.attr("y", 0)
 			.attr("x", 0)
 			.style("fill", fillColour)
-			//.attr("dx", "-.35em")
+			.attr("dx", "-.35em")
 			//.attr("dy", "-0.35em")
 			.style("text-anchor", "end");//was end, dx -.35, dy 0
 	}
