@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-21.4";
+	return "JS2019-01-22.1";
 }
 
 const wasm_supported = (() => {
@@ -2665,7 +2665,12 @@ function display_cd_gridlines() {
 	var gridScale = inverse_CD_matrix(10, 60);
 	var angle = gridScale[2] * Math.sign(gridScale[0]);
 	//a manual override for testing purposes
-	angle = 45;
+	//angle = -45;
+
+	var label_angle = -45;
+
+	if (Math.sign(angle) != 0)
+		label_angle *= Math.sign(angle);
 
 	for (let i = 0; i < gridScale.length; i++)
 		if (isNaN(gridScale[i]))
@@ -2708,13 +2713,13 @@ function display_cd_gridlines() {
 	var x = d3.scaleLinear()
 		//.range([x_offset, x_offset + width])
 		.range([0, width])
-		.domain([0, 1]);
+		.domain([-1, 1]);//0, 1
 	//.domain([image_bounding_dims.x1, image_bounding_dims.x1 + image_bounding_dims.width-1]);
 
 	var y = d3.scaleLinear()
 		//.range([y_offset + height, y_offset])
 		.range([height, 0])
-		.domain([1, 0]);
+		.domain([1, -1]);//1, 0
 	//.domain([image_bounding_dims.y1, image_bounding_dims.y1 + image_bounding_dims.height-1]);    
 
 	var svg = d3.select("#BackgroundSVG");
@@ -2736,26 +2741,32 @@ function display_cd_gridlines() {
 		var xAxis = d3.axisBottom(x)
 			.tickSize(height)
 			.tickFormat(function (d) {
-				if (d == 0.0 || d == 1.0)
+				if (d == -1.0 || d == 1.0)
 					return "";
 
 				var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
 				var imageCanvas = imageContainer[va_count - 1].imageCanvas;
-				var tmp = image_bounding_dims.x1 + d * (image_bounding_dims.width - 1);
-				var orig_x = tmp * fitsData.width / imageCanvas.width;
 
-				/*try {
-					if (fitsData.CTYPE1.indexOf("RA") > -1)
-						return x2ra(orig_x);
+				var dx = d * Math.cos(angle / toDegrees);
+				var dy = d * Math.sin(angle / toDegrees);
 
-					if (fitsData.CTYPE1.indexOf("GLON") > -1)
-						return x2glon(orig_x);
-				}
-				catch (err) {
-					console.log(err);
-				}*/
+				//convert dx, dy to a 0 .. 1 range
+				var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
+				var tmpy = image_bounding_dims.y1 + (dy + 1) / 2 * (image_bounding_dims.height - 1);
 
-				return d;
+				var orig_x = tmpx * fitsData.width / imageCanvas.width;
+				var orig_y = tmpy * fitsData.height / imageCanvas.height;
+
+				//use the CD scale matrix
+				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
+
+				if (fitsData.CTYPE1.indexOf("RA") > -1)
+					return RadiansPrintHMS(radec[0]);
+
+				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+					return RadiansPrintDMS(radec[0]);
+
+				return "";
 			});
 
 		svg.append("g")
@@ -2765,40 +2776,46 @@ function display_cd_gridlines() {
 			.style("stroke", strokeColour)
 			.style("stroke-width", 0.5)
 			.attr("opacity", 1.0)
-			.attr("transform", "translate(0," + (y_offset) + ")")
+			.attr("transform", "translate(" + (x_offset) + "," + (y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (height / 2) + ')')
 			.call(xAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
-			.attr("dx", "-1.0em")
-			.attr("dy", "1.0em")
-			.attr("transform", "rotate(-45)")
+			//.attr("dx", "-1.0em")
+			//.attr("dy", "1.0em")
+			.attr("transform", "rotate(" + label_angle + ")")
 			.style("text-anchor", "middle");
 	}
 	else {
 		var xAxis = d3.axisTop(x)
 			.tickSize(height)
 			.tickFormat(function (d) {
-				if (d == 0.0 || d == 1.0)
+				if (d == -1.0 || d == 1.0)
 					return "";
 
 				var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
 				var imageCanvas = imageContainer[va_count - 1].imageCanvas;
-				var tmp = image_bounding_dims.x1 + d * (image_bounding_dims.width - 1);
-				var orig_x = tmp * fitsData.width / imageCanvas.width;
 
-				/*try {
-					if (fitsData.CTYPE1.indexOf("RA") > -1)
-						return x2ra(orig_x);
+				var dx = d * Math.cos(angle / toDegrees);
+				var dy = d * Math.sin(angle / toDegrees);
 
-					if (fitsData.CTYPE1.indexOf("GLON") > -1)
-						return x2glon(orig_x);
-				}
-				catch (err) {
-					console.log(err);
-				}*/
+				//convert dx, dy to a 0 .. 1 range
+				var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
+				var tmpy = image_bounding_dims.y1 + (dy + 1) / 2 * (image_bounding_dims.height - 1);
 
-				return d;
+				var orig_x = tmpx * fitsData.width / imageCanvas.width;
+				var orig_y = tmpy * fitsData.height / imageCanvas.height;
+
+				//use the CD scale matrix
+				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
+
+				if (fitsData.CTYPE1.indexOf("RA") > -1)
+					return RadiansPrintHMS(radec[0]);
+
+				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+					return RadiansPrintDMS(radec[0]);
+
+				return "";
 			});
 
 		svg.append("g")
@@ -2808,18 +2825,14 @@ function display_cd_gridlines() {
 			.style("stroke", strokeColour)
 			.style("stroke-width", 0.5)
 			.attr("opacity", 1.0)
-			//.attr("transform", "translate(" + (x_offset) + "," + (height + y_offset) + ")")
-			.attr("transform", ' rotate(' + angle + ' ' + (width/2) + ' ' + (height/2) + ')' + " translate(" + (0*x_offset) + "," + (height + 0*y_offset) + ")")
-			//.attr("transform", "translate(" + (x_offset) + "," + (height + y_offset) + ")" + ' rotate(' + angle + ' ' + (width/2) + ' ' + (height/2) + ')')
-			//.attr("transform", " translate(" + (x_offset) + "," + 0 + ")" + ' rotate(' + angle + ' ' + (width/2) + ' ' + (height/2) + ')')
-			//.attr("transform", " translate(" + 0 + "," + (0*height + y_offset) + ")" + ' rotate(' + angle + ' ' + (x_offset+width/2) + ' ' + (y_offset+height/2) + ')')
+			.attr("transform", "translate(" + (x_offset) + "," + (height + y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (- height / 2) + ')')
 			.call(xAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
 			//.attr("dx", ".35em")
-			//.attr("dy", ".35em")
-			.attr("transform", "rotate(-45)")
+			//.attr("dy", ".35em")			
+			.attr("transform", "rotate(" + label_angle + ")")
 			.style("text-anchor", "middle");
 	}
 
@@ -2827,22 +2840,28 @@ function display_cd_gridlines() {
 	var yAxis = d3.axisRight(y)
 		.tickSize(width)
 		.tickFormat(function (d) {
-			if (d == 0.0 || d == 1.0)
+			if (d == -1.0 || d == 1.0)
 				return "";
 
 			var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
 			var imageCanvas = imageContainer[va_count - 1].imageCanvas;
-			var tmp = image_bounding_dims.y1 + d * (image_bounding_dims.height - 1);
-			var orig_y = tmp * fitsData.height / imageCanvas.height;
 
-			/*try {
-				return y2dec(orig_y);
-			}
-			catch (err) {
-				console.log(err);
-			}*/
+			var dx = d * Math.sin(angle / toDegrees);
+			var dy = d * Math.cos(angle / toDegrees);
 
-			return d;
+			//convert dx, dy to a 0 .. 1 range
+			var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
+			var tmpy = image_bounding_dims.y1 + (dy + 1) / 2 * (image_bounding_dims.height - 1);
+
+			var orig_x = tmpx * fitsData.width / imageCanvas.width;
+			var orig_y = tmpy * fitsData.height / imageCanvas.height;
+
+			//use the CD scale matrix
+			let radec = CD_matrix(orig_x, fitsData.height - orig_y);
+
+			if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+				return RadiansPrintDMS(radec[1]);
+			else return "";
 		});
 
 	if (!composite_view) {
@@ -2853,17 +2872,13 @@ function display_cd_gridlines() {
 			.style("stroke", strokeColour)
 			.style("stroke-width", 0.5)
 			.attr("opacity", 1.0)
-			//.attr("transform", "translate(" + (x_offset) + "," + (y_offset) + ")")
-			.attr("transform", ' rotate(' + angle + ' ' + (width/2) + ' ' + (height/2) + ')' + " translate(" + (0*x_offset) + "," + (0*y_offset) + ")")
-			//.attr("transform", ' rotate(' + angle + ' ' + (0*x_offset+width/2) + ' ' + (0*y_offset+height/2) + ')' + " translate(" + (x_offset) + "," + (y_offset) + ")")
-			//.attr("transform", " translate(" + (x_offset) + "," + 0 + ")" + ' rotate(' + angle + ' ' + (x_offset+width/2) + ' ' + (y_offset+height/2) + ')')
+			.attr("transform", " translate(" + (x_offset) + "," + (y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (height / 2) + ')')
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
 			//.attr("dx", "-.35em")
 			//.attr("dy", "-0.35em")
-			//.attr("transform", "rotate(-45)")
 			.style("text-anchor", "end");//was end, dx -.35, dy 0
 	}
 	else {
@@ -2874,7 +2889,7 @@ function display_cd_gridlines() {
 			.style("stroke", strokeColour)
 			.style("stroke-width", 0.5)
 			.attr("opacity", 1.0)
-			.attr("transform", "translate(" + (x_offset) + ",0)")
+			.attr("transform", " translate(" + (x_offset) + "," + (y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (height / 2) + ')')
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
