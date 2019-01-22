@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-22.1";
+	return "JS2019-01-22.2";
 }
 
 const wasm_supported = (() => {
@@ -2494,6 +2494,11 @@ function display_gridlines() {
 		strokeColour = 'gray';
 	}
 
+	if (colourmap == "greyscale" || colourmap == "negative") {
+		fillColour = "#C4A000";
+		strokeColour = fillColour;
+	}
+
 	// Add the X Axis
 	if (fitsData.depth > 1) {
 		var xAxis = d3.axisBottom(x)
@@ -2526,13 +2531,14 @@ function display_gridlines() {
 			.attr("id", "ra_axis")
 			.style("fill", fillColour)
 			.style("stroke", strokeColour)
-			.style("stroke-width", 0.5)
+			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
 			.attr("transform", "translate(0," + (y_offset) + ")")
 			.call(xAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
+			.style("fill", fillColour)
 			.attr("dx", "-1.0em")
 			.attr("dy", "1.0em")
 			.attr("transform", "rotate(-45)")
@@ -2569,13 +2575,14 @@ function display_gridlines() {
 			.attr("id", "ra_axis")
 			.style("fill", fillColour)
 			.style("stroke", strokeColour)
-			.style("stroke-width", 0.5)
+			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
 			.attr("transform", "translate(0," + (height + y_offset) + ")")
 			.call(xAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
+			.style("fill", fillColour)
 			//.attr("dx", ".35em")
 			.attr("dy", ".35em")
 			.attr("transform", "rotate(-45)")
@@ -2610,13 +2617,14 @@ function display_gridlines() {
 			.attr("id", "dec_axis")
 			.style("fill", fillColour)
 			.style("stroke", strokeColour)
-			.style("stroke-width", 0.5)
+			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
 			.attr("transform", "translate(" + (x_offset) + ",0)")
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
+			.style("fill", fillColour)
 			.attr("dx", "-.35em")
 			//.attr("dy", "-0.35em")
 			//.attr("transform", "rotate(-45)")
@@ -2628,13 +2636,14 @@ function display_gridlines() {
 			.attr("id", "dec_axis")
 			.style("fill", fillColour)
 			.style("stroke", strokeColour)
-			.style("stroke-width", 0.5)
+			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
 			.attr("transform", "translate(" + (x_offset) + ",0)")
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
+			.style("fill", fillColour)
 			.attr("dx", ".35em")
 			//.attr("dy", "-0.35em")
 			//.attr("transform", "rotate(-45)")
@@ -2736,6 +2745,11 @@ function display_cd_gridlines() {
 		strokeColour = 'gray';
 	}
 
+	if (colourmap == "greyscale" || colourmap == "negative") {
+		fillColour = "#C4A000";
+		strokeColour = fillColour;
+	}
+
 	// Add the X Axis
 	if (fitsData.depth > 1) {
 		var xAxis = d3.axisBottom(x)
@@ -2774,13 +2788,14 @@ function display_cd_gridlines() {
 			.attr("id", "ra_axis")
 			.style("fill", fillColour)
 			.style("stroke", strokeColour)
-			.style("stroke-width", 0.5)
+			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
 			.attr("transform", "translate(" + (x_offset) + "," + (y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (height / 2) + ')')
 			.call(xAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
+			.style("fill", fillColour)
 			//.attr("dx", "-1.0em")
 			//.attr("dy", "1.0em")
 			.attr("transform", "rotate(" + label_angle + ")")
@@ -2823,13 +2838,14 @@ function display_cd_gridlines() {
 			.attr("id", "ra_axis")
 			.style("fill", fillColour)
 			.style("stroke", strokeColour)
-			.style("stroke-width", 0.5)
+			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
 			.attr("transform", "translate(" + (x_offset) + "," + (height + y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (- height / 2) + ')')
 			.call(xAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
+			.style("fill", fillColour)
 			//.attr("dx", ".35em")
 			//.attr("dy", ".35em")			
 			.attr("transform", "rotate(" + label_angle + ")")
@@ -2870,13 +2886,14 @@ function display_cd_gridlines() {
 			.attr("id", "dec_axis")
 			.style("fill", fillColour)
 			.style("stroke", strokeColour)
-			.style("stroke-width", 0.5)
+			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
 			.attr("transform", " translate(" + (x_offset) + "," + (y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (height / 2) + ')')
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
+			.style("fill", fillColour)
 			//.attr("dx", "-.35em")
 			//.attr("dy", "-0.35em")
 			.style("text-anchor", "end");//was end, dx -.35, dy 0
@@ -2887,13 +2904,14 @@ function display_cd_gridlines() {
 			.attr("id", "dec_axis")
 			.style("fill", fillColour)
 			.style("stroke", strokeColour)
-			.style("stroke-width", 0.5)
+			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
 			.attr("transform", " translate(" + (x_offset) + "," + (y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (height / 2) + ')')
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
 			.attr("x", 0)
+			.style("fill", fillColour)
 			.attr("dx", ".35em")
 			//.attr("dy", "-0.35em")
 			//.attr("transform", "rotate(-45)")
