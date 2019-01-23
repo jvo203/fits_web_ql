@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-23.6";
+	return "JS2019-01-23.7";
 }
 
 const wasm_supported = (() => {
@@ -10988,12 +10988,12 @@ function contour_surface_webworker() {
 			var height = parseFloat(elem.attr("height"));
 
 			var x = d3.scaleLinear()
-				.range([-1, width+1])
-				.domain([0, data[0].length]);
+				.range([0, width-1])
+				.domain([0, data[0].length-1]);
 
 			var y = d3.scaleLinear()
-				.range([height-1, -1])
-				.domain([0, data.length]);
+				.range([height-1, 0])
+				.domain([0, data.length-1]);
 
 			var colours = d3.scaleLinear()
 				.domain([min_value, max_value])
