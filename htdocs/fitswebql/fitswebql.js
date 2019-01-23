@@ -10988,11 +10988,11 @@ function contour_surface_webworker() {
 			var height = parseFloat(elem.attr("height"));
 
 			var x = d3.scaleLinear()
-				.range([0, width])
+				.range([-1, width+1])
 				.domain([0, data[0].length]);
 
 			var y = d3.scaleLinear()
-				.range([height, 0])
+				.range([height-1, -1])
 				.domain([0, data.length]);
 
 			var colours = d3.scaleLinear()
