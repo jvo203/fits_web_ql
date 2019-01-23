@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-23.8";
+	return "JS2019-01-23.10";
 }
 
 const wasm_supported = (() => {
@@ -5579,55 +5579,6 @@ function setup_3d_view() {
 
 	if (va_count > 1 && composite_view)
 		position = (width + rect_width) / 2 + 2 * emFontSize;
-
-	//add a 3D View button    
-    /*{
-	svg.append("g")
-	    .attr("id", "experimental3D")
-	    .style("opacity", 0.0)//0.7
-	    .append("foreignObject")
-	    .attr("x", position)
-	//.attr("y", ((height + rect_height)/2-1*emFontSize))//3*
-	    .attr("y", (height - 10*emFontSize))
-	    .attr("width", 10*emFontSize)
-	    .attr("height", 5*emFontSize)	
-	    .append("xhtml:div")	
-	    .attr("id", "Div3D")    
-	    .attr("class", "container-fluid")	
-	    .append("button")
-	    .attr("type", "button")	
-	    .attr("class", "btn btn-primary btn-md")	
-	    .on("click", function() {init_surface();})
-	    .html("3D View") ;
-    }
-
-    if(experimental)
-    {
-	d3.select("#experimental3D").style("opacity", 0.7) ;
-	d3.select("#Div3D").style("display", "block") ;
-    }
-    else
-    {
-	d3.select("#experimental3D").style("opacity", 0.0) ;
-	d3.select("#Div3D").style("display", "none") ;
-    } ;*/
-
-	//add a Contour View button
-    /*svg.append("g")
-	.style("opacity", 0.7)
-	.append("foreignObject")
-	.attr("x", ((width - rect_width)/2-10*emFontSize))
-	.attr("y", ((height + rect_height)/2-11*emFontSize))//3*
-	.attr("width", 10*emFontSize)
-	.attr("height", 5*emFontSize)	
-	.append("xhtml:div")	
-	.attr("id", "conrecDiv")    
-	.attr("class", "container-fluid")	
-	.append("button")
-	.attr("type", "button")	
-	.attr("class", "btn btn-primary btn-md")	
-	.on("click", function() { fetch_contours(datasetId) ;})
-	.html("CONREC") ;*/
 }
 
 function dragstart() {
@@ -6955,6 +6906,7 @@ function swap_viewports() {
 
 function fits_subregion_start() {
 	if (freqdrag) return;
+	if (optical_view) return;
 
 	clearTimeout(idleMouse);
 	moving = true;
@@ -6995,6 +6947,7 @@ function fits_subregion_start() {
 
 function fits_subregion_drag() {
 	if (freqdrag) return;
+	if (optical_view) return;
 
 	console.log("fits_subregion_drag");
 
@@ -7041,6 +6994,7 @@ function fits_subregion_drag() {
 
 function fits_subregion_end() {
 	if (freqdrag) return;
+	if (optical_view) return;
 
 	console.log("fits_subregion_end");
 
@@ -10604,144 +10558,9 @@ function localStorage_write_boolean(key, value) {
 function transpose(m) { return zeroFill(m.reduce(function (m, r) { return Math.max(m, r.length) }, 0)).map(function (r, i) { return zeroFill(m.length).map(function (c, j) { return m[j][i] }) }) } function zeroFill(n) { return new Array(n + 1).join("0").split("").map(Number) };
 
 function contour_surface() {
-	//return contour_surface_conrec() ;
 	//return contour_surface_marching_squares() ;
 	return contour_surface_webworker();
 };
-
-function contour_surface_conrec() {
-	if (va_count > 1 && !composite_view)
-		return;
-
-	has_contours = false;
-
-	try {
-		d3.select('#contourPlot').remove();
-	}
-	catch (e) { };
-
-	var data = [];
-
-	var imageCanvas = imageContainer[va_count - 1].imageCanvas;
-	var imageDataCopy = imageContainer[va_count - 1].imageDataCopy;
-	var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
-
-	if (composite_view) {
-		imageCanvas = compositeCanvas;
-		imageDataCopy = compositeImageData.data;
-	}
-
-	let min_value = 255;
-	let max_value = 0;
-
-	//for(var h=0;h<image_bounding_dims.height;h++)
-	for (var h = image_bounding_dims.height - 1; h >= 0; h--) {
-		var row = [];
-
-		var xcoord = image_bounding_dims.x1;
-		var ycoord = image_bounding_dims.y1 + h;
-		var pixel = 4 * (ycoord * imageCanvas.width + xcoord);
-
-		for (var w = 0; w < image_bounding_dims.width; w++) {
-			//var z = imageDataCopy[pixel];	    
-			var r = imageDataCopy[pixel];
-			var g = imageDataCopy[pixel + 1];
-			var b = imageDataCopy[pixel + 2];
-			var z = (r + g + b) / 3;
-			pixel += 4;
-
-			if (z < min_value)
-				min_value = z;
-
-			if (z > max_value)
-				max_value = z;
-
-			row.push(z);
-		}
-
-		data.push(row);
-	}
-
-	//need to transpose the data
-	data = transpose(data);
-
-	//console.log(data);
-
-	// Add a "cliff edge" to force contour lines to close along the border.
-    /*var cliff = -1000;
-    data.push(d3.range(data[0].length).map(function() { return cliff; }));
-    data.unshift(d3.range(data[0].length).map(function() { return cliff; }));
-    data.forEach(function(d) {
-	d.push(cliff);
-	d.unshift(cliff);
-    });*/
-
-	//console.log("min_pixel:", min_pixel, "max_pixel:", max_pixel) ;
-	console.log("min_value:", min_value, "max_value:", max_value);
-
-	var xs = d3.range(0, data.length);
-	var ys = d3.range(0, data[0].length);
-
-	var contours = parseInt(document.getElementById('contour_lines').value) + 1;
-	var step = (max_value - min_value) / contours;
-	var zs = d3.range(min_value + step, max_value, step);
-
-	console.log(xs);
-	console.log(ys);
-	console.log(zs);
-
-	var c = new Conrec;
-
-	c.contour(data, 0, xs.length - 1, 0, ys.length - 1, xs, ys, zs.length, zs);
-
-	console.log(c.contourList());
-
-	//return ;
-
-    /*var data = [[0, 1, 0], [1, 2, 1], [0, 1, 0]];
-    var data = [[1, 1, 1], [1, 0, 1], [0, 2, 0]];
-    var c = new Conrec;
-    c.contour(data, 0, 2, 0, 2, [1, 2, 3], [1, 2, 3], 3, [0, 1, 2]);*/
-
-	var elem = d3.select("#image_rectangle");
-	var width = parseFloat(elem.attr("width"));
-	var height = parseFloat(elem.attr("height"));
-
-	var x = d3.scaleLinear()
-		.range([0, width])
-		.domain([0, data.length]);
-
-	var y = d3.scaleLinear()
-		.range([height, 0])
-		.domain([0, data[0].length]);
-
-	var colours = d3.scaleLinear()
-		.domain([min_value, max_value])
-		.range(["#fff", "red"]);
-
-	displayContours = true;
-	var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines';
-	d3.select("#displayContours").html(htmlStr);
-
-	d3.select("#BackgroundSVG").append("svg")
-		.attr("id", "contourPlot")
-		.attr("x", elem.attr("x"))
-		.attr("y", elem.attr("y"))
-		.attr("width", width)
-		.attr("height", height)
-		.selectAll("path")
-		.data(c.contourList())
-		.enter().append("path")
-		//.style("fill",function(d) { return colours(d.level);})
-		.style("fill", "none")
-		.style("stroke", "black")
-		.attr("opacity", 0.5)
-		.attr("d", d3.line()
-			.x(function (d) { return x(d.x); })
-			.y(function (d) { return y(d.y); }));
-
-	has_contours = true;
-}
 
 function contour_surface_marching_squares() {
 	if (va_count > 1 && !composite_view)
@@ -10801,15 +10620,10 @@ function contour_surface_marching_squares() {
 	//console.log("min_pixel:", min_pixel, "max_pixel:", max_pixel) ;
 	console.log("min_value:", min_value, "max_value:", max_value);
 
-	var xs = d3.range(0, data[0].length);
-	var ys = d3.range(0, data.length);
-
 	var contours = parseInt(document.getElementById('contour_lines').value) + 1;
 	var step = (max_value - min_value) / contours;
 	var zs = d3.range(min_value + step, max_value, step);
 
-	console.log(xs);
-	console.log(ys);
 	console.log(zs);
 
 	var isoBands = [];
@@ -10832,11 +10646,11 @@ function contour_surface_marching_squares() {
 
 	var x = d3.scaleLinear()
 		.range([0, width])
-		.domain([0, data[0].length]);
+		.domain([0, data[0].length - 1]);
 
 	var y = d3.scaleLinear()
 		.range([height, 0])
-		.domain([0, data.length]);
+		.domain([0, data.length - 1]);
 
 	var colours = d3.scaleLinear()
 		.domain([min_value, max_value])
@@ -10955,12 +10769,8 @@ function contour_surface_webworker() {
 	var contours = parseInt(document.getElementById('contour_lines').value) + 1;
 	var step = (max_value - min_value) / contours;
 	var zs = d3.range(min_value + step, max_value, step);
-	//var zs = d3.range(min_value, max_value+step, step);
-    /*var zs = [] ;
-    for(var i=min_value; i<max_value+step; i += step)
-	zs.push(i) ;*/
-	
-	console.log("zs:",zs);
+
+	console.log("zs:", zs);
 
 	var completed_levels = 0;
 	//parallel isoBands    
@@ -10984,11 +10794,11 @@ function contour_surface_webworker() {
 
 			var x = d3.scaleLinear()
 				.range([0, width])
-				.domain([0, data[0].length-1]);
+				.domain([0, data[0].length - 1]);
 
 			var y = d3.scaleLinear()
 				.range([height, 0])
-				.domain([0, data.length-1]);
+				.domain([0, data.length - 1]);
 
 			var colours = d3.scaleLinear()
 				.domain([min_value, max_value])
@@ -11031,15 +10841,6 @@ function contour_surface_webworker() {
 	};
 
 	has_contours = true;
-}
-
-function contour_surface_test() {
-	var data = [[0, 1, 0], [1, 2, 1], [0, 1, 0]];
-	var c = new Conrec;
-	c.contour(data, 0, 2, 0, 2, [1, 2, 3], [1, 2, 3], 3, [0, 1, 2]);
-	// c.contours will now contain vectors in the form of doubly-linked lists.
-	// c.contourList() will return an array of vectors in the form of arrays.
-	console.log(c.contourList());
 }
 
 function test_webgl_support() {

@@ -67,7 +67,8 @@ use vpx_sys::*;
 #[cfg(feature = "opencl")]
 use ocl::core;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
 //use std::sync::RwLock;
 use parking_lot::RwLock;
 //use parking_lot::Mutex;
@@ -2227,8 +2228,8 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.0.12";
-static VERSION_STRING: &'static str = "SV2019-01-23.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.1.0";
+static VERSION_STRING: &'static str = "SV2019-01-23.1";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -2640,11 +2641,25 @@ fn fitswebql_entry(
         }
     };
 
-    let (composite, optical) = match query.get("view") {
-        Some(value) => {
-            let mut composite = false;
-            let mut optical = false;
+    //default values based on the db/table
+    let mut composite = false;
+    let mut optical = false;
+    let mut flux = "";
 
+    #[cfg(feature = "server")]
+    {
+        if db.contains("hsc") {
+            optical = true;
+            flux = "ratio";
+        };
+
+        if table.contains("fugin") {
+            flux = "logistic";
+        }
+    }
+
+    match query.get("view") {
+        Some(value) => {
             if value.contains("composite") {
                 composite = true;
             }
@@ -2652,20 +2667,29 @@ fn fitswebql_entry(
             if value.contains("optical") {
                 optical = true;
             }
-
-            (composite, optical)
         }
-        None => (false, false),
+        None => {}
     };
 
-    let flux = match query.get("flux") {
-        Some(value) => value,
-        None => "", //nothing by default
+    match query.get("flux") {
+        Some(value) => {
+            let mut valid_strings: HashSet<String> = HashSet::new();
+            valid_strings.insert(String::from("linear"));
+            valid_strings.insert(String::from("logistic"));
+            valid_strings.insert(String::from("ratio"));
+            valid_strings.insert(String::from("square"));
+            valid_strings.insert(String::from("legacy"));
+
+            if valid_strings.contains(value) {
+                flux = value;
+            };
+        }
+        None => {}
     };
 
     #[cfg(feature = "server")]
     let resp = format!(
-        "FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}, pptical: {}, flux: {}",
+        "FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}, optical: {}, flux: {}",
         fitswebql_path, db, table, dataset_id, composite, optical, flux
     );
 
