@@ -2695,7 +2695,7 @@ function display_cd_gridlines() {
 	var gridScale = inverse_CD_matrix(10, 60);
 	var angle = gridScale[2] * Math.sign(gridScale[0]);
 	//a manual override for testing purposes
-	//angle = -45;
+	angle = -45;
 
 	var label_angle = -45;
 
