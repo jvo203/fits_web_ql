@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-23.3";
+	return "JS2019-01-23.4";
 }
 
 const wasm_supported = (() => {
@@ -2298,7 +2298,9 @@ function display_scale_info() {
 		return;
 
 	var elem = d3.select("#image_rectangle");
+	var img_width = parseFloat(elem.attr("width"));
 	var img_height = parseFloat(elem.attr("height"));
+	var img_x = parseFloat(elem.attr("x"));
 	var img_y = parseFloat(elem.attr("y"));
 	var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
 	var imageCanvas = imageContainer[va_count - 1].imageCanvas;
@@ -2344,6 +2346,8 @@ function display_scale_info() {
 	//vertical scale
 	var L = Math.abs(gridScale[1]) * scale * img_height;
 	var X = 2 * emFontSize;
+	if (composite_view)
+		X += img_x + img_width;
 	//var Y = L + img_y;//1.75 * emFontSize;
 	var Y = img_y + img_height;
 
@@ -2369,6 +2373,8 @@ function display_scale_info() {
 	//N-E compass
 	var L = 3 * emFontSize;//*Math.sign(gridScale[0]) ;
 	var X = 0.02 * width + L + 2 * emFontSize;
+	if (composite_view)
+		X += img_x + img_width;
 	//var Y = 0.01*width + L + emFontSize;
 	//var Y = L + img_y;//Math.max(Y - 1.5 * emFontSize, 0.01 * width + L + emFontSize);
 
