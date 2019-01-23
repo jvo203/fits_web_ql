@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-23.2";
+	return "JS2019-01-23.3";
 }
 
 const wasm_supported = (() => {
@@ -7219,7 +7219,7 @@ function display_composite_legend() {
 			//strSelect += '<br><hr width="66%">' ;
 			strSelect += '<br><br>';
 
-		strLegend += '<div><div id="DIV' + line + '" style="width:5em;height:1em;display:inline-block"><img id="IMG' + line + '" src="" alt="linedash" width="100%" height="100%"></div><span style="font-size:100%; font-family:Inconsolata; color:' + colours[index] + ';">&nbsp■&nbsp</span><span style="font-size:100%; font-family:Helvetica; font-weight:bold; nocolor:' + colours[index] + ';">' + plain2chem(line, false) + '</span>&nbsp;' + strSelect + '</div>';
+		strLegend += '<div><div id="DIV' + line + '" style="width:5em;height:1em;display:inline-block"><img id="IMG' + line + '" src="" alt="linedash" width="100%" height="100%"></div><span style="font-size:100%; font-family:Inconsolata; color:' + colours[index] + ';">&nbsp;■&nbsp;</span><span style="font-size:100%; font-family:Helvetica; font-weight:bold; nocolor:' + colours[index] + ';">' + plain2chem(line, false) + '</span>&nbsp;' + strSelect + '</div>';
 	}
 
 	strLegend += '</div>';
