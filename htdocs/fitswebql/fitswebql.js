@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-22.3";
+	return "JS2019-01-23.2";
 }
 
 const wasm_supported = (() => {
@@ -2471,12 +2471,12 @@ function display_gridlines() {
 	var y_offset = parseFloat(elem.attr("y"));
 
 	var x = d3.scaleLinear()
-		.range([x_offset, x_offset + width])
+		.range([x_offset, x_offset + width - 1])
 		.domain([0, 1]);
 	//.domain([image_bounding_dims.x1, image_bounding_dims.x1 + image_bounding_dims.width-1]);
 
 	var y = d3.scaleLinear()
-		.range([y_offset + height, y_offset])
+		.range([y_offset + height - 1, y_offset])
 		.domain([1, 0]);
 	//.domain([image_bounding_dims.y1, image_bounding_dims.y1 + image_bounding_dims.height-1]);    
 
@@ -2590,28 +2590,28 @@ function display_gridlines() {
 	}
 
 	// Add the Y Axis
-	var yAxis = d3.axisRight(y)
-		.tickSize(width)
-		.tickFormat(function (d) {
-			if (d == 0.0 || d == 1.0)
-				return "";
-
-			var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
-			var imageCanvas = imageContainer[va_count - 1].imageCanvas;
-			var tmp = image_bounding_dims.y1 + d * (image_bounding_dims.height - 1);
-			var orig_y = tmp * fitsData.height / imageCanvas.height;
-
-			try {
-				return y2dec(orig_y);
-			}
-			catch (err) {
-				console.log(err);
-			}
-
-			return "";
-		});
-
 	if (!composite_view) {
+		var yAxis = d3.axisRight(y)
+			.tickSize(width)
+			.tickFormat(function (d) {
+				if (d == 0.0 || d == 1.0)
+					return "";
+
+				var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
+				var imageCanvas = imageContainer[va_count - 1].imageCanvas;
+				var tmp = image_bounding_dims.y1 + d * (image_bounding_dims.height - 1);
+				var orig_y = tmp * fitsData.height / imageCanvas.height;
+
+				try {
+					return y2dec(orig_y);
+				}
+				catch (err) {
+					console.log(err);
+				}
+
+				return "";
+			});
+
 		svg.append("g")
 			.attr("class", "gridlines")
 			.attr("id", "dec_axis")
@@ -2631,6 +2631,27 @@ function display_gridlines() {
 			.style("text-anchor", "end");//was end, dx -.35, dy 0
 	}
 	else {
+		var yAxis = d3.axisLeft(y)
+			.tickSize(width)
+			.tickFormat(function (d) {
+				if (d == 0.0 || d == 1.0)
+					return "";
+
+				var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
+				var imageCanvas = imageContainer[va_count - 1].imageCanvas;
+				var tmp = image_bounding_dims.y1 + d * (image_bounding_dims.height - 1);
+				var orig_y = tmp * fitsData.height / imageCanvas.height;
+
+				try {
+					return y2dec(orig_y);
+				}
+				catch (err) {
+					console.log(err);
+				}
+
+				return "";
+			});
+
 		svg.append("g")
 			.attr("class", "gridlines")
 			.attr("id", "dec_axis")
@@ -2638,7 +2659,7 @@ function display_gridlines() {
 			.style("stroke", strokeColour)
 			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
-			.attr("transform", "translate(" + (x_offset) + ",0)")
+			.attr("transform", "translate(" + (width + x_offset) + ",0)")
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
@@ -2720,16 +2741,12 @@ function display_cd_gridlines() {
 	var y_offset = parseFloat(elem.attr("y"));
 
 	var x = d3.scaleLinear()
-		//.range([x_offset, x_offset + width])
-		.range([0, width])
-		.domain([-1, 1]);//0, 1
-	//.domain([image_bounding_dims.x1, image_bounding_dims.x1 + image_bounding_dims.width-1]);
+		.range([0, width - 1])
+		.domain([-1, 1]);
 
 	var y = d3.scaleLinear()
-		//.range([y_offset + height, y_offset])
-		.range([height, 0])
-		.domain([1, -1]);//1, 0
-	//.domain([image_bounding_dims.y1, image_bounding_dims.y1 + image_bounding_dims.height-1]);    
+		.range([height - 1, 0])
+		.domain([1, -1]);
 
 	var svg = d3.select("#BackgroundSVG");
 
@@ -2853,34 +2870,34 @@ function display_cd_gridlines() {
 	}
 
 	// Add the Y Axis
-	var yAxis = d3.axisRight(y)
-		.tickSize(width)
-		.tickFormat(function (d) {
-			if (d == -1.0 || d == 1.0)
-				return "";
-
-			var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
-			var imageCanvas = imageContainer[va_count - 1].imageCanvas;
-
-			var dx = d * Math.sin(angle / toDegrees);
-			var dy = d * Math.cos(angle / toDegrees);
-
-			//convert dx, dy to a 0 .. 1 range
-			var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
-			var tmpy = image_bounding_dims.y1 + (dy + 1) / 2 * (image_bounding_dims.height - 1);
-
-			var orig_x = tmpx * fitsData.width / imageCanvas.width;
-			var orig_y = tmpy * fitsData.height / imageCanvas.height;
-
-			//use the CD scale matrix
-			let radec = CD_matrix(orig_x, fitsData.height - orig_y);
-
-			if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
-				return RadiansPrintDMS(radec[1]);
-			else return "";
-		});
-
 	if (!composite_view) {
+		var yAxis = d3.axisRight(y)
+			.tickSize(width)
+			.tickFormat(function (d) {
+				if (d == -1.0 || d == 1.0)
+					return "";
+
+				var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
+				var imageCanvas = imageContainer[va_count - 1].imageCanvas;
+
+				var dx = d * Math.sin(angle / toDegrees);
+				var dy = d * Math.cos(angle / toDegrees);
+
+				//convert dx, dy to a 0 .. 1 range
+				var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
+				var tmpy = image_bounding_dims.y1 + (dy + 1) / 2 * (image_bounding_dims.height - 1);
+
+				var orig_x = tmpx * fitsData.width / imageCanvas.width;
+				var orig_y = tmpy * fitsData.height / imageCanvas.height;
+
+				//use the CD scale matrix
+				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+					return RadiansPrintDMS(radec[1]);
+				else return "";
+			});
+
 		svg.append("g")
 			.attr("class", "gridlines")
 			.attr("id", "dec_axis")
@@ -2899,6 +2916,33 @@ function display_cd_gridlines() {
 			.style("text-anchor", "end");//was end, dx -.35, dy 0
 	}
 	else {
+		var yAxis = d3.axisLeft(y)
+			.tickSize(width)
+			.tickFormat(function (d) {
+				if (d == -1.0 || d == 1.0)
+					return "";
+
+				var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
+				var imageCanvas = imageContainer[va_count - 1].imageCanvas;
+
+				var dx = d * Math.sin(angle / toDegrees);
+				var dy = d * Math.cos(angle / toDegrees);
+
+				//convert dx, dy to a 0 .. 1 range
+				var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
+				var tmpy = image_bounding_dims.y1 + (dy + 1) / 2 * (image_bounding_dims.height - 1);
+
+				var orig_x = tmpx * fitsData.width / imageCanvas.width;
+				var orig_y = tmpy * fitsData.height / imageCanvas.height;
+
+				//use the CD scale matrix
+				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+					return RadiansPrintDMS(radec[1]);
+				else return "";
+			});
+
 		svg.append("g")
 			.attr("class", "gridlines")
 			.attr("id", "dec_axis")
@@ -2906,7 +2950,7 @@ function display_cd_gridlines() {
 			.style("stroke", strokeColour)
 			.style("stroke-width", 1.0)
 			.attr("opacity", 1.0)
-			.attr("transform", " translate(" + (x_offset) + "," + (y_offset) + ")" + ' rotate(' + angle + ' ' + (width / 2) + ' ' + (height / 2) + ')')
+			.attr("transform", " translate(" + (width + x_offset) + "," + (y_offset) + ")" + ' rotate(' + angle + ' ' + (- width / 2) + ' ' + (height / 2) + ')')
 			.call(yAxis)
 			.selectAll("text")
 			.attr("y", 0)
@@ -2931,6 +2975,9 @@ function display_cd_gridlines() {
 
 function display_beam() {
 	if (va_count > 1 && !composite_view)
+		return;
+
+	if (optical_view)
 		return;
 
 	let fitsData = fitsContainer[va_count - 1];
@@ -9102,127 +9149,129 @@ function display_menu() {
 		.attr("class", "dropdown-menu");
 
 	//SPLATALOGUE
-	var splatMenu = mainUL.append("li")
-		.attr("class", "dropdown");
+	if (!optical_view) {
+		var splatMenu = mainUL.append("li")
+			.attr("class", "dropdown");
 
-	splatMenu.append("a")
-		.attr("class", "dropdown-toggle")
-		.attr("data-toggle", "dropdown")
-		.style('cursor', 'pointer')
-		.html('Splatalogue <span class="caret"></span>');
+		splatMenu.append("a")
+			.attr("class", "dropdown-toggle")
+			.attr("data-toggle", "dropdown")
+			.style('cursor', 'pointer')
+			.html('Splatalogue <span class="caret"></span>');
 
-	var splatDropdown = splatMenu.append("ul")
-		.attr("class", "dropdown-menu");
+		var splatDropdown = splatMenu.append("ul")
+			.attr("class", "dropdown-menu");
 
-	splatDropdown.append("li")
-		.append("a")
-		.html('<label>intensity cutoff < <span id="intVal">' + displayIntensity.toFixed(1) + '</span> <input id="intensity" class="slider" type="range" min="-10" max="0" step="0.1" value="' + displayIntensity + '" onmousemove="javascript:change_intensity_threshold(false);" onchange="javascript:change_intensity_threshold(true);"/></label>');
+		splatDropdown.append("li")
+			.append("a")
+			.html('<label>intensity cutoff < <span id="intVal">' + displayIntensity.toFixed(1) + '</span> <input id="intensity" class="slider" type="range" min="-10" max="0" step="0.1" value="' + displayIntensity + '" onmousemove="javascript:change_intensity_threshold(false);" onchange="javascript:change_intensity_threshold(true);"/></label>');
 
-	var htmlStr;
+		var htmlStr;
 
-	htmlStr = displayCDMS ? '<span class="glyphicon glyphicon-check"></span> CDMS' : '<span class="glyphicon glyphicon-unchecked"></span> CDMS';
-	splatDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayCDMS = !displayCDMS;
-			localStorage_write_boolean("displayCDMS", displayCDMS);
-			var htmlStr = displayCDMS ? '<span class="glyphicon glyphicon-check"></span> CDMS' : '<span class="glyphicon glyphicon-unchecked"></span> CDMS';
-			d3.select(this).html(htmlStr);
-			display_molecules();
-		})
-		.html(htmlStr);
+		htmlStr = displayCDMS ? '<span class="glyphicon glyphicon-check"></span> CDMS' : '<span class="glyphicon glyphicon-unchecked"></span> CDMS';
+		splatDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayCDMS = !displayCDMS;
+				localStorage_write_boolean("displayCDMS", displayCDMS);
+				var htmlStr = displayCDMS ? '<span class="glyphicon glyphicon-check"></span> CDMS' : '<span class="glyphicon glyphicon-unchecked"></span> CDMS';
+				d3.select(this).html(htmlStr);
+				display_molecules();
+			})
+			.html(htmlStr);
 
-	htmlStr = displayJPL ? '<span class="glyphicon glyphicon-check"></span> JPL' : '<span class="glyphicon glyphicon-unchecked"></span> JPL';
-	splatDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayJPL = !displayJPL;
-			localStorage_write_boolean("displayJPL", displayJPL);
-			var htmlStr = displayJPL ? '<span class="glyphicon glyphicon-check"></span> JPL' : '<span class="glyphicon glyphicon-unchecked"></span> JPL';
-			d3.select(this).html(htmlStr);
-			display_molecules();
-		})
-		.html(htmlStr);
+		htmlStr = displayJPL ? '<span class="glyphicon glyphicon-check"></span> JPL' : '<span class="glyphicon glyphicon-unchecked"></span> JPL';
+		splatDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayJPL = !displayJPL;
+				localStorage_write_boolean("displayJPL", displayJPL);
+				var htmlStr = displayJPL ? '<span class="glyphicon glyphicon-check"></span> JPL' : '<span class="glyphicon glyphicon-unchecked"></span> JPL';
+				d3.select(this).html(htmlStr);
+				display_molecules();
+			})
+			.html(htmlStr);
 
-	htmlStr = displayLovas ? '<span class="glyphicon glyphicon-check"></span> Lovas' : '<span class="glyphicon glyphicon-unchecked"></span> Lovas';
-	splatDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayLovas = !displayLovas;
-			localStorage_write_boolean("displayLovas", displayLovas);
-			var htmlStr = displayLovas ? '<span class="glyphicon glyphicon-check"></span> Lovas' : '<span class="glyphicon glyphicon-unchecked"></span> Lovas';
-			d3.select(this).html(htmlStr);
-			display_molecules();
-		})
-		.html(htmlStr);
+		htmlStr = displayLovas ? '<span class="glyphicon glyphicon-check"></span> Lovas' : '<span class="glyphicon glyphicon-unchecked"></span> Lovas';
+		splatDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayLovas = !displayLovas;
+				localStorage_write_boolean("displayLovas", displayLovas);
+				var htmlStr = displayLovas ? '<span class="glyphicon glyphicon-check"></span> Lovas' : '<span class="glyphicon glyphicon-unchecked"></span> Lovas';
+				d3.select(this).html(htmlStr);
+				display_molecules();
+			})
+			.html(htmlStr);
 
-	htmlStr = displayOSU ? '<span class="glyphicon glyphicon-check"></span> OSU' : '<span class="glyphicon glyphicon-unchecked"></span> OSU';
-	splatDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayOSU = !displayOSU;
-			localStorage_write_boolean("displayOSU", displayOSU);
-			var htmlStr = displayOSU ? '<span class="glyphicon glyphicon-check"></span> OSU' : '<span class="glyphicon glyphicon-unchecked"></span> OSU';
-			d3.select(this).html(htmlStr);
-			display_molecules();
-		})
-		.html(htmlStr);
+		htmlStr = displayOSU ? '<span class="glyphicon glyphicon-check"></span> OSU' : '<span class="glyphicon glyphicon-unchecked"></span> OSU';
+		splatDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayOSU = !displayOSU;
+				localStorage_write_boolean("displayOSU", displayOSU);
+				var htmlStr = displayOSU ? '<span class="glyphicon glyphicon-check"></span> OSU' : '<span class="glyphicon glyphicon-unchecked"></span> OSU';
+				d3.select(this).html(htmlStr);
+				display_molecules();
+			})
+			.html(htmlStr);
 
-	htmlStr = displayRecomb ? '<span class="glyphicon glyphicon-check"></span> Recomb' : '<span class="glyphicon glyphicon-unchecked"></span> Recomb';
-	splatDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayRecomb = !displayRecomb;
-			localStorage_write_boolean("displayRecomb", displayRecomb);
-			var htmlStr = displayRecomb ? '<span class="glyphicon glyphicon-check"></span> Recomb' : '<span class="glyphicon glyphicon-unchecked"></span> Recomb';
-			d3.select(this).html(htmlStr);
-			display_molecules();
-		})
-		.html(htmlStr);
+		htmlStr = displayRecomb ? '<span class="glyphicon glyphicon-check"></span> Recomb' : '<span class="glyphicon glyphicon-unchecked"></span> Recomb';
+		splatDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayRecomb = !displayRecomb;
+				localStorage_write_boolean("displayRecomb", displayRecomb);
+				var htmlStr = displayRecomb ? '<span class="glyphicon glyphicon-check"></span> Recomb' : '<span class="glyphicon glyphicon-unchecked"></span> Recomb';
+				d3.select(this).html(htmlStr);
+				display_molecules();
+			})
+			.html(htmlStr);
 
-	htmlStr = displaySLAIM ? '<span class="glyphicon glyphicon-check"></span> SLAIM' : '<span class="glyphicon glyphicon-unchecked"></span> SLAIM';
-	splatDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displaySLAIM = !displaySLAIM;
-			localStorage_write_boolean("displaySLAIM", displaySLAIM);
-			var htmlStr = displaySLAIM ? '<span class="glyphicon glyphicon-check"></span> SLAIM' : '<span class="glyphicon glyphicon-unchecked"></span> SLAIM';
-			d3.select(this).html(htmlStr);
-			display_molecules();
-		})
-		.html(htmlStr);
+		htmlStr = displaySLAIM ? '<span class="glyphicon glyphicon-check"></span> SLAIM' : '<span class="glyphicon glyphicon-unchecked"></span> SLAIM';
+		splatDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displaySLAIM = !displaySLAIM;
+				localStorage_write_boolean("displaySLAIM", displaySLAIM);
+				var htmlStr = displaySLAIM ? '<span class="glyphicon glyphicon-check"></span> SLAIM' : '<span class="glyphicon glyphicon-unchecked"></span> SLAIM';
+				d3.select(this).html(htmlStr);
+				display_molecules();
+			})
+			.html(htmlStr);
 
-	htmlStr = displayTopModel ? '<span class="glyphicon glyphicon-check"></span> TopModel' : '<span class="glyphicon glyphicon-unchecked"></span> TopModel';
-	splatDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayTopModel = !displayTopModel;
-			localStorage_write_boolean("displayTopModel", displayTopModel);
-			var htmlStr = displayTopModel ? '<span class="glyphicon glyphicon-check"></span> TopModel' : '<span class="glyphicon glyphicon-unchecked"></span> TopModel';
-			d3.select(this).html(htmlStr);
-			display_molecules();
-		})
-		.html(htmlStr);
+		htmlStr = displayTopModel ? '<span class="glyphicon glyphicon-check"></span> TopModel' : '<span class="glyphicon glyphicon-unchecked"></span> TopModel';
+		splatDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayTopModel = !displayTopModel;
+				localStorage_write_boolean("displayTopModel", displayTopModel);
+				var htmlStr = displayTopModel ? '<span class="glyphicon glyphicon-check"></span> TopModel' : '<span class="glyphicon glyphicon-unchecked"></span> TopModel';
+				d3.select(this).html(htmlStr);
+				display_molecules();
+			})
+			.html(htmlStr);
 
-	htmlStr = displayToyaMA ? '<span class="glyphicon glyphicon-check"></span> ToyaMA' : '<span class="glyphicon glyphicon-unchecked"></span> ToyaMA';
-	splatDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayToyaMA = !displayToyaMA;
-			localStorage_write_boolean("displayToyaMA", displayToyaMA);
-			var htmlStr = displayToyaMA ? '<span class="glyphicon glyphicon-check"></span> ToyaMA' : '<span class="glyphicon glyphicon-unchecked"></span> ToyaMA';
-			d3.select(this).html(htmlStr);
-			display_molecules();
-		})
-		.html(htmlStr);
+		htmlStr = displayToyaMA ? '<span class="glyphicon glyphicon-check"></span> ToyaMA' : '<span class="glyphicon glyphicon-unchecked"></span> ToyaMA';
+		splatDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayToyaMA = !displayToyaMA;
+				localStorage_write_boolean("displayToyaMA", displayToyaMA);
+				var htmlStr = displayToyaMA ? '<span class="glyphicon glyphicon-check"></span> ToyaMA' : '<span class="glyphicon glyphicon-unchecked"></span> ToyaMA';
+				d3.select(this).html(htmlStr);
+				display_molecules();
+			})
+			.html(htmlStr);
+	}
 
 	//VIEW
 	var viewMenu = mainUL.append("li")
@@ -9256,23 +9305,6 @@ function display_menu() {
 			.style("font-style", "italic")
 			.style('cursor', 'not-allowed')
 			.html('<span class="glyphicon glyphicon-eye-close"></span> WebGL not enabled, disabling 3D surface');
-	}
-
-	//if(experimental)
-	if (false) {
-		var htmlStr = '<span class="glyphicon glyphicon-facetime-video"></span> FITS cube video';
-		viewDropdown.append("li")
-			.append("a")
-			.style('cursor', 'pointer')
-			.on("click", function () {/*experimental = !experimental;
-					localStorage_write_boolean("experimental", experimental) ;*/
-				//init_h265_video();
-				//init_h264_video();
-				//init_h264_media();
-				stream_h264();
-
-			})
-			.html(htmlStr);
 	}
 
 	if (va_count > 1 && va_count <= 3) {
@@ -9423,26 +9455,28 @@ function display_menu() {
 		})
 		.html(htmlStr);
 
-	htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
-	viewDropdown.append("li")
-		.append("a")
-		.attr("id", "displayBeam")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayBeam = !displayBeam;
-			var htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
-			d3.select(this).html(htmlStr);
+	if (!optical_view) {
+		htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
+		viewDropdown.append("li")
+			.append("a")
+			.attr("id", "displayBeam")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayBeam = !displayBeam;
+				var htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
+				d3.select(this).html(htmlStr);
 
-			if (displayBeam) {
-				d3.select("#beam").attr("opacity", 1);
-				d3.select("#zoomBeam").attr("opacity", 1);
-			}
-			else {
-				d3.select("#beam").attr("opacity", 0);
-				d3.select("#zoomBeam").attr("opacity", 0);
-			}
-		})
-		.html(htmlStr);
+				if (displayBeam) {
+					d3.select("#beam").attr("opacity", 1);
+					d3.select("#zoomBeam").attr("opacity", 1);
+				}
+				else {
+					d3.select("#beam").attr("opacity", 0);
+					d3.select("#zoomBeam").attr("opacity", 0);
+				}
+			})
+			.html(htmlStr);
+	}
 
 	//HELP
 	var rightUL = main.append("ul")
@@ -10163,7 +10197,7 @@ function display_rgb_legend() {
 		var divisions = 64;//100
 		var legendHeight = 0.8 * height;
 		var rectHeight = legendHeight / divisions;
-		var rectWidth = 5 * rectHeight;//0.05*width;
+		var rectWidth = 7 * rectHeight;//0.05*width;
 		var newData = [];
 
 		if (imageContainer[index - 1] == null) {
@@ -10215,7 +10249,7 @@ function display_rgb_legend() {
 			.attr('fill', function (d, i) { return interpolate_colourmap(d, rgb[index - 1], 0.8); });
 
 		var colourScale = d3.scaleLinear()
-			.range([0.8 * height, 0])
+			.range([0.8 * height - 1, 0])
 			.domain([0, 1]);
 
 		var colourAxis = d3.axisRight(colourScale)
@@ -10407,7 +10441,7 @@ function display_legend() {
 		.attr('fill', function (d, i) { return interpolate_colourmap(d, colourmap, 1.0); });
 
 	var colourScale = d3.scaleLinear()
-		.range([0.8 * height, 0])
+		.range([0.8 * height - 1, 0])
 		.domain([0, 1]);
 
 	var colourAxis = d3.axisRight(colourScale)
@@ -10672,11 +10706,11 @@ function contour_surface_conrec() {
 	var height = parseFloat(elem.attr("height"));
 
 	var x = d3.scaleLinear()
-		.range([0, width])
+		.range([0, width - 1])
 		.domain([0, data.length]);
 
 	var y = d3.scaleLinear()
-		.range([height, 0])
+		.range([height - 1, 0])
 		.domain([0, data[0].length]);
 
 	var colours = d3.scaleLinear()
@@ -10703,59 +10737,6 @@ function contour_surface_conrec() {
 		.attr("d", d3.line()
 			.x(function (d) { return x(d.x); })
 			.y(function (d) { return y(d.y); }));
-
-	//HTML5 Canvas API
-    /*
-    {
-	var elem = d3.select("#image_rectangle") ;    
-	var width = parseFloat(elem.attr("width"));
-	var height = parseFloat(elem.attr("height"));
-
-	var x_offset = parseFloat(elem.attr("x"));
-	var y_offset = parseFloat(elem.attr("y"));
-	
-	var x = d3.scaleLinear()
-	    .range([x_offset+0, x_offset+width])
-	    .domain([0, data.length]) ;
-	
-	var y = d3.scaleLinear()
-	    .range([y_offset+height, y_offset+0])
-	    .domain([0, data[0].length]) ;
-
-	var canvas = document.getElementById("ContourCanvas") ;
-	var ctx = canvas.getContext('2d') ;
-
-	var width = canvas.width ;
-	var height = canvas.height ;
-	ctx.clearRect(0, 0, width, height);
-	
-	var paths = c.contourList();	
-		    
-	for(var i=0;i<paths.length;i++)
-	{
-	    var path = paths[i];
-	    //console.log(path, path.length) ;
-
-	    var xCoord = x(path[0].x) ;
-	    var yCoord = y(path[0].y) ;
-	    
-	    ctx.beginPath();
-	    ctx.moveTo(xCoord,yCoord) ;	    	        	    
-
-	    for(var j=1;j<path.length;j++)
-	    {
-		var xCoord = x(path[j].x);
-		var yCoord = y(path[j].y);				    
-		ctx.lineTo(xCoord,yCoord) ;
-	    }
-
-	    ctx.strokeStyle = "rgba(0,0,0,0.5)" ;//black
-	    ctx.lineWidth = 0.5;
-		    
-	    ctx.stroke();	    
-	    ctx.closePath();
-	}		    	
-    }*/
 
 	has_contours = true;
 }
@@ -10848,11 +10829,11 @@ function contour_surface_marching_squares() {
 	var height = parseFloat(elem.attr("height"));
 
 	var x = d3.scaleLinear()
-		.range([0, width])
+		.range([0, width - 1])
 		.domain([0, data[0].length]);
 
 	var y = d3.scaleLinear()
-		.range([height, 0])
+		.range([height - 1, 0])
 		.domain([0, data.length]);
 
 	var colours = d3.scaleLinear()
@@ -11005,11 +10986,11 @@ function contour_surface_webworker() {
 			var height = parseFloat(elem.attr("height"));
 
 			var x = d3.scaleLinear()
-				.range([0, width])
+				.range([0, width - 1])
 				.domain([0, data[0].length]);
 
 			var y = d3.scaleLinear()
-				.range([height, 0])
+				.range([height - 1, 0])
 				.domain([0, data.length]);
 
 			var colours = d3.scaleLinear()
@@ -11288,7 +11269,7 @@ async*/ function mainRenderer() {
 	composite_view = (parseInt(votable.getAttribute('data-composite')) == 1) ? true : false;
 	console.log("composite view:", composite_view);
 
-	optical_view = votable.getAttribute('data-is-optical');
+	optical_view = (votable.getAttribute('data-is-optical') == "true");
 	console.log("optical view:", optical_view);
 
 	if (firstTime) {
