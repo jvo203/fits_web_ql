@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-23.5";
+	return "JS2019-01-23.6";
 }
 
 const wasm_supported = (() => {
@@ -2479,12 +2479,10 @@ function display_gridlines() {
 	var x = d3.scaleLinear()
 		.range([x_offset, x_offset + width - 1])
 		.domain([0, 1]);
-	//.domain([image_bounding_dims.x1, image_bounding_dims.x1 + image_bounding_dims.width-1]);
 
 	var y = d3.scaleLinear()
 		.range([y_offset + height - 1, y_offset])
 		.domain([1, 0]);
-	//.domain([image_bounding_dims.y1, image_bounding_dims.y1 + image_bounding_dims.height-1]);    
 
 	var svg = d3.select("#BackgroundSVG");
 
@@ -10253,7 +10251,7 @@ function display_rgb_legend() {
 			.attr('fill', function (d, i) { return interpolate_colourmap(d, rgb[index - 1], 0.8); });
 
 		var colourScale = d3.scaleLinear()
-			.range([0.8 * height - 1, 0])
+			.range([0.8 * height, 0])
 			.domain([0, 1]);
 
 		var colourAxis = d3.axisRight(colourScale)
@@ -10445,7 +10443,7 @@ function display_legend() {
 		.attr('fill', function (d, i) { return interpolate_colourmap(d, colourmap, 1.0); });
 
 	var colourScale = d3.scaleLinear()
-		.range([0.8 * height - 1, 0])
+		.range([0.8 * height, 0])
 		.domain([0, 1]);
 
 	var colourAxis = d3.axisRight(colourScale)
@@ -10710,11 +10708,11 @@ function contour_surface_conrec() {
 	var height = parseFloat(elem.attr("height"));
 
 	var x = d3.scaleLinear()
-		.range([0, width - 1])
+		.range([0, width])
 		.domain([0, data.length]);
 
 	var y = d3.scaleLinear()
-		.range([height - 1, 0])
+		.range([height, 0])
 		.domain([0, data[0].length]);
 
 	var colours = d3.scaleLinear()
@@ -10833,11 +10831,11 @@ function contour_surface_marching_squares() {
 	var height = parseFloat(elem.attr("height"));
 
 	var x = d3.scaleLinear()
-		.range([0, width - 1])
+		.range([0, width])
 		.domain([0, data[0].length]);
 
 	var y = d3.scaleLinear()
-		.range([height - 1, 0])
+		.range([height, 0])
 		.domain([0, data.length]);
 
 	var colours = d3.scaleLinear()
@@ -10990,11 +10988,11 @@ function contour_surface_webworker() {
 			var height = parseFloat(elem.attr("height"));
 
 			var x = d3.scaleLinear()
-				.range([0, width - 1])
+				.range([0, width])
 				.domain([0, data[0].length]);
 
 			var y = d3.scaleLinear()
-				.range([height - 1, 0])
+				.range([height, 0])
 				.domain([0, data.length]);
 
 			var colours = d3.scaleLinear()

@@ -17,7 +17,6 @@ opencl = ["ocl", "rand"]
 [build-dependencies]
 bindgen = "*"
 metadeps = "*"
-#clang = "*"
 ispc = "*"
 
 [package.metadata.pkg-config]
