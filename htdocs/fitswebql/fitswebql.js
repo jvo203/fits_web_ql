@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-23.7";
+	return "JS2019-01-23.8";
 }
 
 const wasm_supported = (() => {
@@ -10952,9 +10952,6 @@ function contour_surface_webworker() {
 	//console.log("min_pixel:", min_pixel, "max_pixel:", max_pixel) ;
 	console.log("min_value:", min_value, "max_value:", max_value);
 
-	var xs = d3.range(0, data[0].length);
-	var ys = d3.range(0, data.length);
-
 	var contours = parseInt(document.getElementById('contour_lines').value) + 1;
 	var step = (max_value - min_value) / contours;
 	var zs = d3.range(min_value + step, max_value, step);
@@ -10962,10 +10959,8 @@ function contour_surface_webworker() {
     /*var zs = [] ;
     for(var i=min_value; i<max_value+step; i += step)
 	zs.push(i) ;*/
-
-	console.log(xs);
-	console.log(ys);
-	console.log(zs);
+	
+	console.log("zs:",zs);
 
 	var completed_levels = 0;
 	//parallel isoBands    
@@ -10988,11 +10983,11 @@ function contour_surface_webworker() {
 			var height = parseFloat(elem.attr("height"));
 
 			var x = d3.scaleLinear()
-				.range([0, width-1])
+				.range([0, width])
 				.domain([0, data[0].length-1]);
 
 			var y = d3.scaleLinear()
-				.range([height-1, 0])
+				.range([height, 0])
 				.domain([0, data.length-1]);
 
 			var colours = d3.scaleLinear()
