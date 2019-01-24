@@ -2229,7 +2229,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.0";
-static VERSION_STRING: &'static str = "SV2019-01-23.1";
+static VERSION_STRING: &'static str = "SV2019-01-24.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -2641,7 +2641,7 @@ fn fitswebql_entry(
         }
     };
 
-    //default values based on the db/table
+    //sane defaults
     let mut composite = false;
     let mut optical = false;
     let mut flux = "";
@@ -2673,14 +2673,14 @@ fn fitswebql_entry(
 
     match query.get("flux") {
         Some(value) => {
-            let mut valid_strings: HashSet<String> = HashSet::new();
-            valid_strings.insert(String::from("linear"));
-            valid_strings.insert(String::from("logistic"));
-            valid_strings.insert(String::from("ratio"));
-            valid_strings.insert(String::from("square"));
-            valid_strings.insert(String::from("legacy"));
+            let mut valid_values: HashSet<String> = HashSet::new();
+            valid_values.insert(String::from("linear"));
+            valid_values.insert(String::from("logistic"));
+            valid_values.insert(String::from("ratio"));
+            valid_values.insert(String::from("square"));
+            valid_values.insert(String::from("legacy"));
 
-            if valid_strings.contains(value) {
+            if valid_values.contains(value) {
                 flux = value;
             };
         }
