@@ -17,8 +17,7 @@ opencl = ["ocl", "rand"]
 [build-dependencies]
 bindgen = "*"
 metadeps = "*"
-#ispc = "0.3.8"
-ispc = { path = "../ispc-rs" }
+ispc = "0.3.8"
 
 [package.metadata.pkg-config]
 x265 = "2.8"
@@ -66,8 +65,7 @@ tar = "*"
 flate2 = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
-#ispc = "0.3.8"
-ispc = { path = "../ispc-rs" }
+ispc = "0.3.8"
 
 #rulinalg = "*"
 #linearkalman = "*"

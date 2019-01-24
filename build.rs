@@ -14,8 +14,6 @@ fn main() {
         cfg.file(*s);
     }
     cfg.compile("spmd");
-    println!("cargo:warning=Done compiling ISPC");
-    std::process::exit(1);
 
     println!("cargo:rustc-link-search=native=/usr/local/lib");
     println!("cargo:rustc-link-lib=yuv");
