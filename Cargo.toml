@@ -65,7 +65,7 @@ tar = "*"
 flate2 = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
-ispc = "0.3.8"
+ispc = "*"
 
 #rulinalg = "*"
 #linearkalman = "*"
