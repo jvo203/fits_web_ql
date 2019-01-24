@@ -17,7 +17,8 @@ opencl = ["ocl", "rand"]
 [build-dependencies]
 bindgen = "*"
 metadeps = "*"
-ispc = "0.3.8"
+#ispc = "0.3.8"
+ispc = { git = "https://github.com/Twinklebear/ispc-rs" }
 
 [package.metadata.pkg-config]
 x265 = "2.8"
