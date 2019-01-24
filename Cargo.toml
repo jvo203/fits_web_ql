@@ -18,7 +18,7 @@ opencl = ["ocl", "rand"]
 bindgen = "*"
 metadeps = "*"
 #ispc = "0.3.8"
-ispc = { git = "https://github.com/Twinklebear/ispc-rs" }
+ispc = { path = "../ispc-rs" }
 
 [package.metadata.pkg-config]
 x265 = "2.8"
@@ -66,7 +66,8 @@ tar = "*"
 flate2 = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
-ispc = "*"
+#ispc = "0.3.8"
+ispc = { path = "../ispc-rs" }
 
 #rulinalg = "*"
 #linearkalman = "*"
