@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-25.3";
+	return "JS2019-01-25.4";
 }
 
 const wasm_supported = (() => {
@@ -7259,6 +7259,11 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 	}
 	catch (e) { };
 
+	zoom_scale = 1;
+	var zoom = d3.zoom()
+		.scaleExtent([1, 20])
+		.on("zoom", tiles_zoomed);
+
 	var svg = d3.select("#FrontSVG");
 
 	//svg image rectangle for zooming-in
@@ -7271,6 +7276,7 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 		.attr("height", img_height)
 		.style('cursor', 'pointer')//'crosshair')//'none' to mask Chrome latency
 		.attr("opacity", 0.0)
+		.call(zoom)
 		.on("click", function () {
 			if (isLocal) {
 				//parse window.location to get the value of filename<index>
@@ -7364,6 +7370,13 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			mouse_position = { x: offset[0], y: offset[1] };
 
 			var fitsData = fitsContainer[index - 1];
+
+			if (fitsData == null)
+				return;
+
+			if (imageContainer[index - 1] == null)
+				return;
+
 			var image_bounding_dims = imageContainer[index - 1].image_bounding_dims;
 			var imageCanvas = imageContainer[index - 1].imageCanvas;
 			var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width") * (image_bounding_dims.width - 1);
@@ -7396,6 +7409,8 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
 			}
 		});
+
+	zoom.scaleTo(rect, zoom_scale);
 }
 
 function setup_image_selection() {
@@ -8504,6 +8519,19 @@ function fetch_contours(datasetId) {
 	xmlhttp.timeout = 0;
 	xmlhttp.send();
 };
+
+function refresh_tiles() {
+	if (zoom_scale < 1)
+		return;
+}
+
+function tiles_zoomed() {
+	console.log("scale: " + d3.event.transform.k);
+	zoom_scale = d3.event.transform.k;
+	zooming = true;
+
+	refresh_tiles();
+}
 
 function zoomed() {
 	console.log("scale: " + d3.event.transform.k);
