@@ -7364,8 +7364,8 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			mouse_position = { x: offset[0], y: offset[1] };
 
 			var fitsData = fitsContainer[index - 1];
-			var image_bounding_dims = imageContainer[index/*va_count*/ - 1].image_bounding_dims;
-			var imageCanvas = imageContainer[index/*va_count*/ - 1].imageCanvas;
+			var image_bounding_dims = imageContainer[index - 1].image_bounding_dims;
+			var imageCanvas = imageContainer[index - 1].imageCanvas;
 			var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width") * (image_bounding_dims.width - 1);
 			var y = image_bounding_dims.y1 + (mouse_position.y - d3.select(this).attr("y")) / d3.select(this).attr("height") * (image_bounding_dims.height - 1);
 
