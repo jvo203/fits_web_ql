@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-25.2";
+	return "JS2019-01-25.3";
 }
 
 const wasm_supported = (() => {
@@ -7320,6 +7320,7 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			}
 		})
 		.on("mouseenter", function () {
+			hide_navigation_bar();
 			console.log("switching active view to", d3.select(this).attr("id"));
 
 			d3.select(this).moveToFront();
@@ -7333,6 +7334,66 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 				let idx = attr.substring(15);
 
 				d3.select("#HTMLCanvas" + idx).style('z-index', i + 1);
+			}
+		})
+		.on("mouseleave", function () {
+			if (xradec != null) {
+				let fitsData = fitsContainer[va_count - 1];
+
+				if (fitsData.CTYPE1.indexOf("RA") > -1)
+					d3.select("#ra").text(RadiansPrintHMS(xradec[0]));
+
+				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+					d3.select("#ra").text(RadiansPrintDMS(xradec[0]));
+
+				d3.select("#dec").text(RadiansPrintDMS(xradec[1]));
+			}
+		})
+		.on("mousemove", function () {
+			try {
+				var offset = d3.mouse(this);
+			}
+			catch (e) {
+				console.log(e);
+				return;
+			}
+
+			if (isNaN(offset[0]) || isNaN(offset[1]))
+				return;
+
+			mouse_position = { x: offset[0], y: offset[1] };
+
+			var fitsData = fitsContainer[index - 1];
+			var image_bounding_dims = imageContainer[index/*va_count*/ - 1].image_bounding_dims;
+			var imageCanvas = imageContainer[index/*va_count*/ - 1].imageCanvas;
+			var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width") * (image_bounding_dims.width - 1);
+			var y = image_bounding_dims.y1 + (mouse_position.y - d3.select(this).attr("y")) / d3.select(this).attr("height") * (image_bounding_dims.height - 1);
+
+			var orig_x = x * fitsData.width / imageCanvas.width;
+			var orig_y = y * fitsData.height / imageCanvas.height;
+
+			try {
+				if (fitsData.CTYPE1.indexOf("RA") > -1)
+					d3.select("#ra").text(x2ra(orig_x));
+
+				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+					d3.select("#ra").text(x2glon(orig_x));
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+					d3.select("#dec").text(y2dec(orig_y));
+			}
+			catch (err) {
+				//use the CD scale matrix
+				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
+
+				if (fitsData.CTYPE1.indexOf("RA") > -1)
+					d3.select("#ra").text(RadiansPrintHMS(radec[0]));
+
+				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+					d3.select("#ra").text(RadiansPrintDMS(radec[0]));
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
 			}
 		});
 }
@@ -7733,7 +7794,6 @@ function setup_image_selection() {
 
 			var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
 			var imageCanvas = imageContainer[va_count - 1].imageCanvas;
-			var imageDataCopy = imageContainer[va_count - 1].imageDataCopy;
 			var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width") * (image_bounding_dims.width - 1);
 			var y = image_bounding_dims.y1 + (mouse_position.y - d3.select(this).attr("y")) / d3.select(this).attr("height") * (image_bounding_dims.height - 1);
 
