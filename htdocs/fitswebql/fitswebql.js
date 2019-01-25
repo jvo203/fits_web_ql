@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-23.10";
+	return "JS2019-01-25.2";
 }
 
 const wasm_supported = (() => {
@@ -10645,11 +10645,11 @@ function contour_surface_marching_squares() {
 	var height = parseFloat(elem.attr("height"));
 
 	var x = d3.scaleLinear()
-		.range([0, width])
+		.range([0, width - 1])
 		.domain([0, data[0].length - 1]);
 
 	var y = d3.scaleLinear()
-		.range([height, 0])
+		.range([height, 1])
 		.domain([0, data.length - 1]);
 
 	var colours = d3.scaleLinear()
@@ -10793,11 +10793,11 @@ function contour_surface_webworker() {
 			var height = parseFloat(elem.attr("height"));
 
 			var x = d3.scaleLinear()
-				.range([0, width])
+				.range([0, width - 1])
 				.domain([0, data[0].length - 1]);
 
 			var y = d3.scaleLinear()
-				.range([height, 0])
+				.range([height, 1])
 				.domain([0, data.length - 1]);
 
 			var colours = d3.scaleLinear()

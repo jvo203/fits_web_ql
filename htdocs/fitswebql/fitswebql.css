@@ -167,7 +167,6 @@ img {
     image-rendering: pixelated; /* Chrome */
     image-rendering: optimize-contrast;         /* CSS3 Proposed                  */
     -ms-interpolation-mode: nearest-neighbor;   /* IE8+                           */
-
 }
 
 /*.progress-bar {
@@ -243,23 +242,11 @@ img {
 
 .welcome {
     position: fixed; /* Stay in place */
-    /*left: 10%;
-    top: 45%;
-    width: 80%; 
-    height: auto;*/
-
-    /*background-color: rgba(255,0,0,0.4);*/
-    /*top: 0%;
-    left: 0%;
-    width: 33%;
-    height: 100%;*/
-
     left: 5%;
-    top: 30%;
+    bottom: 5%;
     width: 30%;
     height: auto;
     color: lightblue;
-    
     overflow: hidden;
 }
 
