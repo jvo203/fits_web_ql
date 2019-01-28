@@ -117,7 +117,7 @@ function show_directory_contents(response) {
 			if (filename.indexOf("FGN_") > -1 && filename.indexOf("cube.fits") > -1)
 				composite = true;
 
-			if (group.length > 0) {
+			if (group.length > 1) {
 				group_str = 'GROUP:';
 
 				for (let i = 0; i < group.length; i++) {
@@ -187,6 +187,7 @@ function fetch_directory(dir) {
 	xmlhttp.send();
 }
 
+//https://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
 function escapeRegExp(str) {
 	return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
 }
@@ -214,8 +215,8 @@ function find_group(name) {
 			let postfix = name.substring(pos);
 			//console.log(prefix,postfix) ;
 
-			var patt = new RegExp(escapeRegExp(prefix) + '.*' + escapeRegExp(postfix));
-			//console.log(patt) ;	    
+			var patt = new RegExp('^' + escapeRegExp(prefix) + '.*' + escapeRegExp(postfix) + '$');
+			//console.log(patt) ;
 
 			for (let i = 0; i < filelist.length; i++) {
 				if (filelist[i].type == "file") {
@@ -243,7 +244,7 @@ function find_group(name) {
 				let postfix = "-" + tmp[3] + "-" + tmp[4];
 
 				//find matching filenames containing any filters
-				var patt = new RegExp(escapeRegExp(prefix) + '.*' + escapeRegExp(postfix));
+				var patt = new RegExp('^' + escapeRegExp(prefix) + '.*' + escapeRegExp(postfix) + '$');
 
 				for (let i = 0; i < filelist.length; i++) {
 					if (filelist[i].type == "file") {

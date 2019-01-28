@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-25.4";
+	return "JS2019-01-28.0";
 }
 
 const wasm_supported = (() => {
@@ -7259,7 +7259,6 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 	}
 	catch (e) { };
 
-	zoom_scale = 1;
 	var zoom = d3.zoom()
 		.scaleExtent([1, 20])
 		.on("zoom", tiles_zoomed);
@@ -7341,6 +7340,16 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 
 				d3.select("#HTMLCanvas" + idx).style('z-index', i + 1);
 			}
+
+			var fitsData = fitsContainer[index - 1];
+
+			if (fitsData == null)
+				return;
+
+			if (imageContainer[index - 1] == null)
+				return;
+
+			zoom_dims = imageContainer[index - 1].image_bounding_dims;
 		})
 		.on("mouseleave", function () {
 			if (xradec != null) {
@@ -8520,8 +8529,11 @@ function fetch_contours(datasetId) {
 	xmlhttp.send();
 };
 
-function refresh_tiles() {
+function refresh_tiles(index) {
 	if (zoom_scale < 1)
+		return;
+
+	if (zoom_dims == null)
 		return;
 }
 
@@ -8530,7 +8542,31 @@ function tiles_zoomed() {
 	zoom_scale = d3.event.transform.k;
 	zooming = true;
 
-	refresh_tiles();
+	if (zoom_dims == null)
+		return;
+
+	//rescale the image
+	let width = zoom_dims.width;
+	let height = zoom_dims.height;
+
+	let x0 = zoom_dims.x1 + (width - 1) / 2;
+	let y0 = zoom_dims.y1 + (height - 1) / 2;
+
+	let new_width = width / zoom_scale;
+	let new_height = height / zoom_scale;
+
+	let new_x1 = x0 - (new_width - 1) / 2;
+	let new_y1 = y0 - (new_height - 1) / 2;
+
+	zoom_dims.view_x1 = new_x1;
+	zoom_dims.view_y1 = new_y1;
+	zoom_dims.view_width = new_width;
+	zoom_dims.view_height = new_height;
+
+	console.log("zoom_dims:", zoom_dims);
+
+	for (let i = 1; i <= va_count; i++)
+		refresh_tiles(i);
 }
 
 function zoomed() {
@@ -11215,6 +11251,7 @@ async*/ function mainRenderer() {
 		image_stack = [];
 		video_stack = [];
 		viewport_zoom_settings = null;
+		zoom_dims = null;
 		zoom_location = 'lower';
 		zoom_scale = 25;
 		xradec = null;
@@ -11331,6 +11368,9 @@ async*/ function mainRenderer() {
 			console.log('LINE GROUP:', datasetId);
 
 			//datasetId = votable.getAttribute('data-datasetId1') ;
+
+			if (!composite_view)
+				zoom_scale = 1;
 		}
 
 		var rect = document.getElementById('mainDiv').getBoundingClientRect();
