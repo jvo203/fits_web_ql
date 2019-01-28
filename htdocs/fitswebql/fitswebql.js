@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-28.2";
+	return "JS2019-01-29.0";
 }
 
 const wasm_supported = (() => {
@@ -7402,19 +7402,6 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			if (zoom_dims.view != null)
 				image_bounding_dims = zoom_dims.view;
 
-			if (dragging) {
-				var dx = d3.event.dx;
-				var dy = d3.event.dy;
-
-				dx *= image_bounding_dims.width / d3.select(this).attr("width");
-				dy *= image_bounding_dims.height / d3.select(this).attr("height");
-
-				console.log("dx:", dx, "dy:", dy);
-
-				image_bounding_dims.x1 -= dx;
-				image_bounding_dims.y1 -= dy;
-			}
-
 			var imageCanvas = imageContainer[index - 1].imageCanvas;
 			var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width") * (image_bounding_dims.width - 1);
 			var y = image_bounding_dims.y1 + (mouse_position.y - d3.select(this).attr("y")) / d3.select(this).attr("height") * (image_bounding_dims.height - 1);
@@ -7448,6 +7435,19 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 
 				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
 					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
+			}
+
+			if (dragging) {
+				var dx = d3.event.dx;
+				var dy = d3.event.dy;
+
+				dx *= image_bounding_dims.width / d3.select(this).attr("width");
+				dy *= image_bounding_dims.height / d3.select(this).attr("height");
+
+				console.log("dx:", dx, "dy:", dy);
+
+				image_bounding_dims.x1 -= dx;
+				image_bounding_dims.y1 -= dy;
 			}
 		});
 
