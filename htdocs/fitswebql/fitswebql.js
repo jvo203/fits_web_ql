@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-28.0";
+	return "JS2019-01-28.2";
 }
 
 const wasm_supported = (() => {
@@ -7263,6 +7263,11 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 		.scaleExtent([1, 20])
 		.on("zoom", tiles_zoomed);
 
+	var drag = d3.drag()
+		.on("start", tiles_dragstarted)
+		.on("drag", tiles_dragmove)
+		.on("end", tiles_dragended);
+
 	var svg = d3.select("#FrontSVG");
 
 	//svg image rectangle for zooming-in
@@ -7275,6 +7280,7 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 		.attr("height", img_height)
 		.style('cursor', 'pointer')//'crosshair')//'none' to mask Chrome latency
 		.attr("opacity", 0.0)
+		.call(drag)
 		.call(zoom)
 		.on("click", function () {
 			if (isLocal) {
@@ -7329,6 +7335,7 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			console.log("switching active view to", d3.select(this).attr("id"));
 
 			d3.select(this).moveToFront();
+			dragging = false;
 
 			var imageElements = document.getElementsByClassName("image_rectangle");
 
@@ -7349,7 +7356,12 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			if (imageContainer[index - 1] == null)
 				return;
 
-			zoom_dims = imageContainer[index - 1].image_bounding_dims;
+			if (zoom_dims == null) {
+				zoom_dims = imageContainer[index - 1].image_bounding_dims;
+				zoom_dims.view = null;
+			}
+
+			//zoom.scaleTo(d3.select("#image_rectangle" + index), zoom_scale);
 		})
 		.on("mouseleave", function () {
 			if (xradec != null) {
@@ -7387,9 +7399,29 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 				return;
 
 			var image_bounding_dims = imageContainer[index - 1].image_bounding_dims;
+			if (zoom_dims.view != null)
+				image_bounding_dims = zoom_dims.view;
+
+			if (dragging) {
+				var dx = d3.event.dx;
+				var dy = d3.event.dy;
+
+				dx *= image_bounding_dims.width / d3.select(this).attr("width");
+				dy *= image_bounding_dims.height / d3.select(this).attr("height");
+
+				console.log("dx:", dx, "dy:", dy);
+
+				image_bounding_dims.x1 -= dx;
+				image_bounding_dims.y1 -= dy;
+			}
+
 			var imageCanvas = imageContainer[index - 1].imageCanvas;
 			var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width") * (image_bounding_dims.width - 1);
 			var y = image_bounding_dims.y1 + (mouse_position.y - d3.select(this).attr("y")) / d3.select(this).attr("height") * (image_bounding_dims.height - 1);
+
+			zoom_dims.x0 = x;
+			zoom_dims.y0 = y;
+			console.log("x0:", x, "y0:", y);
 
 			var orig_x = x * fitsData.width / imageCanvas.width;
 			var orig_y = y * fitsData.height / imageCanvas.height;
@@ -8535,6 +8567,64 @@ function refresh_tiles(index) {
 
 	if (zoom_dims == null)
 		return;
+
+	if (zoom_dims.view == null)
+		return;
+
+	let image_bounding_dims = zoom_dims.view;
+
+	if (imageContainer[index - 1] == null)
+		return;
+
+	let imageCanvas = imageContainer[index - 1].imageCanvas;
+
+	var c = document.getElementById('HTMLCanvas' + index);
+	var width = c.width;
+	var height = c.height;
+	var ctx = c.getContext("2d");
+
+	ctx.mozImageSmoothingEnabled = false;
+	ctx.webkitImageSmoothingEnabled = false;
+	ctx.msImageSmoothingEnabled = false;
+	ctx.imageSmoothingEnabled = false;
+	//ctx.globalAlpha=0.9;
+
+	var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
+	scale = 2.0 * scale / va_count;
+
+	var img_width = scale * image_bounding_dims.width;
+	var img_height = scale * image_bounding_dims.height;
+
+	let image_position = get_image_position(index, width, height);
+	let posx = image_position.posx;
+	let posy = image_position.posy;
+
+	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, posx - img_width / 2, posy - img_height / 2, img_width, img_height);
+}
+
+function tiles_dragstarted() {
+	console.log("drag started");
+
+	d3.select(this).style('cursor', 'move');
+
+	dragging = true;
+}
+
+function tiles_dragended() {
+	console.log("drag ended");
+
+	d3.select(this).style('cursor', 'pointer');
+
+	dragging = false;
+}
+
+function tiles_dragmove() {
+	var elem = d3.select(this);
+	var onMouseMoveFunc = elem.on("mousemove");
+	elem.each(onMouseMoveFunc);
+
+	for (let i = 1; i <= va_count; i++)
+		refresh_tiles(i);
 }
 
 function tiles_zoomed() {
@@ -8549,24 +8639,33 @@ function tiles_zoomed() {
 	let width = zoom_dims.width;
 	let height = zoom_dims.height;
 
-	let x0 = zoom_dims.x1 + (width - 1) / 2;
-	let y0 = zoom_dims.y1 + (height - 1) / 2;
-
 	let new_width = width / zoom_scale;
 	let new_height = height / zoom_scale;
 
+	/*let x0 = zoom_dims.x1 + (width - 1) / 2;
+	let y0 = zoom_dims.y1 + (height - 1) / 2;
 	let new_x1 = x0 - (new_width - 1) / 2;
-	let new_y1 = y0 - (new_height - 1) / 2;
+	let new_y1 = y0 - (new_height - 1) / 2;*/
 
-	zoom_dims.view_x1 = new_x1;
-	zoom_dims.view_y1 = new_y1;
-	zoom_dims.view_width = new_width;
-	zoom_dims.view_height = new_height;
+	let x0 = zoom_dims.x0;
+	let y0 = zoom_dims.y0;
+	let new_x1 = x0 - (x0 - zoom_dims.x1) / zoom_scale;
+	let new_y1 = y0 - (y0 - zoom_dims.y1) / zoom_scale;
+
+	zoom_dims.view = { x1: new_x1, y1: new_y1, width: new_width, height: new_height };
+	/*zoom_dims.view.x1 = new_x1;
+	zoom_dims.view.y1 = new_y1;
+	zoom_dims.view.width = new_width;
+	zoom_dims.view.height = new_height;*/
 
 	console.log("zoom_dims:", zoom_dims);
 
 	for (let i = 1; i <= va_count; i++)
 		refresh_tiles(i);
+
+	var tmp = d3.select(this);
+	var onMouseMoveFunc = tmp.on("mousemove");
+	tmp.each(onMouseMoveFunc);
 }
 
 function zoomed() {
