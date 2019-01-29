@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-29.4";
+	return "JS2019-01-29.5";
 }
 
 const wasm_supported = (() => {
@@ -765,6 +765,10 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 	}
 	else {
 		if (!composite_view) {
+			if (zoom_dims != null)
+				if (zoom_dims.view != null)
+					image_bounding_dims = zoom_dims.view;
+
 			//place the image onto the main canvas
 			var c = document.getElementById('HTMLCanvas' + index);
 			var width = c.width;
@@ -4348,6 +4352,10 @@ function change_colourmap(index, recursive) {
 	}
 	else
 		if (!composite_view) {
+			if (zoom_dims != null)
+				if (zoom_dims.view != null)
+					image_bounding_dims = zoom_dims.view;
+
 			//place the image onto the main canvas
 			var c = document.getElementById('HTMLCanvas' + index);
 			var width = c.width;
@@ -7416,8 +7424,6 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 
 				image_bounding_dims.x1 = clamp(image_bounding_dims.x1 - dx, 0, imageCanvas.width - 1 - image_bounding_dims.width);
 				image_bounding_dims.y1 = clamp(image_bounding_dims.y1 - dy, 0, imageCanvas.height - 1 - image_bounding_dims.height);
-
-				console.log("dx:", dx, "dy:", dy, "x1:", image_bounding_dims.x1, "y1:", image_bounding_dims.y1);
 			}
 
 			var rx = (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width");
@@ -7429,7 +7435,6 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			zoom_dims.y0 = y;
 			zoom_dims.rx = rx;
 			zoom_dims.ry = ry;
-			console.log("x0:", x, "y0:", y, "rx:", rx, "ry:", ry);
 
 			var orig_x = x * fitsData.width / imageCanvas.width;
 			var orig_y = y * fitsData.height / imageCanvas.height;
