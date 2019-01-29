@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-29.8";
+	return "JS2019-01-29.9";
 }
 
 const wasm_supported = (() => {
@@ -9589,38 +9589,38 @@ function display_menu() {
 					elem.attr("opacity", 0);
 			})
 			.html(htmlStr);
-	}
 
-	htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
-	viewDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayLegend = !displayLegend;
-			localStorage_write_boolean("displayLegend", displayLegend);
-			var htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
-			d3.select(this).html(htmlStr);
+		htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
+		viewDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayLegend = !displayLegend;
+				localStorage_write_boolean("displayLegend", displayLegend);
+				var htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
+				d3.select(this).html(htmlStr);
 
-			if (va_count == 1) {
-				var elem = d3.select("#legend");
-
-				if (displayLegend)
-					elem.attr("opacity", 1);
-				else
-					elem.attr("opacity", 0);
-			}
-			else {
-				for (let index = 1; index <= va_count; index++) {
-					var elem = d3.select("#legend" + index);
+				if (va_count == 1) {
+					var elem = d3.select("#legend");
 
 					if (displayLegend)
 						elem.attr("opacity", 1);
 					else
 						elem.attr("opacity", 0);
 				}
-			}
-		})
-		.html(htmlStr);
+				else {
+					for (let index = 1; index <= va_count; index++) {
+						var elem = d3.select("#legend" + index);
+
+						if (displayLegend)
+							elem.attr("opacity", 1);
+						else
+							elem.attr("opacity", 0);
+					}
+				}
+			})
+			.html(htmlStr);
+	}
 
 	if (!optical_view) {
 		htmlStr = displayMolecules ? '<span class="glyphicon glyphicon-check"></span> spectral lines' : '<span class="glyphicon glyphicon-unchecked"></span> spectral lines';
