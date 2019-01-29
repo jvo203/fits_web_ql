@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-29.7";
+	return "JS2019-01-29.8";
 }
 
 const wasm_supported = (() => {
@@ -2683,15 +2683,16 @@ function display_gridlines() {
 			.style("text-anchor", "start");//was end, dx -.35, dy 0
 	}
 
-	//displayGridlines = true ;
-	var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
-	d3.select("#displayGridlines").html(htmlStr);
+	if (va_count == 1 || composite_view) {
+		var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
+		d3.select("#displayGridlines").html(htmlStr);
 
-	var elem = d3.select("#gridlines");
-	if (displayGridlines)
-		elem.attr("opacity", 1);
-	else
-		elem.attr("opacity", 0);
+		var elem = d3.select("#gridlines");
+		if (displayGridlines)
+			elem.attr("opacity", 1);
+		else
+			elem.attr("opacity", 0);
+	}
 }
 
 function display_cd_gridlines() {
@@ -2972,15 +2973,16 @@ function display_cd_gridlines() {
 			.style("text-anchor", "start");//was end, dx -.35, dy 0
 	}
 
-	//displayGridlines = true ;
-	var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
-	d3.select("#displayGridlines").html(htmlStr);
+	if (va_count == 1 || composite_view) {
+		var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
+		d3.select("#displayGridlines").html(htmlStr);
 
-	var elem = d3.select("#gridlines");
-	if (displayGridlines)
-		elem.attr("opacity", 1);
-	else
-		elem.attr("opacity", 0);
+		var elem = d3.select("#gridlines");
+		if (displayGridlines)
+			elem.attr("opacity", 1);
+		else
+			elem.attr("opacity", 0);
+	}
 }
 
 function display_beam() {
@@ -9569,23 +9571,25 @@ function display_menu() {
 			.html(htmlStr);
 	}
 
-	htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
-	viewDropdown.append("li")
-		.append("a")
-		.attr("id", "displayGridlines")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayGridlines = !displayGridlines;
-			localStorage_write_boolean("displayGridlines", displayGridlines);
-			var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
-			d3.select(this).html(htmlStr);
-			var elem = d3.select("#gridlines");
-			if (displayGridlines)
-				elem.attr("opacity", 1);
-			else
-				elem.attr("opacity", 0);
-		})
-		.html(htmlStr);
+	if (va_count == 1 || composite_view) {
+		htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
+		viewDropdown.append("li")
+			.append("a")
+			.attr("id", "displayGridlines")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayGridlines = !displayGridlines;
+				localStorage_write_boolean("displayGridlines", displayGridlines);
+				var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
+				d3.select(this).html(htmlStr);
+				var elem = d3.select("#gridlines");
+				if (displayGridlines)
+					elem.attr("opacity", 1);
+				else
+					elem.attr("opacity", 0);
+			})
+			.html(htmlStr);
+	}
 
 	htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
 	viewDropdown.append("li")
