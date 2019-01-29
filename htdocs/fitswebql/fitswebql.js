@@ -7470,7 +7470,7 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			}
 		});
 
-	zoom.scaleTo(rect, zoom_scale);
+	zoom.scaleTo(rect, zoom_scale);	
 }
 
 function setup_image_selection() {
@@ -8680,7 +8680,8 @@ function tiles_zoomed() {
 		refresh_tiles(i);
 
 		//keep zoom scale in sync across all images
-		d3.select("#image_rectangle" + i).__zoom = zoom_scale;
+		var elem = d3.select("#image_rectangle" + i);		
+		elem.node().__zoom.k = zoom_scale;		
 	}
 
 	var tmp = d3.select(this);
