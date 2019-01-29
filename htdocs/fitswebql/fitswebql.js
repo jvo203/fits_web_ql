@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-29.0";
+	return "JS2019-01-29.3";
 }
 
 const wasm_supported = (() => {
@@ -20,6 +20,10 @@ console.log(wasm_supported ? "WebAssembly is supported" : "WebAssembly is not su
 
 Array.prototype.rotate = function (n) {
 	return this.slice(n, this.length).concat(this.slice(0, n));
+}
+
+function clamp(value, min, max) {
+	return Math.min(Math.max(min, value), max)
 }
 
 function round(value, precision, mode) {
@@ -7398,11 +7402,24 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			if (imageContainer[index - 1] == null)
 				return;
 
+			var imageCanvas = imageContainer[index - 1].imageCanvas;
 			var image_bounding_dims = imageContainer[index - 1].image_bounding_dims;
 			if (zoom_dims.view != null)
 				image_bounding_dims = zoom_dims.view;
 
-			var imageCanvas = imageContainer[index - 1].imageCanvas;
+			if (dragging) {
+				var dx = d3.event.dx;
+				var dy = d3.event.dy;
+
+				dx *= image_bounding_dims.width / d3.select(this).attr("width");
+				dy *= image_bounding_dims.height / d3.select(this).attr("height");
+
+				image_bounding_dims.x1 = clamp(image_bounding_dims.x1 - dx, 0, imageCanvas.width - 1 - image_bounding_dims.width);
+				image_bounding_dims.y1 = clamp(image_bounding_dims.y1 - dy, 0, imageCanvas.height - 1 - image_bounding_dims.height);
+
+				console.log("dx:", dx, "dy:", dy, "x1:", image_bounding_dims.x1, "y1:", image_bounding_dims.y1);
+			}
+
 			var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width") * (image_bounding_dims.width - 1);
 			var y = image_bounding_dims.y1 + (mouse_position.y - d3.select(this).attr("y")) / d3.select(this).attr("height") * (image_bounding_dims.height - 1);
 
@@ -7435,19 +7452,6 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 
 				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
 					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
-			}
-
-			if (dragging) {
-				var dx = d3.event.dx;
-				var dy = d3.event.dy;
-
-				dx *= image_bounding_dims.width / d3.select(this).attr("width");
-				dy *= image_bounding_dims.height / d3.select(this).attr("height");
-
-				console.log("dx:", dx, "dy:", dy);
-
-				image_bounding_dims.x1 -= dx;
-				image_bounding_dims.y1 -= dy;
 			}
 		});
 
@@ -8649,8 +8653,8 @@ function tiles_zoomed() {
 
 	let x0 = zoom_dims.x0;
 	let y0 = zoom_dims.y0;
-	let new_x1 = x0 - (x0 - zoom_dims.x1) / zoom_scale;
-	let new_y1 = y0 - (y0 - zoom_dims.y1) / zoom_scale;
+	let new_x1 = clamp(x0 - (x0 - zoom_dims.x1) / zoom_scale, 0, zoom_dims.width - 1 - new_width);
+	let new_y1 = clamp(y0 - (y0 - zoom_dims.y1) / zoom_scale, 0, zoom_dims.height - 1 - new_height);
 
 	zoom_dims.view = { x1: new_x1, y1: new_y1, width: new_width, height: new_height };
 	/*zoom_dims.view.x1 = new_x1;
@@ -10376,7 +10380,7 @@ function display_rgb_legend() {
 		var divisions = 64;//100
 		var legendHeight = 0.8 * height;
 		var rectHeight = legendHeight / divisions;
-		var rectWidth = 7 * rectHeight;//0.05*width;
+		var rectWidth = 5 * rectHeight;//0.05*width;
 		var newData = [];
 
 		if (imageContainer[index - 1] == null) {

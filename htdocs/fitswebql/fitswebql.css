@@ -294,7 +294,7 @@ svg {
 }
 
 .axis text {
-    font: 1.75em Inconsolata;
+    font: 1.5em Inconsolata;/*was 1.75*/
     stroke: none;
     fill: inherit;/*#996699;*/
     font-weight: bold;
@@ -313,7 +313,7 @@ opacity: 0.75;
 }
 
 .gridlines text {
-    font: 1.25em Inconsolata;
+    font: 1.0em Inconsolata;/*was 1.25*/
     stroke: none;
     fill: currentColor;/*#996699;*/
     font-weight: bold;
@@ -332,7 +332,7 @@ opacity: 0.75;
 }
 
 .colouraxis text {
-    font: 1.25em Inconsolata;/*was 1.25*/
+    font: 1.0em Inconsolata;/*was 1.25*/
     stroke: black;
     fill: currentColor;
     stroke-width: 0.25;
