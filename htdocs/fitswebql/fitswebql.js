@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-29.3";
+	return "JS2019-01-29.4";
 }
 
 const wasm_supported = (() => {
@@ -7420,12 +7420,16 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 				console.log("dx:", dx, "dy:", dy, "x1:", image_bounding_dims.x1, "y1:", image_bounding_dims.y1);
 			}
 
-			var x = image_bounding_dims.x1 + (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width") * (image_bounding_dims.width - 1);
-			var y = image_bounding_dims.y1 + (mouse_position.y - d3.select(this).attr("y")) / d3.select(this).attr("height") * (image_bounding_dims.height - 1);
+			var rx = (mouse_position.x - d3.select(this).attr("x")) / d3.select(this).attr("width");
+			var ry = (mouse_position.y - d3.select(this).attr("y")) / d3.select(this).attr("height");
+			var x = image_bounding_dims.x1 + rx * (image_bounding_dims.width - 1);
+			var y = image_bounding_dims.y1 + ry * (image_bounding_dims.height - 1);
 
 			zoom_dims.x0 = x;
 			zoom_dims.y0 = y;
-			console.log("x0:", x, "y0:", y);
+			zoom_dims.rx = rx;
+			zoom_dims.ry = ry;
+			console.log("x0:", x, "y0:", y, "rx:", rx, "ry:", ry);
 
 			var orig_x = x * fitsData.width / imageCanvas.width;
 			var orig_y = y * fitsData.height / imageCanvas.height;
@@ -8646,15 +8650,12 @@ function tiles_zoomed() {
 	let new_width = width / zoom_scale;
 	let new_height = height / zoom_scale;
 
-	/*let x0 = zoom_dims.x1 + (width - 1) / 2;
-	let y0 = zoom_dims.y1 + (height - 1) / 2;
-	let new_x1 = x0 - (new_width - 1) / 2;
-	let new_y1 = y0 - (new_height - 1) / 2;*/
-
 	let x0 = zoom_dims.x0;
 	let y0 = zoom_dims.y0;
-	let new_x1 = clamp(x0 - (x0 - zoom_dims.x1) / zoom_scale, 0, zoom_dims.width - 1 - new_width);
-	let new_y1 = clamp(y0 - (y0 - zoom_dims.y1) / zoom_scale, 0, zoom_dims.height - 1 - new_height);
+	let rx = zoom_dims.rx;
+	let ry = zoom_dims.ry;
+	let new_x1 = clamp(x0 - rx * new_width, 0, zoom_dims.width - 1 - new_width);
+	let new_y1 = clamp(y0 - ry * new_height, 0, zoom_dims.height - 1 - new_height);
 
 	zoom_dims.view = { x1: new_x1, y1: new_y1, width: new_width, height: new_height };
 	/*zoom_dims.view.x1 = new_x1;
