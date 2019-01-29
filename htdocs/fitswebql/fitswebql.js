@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-29.5";
+	return "JS2019-01-29.7";
 }
 
 const wasm_supported = (() => {
@@ -7412,8 +7412,10 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 
 			var imageCanvas = imageContainer[index - 1].imageCanvas;
 			var image_bounding_dims = imageContainer[index - 1].image_bounding_dims;
-			if (zoom_dims.view != null)
-				image_bounding_dims = zoom_dims.view;
+
+			if (zoom_dims != null)
+				if (zoom_dims.view != null)
+					image_bounding_dims = zoom_dims.view;
 
 			if (dragging) {
 				var dx = d3.event.dx;
@@ -8670,8 +8672,15 @@ function tiles_zoomed() {
 
 	console.log("zoom_dims:", zoom_dims);
 
-	for (let i = 1; i <= va_count; i++)
+	for (let i = 1; i <= va_count; i++) {
 		refresh_tiles(i);
+		//var tmp = d3.select("#image_rectangle" + i);
+		//console.log(i, tmp);
+		//tmp.call(zoom.transform, d3.zoomIdentity.scale(zoom_scale));
+		//tmp.attr("transform", "scale(" + zoom_scale + ")");
+		//tmp._groups[0].__zoom.k = zoom_scale;
+		//zoom.scaleTo(tmp, zoom_scale);
+	}
 
 	var tmp = d3.select(this);
 	var onMouseMoveFunc = tmp.on("mousemove");
@@ -9476,16 +9485,17 @@ function display_menu() {
 		.attr("class", "dropdown-menu");
 
 	if (has_webgl) {
-		var htmlStr = '<span class="glyphicon glyphicon-eye-open"></span> 3D surface';
-		viewDropdown.append("li")
-			.append("a")
-			.style('cursor', 'pointer')
-			.on("click", function () {/*experimental = !experimental;
-				      localStorage_write_boolean("experimental", experimental) ;*/
-				init_surface();
+		if (va_count == 1 || composite_view) {
+			var htmlStr = '<span class="glyphicon glyphicon-eye-open"></span> 3D surface';
+			viewDropdown.append("li")
+				.append("a")
+				.style('cursor', 'pointer')
+				.on("click", function () {
+					init_surface();
 
-			})
-			.html(htmlStr);
+				})
+				.html(htmlStr);
+		}
 	}
 	else {
 		viewDropdown.append("li")
@@ -9524,38 +9534,40 @@ function display_menu() {
 			.html(htmlStr);
 	}
 
-	htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines';
-	viewDropdown.append("li")
-		.append("a")
-		.attr("id", "displayContours")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayContours = !displayContours;
-			var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines';
-			d3.select(this).html(htmlStr);
-			//var elem = d3.selectAll("#contourPlot");
+	if (va_count == 1 || composite_view) {
+		htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines';
+		viewDropdown.append("li")
+			.append("a")
+			.attr("id", "displayContours")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayContours = !displayContours;
+				var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines';
+				d3.select(this).html(htmlStr);
+				//var elem = d3.selectAll("#contourPlot");
 
-			if (displayContours) {
-				d3.select('#contour_control_li').style("display", "block");
-			}
-			else {
-				d3.select('#contour_control_li').style("display", "none");
-			}
+				if (displayContours) {
+					d3.select('#contour_control_li').style("display", "block");
+				}
+				else {
+					d3.select('#contour_control_li').style("display", "none");
+				}
 
-			if (displayContours) {
-				document.getElementById("ContourSVG").style.display = "block";
-				//elem.attr("opacity",1);
+				if (displayContours) {
+					document.getElementById("ContourSVG").style.display = "block";
+					//elem.attr("opacity",1);
 
-				//if(document.getElementById('contourPlot') == null)
-				if (!has_contours)
-					update_contours();
-			}
-			else {
-				document.getElementById("ContourSVG").style.display = "none";
-				//elem.attr("opacity",0);
-			}
-		})
-		.html(htmlStr);
+					//if(document.getElementById('contourPlot') == null)
+					if (!has_contours)
+						update_contours();
+				}
+				else {
+					document.getElementById("ContourSVG").style.display = "none";
+					//elem.attr("opacity",0);
+				}
+			})
+			.html(htmlStr);
+	}
 
 	htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
 	viewDropdown.append("li")
@@ -9606,45 +9618,45 @@ function display_menu() {
 		})
 		.html(htmlStr);
 
-	htmlStr = displayMolecules ? '<span class="glyphicon glyphicon-check"></span> spectral lines' : '<span class="glyphicon glyphicon-unchecked"></span> spectral lines';
-	viewDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displayMolecules = !displayMolecules;
-			var htmlStr = displayMolecules ? '<span class="glyphicon glyphicon-check"></span> spectral lines' : '<span class="glyphicon glyphicon-unchecked"></span> spectral lines';
-			d3.select(this).html(htmlStr);
-			var elem = d3.select("#molecules");
-			if (displayMolecules)
-				elem.attr("opacity", 1);
-			else
-				elem.attr("opacity", 0);
-		})
-		.html(htmlStr);
-
-	htmlStr = displaySpectrum ? '<span class="glyphicon glyphicon-check"></span> spectrum' : '<span class="glyphicon glyphicon-unchecked"></span> spectrum';
-	viewDropdown.append("li")
-		.append("a")
-		.style('cursor', 'pointer')
-		.on("click", function () {
-			displaySpectrum = !displaySpectrum;
-			var htmlStr = displaySpectrum ? '<span class="glyphicon glyphicon-check"></span> spectrum' : '<span class="glyphicon glyphicon-unchecked"></span> spectrum';
-			d3.select(this).html(htmlStr);
-			var elem = document.getElementById("SpectrumCanvas");
-			if (displaySpectrum) {
-				elem.style.display = "block";
-				d3.select("#yaxis").attr("opacity", 1);
-				d3.select("#ylabel").attr("opacity", 1);
-			}
-			else {
-				elem.style.display = "none";
-				d3.select("#yaxis").attr("opacity", 0);
-				d3.select("#ylabel").attr("opacity", 0);
-			}
-		})
-		.html(htmlStr);
-
 	if (!optical_view) {
+		htmlStr = displayMolecules ? '<span class="glyphicon glyphicon-check"></span> spectral lines' : '<span class="glyphicon glyphicon-unchecked"></span> spectral lines';
+		viewDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displayMolecules = !displayMolecules;
+				var htmlStr = displayMolecules ? '<span class="glyphicon glyphicon-check"></span> spectral lines' : '<span class="glyphicon glyphicon-unchecked"></span> spectral lines';
+				d3.select(this).html(htmlStr);
+				var elem = d3.select("#molecules");
+				if (displayMolecules)
+					elem.attr("opacity", 1);
+				else
+					elem.attr("opacity", 0);
+			})
+			.html(htmlStr);
+
+		htmlStr = displaySpectrum ? '<span class="glyphicon glyphicon-check"></span> spectrum' : '<span class="glyphicon glyphicon-unchecked"></span> spectrum';
+		viewDropdown.append("li")
+			.append("a")
+			.style('cursor', 'pointer')
+			.on("click", function () {
+				displaySpectrum = !displaySpectrum;
+				var htmlStr = displaySpectrum ? '<span class="glyphicon glyphicon-check"></span> spectrum' : '<span class="glyphicon glyphicon-unchecked"></span> spectrum';
+				d3.select(this).html(htmlStr);
+				var elem = document.getElementById("SpectrumCanvas");
+				if (displaySpectrum) {
+					elem.style.display = "block";
+					d3.select("#yaxis").attr("opacity", 1);
+					d3.select("#ylabel").attr("opacity", 1);
+				}
+				else {
+					elem.style.display = "none";
+					d3.select("#yaxis").attr("opacity", 0);
+					d3.select("#ylabel").attr("opacity", 0);
+				}
+			})
+			.html(htmlStr);
+
 		htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
 		viewDropdown.append("li")
 			.append("a")

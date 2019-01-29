@@ -2229,7 +2229,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.0";
-static VERSION_STRING: &'static str = "SV2019-01-25.1";
+static VERSION_STRING: &'static str = "SV2019-01-29.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -3678,7 +3678,7 @@ fn http_fits_response(
         "<link href=\"https://fonts.googleapis.com/css?family=Lato\" rel=\"stylesheet\"/>\n",
     );
 
-    html.push_str("<script src=\"https://d3js.org/d3.v4.min.js\"></script>\n");
+    html.push_str("<script src=\"https://d3js.org/d3.v5.min.js\"></script>\n");
 
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"reconnecting-websocket.js\"></script>\n");
