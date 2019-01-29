@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-29.9";
+	return "JS2019-01-29.10";
 }
 
 const wasm_supported = (() => {
@@ -7391,6 +7391,9 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			}
 		})
 		.on("mousemove", function () {
+			if (zoom_dims == null)
+				return;
+
 			try {
 				var offset = d3.mouse(this);
 			}
@@ -7415,9 +7418,8 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			var imageCanvas = imageContainer[index - 1].imageCanvas;
 			var image_bounding_dims = imageContainer[index - 1].image_bounding_dims;
 
-			if (zoom_dims != null)
-				if (zoom_dims.view != null)
-					image_bounding_dims = zoom_dims.view;
+			if (zoom_dims.view != null)
+				image_bounding_dims = zoom_dims.view;
 
 			if (dragging) {
 				var dx = d3.event.dx;
@@ -8676,12 +8678,9 @@ function tiles_zoomed() {
 
 	for (let i = 1; i <= va_count; i++) {
 		refresh_tiles(i);
-		//var tmp = d3.select("#image_rectangle" + i);
-		//console.log(i, tmp);
-		//tmp.call(zoom.transform, d3.zoomIdentity.scale(zoom_scale));
-		//tmp.attr("transform", "scale(" + zoom_scale + ")");
-		//tmp._groups[0].__zoom.k = zoom_scale;
-		//zoom.scaleTo(tmp, zoom_scale);
+
+		//keep zoom scale in sync across all images
+		d3.select("#image_rectangle" + i).__zoom = zoom_scale;
 	}
 
 	var tmp = d3.select(this);
