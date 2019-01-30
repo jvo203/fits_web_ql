@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-30.4";
+	return "JS2019-01-30.5";
 }
 
 const wasm_supported = (() => {
@@ -8838,7 +8838,7 @@ function tileTimeout() {
 
 	let image_bounding_dims = zoom_dims.view;
 
-	if (mousedown || streaming)
+	if (mousedown || streaming || dragging)
 		return;
 
 	viewport_count = 0;
