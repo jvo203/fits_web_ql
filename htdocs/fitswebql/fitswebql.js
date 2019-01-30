@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-29.11";
+	return "JS2019-01-30.4";
 }
 
 const wasm_supported = (() => {
@@ -973,6 +973,40 @@ function process_viewport_canvas(viewportCanvas, index) {
 
 	viewport_count++;
 
+	if (va_count > 1 && !composite_view) {
+		console.log("refresh_viewport for index:", index);
+
+		if (viewport_count == va_count)
+			hide_hourglass();
+
+		if (moving)
+			return;
+
+		//place the viewport onto the image tile
+		var c = document.getElementById('HTMLCanvas' + index);
+		var width = c.width;
+		var height = c.height;
+		var ctx = c.getContext("2d");
+
+		ctx.mozImageSmoothingEnabled = false;
+		ctx.webkitImageSmoothingEnabled = false;
+		ctx.msImageSmoothingEnabled = false;
+		ctx.imageSmoothingEnabled = false;
+		//ctx.globalAlpha=0.9;
+
+		let elem = d3.select("#image_rectangle" + index);
+		let img_width = elem.attr("width");
+		let img_height = elem.attr("height");
+
+		let image_position = get_image_position(index, width, height);
+		let posx = image_position.posx;
+		let posy = image_position.posy;
+
+		ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, posx - img_width / 2, posy - img_height / 2, img_width, img_height);
+
+		return;
+	}
+
 	if (viewport_count == va_count) {
 		//place the viewport onto the ZOOM Canvas
 		var c = document.getElementById("ZOOMCanvas");
@@ -1448,7 +1482,7 @@ function open_websocket_connection(datasetId, index) {
 
 										//WASM buffers have changed, need to refresh the ImageData.data buffer
 										var len = img.width * img.height * 4;
-										var data = new Uint8ClampedArray(Module.HEAPU8.buffer, videoFrame.ptr, len);
+										var data = new Uint8ClampedArray(Module.HEAPU8.buffer, canvas_ptr, len);
 										for (let i = 0; i < len; i++)
 											data[i] = 0;
 										img = new ImageData(data, img.width, img.height);
@@ -7374,10 +7408,13 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 				zoom_dims = imageContainer[index - 1].image_bounding_dims;
 				zoom_dims.view = null;
 			}
-
-			//zoom.scaleTo(d3.select("#image_rectangle" + index), zoom_scale);
 		})
 		.on("mouseleave", function () {
+			clearTimeout(idleMouse);
+
+			if (!d3.event.shiftKey)
+				windowLeft = true;
+
 			if (xradec != null) {
 				let fitsData = fitsContainer[va_count - 1];
 
@@ -7391,6 +7428,10 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			}
 		})
 		.on("mousemove", function () {
+			moving = true;
+			clearTimeout(idleMouse);
+			windowLeft = false;
+
 			if (zoom_dims == null)
 				return;
 
@@ -7468,9 +7509,11 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
 					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
 			}
+
+			idleMouse = setTimeout(tileTimeout, 250);//was 250ms + latency
 		});
 
-	zoom.scaleTo(rect, zoom_scale);	
+	zoom.scaleTo(rect, zoom_scale);
 }
 
 function setup_image_selection() {
@@ -8647,9 +8690,11 @@ function tiles_dragmove() {
 }
 
 function tiles_zoomed() {
+	clearTimeout(idleMouse);
 	console.log("scale: " + d3.event.transform.k);
 	zoom_scale = d3.event.transform.k;
 	zooming = true;
+	moving = true;
 
 	if (zoom_dims == null)
 		return;
@@ -8680,8 +8725,10 @@ function tiles_zoomed() {
 		refresh_tiles(i);
 
 		//keep zoom scale in sync across all images
-		var elem = d3.select("#image_rectangle" + i);		
-		elem.node().__zoom.k = zoom_scale;		
+		try {
+			var elem = d3.select("#image_rectangle" + i);
+			elem.node().__zoom.k = zoom_scale;
+		} catch (e) { };
 	}
 
 	var tmp = d3.select(this);
@@ -8776,6 +8823,75 @@ function videoTimeout(freq) {
 
 		wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());
 	};
+}
+
+function tileTimeout() {
+	console.log("tile inactive event");
+
+	moving = false;
+
+	if (zoom_dims == null)
+		return;
+
+	if (zoom_dims.view == null)
+		return;
+
+	let image_bounding_dims = zoom_dims.view;
+
+	if (mousedown || streaming)
+		return;
+
+	viewport_count = 0;
+	sent_seq_id++;
+
+	var request_images = true;
+
+	for (let index = 0; index < va_count; index++) {
+		let img_width = image_bounding_dims.width;
+		let img_height = image_bounding_dims.height;
+
+		let elem = d3.select("#image_rectangle" + (index + 1));
+		let view_width = elem.attr("width");
+		let view_height = elem.attr("height");
+
+		let view_pixels = view_width * view_height;
+		let img_pixels = img_width * img_height;
+
+		console.log("viewport: " + view_width + "x" + view_height + " image: " + img_width + "x" + img_height + "view pixels: " + view_pixels + " img pixels: " + img_pixels);
+
+		let image = true;
+		let beam = "square";
+
+		if (img_pixels >= view_pixels)
+			image = false;
+
+		request_images = request_images && image;
+
+		//convert zoom_dims.view into real FITS coordinates of each dataset
+		var fitsData = fitsContainer[index];
+
+		if (fitsData == null)
+			continue;
+
+		if (imageContainer[index] == null)
+			continue;
+
+		var imageCanvas = imageContainer[index].imageCanvas;
+
+		let x1 = image_bounding_dims.x1 * fitsData.width / imageCanvas.width;
+		let y1 = (fitsData.height - 1) - image_bounding_dims.y1 * fitsData.height / imageCanvas.height;
+		let x2 = (image_bounding_dims.x1 + image_bounding_dims.width - 1) * fitsData.width / imageCanvas.width;
+		let y2 = (fitsData.height - 1) - (image_bounding_dims.y1 + image_bounding_dims.height - 1) * fitsData.height / imageCanvas.height;
+
+		var strRequest = 'x1=' + clamp(Math.round(x1), 0, fitsData.width - 1) + '&y1=' + clamp(Math.round(y2), 0, fitsData.height - 1) + '&x2=' + clamp(Math.round(x2), 0, fitsData.width - 1) + '&y2=' + clamp(Math.round(y1), 0, fitsData.height - 1) + '&image=' + (image ? 'true' : 'false') + '&beam=' + beam + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id + '&timestamp=' + performance.now();
+
+		console.log(strRequest);
+
+		wsConn[index].send('[spectrum] ' + strRequest);
+	}
+
+	if (request_images)
+		display_hourglass();
 }
 
 function imageTimeout() {
@@ -9661,26 +9777,28 @@ function display_menu() {
 			})
 			.html(htmlStr);
 
-		htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
-		viewDropdown.append("li")
-			.append("a")
-			.attr("id", "displayBeam")
-			.style('cursor', 'pointer')
-			.on("click", function () {
-				displayBeam = !displayBeam;
-				var htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
-				d3.select(this).html(htmlStr);
+		if (va_count == 1 || composite_view) {
+			htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
+			viewDropdown.append("li")
+				.append("a")
+				.attr("id", "displayBeam")
+				.style('cursor', 'pointer')
+				.on("click", function () {
+					displayBeam = !displayBeam;
+					var htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
+					d3.select(this).html(htmlStr);
 
-				if (displayBeam) {
-					d3.select("#beam").attr("opacity", 1);
-					d3.select("#zoomBeam").attr("opacity", 1);
-				}
-				else {
-					d3.select("#beam").attr("opacity", 0);
-					d3.select("#zoomBeam").attr("opacity", 0);
-				}
-			})
-			.html(htmlStr);
+					if (displayBeam) {
+						d3.select("#beam").attr("opacity", 1);
+						d3.select("#zoomBeam").attr("opacity", 1);
+					}
+					else {
+						d3.select("#beam").attr("opacity", 0);
+						d3.select("#zoomBeam").attr("opacity", 0);
+					}
+				})
+				.html(htmlStr);
+		}
 	}
 
 	//HELP
@@ -10515,7 +10633,7 @@ function display_rgb_legend() {
 			.attr("x", (x + 0.0 * rectWidth))
 			.attr("y", 0.9 * height + 0.75 * emFontSize)
 			.attr("width", 5 * emFontSize)
-			.attr("height", 2 * emFontSize)
+			.attr("height", 3 * emFontSize)
 			.append("xhtml:div")
 			.html('<p style="text-align: left">' + plain2chem(line, false) + '&nbsp;' + bunit + '</p>');
 	}

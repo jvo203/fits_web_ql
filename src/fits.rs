@@ -1773,6 +1773,25 @@ impl FITS {
                 return true;
             }
 
+            if line.contains("HSCPIPE") {
+                //switch on optical astronomy settings
+                self.is_optical = true;
+                self.flux = String::from("ratio");
+            }
+
+            if line.contains("FRAMEID = ") {
+                let frameid = match scan_fmt!(line, "FRAMEID = {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from(""),
+                };
+
+                if frameid.contains("SUPM") || frameid.contains("MCSM") {
+                    //switch on optical astronomy settings
+                    self.is_optical = true;
+                    self.flux = String::from("ratio");
+                }
+            }
+
             if line.contains("OBJECT  = ") {
                 self.obj_name = match Regex::new(r"'(.*?)'").unwrap().find(line) {
                     Some(obj_name) => String::from(obj_name.as_str()).replace("'", ""),
@@ -5019,6 +5038,10 @@ impl FITS {
 
         let dimx = x2 - x1 + 1;
         let dimy = y2 - y1 + 1;
+
+        if dimx < 0 || dimy < 0 {
+            return None;
+        }
 
         let (master_pixels, master_mask) = match user {
             Some(params) => (&params.pixels, &params.mask),

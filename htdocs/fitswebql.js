@@ -113,9 +113,13 @@ function show_directory_contents(response) {
 			var group = find_group(filename);
 			var group_str = null;
 			var composite = false;
+			var optical = false;
 
 			if (filename.indexOf("FGN_") > -1 && filename.indexOf("cube.fits") > -1)
 				composite = true;
+
+			if (filename.indexOf("-HSC-") > -1)
+				optical = true;
 
 			if (group.length > 1) {
 				group_str = 'GROUP:';
@@ -127,15 +131,26 @@ function show_directory_contents(response) {
 					group_str += '\n' + filename;
 					url += "&filename" + (i + 1) + "=" + encodeURIComponent(name);
 				}
-
-				if (composite)
-					url += "&view=composite";
 			}
 			else
 				url += "&filename=" + encodeURIComponent(name);
 
-			//enforce tone mapping
-			url += "&flux=logistic";
+			if (composite && optical) {
+				url += "&view=composite,optical";
+			} else {
+				if (composite)
+					url += "&view=composite";
+
+				if (optical)
+					url += "&view=optical";
+			}
+
+			if (optical) {
+				url += "&colourmap=negative";
+				url += "&flux=ratio";
+			} else
+				//enforce tone mapping
+				url += "&flux=logistic";
 
 			//single-file URL
 			//var url = "/fitswebql/FITSWebQL.html?dir=" + encodeURIComponent(path) + "&ext=" + encodeURIComponent(ext) + "&filename=" + encodeURIComponent(name) ;
