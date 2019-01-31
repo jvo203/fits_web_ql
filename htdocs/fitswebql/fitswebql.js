@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-30.5";
+	return "JS2019-01-31.0";
 }
 
 const wasm_supported = (() => {
@@ -1118,6 +1118,40 @@ function process_viewport(w, h, bytes, stride, alpha, index) {
 				viewportCanvas = compositeViewportCanvas;
 			}
 		}
+	}
+
+	if (va_count > 1 && !composite_view) {
+		console.log("refresh_viewport for index:", index);
+
+		if (viewport_count == va_count)
+			hide_hourglass();
+
+		if (moving)
+			return;
+
+		//place the viewport onto the image tile
+		var c = document.getElementById('HTMLCanvas' + index);
+		var width = c.width;
+		var height = c.height;
+		var ctx = c.getContext("2d");
+
+		ctx.mozImageSmoothingEnabled = false;
+		ctx.webkitImageSmoothingEnabled = false;
+		ctx.msImageSmoothingEnabled = false;
+		ctx.imageSmoothingEnabled = false;
+		//ctx.globalAlpha=0.9;
+
+		let elem = d3.select("#image_rectangle" + index);
+		let img_width = elem.attr("width");
+		let img_height = elem.attr("height");
+
+		let image_position = get_image_position(index, width, height);
+		let posx = image_position.posx;
+		let posy = image_position.posy;
+
+		ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, posx - img_width / 2, posy - img_height / 2, img_width, img_height);
+
+		return;
 	}
 
 	if (viewport_count == va_count) {
