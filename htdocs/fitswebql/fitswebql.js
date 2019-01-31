@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-31.0";
+	return "JS2019-01-31.4";
 }
 
 const wasm_supported = (() => {
@@ -976,10 +976,12 @@ function process_viewport_canvas(viewportCanvas, index) {
 	if (va_count > 1 && !composite_view) {
 		console.log("refresh_viewport for index:", index);
 
-		if (viewport_count == va_count)
-			hide_hourglass();
+		if (viewport_count == va_count) {
+			//hide_hourglass();
+			end_blink();
+		}
 
-		if (moving)
+		if (dragging || moving)
 			return;
 
 		//place the viewport onto the image tile
@@ -1072,7 +1074,7 @@ function process_viewport_canvas(viewportCanvas, index) {
 	}
 }
 
-function process_viewport(w, h, bytes, stride, alpha, index) {
+function process_viewport(width, height, w, h, bytes, stride, alpha, index) {
 	if (streaming)
 		return;
 
@@ -1084,15 +1086,38 @@ function process_viewport(w, h, bytes, stride, alpha, index) {
 	viewportCanvas.style.visibility = "hidden";
 	var context = viewportCanvas.getContext('2d');
 
-	viewportCanvas.width = w;
-	viewportCanvas.height = h;
+	viewportCanvas.width = width;
+	viewportCanvas.height = height;
 	console.log(viewportCanvas.width, viewportCanvas.height);
 
 	viewport_count++;
 
+	var buffer = bytes;
+	var _w = w;
+	var _h = h;
+	var _stride = stride;
+
+	if (width < height) {
+		//re-arrange the bytes array
+		buffer = new Uint8Array(w * h);
+
+		let dst_offset = 0;
+
+		for (var j = 0; j < h; j++) {
+			let offset = j * stride;
+
+			for (var i = 0; i < w; i++)
+				buffer[dst_offset++] = bytes[offset++];
+		}
+
+		_w = width;
+		_h = height;
+		_stride = width;
+	};
+
 	if (!composite_view) {
-		let imageData = context.createImageData(w, h);
-		apply_colourmap(imageData, colourmap, bytes, w, h, stride, alpha);
+		let imageData = context.createImageData(width, height);
+		apply_colourmap(imageData, colourmap, buffer, _w, _h, _stride, alpha);
 		context.putImageData(imageData, 0, 0);
 	}
 	else {
@@ -1109,7 +1134,7 @@ function process_viewport(w, h, bytes, stride, alpha, index) {
 			compositeViewportImageData = ctx.createImageData(compositeViewportCanvas.width, compositeViewportCanvas.height);
 		}
 
-		add_composite_channel(bytes, w, h, stride, alpha, compositeViewportImageData, index - 1);
+		add_composite_channel(buffer, _w, _h, _stride, alpha, compositeViewportImageData, index - 1);
 
 		if (viewport_count == va_count) {
 			if (compositeViewportCanvas != null && compositeViewportImageData != null) {
@@ -1123,10 +1148,12 @@ function process_viewport(w, h, bytes, stride, alpha, index) {
 	if (va_count > 1 && !composite_view) {
 		console.log("refresh_viewport for index:", index);
 
-		if (viewport_count == va_count)
-			hide_hourglass();
+		if (viewport_count == va_count) {
+			//hide_hourglass();
+			end_blink();
+		}
 
-		if (moving)
+		if (dragging || moving)
 			return;
 
 		//place the viewport onto the image tile
@@ -1458,7 +1485,7 @@ function open_websocket_connection(datasetId, index) {
 
 							for (let i = 0; i < no_frames; i++) {
 								decoder.processFrame(frames[i], function () {
-									process_viewport(decoder.frameBuffer.format.displayWidth,
+									process_viewport(width, height, decoder.frameBuffer.format.displayWidth,
 										decoder.frameBuffer.format.displayHeight,
 										decoder.frameBuffer.y.bytes,
 										decoder.frameBuffer.y.stride,
@@ -2119,7 +2146,7 @@ function display_hourglass() {
 
 function hide_hourglass() {
 	try {
-		d3.select('#hourglass').remove();
+		d3.selectAll('#hourglass').remove();
 	}
 	catch (e) { };
 }
@@ -7342,7 +7369,7 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 	catch (e) { };
 
 	var zoom = d3.zoom()
-		.scaleExtent([1, 20])
+		.scaleExtent([1, 40])
 		.on("zoom", tiles_zoomed);
 
 	var drag = d3.drag()
@@ -7438,9 +7465,16 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			if (imageContainer[index - 1] == null)
 				return;
 
+			let image_bounding_dims = imageContainer[index - 1].image_bounding_dims;
+
 			if (zoom_dims == null) {
-				zoom_dims = imageContainer[index - 1].image_bounding_dims;
-				zoom_dims.view = null;
+				zoom_dims = {
+					x1: image_bounding_dims.x1, y1: image_bounding_dims.y1, width: image_bounding_dims.width, height: image_bounding_dims.height, x0: image_bounding_dims.x1 + 0.5 * (image_bounding_dims.width - 1), y0: image_bounding_dims.y1 + 0.5 * (image_bounding_dims.height - 1),
+					rx: 0.5,
+					ry: 0.5,
+					view: null,
+					prev_view: null
+				};
 			}
 		})
 		.on("mouseleave", function () {
@@ -7462,8 +7496,7 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			}
 		})
 		.on("mousemove", function () {
-			moving = true;
-			clearTimeout(idleMouse);
+			//moving = true;
 			windowLeft = false;
 
 			if (zoom_dims == null)
@@ -7516,6 +7549,7 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			zoom_dims.y0 = y;
 			zoom_dims.rx = rx;
 			zoom_dims.ry = ry;
+			//zoom_dims.view = { x1: image_bounding_dims.x1, y1: image_bounding_dims.y1, width: image_bounding_dims.width, height: image_bounding_dims.height };
 
 			var orig_x = x * fitsData.width / imageCanvas.width;
 			var orig_y = y * fitsData.height / imageCanvas.height;
@@ -7543,8 +7577,6 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
 					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
 			}
-
-			idleMouse = setTimeout(tileTimeout, 250);//was 250ms + latency
 		});
 
 	zoom.scaleTo(rect, zoom_scale);
@@ -8715,19 +8747,22 @@ function tiles_dragended() {
 }
 
 function tiles_dragmove() {
+	console.log("drag move");
+
 	var elem = d3.select(this);
 	var onMouseMoveFunc = elem.on("mousemove");
 	elem.each(onMouseMoveFunc);
 
 	for (let i = 1; i <= va_count; i++)
 		refresh_tiles(i);
+
+	clearTimeout(idleMouse);
+	idleMouse = setTimeout(tileTimeout, 250);
 }
 
 function tiles_zoomed() {
-	clearTimeout(idleMouse);
 	console.log("scale: " + d3.event.transform.k);
 	zoom_scale = d3.event.transform.k;
-	zooming = true;
 	moving = true;
 
 	if (zoom_dims == null)
@@ -8757,6 +8792,9 @@ function tiles_zoomed() {
 
 	for (let i = 1; i <= va_count; i++) {
 		refresh_tiles(i);
+
+		clearTimeout(idleMouse);
+		idleMouse = setTimeout(tileTimeout, 250);
 
 		//keep zoom scale in sync across all images
 		try {
@@ -8859,21 +8897,58 @@ function videoTimeout(freq) {
 	};
 }
 
+function blink() {
+	if (stop_blinking)
+		return;
+
+	d3.select("#ping")
+		.transition()
+		.duration(250)
+		.attr("opacity", 0.0)
+		.transition()
+		.duration(250)
+		.attr("opacity", 1.0)
+		.on("end", blink);
+}
+
+function end_blink() {
+	stop_blinking = true;
+}
+
 function tileTimeout() {
 	console.log("tile inactive event");
 
 	moving = false;
 
-	if (zoom_dims == null)
+	if (zoom_dims == null) {
+		console.log("tileTimeout: zoom_dims == null");
 		return;
+	}
 
-	if (zoom_dims.view == null)
+	if (zoom_dims.view == null) {
+		console.log("tileTimeout: zoom_dims.view == null");
 		return;
+	}
 
 	let image_bounding_dims = zoom_dims.view;
 
-	if (mousedown || streaming || dragging)
+	if (mousedown || streaming || dragging) {
+		console.log("tileTimeout: mousedown:", mousedown, "streaming:", streaming, "dragging:", dragging);
 		return;
+	}
+
+	//do nothing if the view has not changed
+	if (zoom_dims.prev_view != null) {
+		let previous = zoom_dims.prev_view;
+
+		if (image_bounding_dims.x1 == previous.x1 && image_bounding_dims.y1 == previous.y1 && image_bounding_dims.width == previous.width && image_bounding_dims.height == previous.height) {
+			console.log("tileTimeout: zoom_dims.view == zoom_dims.prev_view");
+			console.log("previous:", previous, "view:", image_bounding_dims);
+			return;
+		}
+	}
+
+	zoom_dims.prev_view = { x1: image_bounding_dims.x1, y1: image_bounding_dims.y1, width: image_bounding_dims.width, height: image_bounding_dims.height };
 
 	viewport_count = 0;
 	sent_seq_id++;
@@ -8924,8 +8999,11 @@ function tileTimeout() {
 		wsConn[index].send('[spectrum] ' + strRequest);
 	}
 
-	if (request_images)
-		display_hourglass();
+	if (request_images) {
+		//display_hourglass();
+		stop_blinking = false;
+		blink();
+	}
 }
 
 function imageTimeout() {

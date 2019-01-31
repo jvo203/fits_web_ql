@@ -4367,8 +4367,12 @@ impl FITS {
 
         let align = 1;
 
-        let ret =
-            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, dimx, dimy, align) };
+        //a workaround around a bug in libvpx triggered when h > w (dimy > dimx)
+        let ret = if dimx > dimy {
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, dimx, dimy, align) }
+        } else {
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, dimy, dimx, align) }
+        };
 
         if ret.is_null() {
             println!("VP9 image frame error: image allocation failed");
@@ -4389,7 +4393,12 @@ impl FITS {
         raw.planes[1] = unsafe { mem::transmute(u.as_ptr()) };
         raw.planes[2] = unsafe { mem::transmute(v.as_ptr()) };
 
-        raw.stride[0] = dimx as i32;
+        //a workaround around a bug in libvpx triggered when h > w (dimy > dimx)
+        raw.stride[0] = if dimx > dimy {
+            dimx as i32
+        } else {
+            dimy as i32
+        };
 
         let mut cfg = vpx_codec_enc_cfg::default();
         let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut cfg, 0) };
@@ -4403,8 +4412,14 @@ impl FITS {
             return None;
         }
 
-        cfg.g_w = dimx;
-        cfg.g_h = dimy;
+        //a workaround around a bug in libvpx triggered when h > w (dimy > dimx)
+        if dimx > dimy {
+            cfg.g_w = dimx;
+            cfg.g_h = dimy;
+        } else {
+            cfg.g_w = dimy;
+            cfg.g_h = dimx;
+        }
 
         cfg.rc_min_quantizer = 10;
         cfg.rc_max_quantizer = 42;
@@ -5141,6 +5156,10 @@ impl FITS {
         frame_end: f64,
         ref_freq: f64,
     ) -> Option<Vec<f32>> {
+        if self.depth <= 1 {
+            return None;
+        }
+
         //spatial range checks
         let x1 = num::clamp(x1, 0, self.width as i32 - 1) as usize;
         let y1 = num::clamp(y1, 0, self.height as i32 - 1) as usize;
