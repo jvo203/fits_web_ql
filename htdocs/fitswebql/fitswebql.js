@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-01.3";
+	return "JS2019-02-01.4";
 }
 
 const wasm_supported = (() => {
@@ -796,6 +796,11 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 			add_line_label(index);
 
 			setup_image_selection_index(index, posx - img_width / 2, posy - img_height / 2, img_width, img_height);
+
+			//trigger a tileTimeout
+			if (zoom_dims != null)
+				if (zoom_dims.view != null)
+					tileTimeout(true);
 		}
 		else
 		//add a channel to the RGB composite image
@@ -4474,6 +4479,13 @@ function change_colourmap(index, recursive) {
 				document.getElementById('colourmap' + i).value = colourmap;
 				change_colourmap(i, false);
 			}
+	}
+
+	//trigger a tileTimeout
+	if (recursive) {
+		if (zoom_dims != null)
+			if (zoom_dims.view != null)
+				tileTimeout(true);
 	}
 }
 
@@ -8935,7 +8947,7 @@ function end_blink() {
 	stop_blinking = true;
 }
 
-function tileTimeout() {
+function tileTimeout(force = false) {
 	console.log("tile inactive event");
 
 	moving = false;
@@ -8958,7 +8970,7 @@ function tileTimeout() {
 	}
 
 	//do nothing if the view has not changed
-	if (zoom_dims.prev_view != null) {
+	if (!force && zoom_dims.prev_view != null) {
 		let previous = zoom_dims.prev_view;
 
 		if (image_bounding_dims.x1 == previous.x1 && image_bounding_dims.y1 == previous.y1 && image_bounding_dims.width == previous.width && image_bounding_dims.height == previous.height) {
