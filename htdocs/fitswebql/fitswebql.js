@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-01.5";
+	return "JS2019-02-01.6";
 }
 
 const wasm_supported = (() => {
@@ -8784,8 +8784,11 @@ function tiles_dragmove() {
 	var onMouseMoveFunc = elem.on("mousemove");
 	elem.each(onMouseMoveFunc);
 
-	for (let i = 1; i <= va_count; i++)
-		refresh_tiles(i);
+	for (let i = 1; i <= va_count; i++) {
+		requestAnimationFrame(function () {
+			refresh_tiles(i);
+		});
+	}
 }
 
 function tiles_zoomended() {
@@ -8826,7 +8829,9 @@ function tiles_zoom() {
 	console.log("zoom_dims:", zoom_dims);
 
 	for (let i = 1; i <= va_count; i++) {
-		refresh_tiles(i);
+		requestAnimationFrame(function () {
+			refresh_tiles(i);
+		});
 
 		//keep zoom scale in sync across all images
 		try {
