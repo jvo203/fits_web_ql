@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-01.4";
+	return "JS2019-02-01.5";
 }
 
 const wasm_supported = (() => {
@@ -1079,7 +1079,7 @@ function process_viewport_canvas(viewportCanvas, index) {
 	}
 }
 
-function process_viewport(width, height, w, h, bytes, stride, alpha, index) {
+function process_viewport(width, height, w, h, bytes, stride, alpha, index, swap_dims = true) {
 	if (streaming)
 		return;
 
@@ -1102,7 +1102,7 @@ function process_viewport(width, height, w, h, bytes, stride, alpha, index) {
 	var _h = h;
 	var _stride = stride;
 
-	if (width < height) {
+	if (width < height && swap_dims) {
 		//re-arrange the bytes array
 		buffer = new Uint8Array(w * h);
 
@@ -1555,7 +1555,7 @@ function open_websocket_connection(datasetId, index) {
 									api.hevc_destroy();
 								} catch (e) { };
 
-								process_viewport(width, height, bytes, width, alpha, index);
+								process_viewport(width, height, width, height, bytes, width, alpha, index, false);
 
 								Module._free(bytes_ptr);
 							}
