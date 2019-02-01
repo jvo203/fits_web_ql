@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-01-31.4";
+	return "JS2019-02-01.0";
 }
 
 const wasm_supported = (() => {
@@ -1386,50 +1386,6 @@ function open_websocket_connection(datasetId, index) {
 							spectrum_stack[index - 1].push({ spectrum: spectrum, id: recv_seq_id });
 							console.log("index:", index, "spectrum_stack length:", spectrum_stack[index - 1].length);
 						};
-
-						//handle spectrum display here ??? (Safari had problems with the event loop)
-						/*try {
-							let go_ahead = true ;
-							let new_seq_id = 0 ;
-							
-							for(let index=0;index<va_count;index++)
-							{
-								let len = spectrum_stack[index].length ;
-								
-								if(len > 0)
-								{
-								let id = spectrum_stack[index][len-1].id ;			
-					
-								if(id <= last_seq_id)
-									go_ahead = false ;
-								else
-									new_seq_id = Math.max(new_seq_id, id) ;
-								}
-								else
-								go_ahead = false ;
-							}
-					
-							if(go_ahead)
-							{
-								last_seq_id = new_seq_id ;
-								console.log("last_seq_id:", last_seq_id) ;
-					
-								//pop all <va_count> spectrum stacks
-								var data = [] ;
-					
-								for(let index=0;index<va_count;index++)
-								data.push(spectrum_stack[index].pop().spectrum) ;
-								
-								plot_spectrum(data) ;
-								replot_y_axis() ;
-					
-								last_spectrum = data ;
-							}		
-							
-							}
-							catch (e) {
-							console.log(e) ;
-							}*/
 
 						return;
 					}
@@ -7377,6 +7333,56 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 		.on("drag", tiles_dragmove)
 		.on("end", tiles_dragended);
 
+	//set up the spectrum rendering loop
+	function update_spectrum() {
+
+		if (!windowLeft)
+			requestAnimationFrame(update_spectrum);
+
+		//spectrum
+		try {
+			let go_ahead = true;
+			let new_seq_id = 0;
+
+			for (let index = 0; index < va_count; index++) {
+				let len = spectrum_stack[index].length;
+
+				if (len > 0) {
+					let id = spectrum_stack[index][len - 1].id;
+
+					if (id <= last_seq_id)
+						go_ahead = false;
+					else
+						new_seq_id = Math.max(new_seq_id, id);
+				}
+				else
+					go_ahead = false;
+			}
+
+			if (go_ahead) {
+				last_seq_id = new_seq_id;
+				console.log("last_seq_id:", last_seq_id);
+
+				//pop all <va_count> spectrum stacks
+				var data = [];
+
+				for (let index = 0; index < va_count; index++) {
+					data.push(spectrum_stack[index].pop().spectrum);
+					spectrum_stack[index] = [];
+				}
+
+				plot_spectrum(data);
+				replot_y_axis();
+
+				last_spectrum = data;
+			}
+
+		}
+		catch (e) {
+			console.log(e);
+		}
+	}
+
 	var svg = d3.select("#FrontSVG");
 
 	//svg image rectangle for zooming-in
@@ -7446,6 +7452,14 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			d3.select(this).moveToFront();
 			dragging = false;
 
+			windowLeft = false;
+
+			spectrum_stack = new Array(va_count);
+			for (let i = 0; i < va_count; i++)
+				spectrum_stack[i] = [];
+
+			requestAnimationFrame(update_spectrum);
+
 			var imageElements = document.getElementsByClassName("image_rectangle");
 
 			for (let i = 0; i < imageElements.length; i++) {
@@ -7478,10 +7492,11 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			}
 		})
 		.on("mouseleave", function () {
-			clearTimeout(idleMouse);
+			windowLeft = true;
 
-			if (!d3.event.shiftKey)
-				windowLeft = true;
+			spectrum_stack = new Array(va_count);
+			for (let i = 0; i < va_count; i++)
+				spectrum_stack[i] = [];
 
 			if (xradec != null) {
 				let fitsData = fitsContainer[va_count - 1];
