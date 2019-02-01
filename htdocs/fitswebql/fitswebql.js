@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-01.0";
+	return "JS2019-02-01.3";
 }
 
 const wasm_supported = (() => {
@@ -7326,7 +7326,8 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 
 	var zoom = d3.zoom()
 		.scaleExtent([1, 40])
-		.on("zoom", tiles_zoomed);
+		.on("zoom", tiles_zoom)
+		.on("end", tiles_zoomended);
 
 	var drag = d3.drag()
 		.on("start", tiles_dragstarted)
@@ -8759,6 +8760,9 @@ function tiles_dragended() {
 	d3.select(this).style('cursor', 'pointer');
 
 	dragging = false;
+
+	//do not wait, call tileTimeout immediately
+	tileTimeout();
 }
 
 function tiles_dragmove() {
@@ -8770,12 +8774,16 @@ function tiles_dragmove() {
 
 	for (let i = 1; i <= va_count; i++)
 		refresh_tiles(i);
-
-	clearTimeout(idleMouse);
-	idleMouse = setTimeout(tileTimeout, 250);
 }
 
-function tiles_zoomed() {
+function tiles_zoomended() {
+	console.log("zoom end");
+
+	//do not wait, call tileTimeout immediately
+	tileTimeout();
+}
+
+function tiles_zoom() {
 	console.log("scale: " + d3.event.transform.k);
 	zoom_scale = d3.event.transform.k;
 	moving = true;
@@ -8807,9 +8815,6 @@ function tiles_zoomed() {
 
 	for (let i = 1; i <= va_count; i++) {
 		refresh_tiles(i);
-
-		clearTimeout(idleMouse);
-		idleMouse = setTimeout(tileTimeout, 250);
 
 		//keep zoom scale in sync across all images
 		try {
