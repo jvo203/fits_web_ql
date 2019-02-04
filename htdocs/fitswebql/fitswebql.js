@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-04.2";
+	return "JS2019-02-04.4";
 }
 
 const wasm_supported = (() => {
@@ -986,7 +986,7 @@ function process_viewport_canvas(viewportCanvas, index) {
 			end_blink();
 		}
 
-		if (dragging || moving)
+		if ((recv_seq_id < sent_seq_id) || dragging || moving)
 			return;
 
 		//place the viewport onto the image tile
@@ -1163,7 +1163,7 @@ function process_viewport(width, height, w, h, bytes, stride, alpha, index, swap
 			end_blink();
 		}
 
-		if (dragging || moving)
+		if ((recv_seq_id < sent_seq_id) || dragging || moving)
 			return;
 
 		//place the viewport onto the image tile
@@ -1383,16 +1383,8 @@ function open_websocket_connection(datasetId, index) {
 					var dv = new DataView(received_msg);
 
 					latency = performance.now() - dv.getFloat32(0, endianness);
-					//console.log("[ws] latency = " + latency.toFixed(1) + " [ms]") ;
-
-					//discard stale messages
-					//if (dv.getUint32(4, endianness) >= recv_seq_id)
+					//console.log("[ws] latency = " + latency.toFixed(1) + " [ms]") ;					
 					recv_seq_id = dv.getUint32(4, endianness);
-					/*else {
-						console.log("discarding a stale message; recv_seq_id:", recv_seq_id, "getUint32:", dv.getUint32(4, endianness));
-						return;
-					}*/
-
 					var type = dv.getUint32(8, endianness);
 
 					//spectrum
