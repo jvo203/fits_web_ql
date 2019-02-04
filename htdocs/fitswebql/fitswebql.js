@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-04.1";
+	return "JS2019-02-04.2";
 }
 
 const wasm_supported = (() => {
@@ -1386,12 +1386,12 @@ function open_websocket_connection(datasetId, index) {
 					//console.log("[ws] latency = " + latency.toFixed(1) + " [ms]") ;
 
 					//discard stale messages
-					if (dv.getUint32(4, endianness) >= recv_seq_id)
-						recv_seq_id = dv.getUint32(4, endianness);
-					else {
+					//if (dv.getUint32(4, endianness) >= recv_seq_id)
+					recv_seq_id = dv.getUint32(4, endianness);
+					/*else {
 						console.log("discarding a stale message; recv_seq_id:", recv_seq_id, "getUint32:", dv.getUint32(4, endianness));
 						return;
-					}
+					}*/
 
 					var type = dv.getUint32(8, endianness);
 
