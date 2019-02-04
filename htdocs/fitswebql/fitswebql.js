@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-01.6";
+	return "JS2019-02-04.1";
 }
 
 const wasm_supported = (() => {
@@ -1001,9 +1001,14 @@ function process_viewport_canvas(viewportCanvas, index) {
 		ctx.imageSmoothingEnabled = false;
 		//ctx.globalAlpha=0.9;
 
-		let elem = d3.select("#image_rectangle" + index);
-		let img_width = elem.attr("width");
-		let img_height = elem.attr("height");
+		let img_width = 0, img_height = 0;
+		try {
+			let elem = d3.select("#image_rectangle" + index);
+			img_width = elem.attr("width");
+			img_height = elem.attr("height");
+		} catch (err) {
+			return;
+		}
 
 		let image_position = get_image_position(index, width, height);
 		let posx = image_position.posx;
@@ -1173,9 +1178,14 @@ function process_viewport(width, height, w, h, bytes, stride, alpha, index, swap
 		ctx.imageSmoothingEnabled = false;
 		//ctx.globalAlpha=0.9;
 
-		let elem = d3.select("#image_rectangle" + index);
-		let img_width = elem.attr("width");
-		let img_height = elem.attr("height");
+		let img_width = 0, img_height = 0;
+		try {
+			let elem = d3.select("#image_rectangle" + index);
+			img_width = elem.attr("width");
+			img_height = elem.attr("height");
+		} catch (err) {
+			return;
+		}
 
 		let image_position = get_image_position(index, width, height);
 		let posx = image_position.posx;
@@ -1374,7 +1384,15 @@ function open_websocket_connection(datasetId, index) {
 
 					latency = performance.now() - dv.getFloat32(0, endianness);
 					//console.log("[ws] latency = " + latency.toFixed(1) + " [ms]") ;
-					recv_seq_id = dv.getUint32(4, endianness);
+
+					//discard stale messages
+					if (dv.getUint32(4, endianness) >= recv_seq_id)
+						recv_seq_id = dv.getUint32(4, endianness);
+					else {
+						console.log("discarding a stale message; recv_seq_id:", recv_seq_id, "getUint32:", dv.getUint32(4, endianness));
+						return;
+					}
+
 					var type = dv.getUint32(8, endianness);
 
 					//spectrum
@@ -8821,10 +8839,6 @@ function tiles_zoom() {
 	let new_y1 = clamp(y0 - ry * new_height, 0, zoom_dims.height - 1 - new_height);
 
 	zoom_dims.view = { x1: new_x1, y1: new_y1, width: new_width, height: new_height };
-	/*zoom_dims.view.x1 = new_x1;
-	zoom_dims.view.y1 = new_y1;
-	zoom_dims.view.width = new_width;
-	zoom_dims.view.height = new_height;*/
 
 	console.log("zoom_dims:", zoom_dims);
 
@@ -8996,9 +9010,14 @@ function tileTimeout(force = false) {
 		let img_width = image_bounding_dims.width;
 		let img_height = image_bounding_dims.height;
 
-		let elem = d3.select("#image_rectangle" + (index + 1));
-		let view_width = elem.attr("width");
-		let view_height = elem.attr("height");
+		let view_width = 0, view_height = 0;
+		try {
+			let elem = d3.select("#image_rectangle" + (index + 1));
+			view_width = elem.attr("width");
+			view_height = elem.attr("height");
+		} catch (err) {
+			continue;
+		}
 
 		let view_pixels = view_width * view_height;
 		let img_pixels = img_width * img_height;
