@@ -2229,7 +2229,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.1";
-static VERSION_STRING: &'static str = "SV2019-02-04.0";
+static VERSION_STRING: &'static str = "SV2019-02-05.0";
 static WASM_STRING: &'static str = "WASM2018-12-17.0";
 
 #[cfg(not(feature = "server"))]
@@ -3671,11 +3671,9 @@ fn http_fits_response(
 
     //build up an HTML response
     let mut html = String::from("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n");
+
     html.push_str(
         "<link href=\"https://fonts.googleapis.com/css?family=Inconsolata\" rel=\"stylesheet\"/>\n",
-    );
-    html.push_str(
-        "<link href=\"https://fonts.googleapis.com/css?family=Lato\" rel=\"stylesheet\"/>\n",
     );
 
     html.push_str("<script src=\"https://d3js.org/d3.v5.min.js\"></script>\n");

@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-04.4";
+	return "JS2019-02-05.2";
 }
 
 const wasm_supported = (() => {
@@ -782,7 +782,11 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 			//ctx.globalAlpha=0.9;
 
 			var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-			scale = 2.0 * scale / va_count;
+
+			if (va_count == 2)
+				scale = 0.8 * scale;
+			else
+				scale = 2 * scale / va_count;
 
 			var img_width = scale * image_bounding_dims.width;
 			var img_height = scale * image_bounding_dims.height;
@@ -3469,7 +3473,6 @@ function display_dataset_info() {
 		.attr("y", 4.5 * emFontSize)//7*
 		.attr("font-family", "Helvetica")//Arial
 		.attr("font-weight", "normal")
-		.attr("font-variant", "small-caps")
 		.attr("font-size", "2.5em")
 		.attr("text-anchor", "end")
 		.attr("stroke", "none")
@@ -4437,7 +4440,11 @@ function change_colourmap(index, recursive) {
 			//ctx.globalAlpha=0.9;
 
 			var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-			scale = 2.0 * scale / va_count;
+
+			if (va_count == 2)
+				scale = 0.8 * scale;
+			else
+				scale = 2 * scale / va_count;
 
 			var img_width = scale * image_bounding_dims.width;
 			var img_height = scale * image_bounding_dims.height;
@@ -7208,7 +7215,11 @@ function add_line_label(index) {
 	let height = c.height;
 
 	let scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-	scale = 2.0 * scale / va_count;
+
+	if (va_count == 2)
+		scale = 0.8 * scale;
+	else
+		scale = 2 * scale / va_count;
 
 	let img_width = scale * image_bounding_dims.width;
 	let img_height = scale * image_bounding_dims.height;
@@ -8755,11 +8766,14 @@ function refresh_tiles(index) {
 	ctx.imageSmoothingEnabled = false;
 	//ctx.globalAlpha=0.9;
 
-	var scale = get_image_scale(width, height, image_bounding_dims.width, image_bounding_dims.height);
-	scale = 2.0 * scale / va_count;
-
-	var img_width = scale * image_bounding_dims.width;
-	var img_height = scale * image_bounding_dims.height;
+	let img_width = 0, img_height = 0;
+	try {
+		let elem = d3.select("#image_rectangle" + index);
+		img_width = elem.attr("width");
+		img_height = elem.attr("height");
+	} catch (err) {
+		return;
+	}
 
 	let image_position = get_image_position(index, width, height);
 	let posx = image_position.posx;
