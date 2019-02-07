@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-07.1";
+	return "JS2019-02-07.2";
 }
 
 const wasm_supported = (() => {
@@ -7789,8 +7789,10 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			if (zoom_dims == null)
 				return;
 
+			var offset;
+
 			try {
-				var offset = d3.mouse(this);
+				offset = d3.mouse(this);
 			}
 			catch (e) {
 				console.log(e);
@@ -8107,8 +8109,10 @@ function setup_image_selection() {
 
 			requestAnimationFrame(update_spectrum);
 
+			var offset;
+
 			try {
-				var offset = d3.mouse(this);
+				offset = d3.mouse(this);
 			}
 			catch (e) {
 				console.log(e);
@@ -8249,8 +8253,10 @@ function setup_image_selection() {
 			d3.select("#" + zoom_location + "Cross").attr("opacity", 0.75);
 			d3.select("#" + zoom_location + "Beam").attr("opacity", 0.75);
 
+			var offset;
+
 			try {
-				var offset = d3.mouse(this);
+				offset = d3.mouse(this);
 			}
 			catch (e) {
 				console.log(e);
