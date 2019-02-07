@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-06.1";
+	return "JS2019-02-07.0";
 }
 
 const wasm_supported = (() => {
@@ -790,6 +790,8 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 			else if (va_count == 5)
 				scale = 0.5 * scale;
 			else if (va_count == 6)
+				scale = 0.45 * scale;
+			else if (va_count == 7)
 				scale = 0.45 * scale;
 			else
 				scale = 2 * scale / va_count;
@@ -4455,6 +4457,8 @@ function change_colourmap(index, recursive) {
 				scale = 0.5 * scale;
 			else if (va_count == 6)
 				scale = 0.45 * scale;
+			else if (va_count == 7)
+				scale = 0.45 * scale;
 			else
 				scale = 2 * scale / va_count;
 
@@ -7252,6 +7256,46 @@ function get_image_position_6(index, width, height) {
 		return get_vertical_image_position_6(index, width, height);
 }
 
+function get_diagonal_image_position_7(index, width, height) {
+	//the middle diagonal
+	if (index <= 3) {
+		let basex = width / 2;
+		let basey = height / 2;
+		let t = index / 4;
+		t = 2 * t - 1;
+		let posx = basex + t * width / 3;
+		let posy = basey - t * height / 2;
+
+		return { posx: posx, posy: posy };
+	}
+
+	//the left diagonal
+	if (index <= 5) {
+		let basex = width / 3.5;
+		let basey = height / 3.5;
+		let t = (index - 3) / 4;
+		t = 2 * t - 1;
+		let posx = basex + t * width / 3;
+		let posy = basey - t * height / 2;
+
+		return { posx: posx, posy: posy };
+	}
+
+	//the right diagonal
+	if (index <= 7) {
+		let basex = width - width / 8;
+		let basey = height - height / 2;
+		let t = (index - 5) / 4;
+		t = 2 * t - 1;
+		let posx = basex + t * width / 3;
+		let posy = basey - t * height / 2;
+
+		return { posx: posx, posy: posy };
+	}
+
+	return { posx: width / 2, posy: height / 2 };
+}
+
 function get_image_position(index, width, height) {
 	if (va_count <= 4)
 		return get_diagonal_image_position(index, width, height);
@@ -7261,6 +7305,9 @@ function get_image_position(index, width, height) {
 
 	if (va_count == 6)
 		return get_image_position_6(index, width, height);
+
+	if (va_count == 7)
+		return get_diagonal_image_position_7(index, width, height);
 
 	return get_diagonal_image_position(index, width, height);
 }
@@ -7362,6 +7409,8 @@ function add_line_label(index) {
 	else if (va_count == 5)
 		scale = 0.5 * scale;
 	else if (va_count == 6)
+		scale = 0.45 * scale;
+	else if (va_count == 7)
 		scale = 0.45 * scale;
 	else
 		scale = 2 * scale / va_count;
