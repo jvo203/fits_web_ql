@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-07.0";
+	return "JS2019-02-07.1";
 }
 
 const wasm_supported = (() => {
@@ -803,7 +803,19 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 			let posx = image_position.posx;
 			let posy = image_position.posy;
 
-			ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, posx - img_width / 2, posy - img_height / 2, img_width, img_height);
+			ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+
+			//add a bounding box			
+			if (theme == 'bright')
+				ctx.strokeStyle = "white";
+			else
+				ctx.strokeStyle = "black";
+
+			ctx.lineWidth = 2;
+
+			ctx.rect(Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+			ctx.stroke();
+			//end of a bounding box
 
 			add_line_label(index);
 
@@ -1026,7 +1038,19 @@ function process_viewport_canvas(viewportCanvas, index) {
 		let posx = image_position.posx;
 		let posy = image_position.posy;
 
-		ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, posx - img_width / 2, posy - img_height / 2, img_width, img_height);
+		ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+
+		//add a bounding box			
+		if (theme == 'bright')
+			ctx.strokeStyle = "white";
+		else
+			ctx.strokeStyle = "black";
+
+		ctx.lineWidth = 2;
+
+		ctx.rect(Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+		ctx.stroke();
+		//end of a bounding box
 
 		return;
 	}
@@ -1203,7 +1227,19 @@ function process_viewport(width, height, w, h, bytes, stride, alpha, index, swap
 		let posx = image_position.posx;
 		let posy = image_position.posy;
 
-		ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, posx - img_width / 2, posy - img_height / 2, img_width, img_height);
+		ctx.drawImage(viewportCanvas, 0, 0, viewportCanvas.width, viewportCanvas.height, Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+
+		//add a bounding box			
+		if (theme == 'bright')
+			ctx.strokeStyle = "white";
+		else
+			ctx.strokeStyle = "black";
+
+		ctx.lineWidth = 2;
+
+		ctx.rect(Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+		ctx.stroke();
+		//end of a bounding box
 
 		return;
 	}
@@ -8981,7 +9017,19 @@ function refresh_tiles(index) {
 	let posx = image_position.posx;
 	let posy = image_position.posy;
 
-	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, posx - img_width / 2, posy - img_height / 2, img_width, img_height);
+	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+
+	//add a bounding box			
+	if (theme == 'bright')
+		ctx.strokeStyle = "white";
+	else
+		ctx.strokeStyle = "black";
+
+	ctx.lineWidth = 2;
+
+	ctx.rect(Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+	ctx.stroke();
+	//end of a bounding box
 }
 
 function tiles_dragstarted() {
