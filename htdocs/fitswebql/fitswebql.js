@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-07.2";
+	return "JS2019-02-08.0";
 }
 
 const wasm_supported = (() => {
@@ -7604,6 +7604,9 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 		.on("start", tiles_dragstarted)
 		.on("drag", tiles_dragmove)
 		.on("end", tiles_dragended);
+
+	now = performance.now();
+	then = now;
 
 	//set up the spectrum rendering loop
 	function update_spectrum() {
