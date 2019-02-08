@@ -1675,7 +1675,7 @@ impl FITS {
             let line = match std::str::from_utf8(slice) {
                 Ok(x) => x,
                 Err(err) => {
-                    println!("non-UTF8 characters found: {}", err);
+                    println!("non-UTF8 characters found: {}, bytes: {:?}", err, slice);
                     return true;
                 }
             };
@@ -5922,6 +5922,12 @@ impl FITS {
             return None;
         }
 
+        //reset the file
+        if let Err(err) = f.seek(SeekFrom::Start(0)) {
+            println!("CRITICAL ERROR seeking within the FITS file: {}", err);
+            return None;
+        }
+
         let mut header_end: bool = false;
 
         while !header_end {
@@ -6107,6 +6113,12 @@ impl FITS {
             println!(
                 "seek() is not available for a compressed file, aborting a partial FITS cut-out"
             );
+            return None;
+        }
+
+        //reset the file
+        if let Err(err) = f.seek(SeekFrom::Start(0)) {
+            println!("CRITICAL ERROR seeking within the FITS file: {}", err);
             return None;
         }
 
