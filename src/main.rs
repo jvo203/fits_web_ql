@@ -370,9 +370,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[init_video]") {
                     //println!("{}", text.replace("&", " "));
-                    let (frame, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt!(
+                    let (frame, view, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt!(
                         &text.replace("&", " "),
-                        "[init_video] frame={} ref_freq={} fps={} seq_id={} bitrate={} timestamp={}",
+                        "[init_video] frame={} view={} ref_freq={} fps={} seq_id={} bitrate={} timestamp={}",
+                        String,
                         String,
                         String,
                         String,
@@ -387,6 +388,17 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             Err(_) => 0.0,
                         },
                         _ => 0.0,
+                    };
+
+                    let is_composite = match view {
+                        Some(s) => {
+                            if s.contains("composite") {
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        _ => false,
                     };
 
                     let ref_freq = match ref_freq {
@@ -425,8 +437,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     };
 
                     println!(
-                        "[init_video] frame:{} ref_freq:{} fps:{} seq_id:{} target_bitrate:{} timestamp:{}",
-                        frame, ref_freq, fps, seq_id, target_bitrate, timestamp
+                        "[init_video] frame:{} is_composite:{} ref_freq:{} fps:{} seq_id:{} target_bitrate:{} timestamp:{}",
+                        frame, is_composite, ref_freq, fps, seq_id, target_bitrate, timestamp
                     );
 
                     self.kf = KalmanFilter::new(frame);
@@ -461,7 +473,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         unsafe {
                             //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("fastdecode").unwrap().as_ptr());
 
-                            if self.dataset_id.len() == 1 {
+                            if self.dataset_id.len() == 1 || !is_composite {
                                 x265_param_default_preset(
                                     self.param,
                                     CString::new("superfast").unwrap().as_ptr(),
@@ -595,7 +607,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         unsafe {
                             (*self.param).bRepeatHeaders = 1;
 
-                            if self.dataset_id.len() > 1 {
+                            if self.dataset_id.len() > 1 && is_composite {
                                 (*self.param).internalCsp = X265_CSP_I444 as i32;
                             } else {
                                 (*self.param).internalCsp = X265_CSP_I400 as i32;
@@ -1570,11 +1582,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[video]") {
                     //println!("{}", text.replace("&"," "));
-                    let (frame, key, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt!(
+                    let (frame, key, view, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt!(
                         &text.replace("&", " "),
-                        "[video] frame={} key={} ref_freq={} fps={} seq_id={} bitrate={} timestamp={}",
+                        "[video] frame={} key={} view={} ref_freq={} fps={} seq_id={} bitrate={} timestamp={}",
                         String,
                         bool,
+                        String,
                         String,
                         String,
                         i32,
@@ -1588,6 +1601,17 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             Err(_) => 0.0,
                         },
                         _ => 0.0,
+                    };
+
+                    let is_composite = match view {
+                        Some(s) => {
+                            if s.contains("composite") {
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        _ => false,
                     };
 
                     let ref_freq = match ref_freq {
@@ -1631,8 +1655,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     };
 
                     println!(
-                        "[video] frame:{} keyframe:{} ref_freq:{} fps:{} seq_id:{} target_bitrate:{} timestamp:{}",
-                        frame, keyframe, ref_freq, fps, seq_id, target_bitrate, timestamp
+                        "[video] frame:{} keyframe:{} is_composite:{} ref_freq:{} fps:{} seq_id:{} target_bitrate:{} timestamp:{}",
+                        frame, keyframe, is_composite, ref_freq, fps, seq_id, target_bitrate, timestamp
                     );
 
                     //let deltat = timestamp - self.video_timestamp;
@@ -1660,7 +1684,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     let frame = predicted_frame;
 
-                    if self.dataset_id.len() == 1 {
+                    if self.dataset_id.len() == 1 || !is_composite {
                         let datasets = DATASETS.read();
 
                         let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
@@ -2228,9 +2252,9 @@ lazy_static! {
 #[cfg(feature = "server")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.1.2";
-static VERSION_STRING: &'static str = "SV2019-02-07.0";
-static WASM_STRING: &'static str = "WASM2018-12-17.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.1.3";
+static VERSION_STRING: &'static str = "SV2019-02-08.0";
+static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "server"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -3766,9 +3790,9 @@ fn http_fits_response(
         html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
             api = {                
-                hevc_init: Module.cwrap('hevc_init', '', []), 
-                hevc_destroy: Module.cwrap('hevc_destroy', '', []),                
-                hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'string']),               
+                hevc_init: Module.cwrap('hevc_init', '', ['number']), 
+                hevc_destroy: Module.cwrap('hevc_destroy', '', ['number']),                
+                hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'string']),               
             };                   
         };
         </script>\n");

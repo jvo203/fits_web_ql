@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-08.0";
+	return "JS2019-02-08.1";
 }
 
 const wasm_supported = (() => {
@@ -926,7 +926,7 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 
 
 function process_video(index) {
-	if (!streaming || videoFrame == null || videoFrame.img == null || videoFrame.ptr == null || videoFrame.alpha == null)
+	if (!streaming || videoFrame[index - 1] == null || videoFrame[index - 1].img == null || videoFrame[index - 1].ptr == null || videoFrame[index - 1].alpha == null)
 		return;
 
 	//let image_bounding_dims = imageContainer[index-1].image_bounding_dims;
@@ -936,14 +936,57 @@ function process_video(index) {
 	imageCanvas.style.visibility = "hidden";
 	var context = imageCanvas.getContext('2d');
 
-	let imageData = videoFrame.img;
-	let image_bounding_dims = videoFrame.image_bounding_dims;
+	let imageData = videoFrame[index - 1].img;
+	let image_bounding_dims = videoFrame[index - 1].image_bounding_dims;
 
 	imageCanvas.width = imageData.width;
 	imageCanvas.height = imageData.height;
 	console.log(imageCanvas.width, imageCanvas.height);
 
 	context.putImageData(imageData, 0, 0);
+
+	if (va_count > 1 && !composite_view) {
+		//place imageCanvas onto a corresponding image_rectangle (should really be using video_rectangle here...)
+
+		var c = document.getElementById('HTMLCanvas' + index);
+		var width = c.width;
+		var height = c.height;
+		var ctx = c.getContext("2d");
+
+		ctx.mozImageSmoothingEnabled = false;
+		ctx.webkitImageSmoothingEnabled = false;
+		ctx.msImageSmoothingEnabled = false;
+		ctx.imageSmoothingEnabled = false;
+
+		let img_width = 0, img_height = 0;
+		try {
+			let elem = d3.select("#image_rectangle" + index);
+			img_width = elem.attr("width");
+			img_height = elem.attr("height");
+		} catch (err) {
+			return;
+		}
+
+		let image_position = get_image_position(index, width, height);
+		let posx = image_position.posx;
+		let posy = image_position.posy;
+
+		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+
+		//add a bounding box			
+		if (theme == 'bright')
+			ctx.strokeStyle = "white";
+		else
+			ctx.strokeStyle = "black";
+
+		ctx.lineWidth = 2;
+
+		ctx.rect(Math.round(posx - img_width / 2), Math.round(posy - img_height / 2), Math.round(img_width), Math.round(img_height));
+		ctx.stroke();
+		//end of a bounding box
+
+		return;
+	}
 
 	//next display the video frame
 	//place the image onto the main canvas
@@ -962,7 +1005,7 @@ function process_video(index) {
 	var img_width = scale * image_bounding_dims.width;
 	var img_height = scale * image_bounding_dims.height;
 
-	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width/**videoFrame.scaleX*/, img_height/**videoFrame.scaleY*/);
+	ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width, img_height);
 
 	if (viewport_zoom_settings != null) {
 		let px = emStrokeWidth;
@@ -973,7 +1016,7 @@ function process_video(index) {
 			ctx.fillStyle = "rgba(0,0,0,0.3)";
 			ctx.fillRect(px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 
-			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame[index - 1].scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame[index - 1].scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame[index - 1].scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame[index - 1].scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 		}
 
 		if (zoom_shape == "circle") {
@@ -986,7 +1029,7 @@ function process_video(index) {
 
 			ctx.closePath();
 			ctx.clip();
-			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame.scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame.scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame.scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
+			ctx.drawImage(imageCanvas, (viewport_zoom_settings.x - viewport_zoom_settings.clipSize) / videoFrame[index - 1].scaleX, (viewport_zoom_settings.y - viewport_zoom_settings.clipSize) / videoFrame[index - 1].scaleY, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame[index - 1].scaleX, (2 * viewport_zoom_settings.clipSize + 1) / videoFrame[index - 1].scaleY, px, py, viewport_zoom_settings.zoomed_size, viewport_zoom_settings.zoomed_size);
 			ctx.restore();
 		}
 	}
@@ -1540,7 +1583,7 @@ function open_websocket_connection(datasetId, index) {
 
 								try {
 									//init the HEVC encoder		
-									api.hevc_init();
+									api.hevc_init(va_count);
 								} catch (e) { };
 
 								//hevc decoding
@@ -1553,7 +1596,7 @@ function open_websocket_connection(datasetId, index) {
 
 									try {
 										//HEVC
-										api.hevc_decode_nal_unit(ptr, len, canvas_ptr, img.width, img.height, alpha_ptr, null, colourmap);
+										api.hevc_decode_nal_unit(0, ptr, len, canvas_ptr, img.width, img.height, alpha_ptr, null, colourmap);
 									} catch (e) { };
 
 									if (img.data.length == 0) {
@@ -1575,7 +1618,7 @@ function open_websocket_connection(datasetId, index) {
 								process_viewport_canvas(viewportCanvas, index);
 
 								try {
-									api.hevc_destroy();
+									api.hevc_destroy(va_count);
 								} catch (e) { };
 
 								Module._free(canvas_ptr);
@@ -1590,7 +1633,7 @@ function open_websocket_connection(datasetId, index) {
 
 								try {
 									//init the HEVC encoder		
-									api.hevc_init();
+									api.hevc_init(va_count);
 								} catch (e) { };
 
 								//hevc decoding
@@ -1603,14 +1646,14 @@ function open_websocket_connection(datasetId, index) {
 
 									try {
 										//HEVC
-										api.hevc_decode_nal_unit(ptr, len, null, width, height, null, bytes_ptr, "greyscale");
+										api.hevc_decode_nal_unit(0, ptr, len, null, width, height, null, bytes_ptr, "greyscale");
 									} catch (e) { };
 
 									Module._free(ptr);
 								}
 
 								try {
-									api.hevc_destroy();
+									api.hevc_destroy(va_count);
 								} catch (e) { };
 
 								process_viewport(width, height, width, height, bytes, width, alpha, index, false);
@@ -1800,17 +1843,17 @@ function open_websocket_connection(datasetId, index) {
 
 							Module.HEAPU8.set(frame, ptr);
 
-							if (streaming && videoFrame != null && videoFrame.img != null && videoFrame.ptr != null && videoFrame.alpha != null) {
-								var img = videoFrame.img;
+							if (streaming && videoFrame[index - 1] != null && videoFrame[index - 1].img != null && videoFrame[index - 1].ptr != null && videoFrame[index - 1].alpha != null) {
+								var img = videoFrame[index - 1].img;
 
 								try {
 									//VP9
-									api.vpx_decode_frame(ptr, len, videoFrame.ptr, img.width, img.height, videoFrame.alpha, colourmap);
+									api.vpx_decode_frame(ptr, len, videoFrame[index - 1].ptr, img.width, img.height, videoFrame[index - 1].alpha, colourmap);
 								} catch (e) { };
 
 								try {
 									//HEVC
-									api.hevc_decode_nal_unit(ptr, len, videoFrame.ptr, img.width, img.height, videoFrame.alpha, null, colourmap);
+									api.hevc_decode_nal_unit(index - 1, ptr, len, videoFrame[index - 1].ptr, img.width, img.height, videoFrame[index - 1].alpha, null, colourmap);
 								} catch (e) { };
 
 								if (img.data.length == 0) {
@@ -1819,10 +1862,10 @@ function open_websocket_connection(datasetId, index) {
 
 									//WASM buffers have changed, need to refresh the ImageData.data buffer
 									var len = img.width * img.height * 4;
-									var data = new Uint8ClampedArray(Module.HEAPU8.buffer, videoFrame.ptr, len);
+									var data = new Uint8ClampedArray(Module.HEAPU8.buffer, videoFrame[index - 1].ptr, len);
 									var img = new ImageData(data, img.width, img.height);
 
-									videoFrame.img = img;
+									videoFrame[index - 1].img = img;
 								}
 
 								requestAnimationFrame(function () {
@@ -1837,7 +1880,7 @@ function open_websocket_connection(datasetId, index) {
 
 								try {
 									//HEVC
-									api.hevc_decode_nal_unit(ptr, len, null, 0, 0, null, null, 'greyscale');
+									api.hevc_decode_nal_unit(index - 1, ptr, len, null, 0, 0, null, null, 'greyscale');
 								} catch (e) { };
 							}
 
@@ -1866,7 +1909,7 @@ function open_websocket_connection(datasetId, index) {
 							log += ' vidFPS = ' + Math.round(vidFPS);
 							//wsConn[0].send('[debug] ' + log);
 
-							if (videoFrame != null)
+							if (videoFrame[index - 1] != null)
 								d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps, bitrate: ' + Math.round(bitrate) + ' kbps');//, η: ' + eta.toFixed(4) + ' var: ' + variance
 						}
 
@@ -1960,7 +2003,7 @@ function open_websocket_connection(datasetId, index) {
 							uncompressedSize = LZ4.decodeBlock(new Buffer(alpha), uncompressed);
 							alpha = uncompressed.slice(0, uncompressedSize);
 
-							if (videoFrame == null) {
+							if (videoFrame[index - 1] == null) {
 								let imageFrame = imageContainer[va_count - 1].imageFrame;
 
 								var image_bounding_dims = true_image_dimensions(alpha, width, height);
@@ -1979,7 +2022,7 @@ function open_websocket_connection(datasetId, index) {
 
 									console.log("Module._malloc ptr=", ptr, "ImageData=", img, "alpha_ptr=", alpha_ptr);
 
-									videoFrame = {
+									videoFrame[index - 1] = {
 										img: img,
 										ptr: ptr,
 										alpha: alpha_ptr,
@@ -6418,18 +6461,19 @@ function x_axis_mouseenter(offset) {
 	if (wasm_supported) {
 		try {
 			//init the HEVC encoder		
-			api.hevc_init();
+			api.hevc_init(va_count);
 		} catch (e) { };
 
 		var freq = get_mouse_frequency(offset);
 
 		sent_vid_id++;
 
-		//for(let index=0;index<va_count;index++)
-		{
-			wsConn[0].send('[init_video] frame=' + freq + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate) + '&timestamp=' + performance.now());
-
+		if (composite_view) {
+			wsConn[0].send('[init_video] frame=' + freq + '&view=composite' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate) + '&timestamp=' + performance.now());
 			video_stack[0] = [];
+		} else for (let index = 0; index < va_count; index++) {
+			wsConn[index].send('[init_video] frame=' + freq + '&view=tile' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate) + '&timestamp=' + performance.now());
+			video_stack[index] = [];
 		};
 	}
 
@@ -6535,23 +6579,35 @@ function x_axis_mouseleave() {
 	d3.select("#fps").text("");
 
 	//send an end_video command via WebSockets
-	if (videoFrame != null) {
+	if (videoFrame[0] != null) {
 		try {
-			api.hevc_destroy();
+			api.hevc_destroy(va_count);
 		} catch (e) { };
 
-		Module._free(videoFrame.ptr);
-		Module._free(videoFrame.alpha_ptr);
-		videoFrame.img = null;
-		videoFrame.ptr = null;
-		videoFrame.alpha_ptr = null;
-		videoFrame = null;
+		if (composite_view) {
+			Module._free(videoFrame[0].ptr);
+			Module._free(videoFrame[0].alpha_ptr);
+			videoFrame[0].img = null;
+			videoFrame[0].ptr = null;
+			videoFrame[0].alpha_ptr = null;
+			videoFrame[0] = null;
 
-		//for(let index=0;index<va_count;index++)
-		{
 			wsConn[0].send('[end_video]');
 			video_stack[0] = [];
-		};
+		} else for (let index = 0; index < va_count; index++) {
+			Module._free(videoFrame[index].ptr);
+			Module._free(videoFrame[index].alpha_ptr);
+			videoFrame[index].img = null;
+			videoFrame[index].ptr = null;
+			videoFrame[index].alpha_ptr = null;
+			videoFrame[index] = null;
+
+			wsConn[index].send('[end_video]');
+			video_stack[index] = [];
+
+			if (va_count > 1)
+				refresh_tiles(index + 1);
+		}
 	}
 
 	shortcut.remove("f");
@@ -6759,15 +6815,18 @@ function x_axis_move(offset) {
 
 			video_count = 0;
 
-			//for(let index=0;index<va_count;index++)
 			if (realtime_video) {
-				let strRequest = 'frame=' + freq + '&key=false' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
-
-				wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());
+				if (composite_view) {
+					let strRequest = 'frame=' + freq + '&key=false' + '&view=composite' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
+					wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());
+				} else for (let index = 0; index < va_count; index++) {
+					let strRequest = 'frame=' + freq + '&key=false' + '&view=tile' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
+					wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());
+				}
 			};
 		};
 
-		if (videoFrame != null)
+		if (videoFrame[0] != null)
 			idleVideo = setTimeout(videoTimeout, 250, freq);
 	};
 
@@ -9205,12 +9264,13 @@ function videoTimeout(freq) {
 
 	video_count = 0;
 
-	//for(let index=0;index<va_count;index++)
-	{
-		let strRequest = 'frame=' + freq + '&key=true' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
-
+	if (composite_view) {
+		let strRequest = 'frame=' + freq + '&key=true' + '&view=composite' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
 		wsConn[0].send('[video] ' + strRequest + '&timestamp=' + performance.now());
-	};
+	} else for (let index = 0; index < va_count; index++) {
+		let strRequest = 'frame=' + freq + '&key=true' + '&view=tile' + '&ref_freq=' + RESTFRQ + '&fps=' + vidFPS + '&seq_id=' + sent_vid_id + '&bitrate=' + Math.round(target_bitrate);
+		wsConn[index].send('[video] ' + strRequest + '&timestamp=' + performance.now());
+	}
 }
 
 function blink() {
@@ -11921,7 +11981,7 @@ async*/ function mainRenderer() {
 		recv_vid_id = 0;
 		sent_vid_id = 0;
 		last_vid_id = 0;
-		videoFrame = null;
+		videoFrame = [];
 
 		spectrum_stack = [];
 		image_stack = [];
@@ -12026,13 +12086,14 @@ async*/ function mainRenderer() {
 
 		spectrum_stack = new Array(va_count);
 		spectrum_scale = new Array(va_count);
-
+		videoFrame = new Array(va_count);
 		video_stack = new Array(va_count);
 
 		for (let i = 0; i < va_count; i++) {
 			spectrum_stack[i] = [];
 			spectrum_scale[i] = 1;
 			video_stack[i] = [];
+			videoFrame[i] = null;
 		};
 
 		if (va_count > 1) {

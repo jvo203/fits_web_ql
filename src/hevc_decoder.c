@@ -10,88 +10,111 @@
 #include "colourmap.h"
 
 static AVCodec *codec;
-static AVCodecContext *avctx = NULL;
-static AVFrame *avframe = NULL;
-static AVPacket *avpkt = NULL;
+static AVCodecContext **avctx = NULL;
+static AVFrame **avframe = NULL;
+static AVPacket **avpkt = NULL;
 
 extern AVCodec ff_hevc_decoder;
 //extern AVCodecParser ff_hevc_parser;
 
 EMSCRIPTEN_KEEPALIVE
-static void hevc_init()
+static void hevc_init(int va_count)
 {
     //the "standard" way
     codec = &ff_hevc_decoder;
 
     if (avctx == NULL)
     {
-        avctx = avcodec_alloc_context3(codec);
-        if (!avctx)
+        avctx = malloc(va_count * sizeof(AVCodecContext *));
+
+        for (int i = 0; i < va_count; i++)
         {
-            printf("Failed to initialize HEVC decoder.\n");
-            return;
+            avctx[i] = avcodec_alloc_context3(codec);
+
+            if (!avctx[i])
+                printf("Failed to initialize HEVC decoder[%d].\n", i);
         }
     }
 
     if (avpkt == NULL)
     {
-        avpkt = av_packet_alloc();
-        if (!avpkt)
-        {
-            printf("Failed to allocate HEVC packet.\n");
-            return;
-        }
+        avpkt = malloc(va_count * sizeof(AVPacket *));
 
-        av_init_packet(avpkt);
+        for (int i = 0; i < va_count; i++)
+        {
+            avpkt[i] = av_packet_alloc();
+
+            if (!avpkt[i])
+                printf("Failed to allocate HEVC packet[%d].\n", i);
+            else
+                av_init_packet(avpkt[i]);
+        }
     }
 
     if (avframe == NULL)
     {
-        avframe = av_frame_alloc();
-        if (!avframe)
+        avframe = malloc(va_count * sizeof(AVFrame *));
+
+        for (int i = 0; i < va_count; i++)
         {
-            printf("Failed to allocate HEVC frame.\n");
-            return;
+            avframe[i] = av_frame_alloc();
+
+            if (!avframe[i])
+                printf("Failed to allocate HEVC frame[%d].\n", i);
         }
     }
 
-    avctx->err_recognition |= AV_EF_CRCCHECK;
-    if (avcodec_open2(avctx, codec, NULL) < 0)
+    for (int i = 0; i < va_count; i++)
     {
-        printf("Failed to open the HEVC codec.\n");
+        avctx[i]->err_recognition |= AV_EF_CRCCHECK;
+        if (avcodec_open2(avctx[i], codec, NULL) < 0)
+        {
+            printf("Failed to open the HEVC codec[%d].\n", i);
+        }
     }
 }
 
 EMSCRIPTEN_KEEPALIVE
-static void hevc_destroy()
+static void hevc_destroy(int va_count)
 {
     if (avctx != NULL)
     {
-        //flush the decoder
-        /*avcodec_send_packet(avctx, NULL);
-        avcodec_flush_buffers(avctx);*/
+        for (int i = 0; i < va_count; i++)
+            if (avctx[i] != NULL)
+                avcodec_free_context(&(avctx[i]));
 
-        avcodec_free_context(&avctx);
+        free(avctx);
         avctx = NULL;
     }
 
     if (avframe != NULL)
     {
-        av_frame_free(&avframe);
+        for (int i = 0; i < va_count; i++)
+            if (avframe[i] != NULL)
+                av_frame_free(&(avframe[i]));
+
+        free(avframe);
         avframe = NULL;
     }
 
     if (avpkt != NULL)
     {
-        av_packet_free(&avpkt);
+        for (int i = 0; i < va_count; i++)
+            if (avpkt[i] != NULL)
+                av_packet_free(&(avpkt[i]));
+
+        free(avpkt);
         avpkt = NULL;
     }
 }
 
 EMSCRIPTEN_KEEPALIVE
-static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap)
+static double hevc_decode_nal_unit(int index, const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap)
 {
     if (avctx == NULL || avpkt == NULL || avframe == NULL)
+        return 0.0;
+
+    if (avctx[index] == NULL || avpkt[index] == NULL || avframe[index] == NULL)
         return 0.0;
 
     double start = emscripten_get_now();
@@ -103,10 +126,10 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
     memcpy(buf, data, data_len);
     memset(buf + data_len, 0, AV_INPUT_BUFFER_PADDING_SIZE);
 
-    avpkt->data = (uint8_t *)buf;
-    avpkt->size = data_len;
+    avpkt[index]->data = (uint8_t *)buf;
+    avpkt[index]->size = data_len;
 
-    int ret = avcodec_send_packet(avctx, avpkt);
+    int ret = avcodec_send_packet(avctx[index], avpkt[index]);
 
     stop = emscripten_get_now();
 
@@ -124,27 +147,27 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
     if (ret == AVERROR(ENOMEM))
         printf("failed to add packet to internal queue etc.\n");
 
-    while ((ret = avcodec_receive_frame(avctx, avframe)) == 0)
+    while ((ret = avcodec_receive_frame(avctx[index], avframe[index])) == 0)
     {
-        enum AVColorSpace cs = av_frame_get_colorspace(avframe);
-        int format = avframe->format;
+        enum AVColorSpace cs = av_frame_get_colorspace(avframe[index]);
+        int format = avframe[index]->format;
 
-        printf("[wasm hevc] decoded a %d x %d frame in a colourspace:format %d:%d, elapsed time %5.2f [ms], colourmap: %s\n", avframe->width, avframe->height, cs, format, (stop - start), colourmap);
+        printf("[wasm hevc] decoded a %d x %d frame in a colourspace:format %d:%d, elapsed time %5.2f [ms], colourmap: %s\n", avframe[index]->width, avframe[index]->height, cs, format, (stop - start), colourmap);
 
         if (format == AV_PIX_FMT_YUV444P)
         {
             printf("processing a YUV444 format\n");
 
-            int w = avframe->width;
-            int h = avframe->height;
+            int w = avframe[index]->width;
+            int h = avframe[index]->height;
 
-            int stride_y = avframe->linesize[0];
-            int stride_u = avframe->linesize[1];
-            int stride_v = avframe->linesize[2];
+            int stride_y = avframe[index]->linesize[0];
+            int stride_u = avframe[index]->linesize[1];
+            int stride_v = avframe[index]->linesize[2];
 
-            const unsigned char *y = avframe->data[0];
-            const unsigned char *u = avframe->data[1];
-            const unsigned char *v = avframe->data[2];
+            const unsigned char *y = avframe[index]->data[0];
+            const unsigned char *u = avframe[index]->data[1];
+            const unsigned char *v = avframe[index]->data[2];
 
             if (w == _w && h == _h && stride_y == stride_u && stride_y == stride_v)
             {
@@ -159,10 +182,10 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
             printf("processing a YUV400 format\n");
 
             //apply a colourmap etc.
-            int w = avframe->width;
-            int h = avframe->height;
-            int stride = avframe->linesize[0];
-            const unsigned char *luma = avframe->data[0];
+            int w = avframe[index]->width;
+            int h = avframe[index]->height;
+            int stride = avframe[index]->linesize[0];
+            const unsigned char *luma = avframe[index]->data[0];
 
             if (w == _w && h == _h)
             {
@@ -243,7 +266,7 @@ static double hevc_decode_nal_unit(const unsigned char *data, size_t data_len, u
                 printf("[wasm hevc] canvas image dimensions %d x %d do not match the decoded image size, doing nothing\n", _w, _h);
         }
 
-        av_frame_unref(avframe);
+        av_frame_unref(avframe[index]);
     }
 
     printf("avcodec_receive_frame returned = %d\n", ret);
