@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-08.1";
+	return "JS2019-02-08.2";
 }
 
 const wasm_supported = (() => {
@@ -7643,6 +7643,10 @@ function display_composite_legend() {
 		d3.select("#IMG" + line)
 			.attr("src", src);
 	}
+
+	try {
+		d3.select("#videoControlG").moveToFront();
+	} catch (err) { };
 }
 
 function setup_image_selection_index(index, topx, topy, img_width, img_height) {
