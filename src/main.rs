@@ -2253,7 +2253,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.4";
-static VERSION_STRING: &'static str = "SV2019-02-09.0";
+static VERSION_STRING: &'static str = "SV2019-02-09.1";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "server"))]
@@ -2538,13 +2538,16 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
         ))
 }
 
-fn directory_handler(req: &HttpRequest<WsSessionState>) -> HttpResponse {
+fn directory_handler(
+    req: &HttpRequest<WsSessionState>,
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
     let query = req.query();
 
-    match query.get("dir") {
+    result(Ok(match query.get("dir") {
         Some(x) => get_directory(std::path::PathBuf::from(x)),
-        None => get_home_directory(), //default database
-    }
+        None => get_home_directory(), //default location
+    }))
+    .responder()
 }
 
 // do websocket handshake and start an actor
