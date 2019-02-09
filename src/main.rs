@@ -149,6 +149,7 @@ pub struct WsViewport {
 
 struct WsSessionState {
     addr: Addr<server::SessionServer>,
+    home_dir: Option<std::path::PathBuf>,
 }
 
 pub struct UserParams {
@@ -2429,9 +2430,9 @@ fn remove_symlinks(server_path: Option<String>) {
     }
 }
 
-fn get_home_directory() -> HttpResponse {
-    match dirs::home_dir() {
-        Some(path_buf) => get_directory(path_buf),
+fn get_home_directory(home_dir: &Option<std::path::PathBuf>) -> HttpResponse {
+    match home_dir {
+        Some(path_buf) => get_directory(path_buf.to_path_buf()),
         None => HttpResponse::NotFound()
             .content_type("text/html")
             .body(format!(
@@ -2545,7 +2546,13 @@ fn directory_handler(
 
     result(Ok(match query.get("dir") {
         Some(x) => get_directory(std::path::PathBuf::from(x)),
-        None => get_home_directory(), //default location
+        None => {
+            let state = req.state();
+            let home_dir = &state.home_dir;
+
+            //default location
+            get_home_directory(home_dir)
+        }
     }))
     .responder()
 }
@@ -3970,7 +3977,7 @@ fn main() {
     let mut server_port = SERVER_PORT;
     let mut server_path = String::from(SERVER_PATH);
     let mut server_address = String::from(SERVER_ADDRESS);
-
+    let mut home_dir = dirs::home_dir();
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 2 {
@@ -3996,6 +4003,19 @@ fn main() {
 
             if key == "--interface" {
                 server_address = value.clone();
+            }
+
+            if key == "--home" {
+                let path = std::path::PathBuf::from(value);
+
+                if path.exists() {
+                    home_dir = Some(path);
+                } else {
+                    println!(
+                        "the specified home directory {} cannot be found, using the default $HOME",
+                        value
+                    );
+                }
             }
         }
     }
@@ -4030,6 +4050,7 @@ fn main() {
             // WebSocket sessions state
             let state = WsSessionState {
                 addr: server.clone(),
+                home_dir: home_dir.clone(),
             };
 
             App::with_state(state)

@@ -198,3 +198,7 @@ cargo run --features 'server production cdn' --release -- --port 8000 --path fit
 an alternative network interface (only needed to make the local version run in a quasi-server mode)
 
 cargo run --release -- --interface 0.0.0.0
+
+an alternative home directory (FITS data storage)
+
+cargo run --release -- --home /a/path/to/your/FITS/files
