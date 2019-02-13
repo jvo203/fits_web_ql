@@ -30,6 +30,19 @@ use rayon::prelude::*;
 
 use flate2::read::GzDecoder;
 
+#[cfg(feature = "zfp")]
+use zfp_sys::*;
+
+#[cfg(feature = "zfp")]
+use bincode::serialize_into;
+
+#[cfg(feature = "zfp")]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ZFPMaskedArray {
+    pub array: Vec<u8>,
+    pub mask: Vec<u8>,
+}
+
 #[cfg(feature = "opencl")]
 use ocl::ProQue;
 
@@ -6264,8 +6277,161 @@ impl FITS {
         Some(stream_rx)
     }
 
+    #[cfg(feature = "zfp")]
+    fn zfp_compress(&self, zfp_dir: &std::path::Path) {
+        //check if the zfp directory already exists in the FITSCACHE
+        if !zfp_dir.exists() {
+            match std::fs::create_dir(zfp_dir) {
+                Ok(_) => {
+                    println!("{}: created an empty zfp cache directory", self.dataset_id);
+                }
+                Err(err) => {
+                    println!("error creating a zfp cache directory: {}", err);
+                    return;
+                }
+            }
+        }
+
+        //look for a hidden ok file
+        let mut ok_file = std::path::PathBuf::from(zfp_dir);
+        ok_file.push(".ok");
+
+        if ok_file.exists() {
+            return;
+        }
+
+        println!(
+            "{}: writing zfp-compressed half-float f16 data to cache",
+            self.dataset_id
+        );
+
+        let success = (0..self.depth)
+            .into_par_iter()
+            .map(|frame| {
+                let vec = &self.data_f16[frame];
+                let len = vec.len();
+                let mut res = true;
+
+                let mut array: Vec<f32> = Vec::with_capacity(len);
+                let mut mask: Vec<u8> = Vec::with_capacity(len);
+
+                for x in vec.iter() {
+                    let tmp = self.bzero + self.bscale * x.to_f32(); //convert from half to f32
+
+                    if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                        array.push(tmp);
+                        mask.push(255)
+                    } else {
+                        array.push(0.0);
+                        mask.push(0);
+                    }
+                }
+
+                //compress the data array
+
+                /* allocate meta data for the 2D array a[self.width][self.height] */
+                let data_type = zfp_type_zfp_type_float;
+                let field = unsafe {
+                    zfp_field_2d(
+                        array.as_mut_ptr() as *mut std::ffi::c_void,
+                        data_type,
+                        self.width as u32,
+                        self.height as u32,
+                    )
+                };
+
+                /* allocate meta data for a compressed stream */
+                let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
+
+                /* set compression mode and parameters */
+                let tolerance = 1.0e-3;
+                unsafe { zfp_stream_set_accuracy(zfp, tolerance) };
+
+                /* allocate buffer for compressed data */
+                let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
+                let mut buffer: Vec<u8> = vec![0; bufsize];
+
+                /* associate bit stream with allocated buffer */
+                let stream =
+                    unsafe { stream_open(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize) };
+                unsafe {
+                    zfp_stream_set_bit_stream(zfp, stream);
+                    zfp_stream_rewind(zfp);
+                }
+
+                /* compress array and output compressed stream */
+                let zfpsize = unsafe { zfp_compress(zfp, field) };
+                if zfpsize == 0 {
+                    println!("compression failed");
+                    res = false;
+                } /* else {
+                      let original_size = self.width * self.height * std::mem::size_of::<f32>();
+                      let ratio = (original_size as f64) / (zfpsize as f64);
+
+                      println!("plane {}, bufsize: {} bytes, original size: {} bytes, compressed size: {} bytes, ratio: {}", frame, bufsize, original_size, zfpsize, ratio);
+                  }*/
+
+                /* clean up */
+                unsafe {
+                    zfp_field_free(field);
+                    zfp_stream_close(zfp);
+                    stream_close(stream);
+                }
+
+                //upon success continue with the process, compress the mask
+                if res {
+                    let zfp_frame = ZFPMaskedArray {
+                        array: buffer[0..zfpsize].to_vec(),
+                        mask: lz4_compress::compress(&mask),
+                    };
+
+                    let mut cache_file = std::path::PathBuf::from(zfp_dir);
+                    cache_file.push(format!("{}.bin", frame));
+
+                    match File::create(cache_file) {
+                        Ok(f) => {
+                            let mut buffer = std::io::BufWriter::new(f);
+                            match serialize_into(&mut buffer, &zfp_frame) {
+                                Ok(_) => {
+                                    //flush the buffer, check for any errors
+                                    match buffer.into_inner() {
+                                        Ok(_) => {}
+                                        Err(err) => {
+                                            println!("error flushing a zfp stream: {}", err);
+                                            res = false;
+                                        }
+                                    };
+                                }
+                                Err(err) => {
+                                    println!("error serializing a zfp stream: {}", err);
+                                    res = false;
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            println!("{}", err);
+                            res = false;
+                        }
+                    };
+                }
+
+                res
+            })
+            .reduce(|| true, |acc, res| acc && res);
+
+        println!("{}: zfp compression success: {}", self.dataset_id, success);
+
+        //create a hidden ok file upon success
+        if success {
+            match File::create(ok_file) {
+                Ok(_) => {}
+                Err(err) => println!("{}", err),
+            }
+        }
+    }
+
     #[cfg(feature = "opencl")]
-    fn compress_rbf(&mut self) {
+    fn rbf_compress(&mut self) {
         //check if the RBF file already exists in the FITSCACHE
         let filename = format!("{}/{}.rbf", FITSCACHE, self.dataset_id.replace("/", "_"));
         let filepath = std::path::Path::new(&filename);
@@ -6603,60 +6769,75 @@ impl Drop for FITS {
         if self.has_data {
             println!("deleting {}", self.dataset_id);
 
-            if self.bitpix == -32 && self.data_f16.len() > 0 {
-                //check if the binary file already exists in the FITSCACHE
-                let filename = format!("{}/{}.bin", FITSCACHE, self.dataset_id.replace("/", "_"));
-                let filepath = std::path::Path::new(&filename);
+            #[cfg(not(feature = "zfp"))]
+            {
+                if self.bitpix == -32 && self.data_f16.len() > 0 {
+                    //check if the binary file already exists in the FITSCACHE
+                    let filename =
+                        format!("{}/{}.bin", FITSCACHE, self.dataset_id.replace("/", "_"));
+                    let filepath = std::path::Path::new(&filename);
 
-                if !filepath.exists() {
-                    println!("{}: writing half-float f16 data to cache", self.dataset_id);
+                    if !filepath.exists() {
+                        println!("{}: writing half-float f16 data to cache", self.dataset_id);
 
-                    let tmp_filename = format!(
-                        "{}/{}.bin.tmp",
-                        FITSCACHE,
-                        self.dataset_id.replace("/", "_")
-                    );
-                    let tmp_filepath = std::path::Path::new(&tmp_filename);
+                        let tmp_filename = format!(
+                            "{}/{}.bin.tmp",
+                            FITSCACHE,
+                            self.dataset_id.replace("/", "_")
+                        );
+                        let tmp_filepath = std::path::Path::new(&tmp_filename);
 
-                    let mut buffer = match File::create(tmp_filepath) {
-                        Ok(f) => f,
-                        Err(err) => {
-                            println!("{}", err);
-                            return;
-                        }
-                    };
+                        let mut buffer = match File::create(tmp_filepath) {
+                            Ok(f) => f,
+                            Err(err) => {
+                                println!("{}", err);
+                                return;
+                            }
+                        };
 
-                    for v16 in &self.data_f16 {
-                        let ptr = v16.as_ptr() as *mut u8;
-                        let len = v16.len();
+                        for v16 in &self.data_f16 {
+                            let ptr = v16.as_ptr() as *mut u8;
+                            let len = v16.len();
 
-                        unsafe {
-                            let raw = slice::from_raw_parts(ptr, 2 * len);
+                            unsafe {
+                                let raw = slice::from_raw_parts(ptr, 2 * len);
 
-                            match buffer.write_all(&raw) {
-                                Ok(()) => {}
-                                Err(err) => {
-                                    println!(
+                                match buffer.write_all(&raw) {
+                                    Ok(()) => {}
+                                    Err(err) => {
+                                        println!(
                                         "binary cache write error: {}, removing the temporary file",
                                         err
                                     );
 
-                                    let _ = std::fs::remove_file(tmp_filepath);
+                                        let _ = std::fs::remove_file(tmp_filepath);
 
-                                    return;
-                                }
+                                        return;
+                                    }
+                                };
                             };
-                        };
-                    }
+                        }
 
-                    let _ = std::fs::rename(tmp_filepath, filepath);
+                        let _ = std::fs::rename(tmp_filepath, filepath);
+                    }
+                }
+            }
+
+            #[cfg(feature = "zfp")]
+            {
+                if self.bitpix == -32 && self.data_f16.len() > 0 {
+                    let filename =
+                        format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
+                    let zfp_dir = std::path::Path::new(&filename);
+
+                    self.zfp_compress(zfp_dir);
                 }
             }
 
             #[cfg(feature = "opencl")]
             {
                 if self.depth > 1 {
-                    self.compress_rbf();
+                    self.rbf_compress();
                 }
             }
 

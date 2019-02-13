@@ -13,6 +13,7 @@ vp9 = []
 production = []
 cdn = []
 opencl = ["ocl", "rand"]
+zfp = ["zfp-sys"]
 
 [build-dependencies]
 bindgen = "*"
@@ -63,9 +64,10 @@ lz4-compress = "*"
 postgres = "*"
 tar = "*"
 flate2 = "*"
+ispc = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
-ispc = "*"
+zfp-sys = {version = "*", optional = true}
 
 #rulinalg = "*"
 #linearkalman = "*"
