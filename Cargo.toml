@@ -6,7 +6,7 @@ edition = "2018"
 
 [features]
 default = ["hevc"]
-server = []
+jvo = []
 use-intrinsics = []
 hevc = []
 vp9 = []

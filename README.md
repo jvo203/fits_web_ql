@@ -177,28 +177,45 @@ after a successful compilation (it may take some time!) point your web browser t
 
 press CTRL+C to exit the program
 
+to avoid needless compilation before running one can build it once with "cargo build --release" and then launch it many times by executing
+
+target/release/fits_web_ql
+
+or
+
+target/release/fits_web_ql --port 8080 --interface 0.0.0.0 --home /a/path/to/your/FITS/mount
+
 # How to Run the Production Server (only at the Japanese Virtual Observatory)
 cd into the fits_web_ql directory and execute
 
-cargo run --features 'server production cdn' --release
+cargo run --features 'jvo production cdn' --release
 
-# extra options
+# extra features and options
+
+The "--features" option enables extra functionality. JVO-reserved features are "jvo" and "production". "cdn" can be used by anyone to speed up delivery of static resources by utilising a jsDelivr open-source content delivery network (https://www.jsdelivr.com). "cdn" is especially recommended if many users are accessing a remote FITSWebQL server. There is no need to use it on your personal computer.
+
 an alternative HTTP port
 
-cargo run --features 'server production cdn' --release -- --port 8000
+cargo run --features 'cdn' --release -- --port 8000
 
-an alternative server URL path
+an alternative URL path (JVO-specific)
 
-cargo run --features 'server production cdn' --release -- --path fitswebql_v4
+cargo run --features 'jvo production cdn' --release -- --path fitswebql_v4
 
-combined options
-
-cargo run --features 'server production cdn' --release -- --port 8000 --path fitswebql_v4
-
-an alternative network interface (only needed to make the local version run in a quasi-server mode)
+an alternative network interface (only needed to make the local version operate in a remote-server mode)
 
 cargo run --release -- --interface 0.0.0.0
 
 an alternative home directory (FITS data storage)
 
-cargo run --release -- --home /a/path/to/your/FITS/files
+cargo run --release -- --home /a/path/to/your/FITS/mount
+
+combined options
+
+cargo run --features 'cdn' --release -- --port 8000 --interface 0.0.0.0 --home /a/path/to/your/FITS/mount
+
+or
+
+cargo build --features 'cdn' --release
+
+target/release/fits_web_ql --port 8000 --interface 0.0.0.0 --home /a/path/to/your/FITS/mount

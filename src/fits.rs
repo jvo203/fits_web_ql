@@ -34,13 +34,18 @@ use flate2::read::GzDecoder;
 use zfp_sys::*;
 
 #[cfg(feature = "zfp")]
-use bincode::serialize_into;
+use bincode::{deserialize_from, serialize_into};
+
+#[cfg(feature = "zfp")]
+use std::sync::atomic::AtomicBool;
 
 #[cfg(feature = "zfp")]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ZFPMaskedArray {
     pub array: Vec<u8>,
     pub mask: Vec<u8>,
+    pub frame_min: f32,
+    pub frame_max: f32,
 }
 
 #[cfg(feature = "opencl")]
@@ -49,10 +54,10 @@ use ocl::ProQue;
 #[cfg(feature = "opencl")]
 use rand::distributions::{Distribution, StandardNormal, Uniform};
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 use curl::easy::Easy;
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 use std::error::Error;
 
 use num;
@@ -124,13 +129,61 @@ pub fn flush_frame(
     }
 }
 
-#[cfg(feature = "server")]
+#[cfg(feature = "zfp")]
+fn zfp_decompress_float_array2d(buffer: &Vec<u8>, nx: usize, ny: usize) -> Result<Vec<f32>, &str> {
+    let mut res = true;
+    let mut array: Vec<f32> = vec![0.0; nx * ny];
+
+    /* allocate meta data for the 2D array a[nx][ny] */
+    let data_type = zfp_type_zfp_type_float;
+    let field = unsafe {
+        zfp_field_2d(
+            array.as_mut_ptr() as *mut std::ffi::c_void,
+            data_type,
+            nx as u32,
+            ny as u32,
+        )
+    };
+
+    /* allocate meta data for a compressed stream */
+    let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
+
+    let bufsize = buffer.len();
+    /* associate bit stream with a compressed buffer */
+    let stream = unsafe { stream_open(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize) };
+    unsafe {
+        zfp_stream_set_bit_stream(zfp, stream);
+        zfp_stream_rewind(zfp);
+    }
+
+    let ret = unsafe { zfp_decompress(zfp, field) };
+    if ret == 0 {
+        res = false;
+    }
+
+    println!("decompressed data sample: {:?}", &array[0..10]);
+
+    /* clean up */
+    unsafe {
+        zfp_field_free(field);
+        zfp_stream_close(zfp);
+        stream_close(stream);
+    }
+
+    if res {
+        Ok(array)
+    } else {
+        Err("failed to decompress a zfp array")
+    }
+}
+
+#[cfg(feature = "jvo")]
 static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 static JVO_FITS_DB: &'static str = "alma";
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 pub static FITSHOME: &'static str = "/home";
 
 //#[cfg(not(feature = "production"))]
@@ -661,30 +714,24 @@ impl FITS {
         true
     }
 
-    //a parallel multi-threaded read from the cache file
-    fn _read_from_cache_par(
+    //a parallel multi-threaded read from the zfp-compressed cache
+    #[cfg(feature = "zfp")]
+    fn zfp_decompress(
         &mut self,
-        filepath: &std::path::Path,
-        frame_size: usize,
+        zfp_dir: &std::path::Path,
         cdelt3: f32,
         server: &Addr<server::SessionServer>,
     ) -> bool {
-        //load data from filepath
-        let f = match File::open(filepath) {
-            Ok(x) => x,
-            Err(err) => {
-                println!("CRITICAL ERROR {:?}: {:?}", filepath, err);
-                return false;
-            }
-        };
-
         let total = self.depth;
         let frame_count: AtomicIsize = AtomicIsize::new(0);
+        let success: AtomicBool = AtomicBool::new(true);
 
         let start = precise_time::precise_time_ns();
 
-        let num_threads = num::clamp(num_cpus::get(), 1, 16);
+        //let num_threads = num::clamp(num_cpus::get(), 1, 16);
         //let num_threads = (num_cpus::get() / 2).max(1);
+        //use all the threads
+        let num_threads = num_cpus::get();
 
         let pool = match rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
@@ -739,32 +786,47 @@ impl FITS {
             (0..self.depth)
                 .into_par_iter()
                 .map(|frame| {
-                    //frame is i32
-                    let offset = (frame as usize) * frame_size;
+                    let mut frame_min = std::f32::MAX;
+                    let mut frame_max = std::f32::MIN;
 
-                    let mut data_u8: Vec<u8> = vec![0; frame_size];
+                    //zfp-decompress a frame
+                    let mut cache_file = std::path::PathBuf::from(zfp_dir);
+                    cache_file.push(format!("{}.bin", frame));
 
-                    //parallel read at offset
-                    let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
-                        Ok(size) => size,
+                    let res: Option<(Vec<f32>, Vec<u8>)> = match File::open(cache_file) {
+                        Ok(f) => {
+                            let mut buffer = std::io::BufReader::new(f);
+                            match deserialize_from(&mut buffer) {
+                                Ok(zfp_frame) => {
+                                    //decompress a ZFPMaskedArray object
+                                    frame_min = zfp_frame.frame_min;
+                                    frame_max = zfp_frame.frame_max;
+
+                                    let mask = lz4_compress::decompress(&zfp_frame.mask);
+                                    let buffer = zfp_frame.array;
+
+                                    None
+                                }
+                                Err(err) => {
+                                    println!(
+                                        "CRITICAL ERROR deserializing from{:?}: {:?}",
+                                        cache_file, err
+                                    );
+                                    success.fetch_and(false, Ordering::SeqCst);
+                                    None
+                                }
+                            }
+                        }
                         Err(err) => {
-                            print!("read_at error: {}", err);
-                            0
+                            println!("CRITICAL ERROR {:?}: {:?}", cache_file, err);
+                            success.fetch_and(false, Ordering::SeqCst);
+                            None
                         }
                     };
 
                     let tid = match pool.current_thread_index() {
                         Some(tid) => tid,
                         None => 0,
-                    };
-
-                    //println!("tid: {}, frame: {}, offset: {}, bytes read: {}", tid, frame, offset, bytes_read);
-
-                    if bytes_read != frame_size {
-                        println!(
-                            "CRITICAL ERROR {:?}: read {} bytes @ frame {}, requested {} bytes",
-                            filepath, bytes_read, frame, frame_size
-                        );
                     };
 
                     //need to mutate data_u8 into vec_f16
@@ -777,9 +839,6 @@ impl FITS {
                         unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) };
 
                     //parallel data processing
-                    let mut frame_min = std::f32::MAX;
-                    let mut frame_max = std::f32::MIN;
-
                     let mut mean_spectrum = 0.0_f32;
                     let mut integrated_spectrum = 0.0_f32;
 
@@ -1061,11 +1120,11 @@ impl FITS {
             Err(x) => {
                 println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
 
-                #[cfg(not(feature = "server"))]
+                #[cfg(not(feature = "jvo"))]
                 return fits;
 
                 //a desperate attempt to download FITS using the ALMA URL (will fail for non-ALMA datasets)
-                #[cfg(feature = "server")]
+                #[cfg(feature = "jvo")]
                 {
                     let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
 
@@ -1201,96 +1260,120 @@ impl FITS {
         let filename = format!("{}/{}.bin", FITSCACHE, id.replace("/", "_"));
         let binpath = std::path::Path::new(&filename);
 
-        if fits.bitpix == -32 && binpath.exists() {
-            println!("{}: reading half-float f16 data from cache", id);
+        #[cfg(not(feature = "zfp"))]
+        let read_from_zfp = false;
 
-            if !fits.read_from_fits_or_cache_par(
-                binpath,
-                0,
-                frame_size / 2,
-                true,
-                cdelt3 as f32,
-                &server,
-            ) {
-                println!("CRITICAL ERROR parallel reading from half-float cache");
+        #[cfg(feature = "zfp")]
+        let read_from_zfp = {
+            let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
+            let zfp_dir = std::path::Path::new(&filename);
+            let mut zfp_ok = std::path::PathBuf::from(zfp_dir);
+            zfp_ok.push(".ok");
 
-                if !fits.read_from_cache(binpath, frame_size / 2, cdelt3 as f32, &server) {
-                    println!("CRITICAL ERROR reading from half-float cache");
-                    return fits;
-                }
-            }
-        } else {
-            if fits.bitpix == -32 && fits.depth > 1 && !is_compressed {
-                let offset = (no_hdu as usize) * FITS_CHUNK_LENGTH;
+            if fits.bitpix == -32 && zfp_ok.exists() {
                 println!(
-                    "{}: reading FITS data in parallel at an offset of {} bytes",
-                    id, offset
+                    "{}: reading zfp-compressed half-float f16 data from cache",
+                    id
                 );
 
+                fits.zfp_decompress(zfp_dir, cdelt3 as f32, &server)
+            } else {
+                false
+            }
+        };
+
+        if !read_from_zfp {
+            if fits.bitpix == -32 && binpath.exists() {
+                println!("{}: reading half-float f16 data from cache", id);
+
                 if !fits.read_from_fits_or_cache_par(
-                    filepath,
-                    offset,
-                    frame_size,
-                    false,
+                    binpath,
+                    0,
+                    frame_size / 2,
+                    true,
                     cdelt3 as f32,
                     &server,
                 ) {
-                    println!("CRITICAL ERROR reading from FITS file");
-                    return fits;
+                    println!("CRITICAL ERROR parallel reading from half-float cache");
+
+                    if !fits.read_from_cache(binpath, frame_size / 2, cdelt3 as f32, &server) {
+                        println!("CRITICAL ERROR reading from half-float cache");
+                        return fits;
+                    }
                 }
             } else {
-                //sequential reading
-                let (tx, rx) = mpsc::channel();
+                if fits.bitpix == -32 && fits.depth > 1 && !is_compressed {
+                    let offset = (no_hdu as usize) * FITS_CHUNK_LENGTH;
+                    println!(
+                        "{}: reading FITS data in parallel at an offset of {} bytes",
+                        id, offset
+                    );
 
-                thread::spawn(move || {
+                    if !fits.read_from_fits_or_cache_par(
+                        filepath,
+                        offset,
+                        frame_size,
+                        false,
+                        cdelt3 as f32,
+                        &server,
+                    ) {
+                        println!("CRITICAL ERROR reading from FITS file");
+                        return fits;
+                    }
+                } else {
+                    //sequential reading
+                    let (tx, rx) = mpsc::channel();
+
+                    thread::spawn(move || {
+                        let mut frame: usize = 0;
+
+                        while frame < total {
+                            //println!("requesting a cube frame {}/{}", frame, fits.depth);
+                            let mut data: Vec<u8> = vec![0; frame_size];
+
+                            //read a FITS cube frame
+                            match f.read_exact(&mut data) {
+                                Ok(()) => {
+                                    //println!("sending a cube frame for processing {}/{}", frame+1, total);
+                                    //send data for processing -> tx
+                                    match tx.send(data) {
+                                        Ok(()) => {}
+                                        Err(err) => {
+                                            println!("file reading thread: {}", err);
+                                            return;
+                                        }
+                                    };
+
+                                    frame = frame + 1;
+                                }
+                                Err(err) => {
+                                    println!("CRITICAL ERROR reading FITS data: {}", err);
+                                    return;
+                                }
+                            };
+                        }
+                    });
+
                     let mut frame: usize = 0;
 
-                    while frame < total {
-                        //println!("requesting a cube frame {}/{}", frame, fits.depth);
-                        let mut data: Vec<u8> = vec![0; frame_size];
-
-                        //read a FITS cube frame
-                        match f.read_exact(&mut data) {
-                            Ok(()) => {
-                                //println!("sending a cube frame for processing {}/{}", frame+1, total);
-                                //send data for processing -> tx
-                                match tx.send(data) {
-                                    Ok(()) => {}
-                                    Err(err) => {
-                                        println!("file reading thread: {}", err);
-                                        return;
-                                    }
-                                };
-
-                                frame = frame + 1;
-                            }
-                            Err(err) => {
-                                println!("CRITICAL ERROR reading FITS data: {}", err);
-                                return;
-                            }
-                        };
+                    for data in rx {
+                        fits.process_cube_frame(&data, cdelt3 as f32, frame);
+                        frame = frame + 1;
+                        fits.send_progress_notification(
+                            &server,
+                            &"processing FITS".to_owned(),
+                            total as i32,
+                            frame as i32,
+                        );
                     }
-                });
 
-                let mut frame: usize = 0;
-
-                for data in rx {
-                    fits.process_cube_frame(&data, cdelt3 as f32, frame);
-                    frame = frame + 1;
-                    fits.send_progress_notification(
-                        &server,
-                        &"processing FITS".to_owned(),
-                        total as i32,
-                        frame as i32,
-                    );
-                }
-
-                if frame != fits.depth {
-                    println!(
-                        "CRITICAL ERROR not all FITS cube frames have been read: {}/{}",
-                        frame, fits.depth
-                    );
-                    return fits;
+                    if frame != fits.depth {
+                        println!(
+                            "CRITICAL ERROR not all FITS cube frames have been read: {}/{}",
+                            frame, fits.depth
+                        );
+                        return fits;
+                    }
                 }
             }
         }
@@ -1351,7 +1434,7 @@ impl FITS {
         println!("{}: reading FITS data completed", id);
 
         //and lastly create a symbolic link in the FITSCACHE directory
-        //#[cfg(not(feature = "server"))]
+        //#[cfg(not(feature = "jvo"))]
         {
             let filename = format!("{}/{}.fits", FITSCACHE, id.replace("/", "_"));
             let cachefile = std::path::Path::new(&filename);
@@ -1361,7 +1444,7 @@ impl FITS {
         fits
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     fn from_url(
         id: &String,
         flux: &String,
@@ -6315,11 +6398,15 @@ impl FITS {
                 let mut array: Vec<f32> = Vec::with_capacity(len);
                 let mut mask: Vec<u8> = Vec::with_capacity(len);
 
+                let frame_min = self.frame_min[frame];
+                let frame_max = self.frame_max[frame];
+
                 for x in vec.iter() {
                     let tmp = self.bzero + self.bscale * x.to_f32(); //convert from half to f32
 
                     if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                        array.push(tmp);
+                        let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
+                        array.push(pixel.ln());
                         mask.push(255)
                     } else {
                         array.push(0.0);
@@ -6344,7 +6431,7 @@ impl FITS {
                 let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
                 /* set compression mode and parameters */
-                let tolerance = 1.0e-3;
+                let tolerance = 1.0e-1;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };
 
                 /* allocate buffer for compressed data */
@@ -6364,12 +6451,13 @@ impl FITS {
                 if zfpsize == 0 {
                     println!("compression failed");
                     res = false;
-                } /* else {
+                }
+                /*else {
                       let original_size = self.width * self.height * std::mem::size_of::<f32>();
                       let ratio = (original_size as f64) / (zfpsize as f64);
 
                       println!("plane {}, bufsize: {} bytes, original size: {} bytes, compressed size: {} bytes, ratio: {}", frame, bufsize, original_size, zfpsize, ratio);
-                  }*/
+                }*/
 
                 /* clean up */
                 unsafe {
@@ -6383,6 +6471,8 @@ impl FITS {
                     let zfp_frame = ZFPMaskedArray {
                         array: buffer[0..zfpsize].to_vec(),
                         mask: lz4_compress::compress(&mask),
+                        frame_min: frame_min,
+                        frame_max: frame_max,
                     };
 
                     let mut cache_file = std::path::PathBuf::from(zfp_dir);

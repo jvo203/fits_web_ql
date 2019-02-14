@@ -15,10 +15,10 @@ use crate::DATASETS;
 
 const PROGRESS_INTERVAL: u64 = 500; //[ms]
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60
 
-#[cfg(not(feature = "server"))]
+#[cfg(not(feature = "jvo"))]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 10; //[s]; a dataset inactivity timeout
 
 const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60

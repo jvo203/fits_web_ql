@@ -59,7 +59,7 @@ use log::info;
 use time as precise_time;
 //use rav1e::*;
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 use postgres::{Connection, TlsMode};
 
 use vpx_sys::*;
@@ -200,18 +200,18 @@ impl UserSession {
     pub fn new(id: &Vec<String>) -> UserSession {
         let uuid = Uuid::new_v4();
 
-        #[cfg(not(feature = "server"))]
+        #[cfg(not(feature = "jvo"))]
         let filename = format!("/dev/null");
 
-        #[cfg(feature = "server")]
+        #[cfg(feature = "jvo")]
         let filename = format!("{}/{}_{}.log", LOG_DIRECTORY, id[0].replace("/", "_"), uuid);
 
         let log = File::create(filename);
 
-        /*#[cfg(not(feature = "server"))]
+        /*#[cfg(not(feature = "jvo"))]
         let filename = format!("/dev/null");
 
-        #[cfg(feature = "server")]
+        #[cfg(feature = "jvo")]
         let filename = format!(
             "{}/{}_{}.hevc",
             LOG_DIRECTORY,
@@ -642,17 +642,17 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         self.cfg.rc_min_quantizer = 10;
                         self.cfg.rc_max_quantizer = 42;
 
-                        #[cfg(not(feature = "server"))]
+                        #[cfg(not(feature = "jvo"))]
                         {
                             self.cfg.rc_target_bitrate = target_bitrate as u32; //4000;
                         } // [kilobits per second]
 
-                        #[cfg(feature = "server")]
+                        #[cfg(feature = "jvo")]
                         {
                             self.cfg.rc_target_bitrate = target_bitrate as u32; //1000;
                         } // [kilobits per second]
 
-                        #[cfg(feature = "server")]
+                        #[cfg(feature = "jvo")]
                         {
                             self.cfg.rc_end_usage = vpx_rc_mode::VPX_CBR;
                         }
@@ -2250,29 +2250,29 @@ lazy_static! {
         { Arc::new(RwLock::new(HashMap::new())) };
 }
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.5";
-static VERSION_STRING: &'static str = "SV2019-02-13.0";
+static VERSION_STRING: &'static str = "SV2019-02-14.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
-#[cfg(not(feature = "server"))]
+#[cfg(not(feature = "jvo"))]
 static SERVER_MODE: &'static str = "LOCAL";
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 static SERVER_MODE: &'static str = "SERVER";
 
-#[cfg(not(feature = "server"))]
+#[cfg(not(feature = "jvo"))]
 const SERVER_ADDRESS: &'static str = "localhost";
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 const SERVER_ADDRESS: &'static str = "0.0.0.0";
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 const JVO_USER: &'static str = "jvo";
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 const JVO_HOST: &'static str = "localhost";
 
 const SERVER_PORT: i32 = 8080;
@@ -2611,34 +2611,34 @@ fn fitswebql_entry(
 
     let query = req.query();
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     let db = match query.get("db") {
         Some(x) => x,
         None => "alma", //default database
     };
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     let table = match query.get("table") {
         Some(x) => x,
         None => "cube", //default table
     };
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     let dir = match query.get("dir") {
         Some(x) => x,
         None => ".", //by default use the current directory
     };
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     let ext = match query.get("ext") {
         Some(x) => x,
         None => "fits", //a default FITS file extension
     };
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     let dataset = "filename";
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     let dataset = "datasetId";
 
     let dataset_id = match query.get(dataset) {
@@ -2680,7 +2680,7 @@ fn fitswebql_entry(
     let mut optical = false;
     let mut flux = "";
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     {
         if db.contains("hsc") {
             optical = true;
@@ -2721,13 +2721,13 @@ fn fitswebql_entry(
         None => {}
     };
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     let resp = format!(
         "FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}, optical: {}, flux: {}",
         fitswebql_path, db, table, dataset_id, composite, optical, flux
     );
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     let resp = format!(
         "FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}, composite: {}, optical: {}, flux: {}",
         fitswebql_path, dir, ext, dataset_id, composite, optical, flux
@@ -2736,7 +2736,7 @@ fn fitswebql_entry(
     println!("{}", resp);
 
     //server version
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     return result(Ok(execute_fits(
         &fitswebql_path,
         &db,
@@ -2752,7 +2752,7 @@ fn fitswebql_entry(
     .responder();
 
     //local (Personal Edition)
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     return result(Ok(execute_fits(
         &fitswebql_path,
         "",
@@ -3145,10 +3145,10 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
 
     let query = req.query();
 
-    /*#[cfg(not(feature = "server"))]
+    /*#[cfg(not(feature = "jvo"))]
     let dataset = "filename";
 
-    #[cfg(feature = "server")]*/
+    #[cfg(feature = "jvo")]*/
     let dataset = "datasetId"; //JavaScript get_fits? always uses datasetId
 
     let dataset_id = match query.get(dataset) {
@@ -3511,7 +3511,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
     }
 }
 
-#[cfg(feature = "server")]
+#[cfg(feature = "jvo")]
 fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> (Option<std::path::PathBuf>, bool) {
     let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
 
@@ -3603,10 +3603,10 @@ fn execute_fits(
         if !has_entry {
             has_fits = false;
 
-            #[cfg(feature = "server")]
+            #[cfg(feature = "jvo")]
             let my_db = _db.to_string();
 
-            #[cfg(feature = "server")]
+            #[cfg(feature = "jvo")]
             let my_table = _table.to_string();
 
             let my_dir = dir.to_string();
@@ -3625,7 +3625,7 @@ fn execute_fits(
 
             //load FITS data in a new thread
             thread::spawn(move || {
-                #[cfg(not(feature = "server"))]
+                #[cfg(not(feature = "jvo"))]
                 let (filepath, is_compressed) = (
                     std::path::PathBuf::from(&format!("{}/{}.{}", my_dir, my_data_id, my_ext)),
                     if my_ext == "gz" || my_ext == "GZ" {
@@ -3635,7 +3635,7 @@ fn execute_fits(
                     },
                 );
 
-                #[cfg(feature = "server")]
+                #[cfg(feature = "jvo")]
                 let (filepath, is_compressed) = {
                     //try to read a directory from the PostgreSQL database
                     let (buf, is_compressed) =
@@ -3845,7 +3845,7 @@ fn http_fits_response(
 
     html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}' data-is-optical='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits, is_optical));
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     {
         html.push_str(
             "<script>
@@ -3854,7 +3854,7 @@ fn http_fits_response(
         );
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     {
         #[cfg(not(feature = "production"))]
         {
@@ -3943,7 +3943,7 @@ fn http_fits_response(
   </script>\n",
     );
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     html.push_str(
         "<script>
       (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
@@ -3964,7 +3964,7 @@ fn main() {
     //std::env::set_var("RUST_LOG", "info");
     std::env::set_var("RUST_LOG", "actix_web=info");
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     flexi_logger::Logger::with_env_or_str("fits_web_ql=info")
         .log_to_file()
         .directory(LOG_DIRECTORY)
@@ -4031,10 +4031,10 @@ fn main() {
     /*let splat_path = std::path::Path::new("splatalogue_v3.db");
     let splat_db = sqlite::open(splat_path).unwrap();*/
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     let index_file = "fitswebql.html";
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     let index_file = "almawebql.html";
 
     let sys = actix::System::new("fits_web_ql");
@@ -4096,7 +4096,7 @@ fn main() {
         Err(err) => println!("{}", err),
     }
 
-    #[cfg(not(feature = "server"))]
+    #[cfg(not(feature = "jvo"))]
     {
         println!(
             "started a local FITSWebQL server; point your web browser to http://localhost:{}",
@@ -4105,7 +4105,7 @@ fn main() {
         println!("press CTRL+C to exit");
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "jvo")]
     {
         println!(
             "started a fits_web_ql server process on port {}",
