@@ -796,16 +796,35 @@ impl FITS {
                     let res: Option<(Vec<f32>, Vec<u8>)> = match File::open(cache_file) {
                         Ok(f) => {
                             let mut buffer = std::io::BufReader::new(f);
-                            match deserialize_from(&mut buffer) {
+                            let res: Result<ZFPMaskedArray, _> = deserialize_from(&mut buffer);
+                            match res {
                                 Ok(zfp_frame) => {
                                     //decompress a ZFPMaskedArray object
-                                    frame_min = zfp_frame.frame_min;
-                                    frame_max = zfp_frame.frame_max;
-
-                                    let mask = lz4_compress::decompress(&zfp_frame.mask);
-                                    let buffer = zfp_frame.array;
-
-                                    None
+                                    match zfp_decompress_float_array2d(
+                                        &zfp_frame.array,
+                                        self.width,
+                                        self.height,
+                                    ) {
+                                        Ok(array) => {
+                                            match lz4_compress::decompress(&zfp_frame.mask) {
+                                                Ok(mask) => {
+                                                    frame_min = zfp_frame.frame_min;
+                                                    frame_max = zfp_frame.frame_max;
+                                                    Some((array, mask))
+                                                }
+                                                Err(err) => {
+                                                    print!("{}", err);
+                                                    success.fetch_and(false, Ordering::SeqCst);
+                                                    None
+                                                }
+                                            }
+                                        }
+                                        Err(err) => {
+                                            println!("{}", err);
+                                            success.fetch_and(false, Ordering::SeqCst);
+                                            None
+                                        }
+                                    }
                                 }
                                 Err(err) => {
                                     println!(
