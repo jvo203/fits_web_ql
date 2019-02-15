@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.5";
-static VERSION_STRING: &'static str = "SV2019-02-14.0";
+static VERSION_STRING: &'static str = "SV2019-02-15.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -3938,7 +3938,7 @@ fn http_fits_response(
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-  ga('create', 'UA-72136224-4', 'auto');
+  ga('create', 'UA-72136224-3', 'auto');
   ga('send', 'pageview');
   </script>\n",
     );

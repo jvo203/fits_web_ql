@@ -164,11 +164,12 @@ Ubuntu Linux: "sudo apt install libsqlite3-dev"
 some Linux systems, for example Ubuntu, CentOS 6 and 7, need the following environment variables to be set before running fits_web_ql:
 
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
 it is best to append these lines into your .bashrc
 
-# How to Run a Local Version (Personal Edition)
+# How to Run a Local Server (Personal Edition)
 cd into the fits_web_ql directory and execute
 
 cargo run --release
@@ -219,3 +220,13 @@ or
 cargo build --features 'cdn' --release
 
 target/release/fits_web_ql --port 8000 --interface 0.0.0.0 --home /a/path/to/your/FITS/mount
+
+# How to Accelerate FITSWebQL
+
+A hint how to speed-up FITSWebQL when using SSDs. It it best to clone fits_web_ql onto a directory residing on the fastest storage medium you have (ideally NVME SSD). Inside fits_web_ql there is an internal FITSCACHE directory where the program caches half-float-converted FITS files (applicable only to bitpix = -32).
+
+The first time a FITS file is accessed it will be read from its original location (ideally from a fast NVME SSD). The second time somebody accesses that same FITS file, fits_web_ql will read the FITS header from the original location and then proceed to load half-float binary cache from the FITSCACHE directory.
+
+So even if your large FITS files reside on a fast SSD, if fits_web_ql itself is located on a slow HDD second-time loads of FITS files will appear slow compared with first-time accesses.
+
+One can also experiment with symbolic links to a separate FITSCACHE directory residing on a fast storage medium.

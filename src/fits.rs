@@ -130,7 +130,11 @@ pub fn flush_frame(
 }
 
 #[cfg(feature = "zfp")]
-fn zfp_decompress_float_array2d(buffer: &Vec<u8>, nx: usize, ny: usize) -> Result<Vec<f32>, &str> {
+fn zfp_decompress_float_array2d(
+    mut buffer: Vec<u8>,
+    nx: usize,
+    ny: usize,
+) -> Result<Vec<f32>, &'static str> {
     let mut res = true;
     let mut array: Vec<f32> = vec![0.0; nx * ny];
 
@@ -148,6 +152,14 @@ fn zfp_decompress_float_array2d(buffer: &Vec<u8>, nx: usize, ny: usize) -> Resul
     /* allocate meta data for a compressed stream */
     let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
+    /* allocate buffer for compressed data */
+    /*let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
+    let mut buffer: Vec<u8> = vec![0; bufsize];
+    //buffer[0..src.len()] = src.as_slice();
+    for (i, c) in src.iter().enumerate() {
+        buffer[i] = *c; //inefficient but OK for basic decompression tests...
+    }*/
+
     let bufsize = buffer.len();
     /* associate bit stream with a compressed buffer */
     let stream = unsafe { stream_open(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize) };
@@ -161,7 +173,11 @@ fn zfp_decompress_float_array2d(buffer: &Vec<u8>, nx: usize, ny: usize) -> Resul
         res = false;
     }
 
-    println!("decompressed data sample: {:?}", &array[0..10]);
+    println!(
+        "ret = {}, decompressed data sample: {:?}",
+        ret,
+        &array[0..10]
+    );
 
     /* clean up */
     unsafe {
@@ -786,14 +802,13 @@ impl FITS {
             (0..self.depth)
                 .into_par_iter()
                 .map(|frame| {
-                    let mut frame_min = std::f32::MAX;
-                    let mut frame_max = std::f32::MIN;
+                    let data_f16: Vec<f16> = vec![f16::from_f32(0.0); self.width * self.height];
 
                     //zfp-decompress a frame
                     let mut cache_file = std::path::PathBuf::from(zfp_dir);
                     cache_file.push(format!("{}.bin", frame));
 
-                    let res: Option<(Vec<f32>, Vec<u8>)> = match File::open(cache_file) {
+                    match File::open(cache_file) {
                         Ok(f) => {
                             let mut buffer = std::io::BufReader::new(f);
                             let res: Result<ZFPMaskedArray, _> = deserialize_from(&mut buffer);
@@ -801,127 +816,140 @@ impl FITS {
                                 Ok(zfp_frame) => {
                                     //decompress a ZFPMaskedArray object
                                     match zfp_decompress_float_array2d(
-                                        &zfp_frame.array,
+                                        zfp_frame.array,
                                         self.width,
                                         self.height,
                                     ) {
-                                        Ok(array) => {
+                                        Ok(mut array) => {
                                             match lz4_compress::decompress(&zfp_frame.mask) {
                                                 Ok(mask) => {
-                                                    frame_min = zfp_frame.frame_min;
-                                                    frame_max = zfp_frame.frame_max;
-                                                    Some((array, mask))
+                                                    //parallel data processing
+                                                    let frame_min = zfp_frame.frame_min;
+                                                    let frame_max = zfp_frame.frame_max;
+                                                    let mut mean_spectrum = 0.0_f32;
+                                                    let mut integrated_spectrum = 0.0_f32;
+
+                                                    let tid = match pool.current_thread_index() {
+                                                        Some(tid) => tid,
+                                                        None => 0,
+                                                    };
+
+                                                    println!(
+                                                        "tid: {}, frame_min: {}, frame_max: {}, self.width: {}, self.height: {}",
+                                                        tid, frame_min, frame_max, self.width, self.height
+                                                    );
+
+                                                    if frame == self.depth / 2 {
+                                                        println!("array: {:?}", array);
+                                                        //println!("mask: {:?}", mask);
+                                                    }
+
+                                                    //convert the (array,mask) into f16
+                                                    let mut references: [f32; 2] =
+                                                        [mean_spectrum, integrated_spectrum];
+
+                                                    let vec_ptr = data_f16.as_ptr() as *mut i16;
+                                                    let vec_len = data_f16.len();
+
+                                                    let mut pixels = thread_pixels[tid].write();
+                                                    let dst_mask = thread_mask[tid].write();
+                                                    let src_mask_ptr = mask.as_ptr() as *mut u8;
+                                                    let dst_mask_ptr = dst_mask.as_ptr() as *mut u8;
+
+                                                    unsafe {
+                                                        spmd::make_image_spectrumF32_2_F16(
+                                                            array.as_mut_ptr(),
+                                                            src_mask_ptr,
+                                                            frame_min,
+                                                            frame_max,
+                                                            vec_ptr,
+                                                            self.bzero,
+                                                            self.bscale,
+                                                            cdelt3,
+                                                            pixels.as_mut_ptr(),
+                                                            dst_mask_ptr,
+                                                            vec_len as u32,
+                                                            references.as_mut_ptr(),
+                                                        );
+                                                    }
+
+                                                    mean_spectrum = references[0];
+                                                    integrated_spectrum = references[1];
+
+                                                    thread_mean_spectrum[frame as usize]
+                                                        .store(mean_spectrum, Ordering::SeqCst);
+                                                    thread_integrated_spectrum[frame as usize]
+                                                        .store(
+                                                            integrated_spectrum,
+                                                            Ordering::SeqCst,
+                                                        );
+
+                                                    let current_frame_min = thread_frame_min
+                                                        [frame as usize]
+                                                        .load(Ordering::SeqCst);
+                                                    thread_frame_min[frame as usize].store(
+                                                        frame_min.min(current_frame_min),
+                                                        Ordering::SeqCst,
+                                                    );
+
+                                                    let current_frame_max = thread_frame_max
+                                                        [frame as usize]
+                                                        .load(Ordering::SeqCst);
+                                                    thread_frame_max[frame as usize].store(
+                                                        frame_max.max(current_frame_max),
+                                                        Ordering::SeqCst,
+                                                    );
+
+                                                    let current_min =
+                                                        thread_min[tid].load(Ordering::SeqCst);
+                                                    thread_min[tid].store(
+                                                        frame_min.min(current_min),
+                                                        Ordering::SeqCst,
+                                                    );
+
+                                                    let current_max =
+                                                        thread_max[tid].load(Ordering::SeqCst);
+                                                    thread_max[tid].store(
+                                                        frame_max.max(current_max),
+                                                        Ordering::SeqCst,
+                                                    );
+                                                    //end of parallel data processing
+
+                                                    let previous_frame_count = frame_count
+                                                        .fetch_add(1, Ordering::SeqCst)
+                                                        as i32;
+                                                    let current_frame_count =
+                                                        previous_frame_count + 1;
+                                                    self.send_progress_notification(
+                                                        &server,
+                                                        &"loading FITS".to_owned(),
+                                                        total as i32,
+                                                        current_frame_count,
+                                                    );
                                                 }
                                                 Err(err) => {
-                                                    print!("{}", err);
+                                                    println!("{}", err);
                                                     success.fetch_and(false, Ordering::SeqCst);
-                                                    None
                                                 }
                                             }
                                         }
                                         Err(err) => {
                                             println!("{}", err);
                                             success.fetch_and(false, Ordering::SeqCst);
-                                            None
                                         }
                                     }
                                 }
                                 Err(err) => {
-                                    println!(
-                                        "CRITICAL ERROR deserializing from{:?}: {:?}",
-                                        cache_file, err
-                                    );
+                                    println!("CRITICAL ERROR deserialize_from: {:?}", err);
                                     success.fetch_and(false, Ordering::SeqCst);
-                                    None
                                 }
                             }
                         }
                         Err(err) => {
-                            println!("CRITICAL ERROR {:?}: {:?}", cache_file, err);
+                            println!("CRITICAL ERROR: {:?}", err);
                             success.fetch_and(false, Ordering::SeqCst);
-                            None
                         }
                     };
-
-                    let tid = match pool.current_thread_index() {
-                        Some(tid) => tid,
-                        None => 0,
-                    };
-
-                    //need to mutate data_u8 into vec_f16
-                    let ptr = data_u8.as_ptr() as *mut f16;
-                    let len = data_u8.len();
-                    let capacity = data_u8.capacity();
-                    mem::forget(data_u8);
-
-                    let data_f16: Vec<f16> =
-                        unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) };
-
-                    //parallel data processing
-                    let mut mean_spectrum = 0.0_f32;
-                    let mut integrated_spectrum = 0.0_f32;
-
-                    let mut references: [f32; 4] =
-                        [frame_min, frame_max, mean_spectrum, integrated_spectrum];
-
-                    let vec_ptr = data_f16.as_ptr() as *mut i16;
-                    let vec_len = data_f16.len();
-
-                    let mut pixels = thread_pixels[tid].write();
-                    let mask = thread_mask[tid].write();
-                    let mask_ptr = mask.as_ptr() as *mut u8;
-                    let mask_len = mask.len();
-
-                    unsafe {
-                        let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
-                        let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-
-                        spmd::make_image_spectrumF16_minmax(
-                            vec_raw.as_mut_ptr(),
-                            self.bzero,
-                            self.bscale,
-                            self.datamin,
-                            self.datamax,
-                            cdelt3,
-                            pixels.as_mut_ptr(),
-                            mask_raw.as_mut_ptr(),
-                            vec_len as u32,
-                            references.as_mut_ptr(),
-                        );
-                    }
-
-                    frame_min = references[0];
-                    frame_max = references[1];
-                    mean_spectrum = references[2];
-                    integrated_spectrum = references[3];
-
-                    thread_mean_spectrum[frame as usize].store(mean_spectrum, Ordering::SeqCst);
-                    thread_integrated_spectrum[frame as usize]
-                        .store(integrated_spectrum, Ordering::SeqCst);
-
-                    let current_frame_min = thread_frame_min[frame as usize].load(Ordering::SeqCst);
-                    thread_frame_min[frame as usize]
-                        .store(frame_min.min(current_frame_min), Ordering::SeqCst);
-
-                    let current_frame_max = thread_frame_max[frame as usize].load(Ordering::SeqCst);
-                    thread_frame_max[frame as usize]
-                        .store(frame_max.max(current_frame_max), Ordering::SeqCst);
-
-                    let current_min = thread_min[tid].load(Ordering::SeqCst);
-                    thread_min[tid].store(frame_min.min(current_min), Ordering::SeqCst);
-
-                    let current_max = thread_max[tid].load(Ordering::SeqCst);
-                    thread_max[tid].store(frame_max.max(current_max), Ordering::SeqCst);
-                    //end of parallel data processing
-
-                    let previous_frame_count = frame_count.fetch_add(1, Ordering::SeqCst) as i32;
-                    let current_frame_count = previous_frame_count + 1;
-                    self.send_progress_notification(
-                        &server,
-                        &"loading FITS".to_owned(),
-                        total as i32,
-                        current_frame_count,
-                    );
 
                     data_f16
                 })
@@ -982,11 +1010,11 @@ impl FITS {
         let stop = precise_time::precise_time_ns();
 
         println!(
-            "[read_from_cache_par] elapsed time: {} [ms]",
+            "[zfp_decompress] elapsed time: {} [ms]",
             (stop - start) / 1000000
         );
 
-        true
+        success.load(Ordering::SeqCst)
     }
 
     fn read_from_cache(
@@ -6424,8 +6452,9 @@ impl FITS {
                     let tmp = self.bzero + self.bscale * x.to_f32(); //convert from half to f32
 
                     if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                        let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
-                        array.push(pixel.ln());
+                        /*let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
+                        array.push(pixel.ln());*/
+                        array.push(tmp);
                         mask.push(255)
                     } else {
                         array.push(0.0);
@@ -6450,7 +6479,7 @@ impl FITS {
                 let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
                 /* set compression mode and parameters */
-                let tolerance = 1.0e-1;
+                let tolerance = 1.0e-3;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };
 
                 /* allocate buffer for compressed data */

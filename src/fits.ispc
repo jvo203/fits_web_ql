@@ -166,6 +166,56 @@ export void make_image_spectrumF32_minmax(uniform int32 src[], uniform int16 des
   references[3] = integrated ;
 } ;
 
+export void make_image_spectrumF32_2_F16(uniform float src[], uniform unsigned int8 src_mask[], uniform float frame_min, uniform float frame_max, uniform int16 dest[], uniform float bzero, uniform float bscale, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 dst_mask[], uniform unsigned int total_size, uniform float references[])
+{  
+  uniform float mean = references[0];
+  uniform float integrated = references[1];
+
+  float partial_sum = 0.0f ;
+  unsigned int64 partial_count = 0 ;
+
+  foreach(j=0 ... total_size)
+    {
+      bool nan = (src_mask[j] == 0) ? true : false ;
+      float tmp = src[j] ;
+      //tmp = frame_min + (exp(tmp) - 0.5f) * (frame_max - frame_min);
+
+      //transform tmp, set it to NaN if nan      
+      int iflt_nan = 0x7ff80000; // quiet NaN             
+      tmp = nan ? floatbits(iflt_nan) : tmp;
+      dest[j] = float_to_half_fast(tmp) ;
+      dst_mask[j] = src_mask[j];
+
+      tmp = bzero + tmp * bscale ;
+
+      //alternative coherent if
+      cif (!nan)
+      {
+        pixels[j] += tmp ;        
+        partial_sum += tmp ;
+        partial_count += 1 ;        
+      }
+    } ;
+
+  uniform float sum = reduce_add(partial_sum) ;
+  uniform int64 count = reduce_add(partial_count) ;
+
+  if(count > 0)
+    {
+      
+      mean = sum / (float) count ;
+      integrated = sum * cdelt3 ;
+    }
+  else
+    {
+      mean = 0.0f ;
+      integrated = 0.0f ;
+    }
+  
+  references[0] = mean ;
+  references[1] = integrated ;
+} ;
+
 export void join_pixels_masks(uniform float pixels[], uniform float pixels_tid[], uniform unsigned int8 mask[], uniform unsigned int8 mask_tid[], uniform float cdelt3, uniform unsigned int total_size)
 {
   foreach(i=0 ... total_size)
