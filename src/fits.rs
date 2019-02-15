@@ -153,8 +153,10 @@ fn zfp_decompress_float_array2d(
     let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
     /* set compression mode and parameters */
-    let tolerance = 1.0e-3;
-    unsafe { zfp_stream_set_accuracy(zfp, tolerance) };
+    /*let tolerance = 1.0e-3;
+    unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
+    let precision = 11;
+    unsafe { zfp_stream_set_precision(zfp, precision) };
 
     let bufsize = buffer.len();
     /* associate bit stream with a compressed buffer */
@@ -6475,8 +6477,10 @@ impl FITS {
                 let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
                 /* set compression mode and parameters */
-                let tolerance = 1.0e-3;
-                unsafe { zfp_stream_set_accuracy(zfp, tolerance) };
+                /*let tolerance = 1.0e-3;
+                unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
+                let precision = 11;
+                unsafe { zfp_stream_set_precision(zfp, precision) };
 
                 /* allocate buffer for compressed data */
                 let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
