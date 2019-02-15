@@ -152,13 +152,9 @@ fn zfp_decompress_float_array2d(
     /* allocate meta data for a compressed stream */
     let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
-    /* allocate buffer for compressed data */
-    /*let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
-    let mut buffer: Vec<u8> = vec![0; bufsize];
-    //buffer[0..src.len()] = src.as_slice();
-    for (i, c) in src.iter().enumerate() {
-        buffer[i] = *c; //inefficient but OK for basic decompression tests...
-    }*/
+    /* set compression mode and parameters */
+    let tolerance = 1.0e-3;
+    unsafe { zfp_stream_set_accuracy(zfp, tolerance) };
 
     let bufsize = buffer.len();
     /* associate bit stream with a compressed buffer */
@@ -173,11 +169,11 @@ fn zfp_decompress_float_array2d(
         res = false;
     }
 
-    println!(
+    /*println!(
         "ret = {}, decompressed data sample: {:?}",
         ret,
         &array[0..10]
-    );
+    );*/
 
     /* clean up */
     unsafe {
@@ -834,7 +830,7 @@ impl FITS {
                                                         None => 0,
                                                     };
 
-                                                    println!(
+                                                    /*println!(
                                                         "tid: {}, frame_min: {}, frame_max: {}, self.width: {}, self.height: {}",
                                                         tid, frame_min, frame_max, self.width, self.height
                                                     );
@@ -842,7 +838,7 @@ impl FITS {
                                                     if frame == self.depth / 2 {
                                                         println!("array: {:?}", array);
                                                         //println!("mask: {:?}", mask);
-                                                    }
+                                                    }*/
 
                                                     //convert the (array,mask) into f16
                                                     let mut references: [f32; 2] =
