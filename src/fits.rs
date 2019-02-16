@@ -134,7 +134,7 @@ fn zfp_decompress_float_array2d(
     mut buffer: Vec<u8>,
     nx: usize,
     ny: usize,
-) -> Result<Vec<f32>, &'static str> {
+) -> Result<Vec<f32>, String> {
     let mut res = true;
     let mut array: Vec<f32> = vec![0.0; nx * ny];
 
@@ -187,7 +187,7 @@ fn zfp_decompress_float_array2d(
     if res {
         Ok(array)
     } else {
-        Err("failed to decompress a zfp array")
+        Err("failed to decompress a zfp array".to_string())
     }
 }
 
