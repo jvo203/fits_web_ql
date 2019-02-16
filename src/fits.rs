@@ -155,7 +155,7 @@ fn zfp_decompress_float_array2d(
     /* set compression mode and parameters */
     /*let tolerance = 1.0e-3;
     unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-    let precision = 11;
+    let precision = 10;
     unsafe { zfp_stream_set_precision(zfp, precision) };
 
     let bufsize = buffer.len();
@@ -6433,8 +6433,10 @@ impl FITS {
             self.dataset_id
         );
 
+        //use a sequential loop with OpenMP zfp_compress execution policy so as not to
+        //overload the server
         let success = (0..self.depth)
-            .into_par_iter()
+            .into_par_iter() //into_par_iter or into_iter
             .map(|frame| {
                 let vec = &self.data_f16[frame];
                 let len = vec.len();
@@ -6450,9 +6452,9 @@ impl FITS {
                     let tmp = self.bzero + self.bscale * x.to_f32(); //convert from half to f32
 
                     if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                        /*let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
-                        array.push(pixel.ln());*/
-                        array.push(tmp);
+                        let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
+                        array.push(pixel.ln());
+                        //array.push(tmp);
                         mask.push(255)
                     } else {
                         array.push(0.0);
@@ -6479,8 +6481,9 @@ impl FITS {
                 /* set compression mode and parameters */
                 /*let tolerance = 1.0e-3;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-                let precision = 11;
+                let precision = 10;
                 unsafe { zfp_stream_set_precision(zfp, precision) };
+                //unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp) };
 
                 /* allocate buffer for compressed data */
                 let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
