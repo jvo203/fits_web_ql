@@ -155,7 +155,7 @@ fn zfp_decompress_float_array2d(
     /* set compression mode and parameters */
     /*let tolerance = 1.0e-3;
     unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-    let precision = 10;
+    let precision = 16;
     unsafe { zfp_stream_set_precision(zfp, precision) };
 
     let bufsize = buffer.len();
@@ -6481,7 +6481,7 @@ impl FITS {
                 /* set compression mode and parameters */
                 /*let tolerance = 1.0e-3;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-                let precision = 10;
+                let precision = 16;
                 unsafe { zfp_stream_set_precision(zfp, precision) };
                 //unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp) };
 
