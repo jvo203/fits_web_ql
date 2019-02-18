@@ -193,7 +193,7 @@ cargo run --features 'jvo production cdn' --release
 
 # extra features and options
 
-The "--features" option enables extra functionality. JVO-reserved features are "jvo" and "production". "cdn" can be used by anyone to speed up delivery of static resources by utilising a jsDelivr open-source content delivery network (https://www.jsdelivr.com). "cdn" is especially recommended if many users are accessing a remote FITSWebQL server. There is no need to use it on your personal computer.
+The "--features" option enables extra functionality. JVO-reserved features are "jvo" and "production". "cdn" can be used by anyone to speed up delivery of static resources by utilising a jsDelivr open-source content delivery network (https://www.jsdelivr.com). "cdn" is especially recommended if many users are accessing a remote FITSWebQL server. There is no need to use it on your personal computer. "zfp" enables ZFP compression for FITS data cubes held in an internal FITSWebQL cache in order to (theoretically) speed-up loading times (see a note at the end of this README).
 
 an alternative HTTP port
 
@@ -239,4 +239,4 @@ One can also experiment with symbolic links to a separate FITSCACHE directory re
 
 i.e. cargo run --features 'zfp' --release
 
-This experimental feature replaces the half-float storage with ZFP compression (https://github.com/LLNL/zfp), which speeds-up second-time loads on multi-core systems. The HDD/SSD cache storage uses zfp 2d arrays instead of half-floats, which are converted to a half-float RAM storage upon loading. Decompressing data is very CPU intensive, hence this feature is only recommended if your server contains a sufficient number of CPU cores (>=32). Otherwise speed savings from reading smaller file sizes will be eaten-up by increased CPU times of decompressing the data.
+This experimental feature replaces the half-float storage with ZFP compression (https://github.com/LLNL/zfp), which speeds-up second-time loads on multi-core systems. The HDD/SSD cache storage uses zfp 2d arrays instead of half-floats, which are converted to a half-float RAM storage upon loading. Decompressing data is very CPU intensive, hence this feature is only recommended if your server contains a sufficient number of CPU cores (>=32). Otherwise speed savings from reading smaller file sizes will be eaten-up by increased CPU times of decompressing the data. cmake3 needs to be installed on your system.
