@@ -34,7 +34,7 @@ use flate2::read::GzDecoder;
 use zfp_sys::*;
 
 #[cfg(feature = "zfp")]
-use bincode::{deserialize_from, serialize_into};
+use bincode::{deserialize, serialize_into};
 
 #[cfg(feature = "zfp")]
 use std::sync::atomic::AtomicBool;
@@ -46,6 +46,7 @@ pub struct ZFPMaskedArray {
     pub mask: Vec<u8>,
     pub frame_min: f32,
     pub frame_max: f32,
+    pub precision: u32,
 }
 
 #[cfg(feature = "opencl")]
@@ -134,6 +135,7 @@ fn zfp_decompress_float_array2d(
     mut buffer: Vec<u8>,
     nx: usize,
     ny: usize,
+    precision: u32,
 ) -> Result<Vec<f32>, String> {
     let mut res = true;
     let mut array: Vec<f32> = vec![0.0; nx * ny];
@@ -155,7 +157,7 @@ fn zfp_decompress_float_array2d(
     /* set compression mode and parameters */
     /*let tolerance = 1.0e-3;
     unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-    let precision = 16;
+
     unsafe { zfp_stream_set_precision(zfp, precision) };
 
     let bufsize = buffer.len();
@@ -744,7 +746,7 @@ impl FITS {
 
         //let num_threads = num::clamp(num_cpus::get(), 1, 16);
         //let num_threads = (num_cpus::get() / 2).max(1);
-        //use all the threads
+        //use all the threads available
         let num_threads = num_cpus::get();
 
         let pool = match rayon::ThreadPoolBuilder::new()
@@ -796,8 +798,9 @@ impl FITS {
         }
 
         //at first fill-in the self.data_f16 vector in parallel
-        let gather_f16: Vec<_> = pool.install(|| {
-            (0..self.depth)
+        let gather_f16: Vec<_> =
+            pool.install(|| {
+                (0..self.depth)
                 .into_par_iter()
                 .map(|frame| {
                     let data_f16: Vec<f16> = vec![f16::from_f32(0.0); self.width * self.height];
@@ -807,9 +810,12 @@ impl FITS {
                     cache_file.push(format!("{}.bin", frame));
 
                     match File::open(cache_file) {
-                        Ok(f) => {
-                            let mut buffer = std::io::BufReader::new(f);
-                            let res: Result<ZFPMaskedArray, _> = deserialize_from(&mut buffer);
+                        Ok(mut f) => {
+                            //let mut buffer = std::io::BufReader::new(f);//BufReader is slower
+                            let mut buffer = Vec::new();
+                            match f.read_to_end(&mut buffer) {
+                                Ok(_) => {
+                            let res: Result<ZFPMaskedArray, _> = deserialize(&mut buffer);
                             match res {
                                 Ok(zfp_frame) => {
                                     //decompress a ZFPMaskedArray object
@@ -817,6 +823,7 @@ impl FITS {
                                         zfp_frame.array,
                                         self.width,
                                         self.height,
+                                        zfp_frame.precision,
                                     ) {
                                         Ok(mut array) => {
                                             match lz4_compress::decompress(&zfp_frame.mask) {
@@ -938,7 +945,13 @@ impl FITS {
                                     }
                                 }
                                 Err(err) => {
-                                    println!("CRITICAL ERROR deserialize_from: {:?}", err);
+                                    println!("CRITICAL ERROR deserialize: {:?}", err);
+                                    success.fetch_and(false, Ordering::SeqCst);
+                                }
+                            }
+                                },
+                                Err(err) => {
+println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     success.fetch_and(false, Ordering::SeqCst);
                                 }
                             }
@@ -952,7 +965,7 @@ impl FITS {
                     data_f16
                 })
                 .collect()
-        });
+            });
 
         self.data_f16 = gather_f16;
 
@@ -6433,10 +6446,10 @@ impl FITS {
             self.dataset_id
         );
 
-        //use a sequential loop with OpenMP zfp_compress execution policy so as not to
-        //overload the server
+        //use a sequential loop with OpenMP zfp_compress execution policy
+        //so as not to overload the server
         let success = (0..self.depth)
-            .into_par_iter() //into_par_iter or into_iter
+            .into_iter() //into_par_iter or into_iter
             .map(|frame| {
                 let vec = &self.data_f16[frame];
                 let len = vec.len();
@@ -6481,9 +6494,13 @@ impl FITS {
                 /* set compression mode and parameters */
                 /*let tolerance = 1.0e-3;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-                let precision = 16;
+                let precision = 14;
                 unsafe { zfp_stream_set_precision(zfp, precision) };
-                //unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp) };
+
+                //use only half the number of CPUs
+                /*let num_threads = (num_cpus::get() / 2).max(1);
+                unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp) };
+                unsafe { zfp_stream_set_omp_threads(zfp, num_threads as u32) };*/
 
                 /* allocate buffer for compressed data */
                 let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
@@ -6524,6 +6541,7 @@ impl FITS {
                         mask: lz4_compress::compress(&mask),
                         frame_min: frame_min,
                         frame_max: frame_max,
+                        precision: precision,
                     };
 
                     let mut cache_file = std::path::PathBuf::from(zfp_dir);
@@ -6558,7 +6576,8 @@ impl FITS {
 
                 res
             })
-            .reduce(|| true, |acc, res| acc && res);
+            //.reduce(|| true, |acc, res| acc && res);
+            .fold(true, |acc, res| acc && res);
 
         println!("{}: zfp compression success: {}", self.dataset_id, success);
 
