@@ -6498,9 +6498,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 unsafe { zfp_stream_set_precision(zfp, precision) };
 
                 //use only half the number of CPUs
-                /*let num_threads = (num_cpus::get() / 2).max(1);
+                let num_threads = (num_cpus::get() / 2).max(1);
                 unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp) };
-                unsafe { zfp_stream_set_omp_threads(zfp, num_threads as u32) };*/
+                unsafe { zfp_stream_set_omp_threads(zfp, num_threads as u32) };
 
                 /* allocate buffer for compressed data */
                 let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
