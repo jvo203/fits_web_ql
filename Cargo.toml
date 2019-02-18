@@ -12,6 +12,7 @@ hevc = []
 vp9 = []
 production = []
 cdn = []
+cuda = []
 opencl = ["ocl", "rand"]
 zfp = ["zfp-sys"]
 
@@ -67,7 +68,7 @@ flate2 = "*"
 ispc = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
-zfp-sys = {version = "*", optional = true}
+zfp-sys = {version = "*", optional = true}#features = ["cuda"]
 
 #rulinalg = "*"
 #linearkalman = "*"

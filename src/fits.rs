@@ -46,7 +46,8 @@ pub struct ZFPMaskedArray {
     pub mask: Vec<u8>,
     pub frame_min: f32,
     pub frame_max: f32,
-    pub precision: u32,
+    //pub precision: u32,
+    pub rate: f64,
 }
 
 #[cfg(feature = "opencl")]
@@ -135,7 +136,8 @@ fn zfp_decompress_float_array2d(
     mut buffer: Vec<u8>,
     nx: usize,
     ny: usize,
-    precision: u32,
+    //precision: u32,
+    rate: f64,
 ) -> Result<Vec<f32>, String> {
     let mut res = true;
     let mut array: Vec<f32> = vec![0.0; nx * ny];
@@ -155,10 +157,15 @@ fn zfp_decompress_float_array2d(
     let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
     /* set compression mode and parameters */
+    unsafe { zfp_stream_set_rate(zfp, rate, data_type, 2, 0) };
     /*let tolerance = 1.0e-3;
     unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
+    /*unsafe { zfp_stream_set_precision(zfp, precision) };*/
 
-    unsafe { zfp_stream_set_precision(zfp, precision) };
+    #[cfg(feature = "cuda")]
+    unsafe {
+        zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_cuda)
+    };
 
     let bufsize = buffer.len();
     /* associate bit stream with a compressed buffer */
@@ -823,7 +830,8 @@ impl FITS {
                                         zfp_frame.array,
                                         self.width,
                                         self.height,
-                                        zfp_frame.precision,
+                                        //zfp_frame.precision,
+                                        zfp_frame.rate,
                                     ) {
                                         Ok(mut array) => {
                                             match lz4_compress::decompress(&zfp_frame.mask) {
@@ -6492,15 +6500,25 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
                 /* set compression mode and parameters */
+                let rate: f64 = 8.0;
+                unsafe { zfp_stream_set_rate(zfp, rate, data_type, 2, 0) };
                 /*let tolerance = 1.0e-3;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-                let precision = 11; //was 14; 10 is not enough, 11 bits is borderline
-                unsafe { zfp_stream_set_precision(zfp, precision) };
+                /*let precision = 11; //was 14; 10 is not enough, 11 bits is borderline
+                unsafe { zfp_stream_set_precision(zfp, precision) };*/
 
                 //use only half the number of CPUs
-                let num_threads = (num_cpus::get() / 2).max(1);
-                unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp) };
-                unsafe { zfp_stream_set_omp_threads(zfp, num_threads as u32) };
+                #[cfg(not(feature = "cuda"))]
+                {
+                    let num_threads = (num_cpus::get() / 2).max(1);
+                    unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp) };
+                    unsafe { zfp_stream_set_omp_threads(zfp, num_threads as u32) };
+                }
+
+                #[cfg(feature = "cuda")]
+                unsafe {
+                    zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_cuda)
+                };
 
                 /* allocate buffer for compressed data */
                 let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
@@ -6541,7 +6559,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         mask: lz4_compress::compress(&mask),
                         frame_min: frame_min,
                         frame_max: frame_max,
-                        precision: precision,
+                        //precision: precision,
+                        rate: rate,
                     };
 
                     let mut cache_file = std::path::PathBuf::from(zfp_dir);
