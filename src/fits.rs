@@ -6494,7 +6494,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 /* set compression mode and parameters */
                 /*let tolerance = 1.0e-3;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-                let precision = 11;//was 14
+                let precision = 11; //was 14; 10 is not enough, 11 bits is borderline
                 unsafe { zfp_stream_set_precision(zfp, precision) };
 
                 //use only half the number of CPUs
