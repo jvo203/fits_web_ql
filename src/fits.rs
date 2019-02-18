@@ -6465,9 +6465,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     let tmp = self.bzero + self.bscale * x.to_f32(); //convert from half to f32
 
                     if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                        let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
-                        array.push(pixel.ln());
-                        //array.push(tmp);
+                        /*let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
+                        array.push(pixel.ln());*/
+                        array.push(tmp);
                         mask.push(255)
                     } else {
                         array.push(0.0);
@@ -6494,7 +6494,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 /* set compression mode and parameters */
                 /*let tolerance = 1.0e-3;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
-                let precision = 16;
+                let precision = 14;
                 unsafe { zfp_stream_set_precision(zfp, precision) };
 
                 //use only half the number of CPUs

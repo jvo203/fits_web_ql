@@ -178,7 +178,7 @@ export void make_image_spectrumF32_2_F16(uniform float src[], uniform unsigned i
     {
       bool nan = (src_mask[j] == 0) ? true : false ;
       float tmp = src[j] ;
-      tmp = frame_min + (exp(tmp) - 0.5f) * (frame_max - frame_min);
+      //tmp = frame_min + (exp(tmp) - 0.5f) * (frame_max - frame_min);
 
       //transform tmp, set it to NaN if nan      
       int iflt_nan = 0x7ff80000; // quiet NaN             
