@@ -223,6 +223,9 @@ target/release/fits_web_ql --port 8000 --interface 0.0.0.0 --home /a/path/to/you
 
 # How to Accelerate FITSWebQL
 
+##
+<i>FITSCACHE placement</i>
+
 A hint how to speed-up FITSWebQL when using SSDs. It it best to clone fits_web_ql onto a directory residing on the fastest storage medium you have (ideally NVME SSD). Inside fits_web_ql there is an internal FITSCACHE directory where the program caches half-float-converted FITS files (applicable only to bitpix = -32).
 
 The first time a FITS file is accessed it will be read from its original location (ideally from a fast NVME SSD). The second time somebody accesses that same FITS file, fits_web_ql will read the FITS header from the original location and then proceed to load half-float binary cache from the FITSCACHE directory.
@@ -230,3 +233,10 @@ The first time a FITS file is accessed it will be read from its original locatio
 So even if your large FITS files reside on a fast SSD, if fits_web_ql itself is located on a slow HDD second-time loads of FITS files will appear slow compared with first-time accesses.
 
 One can also experiment with symbolic links to a separate FITSCACHE directory residing on a fast storage medium.
+
+##
+<i>enable the "zfp" feature</i>
+
+i.e. cargo run --features 'zfp' --release
+
+This experimental feature replaces the half-float storage with ZFP compression (https://github.com/LLNL/zfp), which speeds-up second-time loads on multi-core systems. The HDD/SSD cache storage uses zfp 2d arrays instead of half-floats, which are converted to a half-float RAM storage upon loading. Decompressing data is very CPU intensive, hence this feature is only recommended if your server contains a sufficient number of CPU cores (>=32). Otherwise speed savings from reading smaller file sizes will be eaten-up by increased CPU times of decompressing the data.

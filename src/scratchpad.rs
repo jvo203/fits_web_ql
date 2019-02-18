@@ -1591,5 +1591,3 @@ export LIBCLANG_PATH=/opt/llvm-3.9.0/lib64
             Err(err) => println!("error serializing a FITSImage structure: {}", err),
         }
     }
-
-    Work is under way to replace the half-float storage with ZFP compression (https://github.com/LLNL/zfp), which should speed-up second-time loads by up to an order of magnitude.
