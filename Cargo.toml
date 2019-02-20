@@ -68,7 +68,7 @@ flate2 = "*"
 ispc = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
-zfp-sys = {version = "*", optional = true}#features = ["cuda"]
+zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
 
 #rulinalg = "*"
 #linearkalman = "*"

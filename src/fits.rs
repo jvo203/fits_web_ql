@@ -139,6 +139,7 @@ fn zfp_decompress_float_array2d(
     //precision: u32,
     rate: f64,
 ) -> Result<Vec<f32>, String> {
+    let _start = precise_time::precise_time_ns();
     let mut res = true;
     let mut array: Vec<f32> = vec![0.0; nx * ny];
 
@@ -157,15 +158,19 @@ fn zfp_decompress_float_array2d(
     let zfp = unsafe { zfp_stream_open(std::ptr::null_mut() as *mut bitstream) };
 
     /* set compression mode and parameters */
-    unsafe { zfp_stream_set_rate(zfp, rate, data_type, 2, 1) };
+    unsafe { zfp_stream_set_rate(zfp, rate, data_type, 2, 0) };
     /*let tolerance = 1.0e-3;
     unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
     /*unsafe { zfp_stream_set_precision(zfp, precision) };*/
 
     #[cfg(feature = "cuda")]
-    unsafe {
-        zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_cuda)
-    };
+    {
+        let ret = unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_cuda) };
+
+        if ret == 0 {
+            println!("failed to set the execution policy to zfp_exec_cuda");
+        }
+    }
 
     let bufsize = buffer.len();
     /* associate bit stream with a compressed buffer */
@@ -194,6 +199,17 @@ fn zfp_decompress_float_array2d(
     }
 
     if res {
+        /*let _stop = precise_time::precise_time_ns();
+        let time_s = ((_stop - _start) as f32) / 1000000000.0;
+        let total_size = nx * ny * std::mem::size_of::<f32>();
+        let speed = (total_size as f32 / 1024.0 / 1024.0) / time_s;
+
+        println!(
+            "[zfp_decompress_float_array2d] elapsed time: {} [ms], speed {}MB/s",
+            (_stop - _start) / 1000000,
+            speed
+        );*/
+
         Ok(array)
     } else {
         Err("failed to decompress a zfp array".to_string())
@@ -751,10 +767,12 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
-        //let num_threads = num::clamp(num_cpus::get(), 1, 16);
+        //set an upper bound as there are not enough memory channels anyway
+        let num_threads = num::clamp(num_cpus::get(), 1, 16);
         //let num_threads = (num_cpus::get() / 2).max(1);
         //use all the threads available
-        let num_threads = num_cpus::get();
+        //let num_threads = num_cpus::get();
+        //let num_threads = 1;
 
         let pool = match rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
@@ -6501,7 +6519,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                 /* set compression mode and parameters */
                 let rate: f64 = 8.0;
-                unsafe { zfp_stream_set_rate(zfp, rate, data_type, 2, 1) };
+                unsafe { zfp_stream_set_rate(zfp, rate, data_type, 2, 0) };
                 /*let tolerance = 1.0e-3;
                 unsafe { zfp_stream_set_accuracy(zfp, tolerance) };*/
                 /*let precision = 11; //was 14; 10 is not enough, 11 bits is borderline
@@ -6516,9 +6534,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
 
                 #[cfg(feature = "cuda")]
-                unsafe {
-                    zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_cuda)
-                };
+                {
+                    let ret =
+                        unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_cuda) };
+
+                    if ret == 0 {
+                        println!("failed to set the execution policy to zfp_exec_cuda");
+                    }
+                }
 
                 /* allocate buffer for compressed data */
                 let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
