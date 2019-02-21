@@ -768,7 +768,7 @@ impl FITS {
         let start = precise_time::precise_time_ns();
 
         //set an upper bound as there are not enough memory channels anyway
-        let num_threads = num::clamp(num_cpus::get(), 1, 16);
+        let num_threads = num::clamp(num_cpus::get(), 1, 32);
         //let num_threads = (num_cpus::get() / 2).max(1);
         //use all the threads available
         //let num_threads = num_cpus::get();
@@ -6525,11 +6525,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 /*let precision = 11; //was 14; 10 is not enough, 11 bits is borderline
                 unsafe { zfp_stream_set_precision(zfp, precision) };*/
 
-                //use only half the number of CPUs
+                //use only half the number of CPUs in OpenMP
                 #[cfg(not(feature = "cuda"))]
                 {
-                    let num_threads = (num_cpus::get() / 2).max(1);
-                    unsafe { zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp) };
+                    let num_threads = (num_cpus::get() / 2).max(1);                    
+                    //no need to call zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp)
                     unsafe { zfp_stream_set_omp_threads(zfp, num_threads as u32) };
                 }
 
