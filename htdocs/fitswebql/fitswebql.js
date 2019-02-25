@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-25.2";
+	return "JS2019-02-25.3";
 }
 
 const wasm_supported = (() => {
@@ -3943,12 +3943,12 @@ function display_dataset_info() {
 	var range = get_axes_range(width, height);
 
 	svg.append("text")
-		.attr("x", emFontSize / 5 /*width / 2*/)
+		.attr("x", emFontSize / 4 /*width / 2*/)
 		//.attr("y", 0.67 * range.yMin)
-		.attr("y", 0.8 * range.yMin)
+		.attr("y", 0.70 * range.yMin)
 		.attr("font-family", "Helvetica")
 		.attr("font-weight", "normal")
-		.attr("font-style", "italic")
+		//.attr("font-style", "italic")
 		.attr("font-size", 0.75 * range.yMin)
 		//.attr("text-anchor", "middle")
 		.attr("stroke", "none")
@@ -3971,7 +3971,7 @@ function display_dataset_info() {
 		.attr("width", (width))
 		.attr("height", (range.yMin - 2 * emStrokeWidth))
 		.attr("fill", "transparent")
-		.attr("opacity", 0.25)
+		.attr("opacity", 0.1)//was 0.7
 		.attr("stroke", strokeColour)//strokeColour or "transparent"
 		.style("stroke-dasharray", ("1, 5"))
 		.on("mouseenter", function () {
@@ -9863,7 +9863,7 @@ function change_intensity_threshold(refresh) {
 
 function hide_navigation_bar() {
 	document.getElementById('menu').style.display = "none";
-	d3.select("#menu_activation_area").attr("opacity", 0.7);
+	d3.select("#menu_activation_area").attr("opacity", 0.1);//was 0.7
 }
 
 function display_menu() {
