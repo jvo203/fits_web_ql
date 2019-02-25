@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-25.1";
+	return "JS2019-02-25.2";
 }
 
 const wasm_supported = (() => {
@@ -3948,13 +3948,14 @@ function display_dataset_info() {
 		.attr("y", 0.8 * range.yMin)
 		.attr("font-family", "Helvetica")
 		.attr("font-weight", "normal")
-		//.attr("font-style", "italic")
+		.attr("font-style", "italic")
 		.attr("font-size", 0.75 * range.yMin)
 		//.attr("text-anchor", "middle")
 		.attr("stroke", "none")
 		.attr("opacity", 0.5)//0.25
 		//.text("☰ SETTINGS");
-		.text("⚙");
+		//.text("⚙");
+		.text("☰");
 
 	let strokeColour = 'white';
 
@@ -3970,7 +3971,7 @@ function display_dataset_info() {
 		.attr("width", (width))
 		.attr("height", (range.yMin - 2 * emStrokeWidth))
 		.attr("fill", "transparent")
-		.attr("opacity", 0.7)
+		.attr("opacity", 0.25)
 		.attr("stroke", strokeColour)//strokeColour or "transparent"
 		.style("stroke-dasharray", ("1, 5"))
 		.on("mouseenter", function () {
