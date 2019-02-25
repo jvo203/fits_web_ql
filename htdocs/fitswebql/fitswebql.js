@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-25.0";
+	return "JS2019-02-25.1";
 }
 
 const wasm_supported = (() => {
@@ -3945,7 +3945,7 @@ function display_dataset_info() {
 	svg.append("text")
 		.attr("x", emFontSize / 5 /*width / 2*/)
 		//.attr("y", 0.67 * range.yMin)
-		.attr("y", 0.75 * range.yMin)
+		.attr("y", 0.8 * range.yMin)
 		.attr("font-family", "Helvetica")
 		.attr("font-weight", "normal")
 		//.attr("font-style", "italic")
@@ -3964,9 +3964,10 @@ function display_dataset_info() {
 	//add a menu activation area
 	svg.append("rect")
 		.attr("id", "menu_activation_area")
-		.attr("x", emStrokeWidth)
-		.attr("y", emStrokeWidth)
-		.attr("width", (width - 2 * emStrokeWidth))
+		.attr("x", 0/*emStrokeWidth*/)
+		.attr("y", emStrokeWidth - 1)
+		//.attr("width", (width - 2 * emStrokeWidth))
+		.attr("width", (width))
 		.attr("height", (range.yMin - 2 * emStrokeWidth))
 		.attr("fill", "transparent")
 		.attr("opacity", 0.7)
