@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-09.0";
+	return "JS2019-02-25.0";
 }
 
 const wasm_supported = (() => {
@@ -3943,16 +3943,18 @@ function display_dataset_info() {
 	var range = get_axes_range(width, height);
 
 	svg.append("text")
-		.attr("x", width / 2)
-		.attr("y", 0.67 * range.yMin)
+		.attr("x", emFontSize / 5 /*width / 2*/)
+		//.attr("y", 0.67 * range.yMin)
+		.attr("y", 0.75 * range.yMin)
 		.attr("font-family", "Helvetica")
 		.attr("font-weight", "normal")
-		.attr("font-style", "italic")
+		//.attr("font-style", "italic")
 		.attr("font-size", 0.75 * range.yMin)
-		.attr("text-anchor", "middle")
+		//.attr("text-anchor", "middle")
 		.attr("stroke", "none")
-		.attr("opacity", 0.25)
-		.text("☰ SETTINGS");
+		.attr("opacity", 0.5)//0.25
+		//.text("☰ SETTINGS");
+		.text("⚙");
 
 	let strokeColour = 'white';
 
@@ -3968,7 +3970,7 @@ function display_dataset_info() {
 		.attr("height", (range.yMin - 2 * emStrokeWidth))
 		.attr("fill", "transparent")
 		.attr("opacity", 0.7)
-		.attr("stroke", "transparent")//strokeColour)
+		.attr("stroke", strokeColour)//strokeColour or "transparent"
 		.style("stroke-dasharray", ("1, 5"))
 		.on("mouseenter", function () {
 			d3.select(this).attr("opacity", 0);
@@ -12219,14 +12221,8 @@ async*/ function mainRenderer() {
 		var group = div.append("g")
 			.attr("id", "welcomeGroup");
 
-		if (!isLocal) {
-			group.append("h1")
-				.text("FITSWebQL SERVER");
-		}
-		else {
-			group.append("h1")
-				.text("FITSWebQL PE");
-		}
+		group.append("h1")
+			.text("FITSWebQL");
 
 		group.append("p")
 			.text(votable.getAttribute('data-server-version') + "/" + get_js_version());
