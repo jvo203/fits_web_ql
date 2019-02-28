@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-02-25.3";
+	return "JS2019-02-28.0";
 }
 
 const wasm_supported = (() => {
@@ -2417,7 +2417,7 @@ function CD_matrix(X, Y) {
 	return newradec;
 }
 
-function x2ra(x) {
+function x2hms(x) {
 	let fitsData = fitsContainer[va_count - 1];
 
 	if (fitsData == null)
@@ -2429,7 +2429,7 @@ function x2ra(x) {
 		throw "CDELT1 is not available";
 };
 
-function x2glon(x) {
+function x2dms(x) {
 	let fitsData = fitsContainer[va_count - 1];
 
 	if (fitsData == null)
@@ -2441,7 +2441,7 @@ function x2glon(x) {
 		throw "CDELT1 is not available";
 };
 
-function y2dec(y) {
+function y2dms(y) {
 	let fitsData = fitsContainer[va_count - 1];
 
 	if (fitsData == null)
@@ -2607,7 +2607,7 @@ function display_gridlines() {
 	if (fitsData == null)
 		return;
 
-	if (fitsData.CTYPE1.indexOf("RA") < 0 && fitsData.CTYPE1.indexOf("GLON")) {
+	if (fitsData.CTYPE1.indexOf("RA") < 0 && fitsData.CTYPE1.indexOf("GLON") < 0 && fitsData.CTYPE1.indexOf("ELON") < 0) {
 		d3.select("#displayGridlines")
 			.style("font-style", "italic")
 			.style('cursor', 'not-allowed')
@@ -2616,7 +2616,7 @@ function display_gridlines() {
 		return;
 	}
 
-	if (fitsData.CTYPE2.indexOf("DEC") < 0 && fitsData.CTYPE2.indexOf("GLAT") < 0) {
+	if (fitsData.CTYPE2.indexOf("DEC") < 0 && fitsData.CTYPE2.indexOf("GLAT") < 0 && fitsData.CTYPE2.indexOf("ELAT") < 0) {
 		d3.select("#displayGridlines")
 			.style("font-style", "italic")
 			.style('cursor', 'not-allowed')
@@ -2683,10 +2683,10 @@ function display_gridlines() {
 
 				try {
 					if (fitsData.CTYPE1.indexOf("RA") > -1)
-						return x2ra(orig_x);
+						return x2hms(orig_x);
 
-					if (fitsData.CTYPE1.indexOf("GLON") > -1)
-						return x2glon(orig_x);
+					if (fitsData.CTYPE1.indexOf("GLON") > -1 || fitsData.CTYPE1.indexOf("ELON") > -1)
+						return x2dms(orig_x);
 				}
 				catch (err) {
 					console.log(err);
@@ -2727,10 +2727,10 @@ function display_gridlines() {
 
 				try {
 					if (fitsData.CTYPE1.indexOf("RA") > -1)
-						return x2ra(orig_x);
+						return x2hms(orig_x);
 
-					if (fitsData.CTYPE1.indexOf("GLON") > -1)
-						return x2glon(orig_x);
+					if (fitsData.CTYPE1.indexOf("GLON") > -1 || fitsData.CTYPE1.indexOf("ELON") > -1)
+						return x2dms(orig_x);
 				}
 				catch (err) {
 					console.log(err);
@@ -2772,7 +2772,7 @@ function display_gridlines() {
 				var orig_y = tmp * fitsData.height / imageCanvas.height;
 
 				try {
-					return y2dec(orig_y);
+					return y2dms(orig_y);
 				}
 				catch (err) {
 					console.log(err);
@@ -2812,7 +2812,7 @@ function display_gridlines() {
 				var orig_y = tmp * fitsData.height / imageCanvas.height;
 
 				try {
-					return y2dec(orig_y);
+					return y2dms(orig_y);
 				}
 				catch (err) {
 					console.log(err);
@@ -2874,7 +2874,7 @@ function display_cd_gridlines() {
 		if (isNaN(gridScale[i]))
 			throw "CD matrix is not available";
 
-	if (fitsData.CTYPE1.indexOf("RA") < 0 && fitsData.CTYPE1.indexOf("GLON")) {
+	if (fitsData.CTYPE1.indexOf("RA") < 0 && fitsData.CTYPE1.indexOf("GLON") < 0 && fitsData.CTYPE1.indexOf("ELON") < 0) {
 		d3.select("#displayGridlines")
 			.style("font-style", "italic")
 			.style('cursor', 'not-allowed')
@@ -2883,7 +2883,7 @@ function display_cd_gridlines() {
 		return;
 	}
 
-	if (fitsData.CTYPE2.indexOf("DEC") < 0 && fitsData.CTYPE2.indexOf("GLAT") < 0) {
+	if (fitsData.CTYPE2.indexOf("DEC") < 0 && fitsData.CTYPE2.indexOf("GLAT") < 0 && fitsData.CTYPE2.indexOf("ELAT") < 0) {
 		d3.select("#displayGridlines")
 			.style("font-style", "italic")
 			.style('cursor', 'not-allowed')
@@ -2962,7 +2962,7 @@ function display_cd_gridlines() {
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
 					return RadiansPrintHMS(radec[0]);
 
-				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+				if (fitsData.CTYPE1.indexOf("GLON") > -1 || fitsData.CTYPE1.indexOf("ELON") > -1)
 					return RadiansPrintDMS(radec[0]);
 
 				return "";
@@ -3012,7 +3012,7 @@ function display_cd_gridlines() {
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
 					return RadiansPrintHMS(radec[0]);
 
-				if (fitsData.CTYPE1.indexOf("GLON") > -1)
+				if (fitsData.CTYPE1.indexOf("GLON") > -1 || fitsData.CTYPE1.indexOf("ELON") > -1)
 					return RadiansPrintDMS(radec[0]);
 
 				return "";
@@ -3061,7 +3061,7 @@ function display_cd_gridlines() {
 				//use the CD scale matrix
 				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
 
-				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1 || fitsData.CTYPE2.indexOf("ELAT") > -1)
 					return RadiansPrintDMS(radec[1]);
 				else return "";
 			});
@@ -3106,7 +3106,7 @@ function display_cd_gridlines() {
 				//use the CD scale matrix
 				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
 
-				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1 || fitsData.CTYPE2.indexOf("ELAT") > -1)
 					return RadiansPrintDMS(radec[1]);
 				else return "";
 			});
@@ -3514,10 +3514,10 @@ function display_dataset_info() {
 
 	xradec = new Array(null, null);
 
-	if (fitsData.CTYPE1.indexOf("RA") > -1 || fitsData.CTYPE1.indexOf("GLON") > -1)
+	if (fitsData.CTYPE1.indexOf("RA") > -1 || fitsData.CTYPE1.indexOf("GLON") > -1 || fitsData.CTYPE1.indexOf("ELON") > -1)
 		xradec[0] = (fitsData.CRVAL1 + (fitsData.width / 2 - fitsData.CRPIX1) * fitsData.CDELT1) / toDegrees;
 
-	if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
+	if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1 || fitsData.CTYPE2.indexOf("ELAT") > -1)
 		xradec[1] = (fitsData.CRVAL2 + (fitsData.height - fitsData.height / 2 - fitsData.CRPIX2) * fitsData.CDELT2) / toDegrees;
 
 	try {
@@ -3597,16 +3597,20 @@ function display_dataset_info() {
 	let raText = 'RA N/A';
 
 	if (fitsData.CTYPE1.indexOf("RA") > -1)
-		raText = RadiansPrintHMS(xradec[0]);
+		raText = 'α:' + RadiansPrintHMS(xradec[0]);
 
 	if (fitsData.CTYPE1.indexOf("GLON") > -1)
-		raText = RadiansPrintDMS(xradec[0]);
+		raText = 'l:' + RadiansPrintDMS(xradec[0]);
+
+	if (fitsData.CTYPE1.indexOf("ELON") > -1)
+		raText = 'λ:' + RadiansPrintDMS(xradec[0]);
 
 	group.append("text")
 		.attr("id", "ra")
 		.attr("x", width)
 		.attr("y", 8.5 * emFontSize)//8.5 7.5
 		.attr("font-family", "Inconsolata")
+		//.attr("font-style", "italic")
 		.attr("font-size", "1.5em")
 		.attr("text-anchor", "end")
 		.attr("stroke", "none")
@@ -3614,15 +3618,27 @@ function display_dataset_info() {
 		.append("svg:title")
 		.text(fitsData.CTYPE1.trim());
 
+	let decText = 'DEC N/A';
+
+	if (fitsData.CTYPE2.indexOf("DEC") > -1)
+		decText = 'δ:' + RadiansPrintDMS(xradec[1]);
+
+	if (fitsData.CTYPE2.indexOf("GLAT") > -1)
+		decText = 'b:' + RadiansPrintDMS(xradec[1]);
+
+	if (fitsData.CTYPE2.indexOf("ELAT") > -1)
+		decText = 'β:' + RadiansPrintDMS(xradec[1]);
+
 	group.append("text")
 		.attr("id", "dec")
 		.attr("x", width)
 		.attr("y", 10 * emFontSize)//10 8.75
 		.attr("font-family", "Inconsolata")
+		//.attr("font-style", "italic")
 		.attr("font-size", "1.5em")
 		.attr("text-anchor", "end")
 		.attr("stroke", "none")
-		.text(RadiansPrintDMS(xradec[1]))
+		.text(decText)
 		.append("svg:title")
 		.text(fitsData.CTYPE2.trim());
 
@@ -3631,6 +3647,7 @@ function display_dataset_info() {
 		.attr("x", width)
 		.attr("y", 11.5 * emFontSize)//11.5 10
 		.attr("font-family", "Inconsolata")
+		//.attr("font-style", "italic")
 		.attr("font-size", "1.5em")
 		.attr("text-anchor", "end")
 		.attr("stroke", "none")
@@ -7843,13 +7860,29 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			if (xradec != null) {
 				let fitsData = fitsContainer[va_count - 1];
 
+				let raText = 'RA N/A';
+				let decText = 'DEC N/A';
+
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
-					d3.select("#ra").text(RadiansPrintHMS(xradec[0]));
+					raText = 'α:' + RadiansPrintHMS(xradec[0]);
 
 				if (fitsData.CTYPE1.indexOf("GLON") > -1)
-					d3.select("#ra").text(RadiansPrintDMS(xradec[0]));
+					raText = 'l:' + RadiansPrintDMS(xradec[0]);
 
-				d3.select("#dec").text(RadiansPrintDMS(xradec[1]));
+				if (fitsData.CTYPE1.indexOf("ELON") > -1)
+					raText = 'λ:' + RadiansPrintDMS(xradec[0]);
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1)
+					decText = 'δ:' + RadiansPrintDMS(xradec[1]);
+
+				if (fitsData.CTYPE2.indexOf("GLAT") > -1)
+					decText = 'b:' + RadiansPrintDMS(xradec[1]);
+
+				if (fitsData.CTYPE2.indexOf("ELAT") > -1)
+					decText = 'β:' + RadiansPrintDMS(xradec[1]);
+
+				d3.select("#ra").text(raText);
+				d3.select("#dec").text(decText);
 			}
 		})
 		.on("mousemove", function () {
@@ -7914,27 +7947,57 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			var orig_y = y * fitsData.height / imageCanvas.height;
 
 			try {
+				let raText = 'RA N/A';
+				let decText = 'DEC N/A';
+
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
-					d3.select("#ra").text(x2ra(orig_x));
+					raText = 'α:' + RadiansPrintHMS(x2hms(orig_x));
 
 				if (fitsData.CTYPE1.indexOf("GLON") > -1)
-					d3.select("#ra").text(x2glon(orig_x));
+					raText = 'l:' + RadiansPrintDMS(x2dms(orig_x));
 
-				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
-					d3.select("#dec").text(y2dec(orig_y));
+				if (fitsData.CTYPE1.indexOf("ELON") > -1)
+					raText = 'λ:' + RadiansPrintDMS(x2dms(orig_x));
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1)
+					decText = 'δ:' + RadiansPrintDMS(y2dms(orig_y));
+
+				if (fitsData.CTYPE2.indexOf("GLAT") > -1)
+					decText = 'b:' + RadiansPrintDMS(y2dms(orig_y));
+
+				if (fitsData.CTYPE2.indexOf("ELAT") > -1)
+					decText = 'β:' + RadiansPrintDMS(y2dms(orig_y));
+
+				d3.select("#ra").text(raText);
+				d3.select("#dec").text(decText);
 			}
 			catch (err) {
 				//use the CD scale matrix
 				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
 
+				let raText = 'RA N/A';
+				let decText = 'DEC N/A';
+
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
-					d3.select("#ra").text(RadiansPrintHMS(radec[0]));
+					raText = 'α:' + RadiansPrintHMS(radec[0]);
 
 				if (fitsData.CTYPE1.indexOf("GLON") > -1)
-					d3.select("#ra").text(RadiansPrintDMS(radec[0]));
+					raText = 'l:' + RadiansPrintDMS(radec[0]);
 
-				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
-					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
+				if (fitsData.CTYPE1.indexOf("ELON") > -1)
+					raText = 'λ:' + RadiansPrintDMS(radec[0]);
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1)
+					decText = 'δ:' + RadiansPrintDMS(radec[1]);
+
+				if (fitsData.CTYPE2.indexOf("GLAT") > -1)
+					decText = 'b:' + RadiansPrintDMS(radec[1]);
+
+				if (fitsData.CTYPE2.indexOf("ELAT") > -1)
+					decText = 'β:' + RadiansPrintDMS(radec[1]);
+
+				d3.select("#ra").text(raText);
+				d3.select("#dec").text(decText);
 			}
 		});
 
@@ -8232,13 +8295,29 @@ function setup_image_selection() {
 			if (xradec != null) {
 				let fitsData = fitsContainer[va_count - 1];
 
+				let raText = 'RA N/A';
+				let decText = 'DEC N/A';
+
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
-					d3.select("#ra").text(RadiansPrintHMS(xradec[0]));
+					raText = 'α:' + RadiansPrintHMS(xradec[0]);
 
 				if (fitsData.CTYPE1.indexOf("GLON") > -1)
-					d3.select("#ra").text(RadiansPrintDMS(xradec[0]));
+					raText = 'l:' + RadiansPrintDMS(xradec[0]);
 
-				d3.select("#dec").text(RadiansPrintDMS(xradec[1]));
+				if (fitsData.CTYPE1.indexOf("ELON") > -1)
+					raText = 'λ:' + RadiansPrintDMS(xradec[0]);
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1)
+					decText = 'δ:' + RadiansPrintDMS(xradec[1]);
+
+				if (fitsData.CTYPE2.indexOf("GLAT") > -1)
+					decText = 'b:' + RadiansPrintDMS(xradec[1]);
+
+				if (fitsData.CTYPE2.indexOf("ELAT") > -1)
+					decText = 'β:' + RadiansPrintDMS(xradec[1]);
+
+				d3.select("#ra").text(raText);
+				d3.select("#dec").text(decText);
 			}
 
 			if (mousedown)
@@ -8348,27 +8427,57 @@ function setup_image_selection() {
 			var orig_y = y * fitsData.height / imageCanvas.height;
 
 			try {
+				let raText = 'RA N/A';
+				let decText = 'DEC N/A';
+
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
-					d3.select("#ra").text(x2ra(orig_x));
+					raText = 'α:' + x2hms(orig_x);
 
 				if (fitsData.CTYPE1.indexOf("GLON") > -1)
-					d3.select("#ra").text(x2glon(orig_x));
+					raText = 'l:' + x2dms(orig_x);
 
-				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
-					d3.select("#dec").text(y2dec(orig_y));
+				if (fitsData.CTYPE1.indexOf("ELON") > -1)
+					raText = 'λ:' + x2dms(orig_x);
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1)
+					decText = 'δ:' + y2dms(orig_y);
+
+				if (fitsData.CTYPE2.indexOf("GLAT") > -1)
+					decText = 'b:' + y2dms(orig_y);
+
+				if (fitsData.CTYPE2.indexOf("ELAT") > -1)
+					decText = 'β:' + y2dms(orig_y);
+
+				d3.select("#ra").text(raText);
+				d3.select("#dec").text(decText);
 			}
 			catch (err) {
 				//use the CD scale matrix
 				let radec = CD_matrix(orig_x, fitsData.height - orig_y);
 
+				let raText = 'RA N/A';
+				let decText = 'DEC N/A';
+
 				if (fitsData.CTYPE1.indexOf("RA") > -1)
-					d3.select("#ra").text(RadiansPrintHMS(radec[0]));
+					raText = 'α:' + RadiansPrintHMS(radec[0]);
 
 				if (fitsData.CTYPE1.indexOf("GLON") > -1)
-					d3.select("#ra").text(RadiansPrintDMS(radec[0]));
+					raText = 'l:' + RadiansPrintDMS(radec[0]);
 
-				if (fitsData.CTYPE2.indexOf("DEC") > -1 || fitsData.CTYPE2.indexOf("GLAT") > -1)
-					d3.select("#dec").text(RadiansPrintDMS(radec[1]));
+				if (fitsData.CTYPE1.indexOf("ELON") > -1)
+					raText = 'λ:' + RadiansPrintDMS(radec[0]);
+
+				if (fitsData.CTYPE2.indexOf("DEC") > -1)
+					decText = 'δ:' + RadiansPrintDMS(radec[1]);
+
+				if (fitsData.CTYPE2.indexOf("GLAT") > -1)
+					decText = 'b:' + RadiansPrintDMS(radec[1]);
+
+				if (fitsData.CTYPE2.indexOf("ELAT") > -1)
+					decText = 'β:' + RadiansPrintDMS(radec[1]);
+
+				d3.select("#ra").text(raText);
+				d3.select("#dec").text(decText);
 			}
 
 			//for each image
