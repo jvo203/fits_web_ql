@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-01.0";
+	return "JS2019-03-01.1";
 }
 
 const wasm_supported = (() => {
@@ -4500,6 +4500,13 @@ function change_coords_fmt() {
 				raText = 'α: ' + RadiansPrintHMS(xradec[0]);
 
 			d3.select("#ra").text(raText);
+
+			try {
+				display_cd_gridlines();
+			}
+			catch (err) {
+				display_gridlines();
+			};
 		}
 	}
 }
