@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-01.1";
+	return "JS2019-03-04.0";
 }
 
 const wasm_supported = (() => {
@@ -2767,7 +2767,7 @@ function display_gridlines() {
 	}
 
 	// Add the Y Axis
-	if (!composite_view) {
+	/*if (!composite_view) {
 		var yAxis = d3.axisRight(y)
 			.tickSize(width)
 			.tickFormat(function (d) {
@@ -2807,7 +2807,7 @@ function display_gridlines() {
 			//.attr("transform", "rotate(-45)")
 			.style("text-anchor", "end");//was end, dx -.35, dy 0
 	}
-	else {
+	else*/ {
 		var yAxis = d3.axisLeft(y)
 			.tickSize(width)
 			.tickFormat(function (d) {
@@ -3054,7 +3054,7 @@ function display_cd_gridlines() {
 	}
 
 	// Add the Y Axis
-	if (!composite_view) {
+	/*if (!composite_view) {
 		var yAxis = d3.axisRight(y)
 			.tickSize(width)
 			.tickFormat(function (d) {
@@ -3099,7 +3099,7 @@ function display_cd_gridlines() {
 			//.attr("dy", "-0.35em")
 			.style("text-anchor", "end");//was end, dx -.35, dy 0
 	}
-	else {
+	else*/ {
 		var yAxis = d3.axisLeft(y)
 			.tickSize(width)
 			.tickFormat(function (d) {
@@ -11445,7 +11445,7 @@ function display_legend() {
 	for (var i = 0; i < divisions; i++)
 		newData.push(min_pixel + (max_pixel - min_pixel) * i / (divisions - 1));
 
-	var x = Math.max(0.05 * width, (width + img_width) / 2 + 0.5 * rectWidth);
+	var x = Math.max(0.05 * width, (width - img_width) / 2 - 1.5 * rectWidth);
 
 	var group = svg.append("g")
 		.attr("id", "legend")
@@ -11502,7 +11502,7 @@ function display_legend() {
 		.attr("class", "colouraxis")
 		.attr("id", "legendaxis")
 		.style("stroke-width", emStrokeWidth)
-		.attr("transform", "translate(" + ((width + img_width) / 2 + 1.5 * rectWidth) + "," + 0.1 * height + ")")
+		.attr("transform", "translate(" + ((width - img_width) / 2 - 1.5 * rectWidth) + "," + 0.1 * height + ")")
 		.call(colourAxis);
 
 	let fitsData = fitsContainer[va_count - 1];
@@ -11519,7 +11519,7 @@ function display_legend() {
 
 	group.append("text")
 		.attr("id", "colourlabel")
-		.attr("x", ((width + img_width) / 2 + 1.0 * rectWidth))
+		.attr("x", ((width - img_width) / 2 - 1.0 * rectWidth))
 		.attr("y", 0.9 * height + 1.5 * emFontSize)
 		.attr("font-family", "Inconsolata")
 		.attr("font-size", 1.25 * emFontSize)
