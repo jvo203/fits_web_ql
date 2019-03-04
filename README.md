@@ -189,7 +189,7 @@ target/release/fits_web_ql --port 8080 --interface 0.0.0.0 --home /a/path/to/you
 # How to Run the Production Server (only at the Japanese Virtual Observatory)
 cd into the fits_web_ql directory and execute
 
-cargo run --features 'jvo production cdn' --release
+cargo run --features 'jvo production cdn zfp' --release
 
 # extra features and options
 
@@ -201,7 +201,7 @@ cargo run --features 'cdn' --release -- --port 8000
 
 an alternative URL path (JVO-specific)
 
-cargo run --features 'jvo production cdn' --release -- --path fitswebql_v4
+cargo run --features 'jvo production cdn zfp' --release -- --path fitswebql_v4
 
 an alternative network interface (only needed to make the local version operate in a remote-server mode)
 
