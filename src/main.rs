@@ -2253,8 +2253,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.1.7";
-static VERSION_STRING: &'static str = "SV2019-03-04.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.1.8";
+static VERSION_STRING: &'static str = "SV2019-03-11.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2301,7 +2301,9 @@ fn stream_molecules(freq_start: f64, freq_end: f64) -> Option<mpsc::Receiver<Mol
                 )) {
                     Ok(mut stmt) => {
                         let molecule_iter = stmt
-                            .query_map(rusqlite::NO_PARAMS, |row| Molecule::from_sqlite_row(row))
+                            .query_map(rusqlite::NO_PARAMS, |row| {
+                                Ok(Molecule::from_sqlite_row(row))
+                            })
                             .unwrap();
 
                         for molecule in molecule_iter {
@@ -2345,7 +2347,9 @@ fn _fetch_molecules(freq_start: f64, freq_end: f64) -> String {
             )) {
                 Ok(mut stmt) => {
                     let molecule_iter = stmt
-                        .query_map(rusqlite::NO_PARAMS, |row| Molecule::from_sqlite_row(row))
+                        .query_map(rusqlite::NO_PARAMS, |row| {
+                            Ok(Molecule::from_sqlite_row(row))
+                        })
                         .unwrap();
 
                     for molecule in molecule_iter {

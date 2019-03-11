@@ -16,42 +16,42 @@ pub struct Molecule {
 impl Molecule {
     pub fn from_sqlite_row(row: &rusqlite::Row) -> Molecule {
         Molecule {
-            species: match row.get_checked(0) {
+            species: match row.get(0) {
                 Ok(x) => x,
                 Err(_) => String::from(""),
             },
 
-            name: match row.get_checked(1) {
+            name: match row.get(1) {
                 Ok(x) => x,
                 Err(_) => String::from(""),
             },
 
-            frequency: match row.get_checked(2) {
+            frequency: match row.get(2) {
                 Ok(x) => x,
                 Err(_) => 0.0,
             },
 
-            qn: match row.get_checked(3) {
+            qn: match row.get(3) {
                 Ok(x) => x,
                 Err(_) => String::from(""),
             },
 
-            cdms_intensity: match row.get_checked(4) {
+            cdms_intensity: match row.get(4) {
                 Ok(x) => x,
                 Err(_) => 0.0,
             },
 
-            lovas_intensity: match row.get_checked(5) {
+            lovas_intensity: match row.get(5) {
                 Ok(x) => x,
                 Err(_) => 0.0,
             },
 
-            e_l: match row.get_checked(6) {
+            e_l: match row.get(6) {
                 Ok(x) => x,
                 Err(_) => 0.0,
             },
 
-            linelist: match row.get_checked(7) {
+            linelist: match row.get(7) {
                 Ok(x) => x,
                 Err(_) => String::from(""),
             },

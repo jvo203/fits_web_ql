@@ -6528,7 +6528,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //use only half the number of CPUs in OpenMP
                 #[cfg(not(feature = "cuda"))]
                 {
-                    let num_threads = (num_cpus::get() / 2).max(1);                    
+                    let num_threads = (num_cpus::get() / 2).max(1);
                     //no need to call zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp)
                     unsafe { zfp_stream_set_omp_threads(zfp, num_threads as u32) };
                 }
