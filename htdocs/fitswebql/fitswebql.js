@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-18.0";
+	return "JS2019-03-18.1";
 }
 
 const wasm_supported = (() => {
@@ -10191,6 +10191,7 @@ function display_menu() {
 	//SPLATALOGUE
 	if (!optical_view) {
 		var splatMenu = mainUL.append("li")
+			.attr("id", "splatMenu")
 			.attr("class", "dropdown");
 
 		splatMenu.append("a")
@@ -10311,6 +10312,12 @@ function display_menu() {
 				display_molecules();
 			})
 			.html(htmlStr);
+
+		var elem = document.getElementById("splatMenu");
+		if (displayMolecules)
+			elem.style.display = "block";
+		else
+			elem.style.display = "none";
 	}
 
 	//VIEW
@@ -10477,6 +10484,12 @@ function display_menu() {
 					elem.attr("opacity", 1);
 				else
 					elem.attr("opacity", 0);
+
+				var elem = document.getElementById("splatMenu");
+				if (displayMolecules)
+					elem.style.display = "block";
+				else
+					elem.style.display = "none";
 			})
 			.html(htmlStr);
 
