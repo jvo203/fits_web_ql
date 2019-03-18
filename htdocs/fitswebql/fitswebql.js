@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-18.1";
+	return "JS2019-03-18.2";
 }
 
 const wasm_supported = (() => {
@@ -10335,7 +10335,7 @@ function display_menu() {
 
 	if (has_webgl) {
 		if (va_count == 1 || composite_view) {
-			var htmlStr = '<span class="glyphicon glyphicon-eye-open"></span> 3D surface';
+			var htmlStr = '<i class="material-icons">3d_rotation</i> 3D surface';
 			viewDropdown.append("li")
 				.append("a")
 				.style('cursor', 'pointer')

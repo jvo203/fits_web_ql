@@ -3714,6 +3714,10 @@ fn http_fits_response(
         "<link href=\"https://fonts.googleapis.com/css?family=Inconsolata\" rel=\"stylesheet\"/>\n",
     );
 
+    html.push_str(
+        "<link href=\"https://fonts.googleapis.com/css?family=Material+Icons\" rel=\"stylesheet\"/>\n",
+    );
+
     html.push_str("<script src=\"https://d3js.org/d3.v5.min.js\"></script>\n");
 
     #[cfg(not(feature = "cdn"))]
