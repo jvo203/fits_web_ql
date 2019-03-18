@@ -36,6 +36,12 @@ and placed inside the fits_web_ql directory
 # How to Build, Prerequisites
 First and foremost the Rust language version 1.31.0 or higher (Rust 2018 edition) must be installed:
 
+macOS:
+
+brew install rust
+
+other platforms:
+
 https://www.rust-lang.org/install.html
 
 ##
@@ -61,6 +67,12 @@ brew install cmake
 
 ##
 install a free open-source Intel SPMD Program Compiler (ispc)
+
+macOS:
+
+brew install ispc
+
+other platforms:
 
 https://ispc.github.io
 
