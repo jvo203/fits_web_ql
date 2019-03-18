@@ -1,7 +1,3 @@
-# IMPORTANT: Rust 2018 Edition Upgrade
-
-The codebase has been upgraded to Rust 2018. It requires Rust version 1.31.0 or higher. If you have an older version you can upgrade it by running "rustup update" in the command-line.
-
 # fits_web_ql
 A next-generation re-write of the C/C++ FITSWebQL in Rust. The previous C/C++ version can still be found here:
 
@@ -68,17 +64,13 @@ brew install cmake
 ##
 install a free open-source Intel SPMD Program Compiler (ispc)
 
-macOS:
-
-brew install ispc
-
-other platforms:
-
 https://ispc.github.io
 
 in the "Downloads" section select the binary corresponding to your platform
 
 then place the extracted executable "ispc" in your PATH (for example ~/bin/ or /usr/local/bin)
+
+P.S. on macOS "brew install ispc" installs a buggy ispc version that fails to execute (the error is: Undeclared symbol "__num_cores")
 
 ##
 install clang
