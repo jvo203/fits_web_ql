@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-18.2";
+	return "JS2019-03-20.0";
 }
 
 const wasm_supported = (() => {
@@ -7315,6 +7315,11 @@ function fits_subregion_end() {
     /*mousedown = false;
     d3.select("#zoom").attr("opacity", 1.0);*/
 	d3.select("#region").attr("opacity", 0.0);
+
+	if (end_x == begin_x || end_y == begin_y) {
+		console.log("an invalid partial download region");
+		return cancel_download();
+	}
 
 	if (displayDownloadConfirmation)
 		download_confirmation();
