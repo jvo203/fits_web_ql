@@ -6,7 +6,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 	<script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
 	<link rel="stylesheet" href="almawebql.css" />
@@ -19,6 +19,24 @@
 		<h1>WebQL TEST PAGE</h1>
 		<div class="panel panel-default">
 			<div class="panel-heading">
+				<h2>external URL</h2>
+			</div>
+			<div class="panel-body">
+				<div class="form-inline">
+
+					<div class="form-group">
+						<label for="url">URL:</label>
+						<input type="text" class="form-control" id="url" size="80"
+							value="https://fits.gsfc.nasa.gov/samples/WFPC2ASSNu5780205bx.fits">
+						<!-- ALMA01128274, ALMA01031054 -->
+					</div>
+
+					<button type="submit" class="btn btn-default" onclick="view_url()">Submit</button>
+				</div>
+			</div>
+		</div>
+		<div class="panel panel-default">
+			<div class="panel-heading">
 				<h2>ALMA</h2>
 			</div>
 			<div class="panel-body">
@@ -26,7 +44,8 @@
 
 					<div class="form-group">
 						<label for="datasetid">datasetId:</label>
-						<input type="text" class="form-control" id="datasetid" value="ALMA01084695"><!-- ALMA01128274, ALMA01031054 -->
+						<input type="text" class="form-control" id="datasetid" value="ALMA01084695">
+						<!-- ALMA01128274, ALMA01031054 -->
 					</div>
 
 					<div class="form-group">
@@ -40,7 +59,8 @@
 					</div>
 
 					<button type="submit" class="btn btn-default" onclick="view_alma()">Submit</button>
-					<button type="submit" class="btn btn-default pull-right" onclick="randomise_alma()">Random sample</button>
+					<button type="submit" class="btn btn-default pull-right" onclick="randomise_alma()">Random
+						sample</button>
 				</div>
 			</div>
 		</div>
@@ -114,7 +134,8 @@
 					<div class="form-group">
 						<div class="col-sm-10">
 							<div class="checkbox">
-								<label><input type="checkbox" id="hsc_composite"> RGB composite view (only valid for up to 3 entries)</label>
+								<label><input type="checkbox" id="hsc_composite"> RGB composite view (only valid for up
+									to 3 entries)</label>
 							</div>
 						</div>
 					</div>
@@ -181,7 +202,8 @@
 					<div class="form-group">
 						<div class="col-sm-offset-2 col-sm-10">
 							<div class="checkbox">
-								<label><input type="checkbox" id="composite"> RGB composite view (only valid for up to 3 entries)</label>
+								<label><input type="checkbox" id="composite"> RGB composite view (only valid for up to 3
+									entries)</label>
 							</div>
 						</div>
 					</div>

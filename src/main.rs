@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.10";
-static VERSION_STRING: &'static str = "SV2019-03-18.0";
+static VERSION_STRING: &'static str = "SV2019-03-25.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2645,6 +2645,15 @@ fn fitswebql_entry(
     #[cfg(feature = "jvo")]
     let dataset = "datasetId";
 
+    //download a FITS file from an external URL
+    match query.get("url") {
+        Some(x) => {
+            let dataset_id = Uuid::new_v3(&Uuid::NAMESPACE_URL, x.as_bytes());
+            println!("external URL: {}, uuid: {}", x, dataset_id);
+        }
+        None => {}
+    };
+
     let dataset_id = match query.get(dataset) {
         Some(x) => vec![x.as_str()],
         None => {
@@ -2781,7 +2790,7 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpRespons
         Some(x) => x,
         None => {
             return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"),
+                format!("<p><b>Critical Error</b>: get_image/datasetId parameter not found</p>"),
             )))
             .responder();
         }
@@ -2836,14 +2845,14 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpRespons
             else {
                 return result(Ok(HttpResponse::NotFound()
                     .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
+                    .body(format!("<p><b>Critical Error</b>: image not found</p>"))
                 )).responder();
             };
         }
         else {
             HttpResponse::NotFound()
                 .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
+                .body(format!("<p><b>Critical Error</b>: image not found</p>"))
         }
     }))
     .responder()
@@ -3575,6 +3584,8 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> (Option<std::path
 
     return (None, false);
 }
+
+fn external_fits(url: &str, dataset_id: &str, server: &Addr<server::SessionServer>) {}
 
 fn execute_fits(
     fitswebql_path: &String,

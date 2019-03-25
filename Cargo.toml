@@ -39,7 +39,7 @@ lazy_static = "*"
 scan_fmt = "*"
 bytes = "*"
 byteorder = "*"
-uuid = { version = "*", features = ["v4"] }
+uuid = { version = "*", features = ["v3", "v4"] }
 percent-encoding = "*"
 futures = "*"
 parking_lot = "*"

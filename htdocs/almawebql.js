@@ -30,6 +30,20 @@ function view_alma() {
         alert("no datasetId found !");
 }
 
+function view_url() {
+    var fits_url = document.getElementById("url").value.trim();    
+
+    if (fits_url != "") {
+        var url = null;
+
+        url = "/fitswebql/FITSWebQL.html?" + "url=" + encodeURIComponent(fits_url);
+
+        window.location.href = url;
+    }
+    else
+        alert("no FITS URL found !");
+}
+
 function view_hsc() {
     var dataId = document.getElementById("hsc_dataid").value.trim();
 
