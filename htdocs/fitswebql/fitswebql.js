@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-20.0";
+	return "JS2019-03-26.0";
 }
 
 const wasm_supported = (() => {
@@ -1385,7 +1385,7 @@ function process_progress_event(data, index) {
 			if (progress != previous_progress[index - 1]) {
 				previous_progress[index - 1] = progress;
 
-				PROGRESS_INFO = "[server] " + message + " " + progress + "%";
+				PROGRESS_INFO = "&nbsp;" + message + " " + progress + "%";
 
 				//console.log(PROGRESS_INFO) ;
 
@@ -2484,11 +2484,26 @@ function display_scale_info() {
 	var scale = imageCanvas.height / image_bounding_dims.height;
 
 	//scale
-	var gridScale = inverse_CD_matrix(10, 60);
+	var arcmins = 60;
+	var gridScale = inverse_CD_matrix(10, arcmins);
 
 	for (let i = 0; i < gridScale.length; i++)
 		if (isNaN(gridScale[i]))
 			throw "NaN gridScale";
+
+	if (Math.abs(gridScale[1]) * scale > 1) {
+		//reduce the scale
+		console.log("Vertical height:", Math.abs(gridScale[1]) * scale);
+
+		arcmins = 60;
+		gridScale = inverse_CD_matrix(10, arcmins);
+
+		for (let i = 0; i < gridScale.length; i++)
+			if (isNaN(gridScale[i]))
+				throw "NaN gridScale";
+
+		console.log("Reduced vertical height:", Math.abs(gridScale[1]) * scale);
+	}
 
 	var svg = d3.select("#BackgroundSVG");
 	var width = parseFloat(svg.attr("width"));
@@ -2520,7 +2535,7 @@ function display_scale_info() {
 		.style("fill", "none")
 		.attr("d", "M-5,-5 L5,0 L-5,5");
 
-	//vertical scale
+	//vertical scale	
 	var L = Math.abs(gridScale[1]) * scale * img_height;
 	var X = 1 * emFontSize;
 	if (composite_view)
@@ -2545,7 +2560,7 @@ function display_scale_info() {
 		.attr("font-size", "1.0em")
 		.attr("text-anchor", "middle")
 		.attr("stroke", "none")
-		.text("60\"");
+		.text(arcmins + "\"");
 
 	//N-E compass
 	var L = 3 * emFontSize;//*Math.sign(gridScale[0]) ;

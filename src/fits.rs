@@ -60,6 +60,11 @@ use rand::distributions::{Distribution, StandardNormal, Uniform};
 use curl::easy::Easy;
 
 #[cfg(feature = "jvo")]
+use libz_sys::*;
+#[cfg(feature = "jvo")]
+const CHUNK: usize = 0x40000;
+
+#[cfg(feature = "jvo")]
 use std::error::Error;
 
 use num;
@@ -1529,7 +1534,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     }
 
     #[cfg(feature = "jvo")]
-    fn from_url(
+    pub fn from_url(
         id: &String,
         flux: &String,
         is_optical: bool,
@@ -1569,6 +1574,37 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut total = 0;
         let mut cdelt3 = 0.0;
 
+        let mut is_compressed = false;
+        let mut compression_checked = false;
+
+        let total_in: usize = 0;
+        let offset_in: usize = 0;
+        let offset_out: usize = 0;
+        let mut out: [u8; CHUNK] = [0; CHUNK];
+        let windowBits = 15;
+        let ENABLE_ZLIB_GZIP = 32;
+
+        let msg = CString::new("").unwrap();
+        let mut state: libz_sys::internal_state = unsafe { mem::zeroed() };
+        let mut zstream = unsafe {
+            libz_sys::z_stream {
+                next_in: ptr::null_mut(),
+                avail_in: 0,
+                total_in: 0,
+                next_out: out.as_mut_ptr(),
+                avail_out: 0,
+                total_out: 0,
+                msg: msg.into_raw(),
+                state: &mut state,
+                zalloc: mem::uninitialized(),
+                zfree: mem::uninitialized(),
+                opaque: mem::uninitialized(),
+                data_type: 0,
+                adler: 0,
+                reserved: 0,
+            }
+        };
+
         {
             easy.url(url).unwrap();
             easy.progress(true).unwrap();
@@ -1587,7 +1623,38 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     };
 
-                    buffer.extend_from_slice(data);
+                    if !is_compressed {
+                        buffer.extend_from_slice(data);
+                    }
+
+                    if !compression_checked && buffer.len() >= 10 {
+                        print!(
+                            "buffer length: {}, checking for compression...",
+                            buffer.len()
+                        );
+                        //test for magick numbers and the deflate compression type
+                        if buffer[0] == 0x1f && buffer[1] == 0x8b && buffer[2] == 0x08 {
+                            is_compressed = true;
+                            println!("found.");
+
+                        //init the z_stream
+                        /*unsafe {
+                            match libz_sys::inflateInit2_(
+                                &mut zstream,
+                                windowBits | ENABLE_ZLIB_GZIP,
+                                libz_sys::zlibVersion(),
+                                std::mem::size_of::<libz_sys::z_stream>() as i32,
+                            ) {
+                                libz_sys::Z_OK => (),
+                                e => println!("Error initialising z_stream: {}", e),
+                            }
+                        }*/
+                        } else {
+                            println!("no compression found.");
+                        }
+
+                        compression_checked = true;
+                    }
 
                     //handle the header first
                     if !fits.has_header {
@@ -1643,17 +1710,31 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     } else {
                         //then the data part
                         if !fits.has_data {
+                            if fits.depth <= 1 {
+                                //kB downloaded progress
+                                fits.send_progress_notification(
+                                    &server,
+                                    &"downloading FITS".to_owned(),
+                                    (frame_size / 1024) as i32,
+                                    (buffer.len().min(frame_size) / 1024) as i32,
+                                );
+                            }
+
                             while buffer.len() >= frame_size && !fits.has_data {
                                 let data: Vec<u8> = buffer.drain(0..frame_size).collect();
 
                                 fits.process_cube_frame(&data, cdelt3 as f32, frame);
                                 frame = frame + 1;
-                                fits.send_progress_notification(
-                                    &server,
-                                    &"downloading FITS".to_owned(),
-                                    total as i32,
-                                    frame as i32,
-                                );
+
+                                if fits.depth > 1 {
+                                    //frame-by-frame progress
+                                    fits.send_progress_notification(
+                                        &server,
+                                        &"downloading FITS".to_owned(),
+                                        total as i32,
+                                        frame as i32,
+                                    );
+                                }
 
                                 if frame == fits.depth {
                                     //all data frames have been received

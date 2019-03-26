@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.10";
-static VERSION_STRING: &'static str = "SV2019-03-25.0";
+static VERSION_STRING: &'static str = "SV2019-03-26.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2646,13 +2646,23 @@ fn fitswebql_entry(
     let dataset = "datasetId";
 
     //download a FITS file from an external URL
-    match query.get("url") {
-        Some(x) => {
-            let dataset_id = Uuid::new_v3(&Uuid::NAMESPACE_URL, x.as_bytes());
-            println!("external URL: {}, uuid: {}", x, dataset_id);
-        }
-        None => {}
-    };
+    #[cfg(feature = "jvo")]
+    {
+        match query.get("url") {
+            Some(x) => {
+                let dataset_id = Uuid::new_v3(&Uuid::NAMESPACE_URL, x.as_bytes());
+                println!("external URL: {}, uuid: {}", x, dataset_id);
+                return result(Ok(external_fits(
+                    &fitswebql_path,
+                    x,
+                    &dataset_id.to_string(),
+                    &server,
+                )))
+                .responder();
+            }
+            None => {}
+        };
+    }
 
     let dataset_id = match query.get(dataset) {
         Some(x) => vec![x.as_str()],
@@ -2750,7 +2760,7 @@ fn fitswebql_entry(
 
     //server version
     #[cfg(feature = "jvo")]
-    return result(Ok(execute_fits(
+    return result(Ok(internal_fits(
         &fitswebql_path,
         &db,
         &table,
@@ -2766,7 +2776,7 @@ fn fitswebql_entry(
 
     //local (Personal Edition)
     #[cfg(not(feature = "jvo"))]
-    return result(Ok(execute_fits(
+    return result(Ok(internal_fits(
         &fitswebql_path,
         "",
         "",
@@ -3585,9 +3595,87 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> (Option<std::path
     return (None, false);
 }
 
-fn external_fits(url: &str, dataset_id: &str, server: &Addr<server::SessionServer>) {}
+#[cfg(feature = "jvo")]
+fn external_fits(
+    fitswebql_path: &String,
+    url: &str,
+    dataset_id: &str,
+    server: &Addr<server::SessionServer>,
+) -> HttpResponse {
+    let mut has_fits: bool = true;
 
-fn execute_fits(
+    //does the entry exist in the datasets hash map?
+    let has_entry = {
+        let datasets = DATASETS.read();
+        datasets.contains_key(dataset_id)
+    };
+
+    //if it does not exist set has_fits to false and load the FITS data
+    if !has_entry {
+        has_fits = false;
+
+        let my_url = url.to_string();
+        let my_data_id = dataset_id.to_string();
+        let my_server = server.clone();
+
+        DATASETS.write().insert(
+            my_data_id.clone(),
+            Arc::new(RwLock::new(Box::new(fits::FITS::new(
+                &my_data_id,
+                &"".to_owned(),
+            )))),
+        );
+
+        //load FITS data in a new thread
+        thread::spawn(move || {
+            /*println!("loading FITS data from {:?}", filepath);
+            let fits = fits::FITS::from_path(
+                &my_data_id.clone(),
+                &my_flux.clone(),
+                is_optical,
+                filepath.as_path(),
+                is_compressed,
+                &my_server,
+            ); */
+
+            let fits = fits::FITS::from_url(
+                &my_data_id.clone(),
+                &"".to_owned(),
+                false,
+                &my_url.clone(),
+                &my_server,
+            );
+
+            let fits = Arc::new(RwLock::new(Box::new(fits)));
+
+            DATASETS.write().insert(my_data_id.clone(), fits.clone());
+
+            if fits.read().has_data {
+                thread::spawn(move || {
+                    fits.read().make_data_histogram();
+                });
+            };
+        });
+    } else {
+        //update the timestamp
+        let datasets = DATASETS.read();
+        let dataset = datasets.get(dataset_id).unwrap().read();
+
+        has_fits = has_fits && dataset.has_data;
+        *dataset.timestamp.write() = SystemTime::now();
+    };
+
+    http_fits_response(&fitswebql_path, &vec![dataset_id], false, false, has_fits)
+
+    /*HttpResponse::NotFound()
+    .content_type("text/html")
+    .body(format!(
+        "<p><b>Critical Error</b>: URL: {}, uuid: {}</p>",
+        url, dataset_id
+    ))*/
+}
+
+fn internal_fits(
     fitswebql_path: &String,
     _db: &str,
     _table: &str,
