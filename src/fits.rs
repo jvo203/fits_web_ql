@@ -29,6 +29,7 @@ use rayon;
 use rayon::prelude::*;
 
 use flate2::read::GzDecoder;
+use flate2::write::GzDecoder as Decompressor;
 
 #[cfg(feature = "zfp")]
 use zfp_sys::*;
@@ -58,11 +59,6 @@ use rand::distributions::{Distribution, StandardNormal, Uniform};
 
 #[cfg(feature = "jvo")]
 use curl::easy::Easy;
-
-#[cfg(feature = "jvo")]
-use libz_sys::*;
-#[cfg(feature = "jvo")]
-const CHUNK: usize = 0x40000;
 
 #[cfg(feature = "jvo")]
 use std::error::Error;
@@ -1577,33 +1573,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut is_compressed = false;
         let mut compression_checked = false;
 
-        let total_in: usize = 0;
-        let offset_in: usize = 0;
-        let offset_out: usize = 0;
-        let mut out: [u8; CHUNK] = [0; CHUNK];
-        let windowBits = 15;
-        let ENABLE_ZLIB_GZIP = 32;
-
-        let msg = CString::new("").unwrap();
-        let mut state: libz_sys::internal_state = unsafe { mem::zeroed() };
-        let mut zstream = unsafe {
-            libz_sys::z_stream {
-                next_in: ptr::null_mut(),
-                avail_in: 0,
-                total_in: 0,
-                next_out: out.as_mut_ptr(),
-                avail_out: 0,
-                total_out: 0,
-                msg: msg.into_raw(),
-                state: &mut state,
-                zalloc: mem::uninitialized(),
-                zfree: mem::uninitialized(),
-                opaque: mem::uninitialized(),
-                data_type: 0,
-                adler: 0,
-                reserved: 0,
-            }
-        };
+        let out = Vec::new();
+        let mut decoder = Decompressor::new(out);
 
         {
             easy.url(url).unwrap();
@@ -1625,6 +1596,21 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     if !is_compressed {
                         buffer.extend_from_slice(data);
+                    } else {
+                        match decoder.write_all(&data) {
+                            Ok(_) => {
+                                decoder.flush().unwrap();
+                                let out = decoder.get_mut();
+                                let len = out.len();
+                                if len > 0 {
+                                    buffer.extend_from_slice(out);
+                                    out.drain(0..out.len());
+                                }
+                            }
+                            Err(err) => {
+                                println!("Decompress: {}", err);
+                            }
+                        }
                     }
 
                     if !compression_checked && buffer.len() >= 10 {
@@ -1637,18 +1623,22 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             is_compressed = true;
                             println!("found.");
 
-                        //init the z_stream
-                        /*unsafe {
-                            match libz_sys::inflateInit2_(
-                                &mut zstream,
-                                windowBits | ENABLE_ZLIB_GZIP,
-                                libz_sys::zlibVersion(),
-                                std::mem::size_of::<libz_sys::z_stream>() as i32,
-                            ) {
-                                libz_sys::Z_OK => (),
-                                e => println!("Error initialising z_stream: {}", e),
+                            //decompress the incoming data
+                            match decoder.write_all(&buffer) {
+                                Ok(_) => {
+                                    buffer.drain(0..buffer.len());
+                                    decoder.flush().unwrap();
+                                    let out = decoder.get_mut();
+                                    let len = out.len();
+                                    if len > 0 {
+                                        buffer.extend_from_slice(out);
+                                        out.drain(0..out.len());
+                                    }
+                                }
+                                Err(err) => {
+                                    println!("Decompress: {}", err);
+                                }
                             }
-                        }*/
                         } else {
                             println!("no compression found.");
                         }
@@ -1666,6 +1656,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             //parse a FITS header chunk
                             end = fits.parse_fits_header_chunk(&chunk);
                             header.extend_from_slice(&chunk);
+
+                            //try again, there may be an image extension
+                            if end && fits.naxis == 0 {
+                                header = Vec::new();
+                                end = false;
+                            }
 
                             if end {
                                 //test for frequency/velocity
