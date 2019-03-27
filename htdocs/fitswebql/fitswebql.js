@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-26.0";
+	return "JS2019-03-27.0";
 }
 
 const wasm_supported = (() => {
@@ -3575,9 +3575,9 @@ function display_dataset_info() {
 	var object = fitsData.OBJECT;
 	var filter = fitsData.FILTER.trim().toUpperCase();
 
-	if (object == '')
+	/*if (object == '')
 		object = 'OBJECT N/A';
-	else {
+	else*/ {
 		//object = object.replace('_' + filter, '');//filter names are inconsistent!!!
 
 		if (filter != "") {

@@ -21,6 +21,7 @@ use std::{mem, ptr};
 
 use bincode::serialize;
 use lz4_compress;
+use uuid::Uuid;
 
 use crate::server;
 use crate::UserParams;
@@ -373,11 +374,16 @@ struct FITSImage {
 
 impl FITS {
     pub fn new(id: &String, flux: &String) -> FITS {
+        let obj_name = match Uuid::parse_str(id) {
+            Ok(_) => String::from(""),
+            Err(_) => id.clone().replace(".fits", "").replace(".FITS", ""),
+        };
+
         let fits = FITS {
             dataset_id: id.clone(),
             data_id: format!("{}_00_00_00", id),
             filesize: 0,
-            obj_name: id.clone().replace(".fits", "").replace(".FITS", ""),
+            obj_name: obj_name,
             obs_date: String::from(""),
             timesys: String::from(""),
             specsys: String::from(""),
