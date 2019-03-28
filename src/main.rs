@@ -31,6 +31,7 @@ use chrono::Local;
 use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::fs::File;
+use std::io::Read;
 use std::io::Write;
 use std::sync::Arc;
 use std::thread;
@@ -2254,7 +2255,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.10";
-static VERSION_STRING: &'static str = "SV2019-03-28.0";
+static VERSION_STRING: &'static str = "SV2019-03-28.1";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -3628,23 +3629,56 @@ fn external_fits(
 
         //load FITS data in a new thread
         thread::spawn(move || {
-            /*println!("loading FITS data from {:?}", filepath);
-            let fits = fits::FITS::from_path(
-                &my_data_id.clone(),
-                &my_flux.clone(),
-                is_optical,
-                filepath.as_path(),
-                is_compressed,
-                &my_server,
-            ); */
+            let filepath =
+                std::path::PathBuf::from(&format!("{}/{}.fits", fits::FITSCACHE, my_data_id));
 
-            let fits = fits::FITS::from_url(
-                &my_data_id.clone(),
-                &"".to_owned(),
-                false,
-                &my_url.clone(),
-                &my_server,
-            );
+            let fits = match File::open(&filepath) {
+                Ok(mut f) => {
+                    let mut header = [0; 10];
+                    match f.read_exact(&mut header) {
+                        Ok(()) => {
+                            let is_compressed =
+                                if header[0] == 0x1f && header[1] == 0x8b && header[2] == 0x08 {
+                                    println!("the cachefile has been compressed with gzip.");
+                                    true
+                                } else {
+                                    false
+                                };
+
+                            drop(f);
+
+                            fits::FITS::from_path(
+                                &my_data_id.clone(),
+                                &"".to_owned(),
+                                false,
+                                filepath.as_path(),
+                                is_compressed,
+                                &my_server,
+                            )
+                        }
+                        Err(err) => {
+                            println!("CRITICAL ERROR examining GZIP header: {}", err);
+                            fits::FITS::from_url(
+                                &my_data_id.clone(),
+                                &"".to_owned(),
+                                false,
+                                &my_url.clone(),
+                                &my_server,
+                            )
+                        }
+                    }
+                }
+                Err(err) => {
+                    println!("no cachefile found: {:?}, will download from the URL", err);
+                    fits::FITS::from_url(
+                        &my_data_id.clone(),
+                        &"".to_owned(),
+                        false,
+                        &my_url.clone(),
+                        &my_server,
+                    )
+                }
+            };
 
             let fits = Arc::new(RwLock::new(Box::new(fits)));
 

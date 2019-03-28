@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-27.0";
+	return "JS2019-03-28.0";
 }
 
 const wasm_supported = (() => {
@@ -2381,6 +2381,11 @@ function inverse_CD_matrix(arcx, arcy) {
 	var DX = DC1_1 * x + DC1_2 * y;
 	var DY = DC2_1 * x + DC2_2 * y;
 
+	//DX: assume no change in y
+	DX = DC1_1 * x;
+	//DY: assume no change in x
+	DY = DC2_2 * y;
+
 	var gridScale = new Array(DX / fitsData.width, Math.sign(CD2_2) * Math.abs(DY) / fitsData.height, theta);
 
 	return gridScale;
@@ -2485,7 +2490,7 @@ function display_scale_info() {
 
 	//scale
 	var arcmins = 60;
-	var gridScale = inverse_CD_matrix(10, arcmins);
+	var gridScale = inverse_CD_matrix(arcmins, arcmins);
 
 	for (let i = 0; i < gridScale.length; i++)
 		if (isNaN(gridScale[i]))
@@ -2495,8 +2500,8 @@ function display_scale_info() {
 		//reduce the scale
 		console.log("Vertical height:", Math.abs(gridScale[1]) * scale);
 
-		arcmins = 60;
-		gridScale = inverse_CD_matrix(10, arcmins);
+		arcmins = 10;
+		gridScale = inverse_CD_matrix(arcmins, arcmins);
 
 		for (let i = 0; i < gridScale.length; i++)
 			if (isNaN(gridScale[i]))
@@ -2897,7 +2902,7 @@ function display_cd_gridlines() {
 		return;
 
 	//scale
-	var gridScale = inverse_CD_matrix(10, 60);
+	var gridScale = inverse_CD_matrix(60, 60);//dx was 10
 	var angle = gridScale[2] * Math.sign(gridScale[0]);
 
 	var label_angle = -45;
@@ -3546,16 +3551,17 @@ function display_dataset_info() {
 	var width = parseFloat(svg.attr("width"));
 	var height = parseFloat(svg.attr("height"));
 
-    /*if(fitsData.OBSRA != '' && fitsData.OBSDEC != '')
-    {
-	var ra = ParseRA('+'+fitsData.OBSRA.toString()) ;
-	var dec = ParseDec(fitsData.OBSDEC.toString()) ;
-	xradec = new Array ( (ra/3600.0) / toDegrees, (dec/3600.0) / toDegrees );	
-    }
-    else
-	xradec = new Array (null, null) ;*/
-
 	xradec = new Array(null, null);
+
+	/*console.log("RA:", fitsData.OBSRA, fitsData.CTYPE1, "DEC:", fitsData.OBSDEC, fitsData.CTYPE2);
+
+	if (fitsData.OBSRA != '' && fitsData.OBSDEC != '') {
+		var ra = ParseRA('+' + fitsData.OBSRA.toString());
+		var dec = ParseDec(fitsData.OBSDEC.toString());
+		xradec = new Array((ra / 3600.0) / toDegrees, (dec / 3600.0) / toDegrees);
+	}
+	else
+		xradec = new Array(null, null);*/
 
 	if (fitsData.CTYPE1.indexOf("RA") > -1 || fitsData.CTYPE1.indexOf("GLON") > -1 || fitsData.CTYPE1.indexOf("ELON") > -1)
 		xradec[0] = (fitsData.CRVAL1 + (fitsData.width / 2 - fitsData.CRPIX1) * fitsData.CDELT1) / toDegrees;

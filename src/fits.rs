@@ -424,13 +424,13 @@ impl FITS {
             crval1: 0.0,
             cdelt1: std::f64::NAN,
             crpix1: 0.0,
-            cunit1: String::from(""),
-            ctype1: String::from(""),
+            cunit1: String::from("deg"),
+            ctype1: String::from("RA"),
             crval2: 0.0,
             cdelt2: std::f64::NAN,
             crpix2: 0.0,
-            cunit2: String::from(""),
-            ctype2: String::from(""),
+            cunit2: String::from("deg"),
+            ctype2: String::from("DEC"),
             crval3: 0.0,
             cdelt3: std::f64::NAN,
             crpix3: 0.0,
@@ -2245,8 +2245,32 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
             }
 
+            if line.contains("RA_OBJ  = ") {
+                let s = match scan_fmt!(line, "RA_OBJ  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from(""),
+                };
+
+                self.obsra = match s.parse::<f64>() {
+                    Ok(x) => x,
+                    Err(_) => 0.0,
+                }
+            }
+
             if line.contains("OBSDEC  = ") {
                 let s = match scan_fmt!(line, "OBSDEC  = {}", String) {
+                    Some(x) => x,
+                    _ => String::from(""),
+                };
+
+                self.obsdec = match s.parse::<f64>() {
+                    Ok(x) => x,
+                    Err(_) => 0.0,
+                }
+            }
+
+            if line.contains("DEC_OBJ = ") {
+                let s = match scan_fmt!(line, "DEC_OBJ = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
