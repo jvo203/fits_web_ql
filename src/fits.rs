@@ -425,12 +425,12 @@ impl FITS {
             cdelt1: std::f64::NAN,
             crpix1: 0.0,
             cunit1: String::from("deg"),
-            ctype1: String::from("RA"),
+            ctype1: String::from("RA---TAN"),
             crval2: 0.0,
             cdelt2: std::f64::NAN,
             crpix2: 0.0,
             cunit2: String::from("deg"),
-            ctype2: String::from("DEC"),
+            ctype2: String::from("DEC--TAN"),
             crval3: 0.0,
             cdelt3: std::f64::NAN,
             crpix3: 0.0,
@@ -2472,15 +2472,29 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             if line.contains("CTYPE1  = ") {
                 self.ctype1 = match scan_fmt!(line, "CTYPE1  = {}", String) {
-                    Some(x) => x.replace("'", ""),
-                    _ => String::from(""),
+                    Some(x) => {
+                        let tmp = x.replace("'", "");
+                        if tmp.trim() == "" {
+                            String::from("RA---TAN")
+                        } else {
+                            tmp
+                        }
+                    }
+                    _ => String::from("RA---TAN"),
                 }
             }
 
             if line.contains("CTYPE2  = ") {
                 self.ctype2 = match scan_fmt!(line, "CTYPE2  = {}", String) {
-                    Some(x) => x.replace("'", ""),
-                    _ => String::from(""),
+                    Some(x) => {
+                        let tmp = x.replace("'", "");
+                        if tmp.trim() == "" {
+                            String::from("DEC--TAN")
+                        } else {
+                            tmp
+                        }
+                    }
+                    _ => String::from("DEC--TAN"),
                 }
             }
 
