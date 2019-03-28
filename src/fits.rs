@@ -1746,11 +1746,16 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     };
 
-                    Ok(data.len())
+                    if !fits.has_data {
+                        Ok(data.len())
+                    } else {
+                        //no need for further data, terminate the transfer early
+                        Ok(0)
+                    }
                 })
                 .unwrap();
 
-            transfer.perform().unwrap();
+            let _ = transfer.perform();
         }
 
         println!(
