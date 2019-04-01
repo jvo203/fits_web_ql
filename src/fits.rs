@@ -1198,7 +1198,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         flux: &String,
         is_optical: bool,
         filepath: &std::path::Path,
-        is_compressed: bool,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux);
@@ -1206,7 +1205,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         fits.is_optical = is_optical;
 
         //load data from filepath
-        let f = match File::open(filepath) {
+        let mut f = match File::open(filepath) {
             Ok(x) => x,
             Err(x) => {
                 println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
@@ -1241,6 +1240,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 return fits;
             }
         };
+
+        let is_compressed = is_gzip_compressed(&mut f);
 
         //OK, we have a FITS file with at least one chunk
         println!("{}: reading a FITS file header...", id);
@@ -7184,6 +7185,25 @@ impl Drop for FITS {
                 }
             }
         }
+    }
+}
+
+fn is_gzip_compressed(f: &mut File) -> bool {
+    let mut header = [0; 10];
+    match f.read_exact(&mut header) {
+        Ok(()) => {
+            //reset the file
+            if let Err(err) = f.seek(SeekFrom::Start(0)) {
+                println!("CRITICAL ERROR seeking within the FITS file: {}", err);
+            };
+
+            if header[0] == 0x1f && header[1] == 0x8b && header[2] == 0x08 {
+                true
+            } else {
+                false
+            }
+        }
+        Err(_) => false,
     }
 }
 

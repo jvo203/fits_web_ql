@@ -31,7 +31,6 @@ use chrono::Local;
 use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::fs::File;
-use std::io::Read;
 use std::io::Write;
 use std::sync::Arc;
 use std::thread;
@@ -2255,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.10";
-static VERSION_STRING: &'static str = "SV2019-03-28.2";
+static VERSION_STRING: &'static str = "SV2019-04-01.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -3536,7 +3535,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
 }
 
 #[cfg(feature = "jvo")]
-fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> (Option<std::path::PathBuf>, bool) {
+fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path::PathBuf> {
     let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
 
     println!("PostgreSQL connection URL: {}", connection_url);
@@ -3574,16 +3573,10 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> (Option<std::path
                         };
 
                         let filepath = std::path::PathBuf::from(&filename);
-                        let ext = filepath.extension().and_then(std::ffi::OsStr::to_str);
                         println!("filepath: {:?}", filepath);
 
                         if filepath.exists() {
-                            let is_compressed = if ext == Some("gz") || ext == Some("GZ") {
-                                true
-                            } else {
-                                false
-                            };
-                            return (Some(filepath), is_compressed);
+                            return Some(filepath);
                         }
                     }
                 }
@@ -3593,7 +3586,7 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> (Option<std::path
         Err(err) => println!("error connecting to PostgreSQL: {}", err),
     }
 
-    return (None, false);
+    return None;
 }
 
 #[cfg(feature = "jvo")]
@@ -3632,52 +3625,26 @@ fn external_fits(
             let filepath =
                 std::path::PathBuf::from(&format!("{}/{}.fits", fits::FITSCACHE, my_data_id));
 
-            let fits = match File::open(&filepath) {
-                Ok(mut f) => {
-                    let mut header = [0; 10];
-                    match f.read_exact(&mut header) {
-                        Ok(()) => {
-                            let is_compressed =
-                                if header[0] == 0x1f && header[1] == 0x8b && header[2] == 0x08 {
-                                    println!("the cachefile has been compressed with gzip.");
-                                    true
-                                } else {
-                                    false
-                                };
-
-                            drop(f);
-
-                            fits::FITS::from_path(
-                                &my_data_id.clone(),
-                                &"".to_owned(),
-                                false,
-                                filepath.as_path(),
-                                is_compressed,
-                                &my_server,
-                            )
-                        }
-                        Err(err) => {
-                            println!("CRITICAL ERROR examining GZIP header: {}", err);
-                            fits::FITS::from_url(
-                                &my_data_id.clone(),
-                                &"".to_owned(),
-                                false,
-                                &my_url.clone(),
-                                &my_server,
-                            )
-                        }
-                    }
-                }
-                Err(err) => {
-                    println!("no cachefile found: {:?}, will download from the URL", err);
-                    fits::FITS::from_url(
-                        &my_data_id.clone(),
-                        &"".to_owned(),
-                        false,
-                        &my_url.clone(),
-                        &my_server,
-                    )
-                }
+            let fits = if filepath.exists() {
+                fits::FITS::from_path(
+                    &my_data_id.clone(),
+                    &"".to_owned(),
+                    false,
+                    filepath.as_path(),
+                    &my_server,
+                )
+            } else {
+                println!(
+                    "no cachefile found: {:?}, will download from the URL",
+                    filepath
+                );
+                fits::FITS::from_url(
+                    &my_data_id.clone(),
+                    &"".to_owned(),
+                    false,
+                    &my_url.clone(),
+                    &my_server,
+                )
             };
 
             let fits = Arc::new(RwLock::new(Box::new(fits)));
@@ -3763,30 +3730,20 @@ fn internal_fits(
             //load FITS data in a new thread
             thread::spawn(move || {
                 #[cfg(not(feature = "jvo"))]
-                let (filepath, is_compressed) = (
-                    std::path::PathBuf::from(&format!("{}/{}.{}", my_dir, my_data_id, my_ext)),
-                    if my_ext == "gz" || my_ext == "GZ" {
-                        true
-                    } else {
-                        false
-                    },
-                );
+                let filepath =
+                    std::path::PathBuf::from(&format!("{}/{}.{}", my_dir, my_data_id, my_ext));
 
                 #[cfg(feature = "jvo")]
-                let (filepath, is_compressed) = {
+                let filepath = {
                     //try to read a directory from the PostgreSQL database
-                    let (buf, is_compressed) =
-                        get_jvo_path(&my_data_id.to_string(), &my_db, &my_table);
+                    let buf = get_jvo_path(&my_data_id.to_string(), &my_db, &my_table);
 
                     match buf {
-                        Some(buf) => (buf, is_compressed),
-                        None => (
-                            std::path::PathBuf::from(&format!(
-                                "{}/{}.{}",
-                                my_dir, my_data_id, my_ext
-                            )),
-                            false,
-                        ),
+                        Some(buf) => buf,
+                        None => std::path::PathBuf::from(&format!(
+                            "{}/{}.{}",
+                            my_dir, my_data_id, my_ext
+                        )),
                     }
                 };
 
@@ -3797,7 +3754,6 @@ fn internal_fits(
                     &my_flux.clone(),
                     is_optical,
                     filepath.as_path(),
-                    is_compressed,
                     &my_server,
                 ); //from_path or from_path_mmap
 
