@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-03-28.0";
+	return "JS2019-04-01.1";
 }
 
 const wasm_supported = (() => {
@@ -443,7 +443,7 @@ function plot_spectrum(dataArray) {
 		return;
 
 	let fitsData = fitsContainer[len - 1];
-	if (fitsData.depth <= 1)
+	if (fitsData.depth <= 1 || optical_view)
 		return;
 
 	var elem = document.getElementById("SpectrumCanvas");
@@ -596,7 +596,7 @@ function plot_spectrum(dataArray) {
 }
 
 function replot_y_axis() {
-	if (!displaySpectrum)
+	if (!displaySpectrum || optical_view)
 		return;
 
 	var svg = d3.select("#BackSVG");
@@ -6235,6 +6235,10 @@ function setup_axes() {
 
 	var range = get_axes_range(width, height);
 
+	var iR = d3.scaleLinear()
+		.range([range.xMin, range.xMax])
+		.domain([data_band_lo, data_band_hi]);
+
 	var xR = d3.scaleLinear()
 		.range([range.xMin, range.xMax])
 		.domain([data_band_lo / 1e9, data_band_hi / 1e9]);
@@ -6257,6 +6261,10 @@ function setup_axes() {
 		}
 	}
 	catch (e) { };
+
+	var iAxis = d3.axisTop(iR)
+		.tickSizeOuter([3])
+		.ticks(7);
 
 	var xAxis = d3.axisTop(xR)
 		.tickSizeOuter([3])
@@ -6299,20 +6307,46 @@ function setup_axes() {
 			return number;
 		});
 
-	//x-axis label
-	var strXLabel = "";
+	if (optical_view) {
+		//i-axis label
+		var strILabel = "cube frames";
 
-	try {
-		if (!checkbox.checked)
-			strXLabel = '<I>F<SUB>' + fitsData.SPECSYS.trim() + '</SUB></I> [GHz]';
-		else
-			strXLabel = '<I>F<SUB>REST</SUB></I> [GHz]';
+		svg.append("foreignObject")
+			.attr("x", (2 * range.xMin + 1.5 * emFontSize))
+			.attr("y", (height - 3.5 * emFontSize))
+			.attr("width", 20 * emFontSize)
+			.attr("height", 2 * emFontSize)
+			.append("xhtml:div")
+			.attr("id", "frequency_display")
+			.style("display", "inline-block")
+			.attr("class", "axis-label")
+			.html(strILabel);
+
+		// Add the X Axis
+		svg.append("g")
+			.attr("class", "axis")
+			.attr("id", "iaxis")
+			.style("fill", "#996699")
+			.style("stroke", "#996699")
+			//.style("stroke-width", emStrokeWidth)
+			.attr("transform", "translate(0," + (height - 1) + ")")
+			.call(iAxis);
 	}
-	catch (e) {
-		strXLabel = '<I>F<SUB>' + 'LSRK' + '</SUB></I> [GHz]';
-	};
 
 	if (has_frequency_info) {
+		//x-axis label
+		var strXLabel = "";
+
+		try {
+			if (!checkbox.checked)
+				strXLabel = '<I>F<SUB>' + fitsData.SPECSYS.trim() + '</SUB></I> [GHz]';
+			else
+				strXLabel = '<I>F<SUB>REST</SUB></I> [GHz]';
+		}
+		catch (e) {
+			strXLabel = '<I>F<SUB>' + 'LSRK' + '</SUB></I> [GHz]';
+		};
+
 		svg.append("foreignObject")
 			.attr("x", (2 * range.xMin + 1.5 * emFontSize))
 			.attr("y", (height - 3.5 * emFontSize))
@@ -6335,47 +6369,49 @@ function setup_axes() {
 			.call(xAxis);
 	}
 
-	//y-axis label
-	var yLabel = "Integrated";
+	if (!optical_view) {
+		//y-axis label
+		var yLabel = "Integrated";
 
-	if (intensity_mode == "mean")
-		yLabel = "Mean";
+		if (intensity_mode == "mean")
+			yLabel = "Mean";
 
-	var bunit = '';
-	if (fitsData.BUNIT != '') {
-		bunit = fitsData.BUNIT.trim();
+		var bunit = '';
+		if (fitsData.BUNIT != '') {
+			bunit = fitsData.BUNIT.trim();
 
-		if (intensity_mode == "integrated" && has_velocity_info)
-			bunit += '•km/s';
+			if (intensity_mode == "integrated" && has_velocity_info)
+				bunit += '•km/s';
 
-		bunit = "[" + bunit + "]";
+			bunit = "[" + bunit + "]";
+		}
+
+		svg.append("text")
+			.attr("id", "ylabel")
+			.attr("x", (-height + 2 * range.xMin + 1.5 * emFontSize)/*-0.75*height*/)
+			.attr("y", 1.25 * emFontSize + 0 * range.xMin)
+			.attr("font-family", "Inconsolata")
+			.attr("font-size", "1.25em")
+			.attr("text-anchor", "start")
+			.style("fill", "darkgray")
+			//.style("opacity", 0.7)
+			.attr("stroke", "none")
+			.attr("transform", "rotate(-90)")
+			.text(yLabel + ' ' + fitsData.BTYPE.trim() + " " + bunit);
+
+		// Add the Y Axis
+		svg.append("g")
+			.attr("class", "axis")
+			.attr("id", "yaxis")
+			.style("fill", "#996699")
+			.style("stroke", "#996699")
+			//.style("stroke-width", emStrokeWidth)
+			.attr("transform", "translate(" + (0.75 * range.xMin - 1) + ",0)")
+			.call(yAxis);
 	}
 
-	svg.append("text")
-		.attr("id", "ylabel")
-		.attr("x", (-height + 2 * range.xMin + 1.5 * emFontSize)/*-0.75*height*/)
-		.attr("y", 1.25 * emFontSize + 0 * range.xMin)
-		.attr("font-family", "Inconsolata")
-		.attr("font-size", "1.25em")
-		.attr("text-anchor", "start")
-		.style("fill", "darkgray")
-		//.style("opacity", 0.7)
-		.attr("stroke", "none")
-		.attr("transform", "rotate(-90)")
-		.text(yLabel + ' ' + fitsData.BTYPE.trim() + " " + bunit);
-
-	// Add the Y Axis
-	svg.append("g")
-		.attr("class", "axis")
-		.attr("id", "yaxis")
-		.style("fill", "#996699")
-		.style("stroke", "#996699")
-		//.style("stroke-width", emStrokeWidth)
-		.attr("transform", "translate(" + (0.75 * range.xMin - 1) + ",0)")
-		.call(yAxis);
-
 	//if(fitsData.CTYPE3 == "FREQ")
-	if (vMin != null && vMax != null) {
+	if (vMin != null && vMax != null && !optical_view) {
 		var vpos = 0;
 
 		if (!has_frequency_info) {
@@ -6471,7 +6507,7 @@ function setup_axes() {
 		.style("stroke", "gray")
 		.style("stroke-width", 1);
 
-	if (has_frequency_info || has_velocity_info)
+	if (has_frequency_info || has_velocity_info || optical_view)
 		group.append("rect")
 			.attr("id", "frequency")
 			.attr("x", range.xMin)
@@ -6907,7 +6943,11 @@ function x_axis_move(offset) {
 
 	console.log("RESTFRQ:", RESTFRQ);
 
+
 	var relvel = Einstein_relative_velocity(freq, RESTFRQ);
+
+	if (optical_view)
+		d3.select("#jvoText").text(Math.round(freq));
 
 	if (has_frequency_info)
 		d3.select("#jvoText").text((freq / 1.0e9).toPrecision(7) + " " + 'GHz' + ", " + relvel.toFixed(getVelocityPrecision()) + " km/s");
@@ -8758,7 +8798,7 @@ function setup_image_selection() {
 				var x2 = Math.round(fitsX + fitsSize);
 				var y2 = Math.round((fitsData.height - 1) - (fitsY + fitsSize));
 
-				if (realtime_spectrum && fitsData.depth > 1) {
+				if (realtime_spectrum && fitsData.depth > 1 && !optical_view) {
 					sent_seq_id++;
 
 					for (let index = 0; index < va_count; index++) {
@@ -9154,6 +9194,8 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
 			var fitsData = JSON.parse(xmlhttp.responseText);
 
 			fitsContainer[index - 1] = fitsData;
+
+			optical_view = fitsData.is_optical;
 
 			if ((fitsData.min == 0) && (fitsData.max == 0) && (fitsData.median == 0) && (fitsData.black == 0) && (fitsData.white == 0)) {
 				fetch_spectrum(datasetId, index, true);
@@ -12206,8 +12248,7 @@ async*/ function mainRenderer() {
 	composite_view = (parseInt(votable.getAttribute('data-composite')) == 1) ? true : false;
 	console.log("composite view:", composite_view);
 
-	optical_view = (votable.getAttribute('data-is-optical') == "true");
-	console.log("optical view:", optical_view);
+	optical_view = false;
 
 	if (firstTime) {
 		fps = 60;//target fps; 60 is OK in Chrome but a bit laggish in Firefox

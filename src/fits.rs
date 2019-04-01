@@ -430,7 +430,7 @@ impl FITS {
             cunit2: String::from("deg"),
             ctype2: String::from("DEC--TAN"),
             crval3: 0.0,
-            cdelt3: std::f64::NAN,
+            cdelt3: 1.0, //std::f64::NAN,
             crpix3: 0.0,
             cunit3: String::from(""),
             ctype3: String::from(""),
@@ -467,7 +467,7 @@ impl FITS {
             has_header: false,
             has_data: false,
             timestamp: RwLock::new(SystemTime::now()),
-            is_optical: false,
+            is_optical: true,
             is_xray: false,
             is_dummy: true,
         };
@@ -1195,13 +1195,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     pub fn from_path(
         id: &String,
         flux: &String,
-        is_optical: bool,
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux);
         fits.is_dummy = false;
-        fits.is_optical = is_optical;
 
         //load data from filepath
         let mut f = match File::open(filepath) {
@@ -1217,7 +1215,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 {
                     let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
 
-                    return FITS::from_url(&id, &flux, is_optical, &url, &server);
+                    return FITS::from_url(&id, &flux, &url, &server);
                 }
             }
         };
@@ -1302,6 +1300,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //test for frequency/velocity
         fits.frame_reference_unit();
         fits.frame_reference_type();
+
+        if fits.has_frequency || fits.has_velocity {
+            fits.is_optical = false;
+        }
 
         if fits.restfrq > 0.0 {
             fits.has_frequency = true;
@@ -1538,13 +1540,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     pub fn from_url(
         id: &String,
         flux: &String,
-        is_optical: bool,
         url: &String,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux);
         fits.is_dummy = false;
-        fits.is_optical = is_optical;
 
         println!("FITS::from_url({})", url);
 
@@ -2061,6 +2061,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             if line.to_lowercase().contains("suzaku") {
                 //switch on JAXA X-Ray settings
+                self.is_optical = false;
                 self.is_xray = true;
                 self.flux = String::from("legacy");
             }
@@ -5935,8 +5936,27 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return Some((0, 0));
         };
 
+        /*
         //a default empty range
         None
+        */
+        //by default return the original range as index numbers - 1
+        let mut start = frame_start.round() as usize - 1;
+        let mut end = frame_end.round() as usize - 1;
+
+        if end < start {
+            let tmp = start;
+            start = end;
+            end = tmp;
+        };
+
+        start = start.max(0);
+        start = start.min(self.depth - 1);
+
+        end = end.max(0);
+        end = end.min(self.depth - 1);
+
+        Some((start, end))
     }
 
     fn get_freq2vel_bounds(
@@ -6151,7 +6171,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 "white" : self.white,
                 "flux" : self.flux,
                 "histogram" : &self.hist,
-                //"mask" : &self.mask,
+                "is_optical" : &self.is_optical,
+                "is_xray" : &self.is_xray,
         });
 
         value.to_string()

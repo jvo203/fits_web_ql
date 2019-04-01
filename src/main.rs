@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.10";
-static VERSION_STRING: &'static str = "SV2019-04-01.2";
+static VERSION_STRING: &'static str = "SV2019-04-01.3";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2697,13 +2697,12 @@ fn fitswebql_entry(
 
     //sane defaults
     let mut composite = false;
-    let mut optical = false;
     let mut flux = "";
 
     #[cfg(feature = "jvo")]
     {
         if db.contains("hsc") {
-            optical = true;
+            //optical = true;
             flux = "ratio";
         };
 
@@ -2718,9 +2717,9 @@ fn fitswebql_entry(
                 composite = true;
             }
 
-            if value.contains("optical") {
+            /*if value.contains("optical") {
                 optical = true;
-            }
+            }*/
         }
         None => {}
     };
@@ -2743,14 +2742,14 @@ fn fitswebql_entry(
 
     #[cfg(feature = "jvo")]
     let resp = format!(
-        "FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}, optical: {}, flux: {}",
-        fitswebql_path, db, table, dataset_id, composite, optical, flux
+        "FITSWebQL path: {}, db: {}, table: {}, dataset_id: {:?}, composite: {}, flux: {}",
+        fitswebql_path, db, table, dataset_id, composite, flux
     );
 
     #[cfg(not(feature = "jvo"))]
     let resp = format!(
-        "FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}, composite: {}, optical: {}, flux: {}",
-        fitswebql_path, dir, ext, dataset_id, composite, optical, flux
+        "FITSWebQL path: {}, dir: {}, ext: {}, filename: {:?}, composite: {}, flux: {}",
+        fitswebql_path, dir, ext, dataset_id, composite, flux
     );
 
     println!("{}", resp);
@@ -2765,7 +2764,6 @@ fn fitswebql_entry(
         "fits",
         &dataset_id,
         composite,
-        optical,
         &flux,
         &server,
     )))
@@ -2781,7 +2779,6 @@ fn fitswebql_entry(
         &ext,
         &dataset_id,
         composite,
-        optical,
         &flux,
         &server,
     )))
@@ -3625,7 +3622,6 @@ fn external_fits(
                 fits::FITS::from_path(
                     &my_data_id.clone(),
                     &"".to_owned(),
-                    false,
                     filepath.as_path(),
                     &my_server,
                 )
@@ -3637,7 +3633,6 @@ fn external_fits(
                 fits::FITS::from_url(
                     &my_data_id.clone(),
                     &"".to_owned(),
-                    false,
                     &my_url.clone(),
                     &my_server,
                 )
@@ -3662,7 +3657,7 @@ fn external_fits(
         *dataset.timestamp.write() = SystemTime::now();
     };
 
-    http_fits_response(&fitswebql_path, &vec![dataset_id], false, false, has_fits)
+    http_fits_response(&fitswebql_path, &vec![dataset_id], false, has_fits)
 
     /*HttpResponse::NotFound()
     .content_type("text/html")
@@ -3680,7 +3675,6 @@ fn internal_fits(
     ext: &str,
     dataset_id: &Vec<&str>,
     composite: bool,
-    is_optical: bool,
     flux: &str,
     server: &Addr<server::SessionServer>,
 ) -> HttpResponse {
@@ -3748,7 +3742,6 @@ fn internal_fits(
                 let fits = fits::FITS::from_path(
                     &my_data_id.clone(),
                     &my_flux.clone(),
-                    is_optical,
                     filepath.as_path(),
                     &my_server,
                 ); //from_path or from_path_mmap
@@ -3773,20 +3766,13 @@ fn internal_fits(
         };
     }
 
-    http_fits_response(
-        &fitswebql_path,
-        &dataset_id,
-        composite,
-        is_optical,
-        has_fits,
-    )
+    http_fits_response(&fitswebql_path, &dataset_id, composite, has_fits)
 }
 
 fn http_fits_response(
     fitswebql_path: &String,
     dataset_id: &Vec<&str>,
     composite: bool,
-    is_optical: bool,
     has_fits: bool,
 ) -> HttpResponse {
     println!("calling http_fits_response for {:?}", dataset_id);
@@ -3936,7 +3922,7 @@ fn http_fits_response(
         }
     }
 
-    html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}' data-is-optical='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits, is_optical));
+    html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits));
 
     #[cfg(not(feature = "jvo"))]
     {
