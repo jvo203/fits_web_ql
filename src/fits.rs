@@ -58,10 +58,7 @@ use ocl::ProQue;
 #[cfg(feature = "opencl")]
 use rand::distributions::{Distribution, StandardNormal, Uniform};
 
-#[cfg(feature = "jvo")]
 use curl::easy::Easy;
-
-#[cfg(feature = "jvo")]
 use std::error::Error;
 
 use num;
@@ -360,6 +357,7 @@ pub struct FITS {
     pub has_data: bool,
     pub timestamp: RwLock<SystemTime>, //last access time
     is_optical: bool,
+    is_xray: bool,
     pub is_dummy: bool,
 }
 
@@ -470,6 +468,7 @@ impl FITS {
             has_data: false,
             timestamp: RwLock::new(SystemTime::now()),
             is_optical: false,
+            is_xray: false,
             is_dummy: true,
         };
 
@@ -1536,7 +1535,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         fits
     }
 
-    #[cfg(feature = "jvo")]
     pub fn from_url(
         id: &String,
         flux: &String,
@@ -2059,6 +2057,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     self.is_optical = true;
                     self.flux = String::from("ratio");
                 }
+            }
+
+            if line.to_lowercase().contains("suzaku") {
+                //switch on JAXA X-Ray settings
+                self.is_xray = true;
+                self.flux = String::from("legacy");
             }
 
             if line.contains("OBJECT  = ") {
@@ -7155,11 +7159,18 @@ impl Drop for FITS {
             #[cfg(feature = "zfp")]
             {
                 if self.bitpix == -32 && self.data_f16.len() > 0 {
-                    let filename =
-                        format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
-                    let zfp_dir = std::path::Path::new(&filename);
+                    //skip compression for really small files
+                    let total_size =
+                        self.width * self.height * self.depth * ((self.bitpix.abs() / 8) as usize);
 
-                    self.zfp_compress(zfp_dir);
+                    //>1MB
+                    if total_size > 1024 * 1024 {
+                        let filename =
+                            format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
+                        let zfp_dir = std::path::Path::new(&filename);
+
+                        self.zfp_compress(zfp_dir);
+                    }
                 }
             }
 

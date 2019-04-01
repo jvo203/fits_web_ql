@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.10";
-static VERSION_STRING: &'static str = "SV2019-04-01.0";
+static VERSION_STRING: &'static str = "SV2019-04-01.2";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2646,23 +2646,20 @@ fn fitswebql_entry(
     let dataset = "datasetId";
 
     //download a FITS file from an external URL
-    #[cfg(feature = "jvo")]
-    {
-        match query.get("url") {
-            Some(x) => {
-                let dataset_id = Uuid::new_v3(&Uuid::NAMESPACE_URL, x.as_bytes());
-                println!("external URL: {}, uuid: {}", x, dataset_id);
-                return result(Ok(external_fits(
-                    &fitswebql_path,
-                    x,
-                    &dataset_id.to_string(),
-                    &server,
-                )))
-                .responder();
-            }
-            None => {}
-        };
-    }
+    match query.get("url") {
+        Some(x) => {
+            let dataset_id = Uuid::new_v3(&Uuid::NAMESPACE_URL, x.as_bytes());
+            println!("external URL: {}, uuid: {}", x, dataset_id);
+            return result(Ok(external_fits(
+                &fitswebql_path,
+                x,
+                &dataset_id.to_string(),
+                &server,
+            )))
+            .responder();
+        }
+        None => {}
+    };
 
     let dataset_id = match query.get(dataset) {
         Some(x) => vec![x.as_str()],
@@ -3589,7 +3586,6 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
     return None;
 }
 
-#[cfg(feature = "jvo")]
 fn external_fits(
     fitswebql_path: &String,
     url: &str,
