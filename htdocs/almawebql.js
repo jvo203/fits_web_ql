@@ -14,6 +14,23 @@ function randomise_alma() {
     view_alma();
 }
 
+function view_akari() {
+    var dataId = document.getElementById("akari_dataid").value.trim();
+    var db = document.getElementById("akari_db").value.trim();
+    var table = document.getElementById("akari_table").value.trim();
+    var colourmap = document.getElementById("akari_colourmap").value.trim();
+
+    if (dataId != "") {
+        var url = null;
+
+        url = "/fitswebql/FITSWebQL.html?" + "db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table) + "&datasetId=" + encodeURIComponent(dataId) + "&colourmap=" + encodeURIComponent(colourmap);
+
+        window.location.href = url;
+    }
+    else
+        alert("no datasetId found !");
+}
+
 function view_alma() {
     var datasetId = document.getElementById("datasetid").value.trim();
     var db = document.getElementById("alma_db").value.trim();
@@ -31,7 +48,7 @@ function view_alma() {
 }
 
 function view_url() {
-    var fits_url = document.getElementById("url").value.trim();    
+    var fits_url = document.getElementById("url").value.trim();
 
     if (fits_url != "") {
         var url = null;

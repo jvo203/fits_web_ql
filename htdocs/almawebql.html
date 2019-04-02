@@ -17,6 +17,7 @@
 
 	<div class="container">
 		<h1>WebQL TEST PAGE</h1>
+
 		<div class="panel panel-default">
 			<div class="panel-heading">
 				<h2>external URL</h2>
@@ -35,6 +36,39 @@
 				</div>
 			</div>
 		</div>
+
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<h2>AKARI</h2>
+			</div>
+			<div class="panel-body">
+				<div class="form-inline">
+
+					<div class="form-group">
+						<label for="akari_dataid">dataId:</label>
+						<input type="text" class="form-control" id="akari_dataid" value="AKAI013000001">
+					</div>
+
+					<div class="form-group">
+						<label for="akari_db">db:</label>
+						<input type="text" class="form-control" id="akari_db" size="5" value="akari">
+					</div>
+
+					<div class="form-group">
+						<label for="akari_table">table:</label>
+						<input type="text" class="form-control" id="akari_table" size="10" value="fis_image_v1">
+					</div>
+
+					<div class="form-group">
+						<label for="akari_colourmap">colourmap:</label>
+						<input type="text" class="form-control" id="akari_colourmap" size="5" value="negative">
+					</div>
+
+					<button type="submit" class="btn btn-default" onclick="view_akari()">Submit</button>
+				</div>
+			</div>
+		</div>
+
 		<div class="panel panel-default">
 			<div class="panel-heading">
 				<h2>ALMA</h2>
@@ -64,6 +98,7 @@
 				</div>
 			</div>
 		</div>
+
 		<div class="panel panel-default">
 			<div class="panel-heading">
 				<h2>HSC</h2>
@@ -170,6 +205,7 @@
 				</div>
 			</div>
 		</div>
+
 		<div class="panel panel-default">
 			<div class="panel-heading">
 				<h2>NRO45M</h2>
