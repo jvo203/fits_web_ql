@@ -41,7 +41,7 @@ export uniform float pixels_mean_brightness_ratio(uniform float pixels[], unifor
     return 0.0f;
 } ;
 
-export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform float bzero, uniform float bscale, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
+export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
 {
   uniform float frame_min = references[0];
   uniform float frame_max = references[1];
@@ -57,7 +57,7 @@ export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform floa
   foreach(j=0 ... total_size)
     {
       float tmp = bzero + half_to_float_fast(fitsData[j]) * bscale ;
-      bool nan = isnan(tmp) || isinf(tmp) || (tmp < datamin) || (tmp > datamax) ;
+      bool nan = isnan(tmp) || isinf(tmp) || (tmp < datamin) || (tmp > datamax) || (tmp <= ignrval) ;
       
       /*pixels[j] += nan ? 0.0f : tmp ;
       mask[j] = nan ? mask[j] : 255 ;
@@ -102,7 +102,7 @@ export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform floa
   references[3] = integrated ;
 } ;
 
-export void make_image_spectrumF32_minmax(uniform int32 src[], uniform int16 dest[], uniform float bzero, uniform float bscale, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
+export void make_image_spectrumF32_minmax(uniform int32 src[], uniform int16 dest[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
 {
   uniform float frame_min = references[0];
   uniform float frame_max = references[1];
@@ -121,7 +121,7 @@ export void make_image_spectrumF32_minmax(uniform int32 src[], uniform int16 des
       dest[j] = float_to_half_fast(tmp) ;
 
       tmp = bzero + tmp * bscale ;
-      bool nan = isnan(tmp) || isinf(tmp) || (tmp < datamin) || (tmp > datamax) ;
+      bool nan = isnan(tmp) || isinf(tmp) || (tmp < datamin) || (tmp > datamax) || (tmp <= ignrval) ;
       
       /*pixels[j] += nan ? 0.0f : tmp ;
       mask[j] = nan ? mask[j] : 255 ;

@@ -633,6 +633,7 @@ impl FITS {
                                 vec_raw.as_mut_ptr(),
                                 self.bzero,
                                 self.bscale,
+                                self.ignrval,
                                 self.datamin,
                                 self.datamax,
                                 cdelt3,
@@ -649,6 +650,7 @@ impl FITS {
                                 vec_raw.as_mut_ptr(),
                                 self.bzero,
                                 self.bscale,
+                                self.ignrval,
                                 self.datamin,
                                 self.datamax,
                                 cdelt3,
@@ -1135,7 +1137,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             vec.push(float16);
 
                             let tmp = self.bzero + self.bscale * float16.to_f32();
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            if tmp.is_finite()
+                                && tmp >= self.datamin
+                                && tmp <= self.datamax
+                                && tmp > self.ignrval
+                            {
                                 self.pixels[i as usize] += tmp * cdelt3;
                                 self.mask[i as usize] = 255;
 
@@ -1301,12 +1307,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         fits.frame_reference_unit();
         fits.frame_reference_type();
 
-        if fits.has_frequency || fits.has_velocity {
-            fits.is_optical = false;
-        }
-
         if fits.restfrq > 0.0 {
             fits.has_frequency = true;
+        }
+
+        if fits.has_frequency || fits.has_velocity {
+            fits.is_optical = false;
         }
 
         fits.has_header = true;
@@ -2064,6 +2070,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 self.is_optical = false;
                 self.is_xray = true;
                 self.flux = String::from("legacy");
+                if self.ignrval == std::f32::MIN {
+                    self.ignrval = 0.0;
+                }
             }
 
             if line.contains("OBJECT  = ") {
@@ -2582,7 +2591,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     self.data_u8[frame].push(buf[i as usize]);
 
                     let tmp = self.bzero + self.bscale * (buf[i as usize] as f32);
-                    if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                    if tmp.is_finite()
+                        && tmp >= self.datamin
+                        && tmp <= self.datamax
+                        && tmp > self.ignrval
+                    {
                         self.pixels[i as usize] += tmp * cdelt3;
                         self.mask[i as usize] = 255;
 
@@ -2602,7 +2615,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             self.data_i16[frame].push(int16);
 
                             let tmp = self.bzero + self.bscale * (int16 as f32);
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            if tmp.is_finite()
+                                && tmp >= self.datamin
+                                && tmp <= self.datamax
+                                && tmp > self.ignrval
+                            {
                                 self.pixels[i as usize] += tmp * cdelt3;
                                 self.mask[i as usize] = 255;
 
@@ -2627,7 +2644,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             self.data_i32[frame].push(int32);
 
                             let tmp = self.bzero + self.bscale * (int32 as f32);
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            if tmp.is_finite()
+                                && tmp >= self.datamin
+                                && tmp <= self.datamax
+                                && tmp > self.ignrval
+                            {
                                 self.pixels[i as usize] += tmp * cdelt3;
                                 self.mask[i as usize] = 255;
 
@@ -2654,7 +2675,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             self.data_f16[frame].push(float16);
 
                             let tmp = self.bzero + self.bscale * float32;
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            if tmp.is_finite()
+                                && tmp >= self.datamin
+                                && tmp <= self.datamax
+                                && tmp > self.ignrval
+                            {
                                 self.pixels[i as usize] += tmp * cdelt3;
                                 self.mask[i as usize] = 255;
 
@@ -2679,7 +2704,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             self.data_f64[frame].push(float64);
 
                             let tmp = self.bzero + self.bscale * (float64 as f32);
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                            if tmp.is_finite()
+                                && tmp >= self.datamin
+                                && tmp <= self.datamax
+                                && tmp > self.ignrval
+                            {
                                 self.pixels[i as usize] += tmp * cdelt3;
                                 self.mask[i as usize] = 255;
 
@@ -2817,6 +2846,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 vec_raw.as_mut_ptr(),
                                 self.bzero,
                                 self.bscale,
+                                self.ignrval,
                                 self.datamin,
                                 self.datamax,
                                 cdelt3,
@@ -6597,7 +6627,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     }
 
     #[cfg(feature = "zfp")]
-    fn zfp_compress(&self, zfp_dir: &std::path::Path) {
+    fn zfp_compress(&self, zfp_dir: &std::path::Path) -> bool {
         //check if the zfp directory already exists in the FITSCACHE
         if !zfp_dir.exists() {
             match std::fs::create_dir(zfp_dir) {
@@ -6606,7 +6636,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
                 Err(err) => {
                     println!("error creating a zfp cache directory: {}", err);
-                    return;
+                    return false;
                 }
             }
         }
@@ -6616,7 +6646,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         ok_file.push(".ok");
 
         if ok_file.exists() {
-            return;
+            return false;
         }
 
         println!(
@@ -6642,7 +6672,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 for x in vec.iter() {
                     let tmp = self.bzero + self.bscale * x.to_f32(); //convert from half to f32
 
-                    if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                    if tmp.is_finite()
+                        && tmp >= self.datamin
+                        && tmp <= self.datamax
+                        && tmp > self.ignrval
+                    {
                         /*let pixel = 0.5_f32 + (tmp - frame_min) / (frame_max - frame_min);
                         array.push(pixel.ln());*/
                         array.push(tmp);
@@ -6782,6 +6816,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 Err(err) => println!("{}", err),
             }
         }
+
+        success
     }
 
     #[cfg(feature = "opencl")]
@@ -7124,7 +7160,31 @@ impl Drop for FITS {
             println!("deleting {}", self.dataset_id);
 
             #[cfg(not(feature = "zfp"))]
-            {
+            let write_to_zfp = false;
+
+            #[cfg(feature = "zfp")]
+            let write_to_zfp = {
+                if self.bitpix == -32 && self.data_f16.len() > 0 && self.depth > 1 {
+                    //skip compression for really small files
+                    let total_size =
+                        self.width * self.height * self.depth * ((self.bitpix.abs() / 8) as usize);
+
+                    //>1MB
+                    if total_size > 1024 * 1024 {
+                        let filename =
+                            format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
+                        let zfp_dir = std::path::Path::new(&filename);
+
+                        self.zfp_compress(zfp_dir)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            };
+
+            if !write_to_zfp {
                 if self.bitpix == -32 && self.data_f16.len() > 0 {
                     //check if the binary file already exists in the FITSCACHE
                     let filename =
@@ -7173,24 +7233,6 @@ impl Drop for FITS {
                         }
 
                         let _ = std::fs::rename(tmp_filepath, filepath);
-                    }
-                }
-            }
-
-            #[cfg(feature = "zfp")]
-            {
-                if self.bitpix == -32 && self.data_f16.len() > 0 {
-                    //skip compression for really small files
-                    let total_size =
-                        self.width * self.height * self.depth * ((self.bitpix.abs() / 8) as usize);
-
-                    //>1MB
-                    if total_size > 1024 * 1024 {
-                        let filename =
-                            format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
-                        let zfp_dir = std::path::Path::new(&filename);
-
-                        self.zfp_compress(zfp_dir);
                     }
                 }
             }
