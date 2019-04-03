@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-04-01.1";
+	return "JS2019-04-03.0";
 }
 
 const wasm_supported = (() => {
@@ -5905,6 +5905,9 @@ function dragstart() {
 
 	var frequency = get_mouse_frequency(offset);
 
+	if (optical_view)
+		session_freq_start = frequency;
+
 	if (has_frequency_info) {
 		if (frequency > 0.0)
 			session_freq_start = frequency;
@@ -6039,6 +6042,9 @@ function dragmove() {
 
 	fregion.attr("x", mouseBegin).attr("width", mouseWidth).attr("opacity", 0.25);
 
+	if (optical_view)
+		session_freq_end = frequency;
+
 	if (has_frequency_info) {
 		if (frequency > 0.0)
 			session_freq_end = frequency;
@@ -6074,6 +6080,9 @@ function dragmove() {
 		if (has_velocity_info)
 			d3.select("#jvoText").text((frequency / 1.0e3).toFixed(getVelocityPrecision()) + " km/s");
 	};
+
+	if (optical_view)
+		d3.select("#jvoText").text(Math.round(frequency));
 
 	if (has_frequency_info) {
 		var relvel = Einstein_relative_velocity(frequency, RESTFRQ);
@@ -10434,7 +10443,14 @@ function display_menu() {
 				var htmlStr = composite_view ? '<span class="glyphicon glyphicon-check"></span> RGB composite mode' : '<span class="glyphicon glyphicon-unchecked"></span> RGB composite mode';
 				d3.select(this).html(htmlStr);
 
-				var new_loc = window.location.href.replace("&view=", "&dummy=");
+				var loc = window.location.href.replace("&view=composite", "");
+
+				if (composite_view)
+					window.location.replace(loc + "&view=composite");
+				else
+					window.location.replace(loc);
+
+				/*var new_loc = window.location.href.replace("&view=", "&dummy=");
 
 				if (composite_view && optical_view)
 					new_loc += "&view=composite,optical";
@@ -10446,7 +10462,7 @@ function display_menu() {
 						new_loc += "&view=optical";
 				}
 
-				window.location.replace(new_loc);
+				window.location.replace(new_loc);*/
 			})
 			.html(htmlStr);
 	}
