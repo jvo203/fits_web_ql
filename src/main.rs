@@ -3907,10 +3907,14 @@ fn http_fits_response(
         VERSION_STRING
     ));
     //custom css styles
-    #[cfg(not(feature = "cdn"))]
-    html.push_str("<link rel=\"stylesheet\" href=\"fitswebql.css\"/>\n");
-    #[cfg(feature = "cdn")]
-    html.push_str("<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/fitswebql.css\"/>\n");
+    //#[cfg(not(feature = "cdn"))]
+    //CORS rules prevent being able to change fitswebql.css if loaded from an external source
+    html.push_str(&format!(
+        "<link rel=\"stylesheet\" href=\"fitswebql.css?{}\"/>\n",
+        VERSION_STRING
+    ));
+    /*#[cfg(feature = "cdn")]
+    html.push_str("<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/fitswebql.css\"/>\n");*/
 
     html.push_str("<title>FITSWebQL</title></head><body>\n");
     html.push_str(&format!(

@@ -2046,6 +2046,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 return true;
             }
 
+            if line.contains("NRO45m") {
+                //disable optical
+                self.is_optical = false;
+                self.flux = String::from("logistic");
+            }
+
             if line.contains("ASTRO-F") {
                 //switch on optical astronomy settings
                 self.is_optical = true;
@@ -2071,13 +2077,16 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
             }
 
-            if line.to_lowercase().contains("suzaku") {
-                //switch on JAXA X-Ray settings
-                self.is_optical = false;
-                self.is_xray = true;
-                self.flux = String::from("legacy");
-                if self.ignrval == std::f32::MIN {
-                    self.ignrval = 0.0;
+            {
+                let tmp = line.to_lowercase();
+                if tmp.contains("suzaku") || tmp.contains("hitomi") {
+                    //switch on JAXA X-Ray settings
+                    self.is_optical = false;
+                    self.is_xray = true;
+                    self.flux = String::from("legacy");
+                    if self.ignrval == std::f32::MIN {
+                        self.ignrval = -1.0;
+                    }
                 }
             }
 
