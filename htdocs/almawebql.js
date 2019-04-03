@@ -48,6 +48,23 @@ function view_moircs() {
         alert("no datasetId found !");
 }
 
+function view_spcam() {
+    var dataId = document.getElementById("spcam_dataid").value.trim();
+    var db = document.getElementById("spcam_db").value.trim();
+    var table = document.getElementById("spcam_table").value.trim();
+    var colourmap = document.getElementById("spcam_colourmap").value.trim();
+
+    if (dataId != "") {
+        var url = null;
+
+        url = "/fitswebql/FITSWebQL.html?" + "db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table) + "&datasetId=" + encodeURIComponent(dataId) + "&colourmap=" + encodeURIComponent(colourmap);
+
+        window.location.href = url;
+    }
+    else
+        alert("no datasetId found !");
+}
+
 function view_alma() {
     var datasetId = document.getElementById("datasetid").value.trim();
     var db = document.getElementById("alma_db").value.trim();
