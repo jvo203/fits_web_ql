@@ -2048,21 +2048,23 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             if line.contains("TELESCOP= ") {
                 let telescope = match scan_fmt!(line, "TELESCOP= {}", String) {
-                    Some(x) => x.replace("'", ""),
+                    Some(x) => x.replace("'", "").to_lowercase(),
                     _ => String::from(""),
                 };
 
-                if telescope.contains("ALMA") {
+                println!("telescope: {}", telescope);
+
+                if telescope.contains("alma") {
                     //disable optical
                     self.is_optical = false;
                 }
 
-                if telescope.contains("EVLA") {
+                if telescope.contains("evla") {
                     //disable optical
                     self.is_optical = false;
                 }
 
-                if telescope.contains("NRO45m") {
+                if telescope.contains("nro45m") {
                     //disable optical
                     self.is_optical = false;
                     self.flux = String::from("logistic");

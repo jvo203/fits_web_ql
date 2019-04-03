@@ -122,7 +122,6 @@ function view_hsc() {
     var db = document.getElementById("hsc_db").value.trim();
     var table = document.getElementById("hsc_table").value.trim();
     var composite = false;
-    var optical = true;
 
     var url = "/fitswebql/FITSWebQL.html?db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table);
 
@@ -144,21 +143,12 @@ function view_hsc() {
         }
     }
 
-    var flux = document.getElementById("hsc_flux").value.trim();
-    url += "&flux=" + encodeURIComponent(flux);
-
     var colourmap = document.getElementById("hsc_colourmap").value.trim();
     url += "&colourmap=" + encodeURIComponent(colourmap);
 
-    if (composite && optical) {
-        url += "&view=composite,optical";
-    } else {
-        if (composite)
-            url += "&view=composite";
+    if (composite)
+        url += "&view=composite";
 
-        if (optical)
-            url += "&view=optical";
-    }
 
     window.location.href = url;
 
@@ -206,12 +196,6 @@ function view_nro45m() {
                 url += "&view=composite";
         }
     }
-
-    var flux = document.getElementById("nro_flux").value.trim();
-
-    //enforce a tone mapping
-    //if(table == "fugin.fugin_meta")    
-    url += "&flux=" + encodeURIComponent(flux);
 
     //console.log(url) ;
     window.location.href = url;
