@@ -2046,10 +2046,27 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 return true;
             }
 
-            if line.contains("NRO45m") {
-                //disable optical
-                self.is_optical = false;
-                self.flux = String::from("logistic");
+            if line.contains("TELESCOP= ") {
+                let telescope = match scan_fmt!(line, "TELESCOP= {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from(""),
+                };
+
+                if telescope.contains("ALMA") {
+                    //disable optical
+                    self.is_optical = false;
+                }
+
+                if telescope.contains("EVLA") {
+                    //disable optical
+                    self.is_optical = false;
+                }
+
+                if telescope.contains("NRO45m") {
+                    //disable optical
+                    self.is_optical = false;
+                    self.flux = String::from("logistic");
+                }
             }
 
             if line.contains("ASTRO-F") {
@@ -6647,7 +6664,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         ok_file.push(".ok");
 
         if ok_file.exists() {
-            return false;
+            return true;
         }
 
         println!(

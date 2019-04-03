@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.10";
-static VERSION_STRING: &'static str = "SV2019-04-03.0";
+static VERSION_STRING: &'static str = "SV2019-04-03.2";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -3908,7 +3908,8 @@ fn http_fits_response(
     ));
     //custom css styles
     //#[cfg(not(feature = "cdn"))]
-    //CORS rules prevent being able to change fitswebql.css if loaded from an external source
+    //CORS rules prevent being able to change CSS rules if the stylesheet
+    //has been loaded from an external source
     html.push_str(&format!(
         "<link rel=\"stylesheet\" href=\"fitswebql.css?{}\"/>\n",
         VERSION_STRING
