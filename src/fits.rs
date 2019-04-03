@@ -2046,6 +2046,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 return true;
             }
 
+            if line.contains("ASTRO-F") {
+                //switch on optical astronomy settings
+                self.is_optical = true;
+                self.flux = String::from("logistic");
+            }
+
             if line.contains("HSCPIPE") {
                 //switch on optical astronomy settings
                 self.is_optical = true;
