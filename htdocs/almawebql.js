@@ -31,6 +31,23 @@ function view_akari() {
         alert("no datasetId found !");
 }
 
+function view_moircs() {
+    var dataId = document.getElementById("moircs_dataid").value.trim();
+    var db = document.getElementById("moircs_db").value.trim();
+    var table = document.getElementById("moircs_table").value.trim();
+    var colourmap = document.getElementById("moircs_colourmap").value.trim();
+
+    if (dataId != "") {
+        var url = null;
+
+        url = "/fitswebql/FITSWebQL.html?" + "db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table) + "&datasetId=" + encodeURIComponent(dataId) + "&colourmap=" + encodeURIComponent(colourmap);
+
+        window.location.href = url;
+    }
+    else
+        alert("no datasetId found !");
+}
+
 function view_alma() {
     var datasetId = document.getElementById("datasetid").value.trim();
     var db = document.getElementById("alma_db").value.trim();
