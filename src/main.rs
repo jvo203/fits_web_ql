@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.10";
-static VERSION_STRING: &'static str = "SV2019-04-02.1";
+static VERSION_STRING: &'static str = "SV2019-04-03.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -3563,7 +3563,15 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
                                     path
                                 )
                             }
-                            None => format!("{}/{}/{}", fits::FITSHOME, db, path),
+                            None => match db.as_ref() {
+                                "spcam" => {
+                                    format!("{}/subaru/{}/mosaic/{}", fits::FITSHOME, db, path)
+                                }
+                                "moircs" => {
+                                    format!("{}/subaru/{}/mosaic/{}", fits::FITSHOME, db, path)
+                                }
+                                _ => format!("{}/{}/{}", fits::FITSHOME, db, path),
+                            },
                         };
 
                         let filepath = std::path::PathBuf::from(&filename);
