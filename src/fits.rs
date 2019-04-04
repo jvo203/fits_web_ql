@@ -15,7 +15,6 @@ use std::io::SeekFrom;
 use std::io::{Read, Write};
 use std::slice;
 use std::sync::mpsc;
-//use std::sync::RwLock;
 use std::thread;
 use std::time::SystemTime;
 use std::{mem, ptr};
