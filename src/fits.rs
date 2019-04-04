@@ -356,8 +356,8 @@ pub struct FITS {
     pub has_header: bool,
     pub has_data: bool,
     pub timestamp: RwLock<SystemTime>, //last access time
-    is_optical: bool,
-    is_xray: bool,
+    pub is_optical: bool,
+    pub is_xray: bool,
     pub is_dummy: bool,
 }
 
@@ -1317,6 +1317,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         fits.has_header = true;
 
+        {
+            let fits = Arc::new(RwLock::new(Box::new(fits.clone())));
+            DATASETS.write().insert(id.clone(), fits.clone());
+        }
+
         println!("{}/#hdu = {}, {:?}", id, no_hdu, fits);
 
         fits.header = match String::from_utf8(header) {
@@ -1332,9 +1337,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             fits.compressed_header = lz4_compress::compress(&header);
             println!("FITS header length {}, lz4-compressed {} bytes", header.len(), fits.compressed_header.len());
         }*/
-
-        let freq_range = fits.get_frequency_range();
-        fits.notify_frequency_range(&server, freq_range);
 
         //next read the data HUD(s)
         let frame_size: usize = fits.init_data_storage();
@@ -1685,6 +1687,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                                 fits.has_header = true;
 
+                                {
+                                    let fits = Arc::new(RwLock::new(Box::new(fits.clone())));
+                                    DATASETS.write().insert(id.clone(), fits.clone());
+                                }
+
                                 println!("{}/#hdu = {}, {:?}", id, no_hdu, fits);
 
                                 fits.header = match String::from_utf8(header.clone()) {
@@ -1694,9 +1701,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                         String::from("")
                                     }
                                 };
-
-                                let freq_range = fits.get_frequency_range();
-                                fits.notify_frequency_range(&server, freq_range);
 
                                 //prepare for reading the data HUD(s)
                                 frame_size = fits.init_data_storage();
@@ -1828,13 +1832,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         };
 
         fits
-    }
-
-    fn notify_frequency_range(&self, server: &Addr<server::SessionServer>, freq_range: (f64, f64)) {
-        server.do_send(server::FrequencyRangeMessage {
-            freq_range: freq_range,
-            dataset_id: self.dataset_id.clone(),
-        });
     }
 
     fn send_progress_notification(
@@ -2059,7 +2056,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     self.is_optical = false;
                 }
 
-                if telescope.contains("evla") {
+                if telescope.contains("vla") || telescope.contains("ska") {
                     //disable optical
                     self.is_optical = false;
                 }
@@ -6133,7 +6130,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         (start, end)
     }
 
-    fn get_frequency_range(&self) -> (f64, f64) {
+    pub fn get_frequency_range(&self) -> (f64, f64) {
         let mut fmin: f64 = 0.0;
         let mut fmax: f64 = 0.0;
 
@@ -7171,6 +7168,34 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             println!("grad_w: {:?}", grad_w);
         }
+    }
+}
+
+impl Clone for FITS {
+    fn clone(&self) -> FITS {
+        let mut fits = FITS::new(&self.dataset_id, &self.flux);
+
+        //only a limited clone (fields needed by get_frequency_range())
+
+        fits.has_header = self.has_header;
+        fits.has_frequency = self.has_frequency;
+        fits.has_velocity = self.has_velocity;
+
+        fits.crval3 = self.crval3;
+        fits.cdelt3 = self.cdelt3;
+        fits.crpix3 = self.crpix3;
+        fits.cunit3 = self.cunit3.clone();
+        fits.ctype3 = self.ctype3.clone();
+        fits.frame_multiplier = self.frame_multiplier;
+
+        fits.is_optical = self.is_optical;
+        fits.is_xray = self.is_xray;
+        fits.width = self.width;
+        fits.height = self.height;
+        fits.depth = self.depth;
+        fits.polarisation = self.polarisation;
+
+        fits
     }
 }
 

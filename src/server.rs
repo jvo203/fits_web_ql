@@ -62,27 +62,10 @@ pub struct WsMessage {
     pub dataset_id: String,
 }
 
-/// broadcast a message to a dataset
-#[derive(Message)]
-pub struct FrequencyRangeMessage {
-    /// frequency range    
-    pub freq_range: (f64, f64),
-    /// dataset
-    pub dataset_id: String,
-}
-
-/// New session is created
-#[derive(Message)]
-#[rtype(String)]
-pub struct GetMolecules {
-    pub dataset_id: String,
-}
-
 /// `SessionServer` manages sending messages from the FITSWebQL host server to WebSocket clients
 pub struct SessionServer {
     sessions: HashMap<Uuid, Recipient<Message>>,
     datasets: Arc<RwLock<HashMap<String, HashSet<Uuid>>>>,
-    molecules: Arc<RwLock<HashMap<String, String>>>,
     timer: timer::Timer,
     _guard: timer::Guard,
     //WebSocket progress timestamp
@@ -95,10 +78,7 @@ impl Default for SessionServer {
         //datasets.insert("all".to_owned(), HashSet::new());//for now group all connections together; in the future will be grouped by dataset_id
 
         let datasets = Arc::new(RwLock::new(HashMap::new()));
-        let molecules = Arc::new(RwLock::new(HashMap::new()));
-
         let datasets_copy = datasets.clone();
-        let molecules_copy = molecules.clone();
 
         let timer = timer::Timer::new();
         let guard = timer.schedule_repeating(chrono::Duration::seconds(ORPHAN_GARBAGE_COLLECTION_TIMEOUT), move || {
@@ -155,9 +135,7 @@ impl Default for SessionServer {
             for key in orphans {
                 match key {
                     Some(key) => {
-                        //println!("[orphaned dataset cleanup]: no active sessions found, {} will be expunged from memory", key);
-
-                        molecules_copy.write().remove(&key);
+                        //println!("[orphaned dataset cleanup]: no active sessions found, {} will be expunged from memory", key);                    
                         let entry = DATASETS.write().remove(&key);
                         match entry {
                             Some(value) => {
@@ -181,7 +159,6 @@ impl Default for SessionServer {
         SessionServer {
             sessions: HashMap::new(),
             datasets: datasets,
-            molecules: molecules,
             timer: timer,
             _guard: guard,
             progress_timestamp: std::time::Instant::now()
@@ -252,11 +229,7 @@ impl Handler<Disconnect> for SessionServer {
                 println!("[SessionServer]: unlinking a dataset {}", &msg.dataset_id);
 
                 self.datasets.write().remove(&msg.dataset_id);
-
-                //do not remove the molecules here, schedule a garbage collection call instead
-
                 let datasets = self.datasets.clone();
-                let molecules = self.molecules.clone();
 
                 self.timer.schedule_with_delay(chrono::Duration::seconds(GARBAGE_COLLECTION_TIMEOUT), move || {
                     // This closure is executed on the scheduler thread
@@ -288,10 +261,7 @@ impl Handler<Disconnect> for SessionServer {
 
                             //do not remove dummy datasets (loading progress etc)
                             //they will be cleaned in a separate garbage collection thread
-                            //what about the molecules???
-                            //molecules will be taken care of later on in the orphan garbage collection
                             if !is_dummy {
-                                molecules.write().remove(&msg.dataset_id);
                                 let entry = DATASETS.write().remove(&msg.dataset_id) ;
                                 match entry {
                                     Some(value) => {
@@ -370,39 +340,5 @@ impl Handler<WsMessage> for SessionServer {
                 //println!("[SessionServer]: {} not found", &msg.dataset_id);
             }
         }
-    }
-}
-
-/// Handler for GetMolecules message.
-impl Handler<GetMolecules> for SessionServer {
-    type Result = String;
-
-    fn handle(&mut self, msg: GetMolecules, _: &mut Context<Self>) -> Self::Result {
-        match self.molecules.read().get(&msg.dataset_id) {
-            Some(contents) => contents.clone(),
-            None => String::from(""),
-        }
-    }
-}
-
-/// Handler for FrequencyRange message.
-impl Handler<FrequencyRangeMessage> for SessionServer {
-    type Result = ();
-
-    fn handle(&mut self, msg: FrequencyRangeMessage, _: &mut Context<Self>) {
-        println!(
-            "[SessionServer]: received a frequency range {:?} GHz for '{}'",
-            &msg.freq_range, &msg.dataset_id
-        );
-
-        let (freq_start, freq_end) = msg.freq_range;
-
-        let freq_range = json!({
-            "freq_start" : freq_start,
-            "freq_end" : freq_end
-        })
-        .to_string();
-
-        self.molecules.write().insert(msg.dataset_id, freq_range);
     }
 }

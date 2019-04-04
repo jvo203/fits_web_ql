@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.11";
-static VERSION_STRING: &'static str = "SV2019-04-03.3";
+static VERSION_STRING: &'static str = "SV2019-04-04.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -3044,70 +3044,52 @@ fn get_molecules(
 
     result(Ok({
         if freq_start == 0.0 || freq_end == 0.0 {
-            //send a request to the SessionServers
+            let datasets = DATASETS.read(); //.unwrap();
 
-            let state = req.state();
-            let server = &state.addr;
-
-            let resp = server
-                .send(server::GetMolecules {
-                    dataset_id: dataset_id.to_owned(),
-                })
-                .wait();
-
-            match resp {
-                Ok(content) => {
-                    if content == "" {
-                        HttpResponse::Accepted()
-                            .content_type("text/html")
-                            .body(format!(
-                                "<p><b>spectral lines for {} not available yet</p>",
-                                dataset_id
-                            ))
-                    } else {
-                        #[derive(Serialize, Deserialize)]
-                        struct FreqRange {
-                            freq_start: f64,
-                            freq_end: f64,
-                        }
-
-                        let res: std::result::Result<FreqRange, serde_json::Error> =
-                            serde_json::from_str(&content);
-
-                        match res {
-                            Ok(range) => {
-                                let freq_start = range.freq_start;
-                                let freq_end = range.freq_end;
-
-                                //stream molecules from sqlite
-                                match stream_molecules(freq_start, freq_end) {
-                                    Some(rx) => {
-                                        let molecules_stream = MoleculeStream::new(rx);
-
-                                        HttpResponse::Ok()
-                                            .content_type("application/json")
-                                            .streaming(molecules_stream)
-                                    }
-                                    None => HttpResponse::Ok()
-                                        .content_type("application/json")
-                                        .body(format!("{{\"molecules\" : []}}")),
-                                }
-                            }
-                            Err(_) => {
-                                HttpResponse::NotFound()
-                                    .content_type("text/html")
-                                    .body(format!(
-                                        "<p><b>Critical Error</b>: spectral lines not found</p>"
-                                    ))
-                            }
-                        }
-                    }
+            let fits = match datasets.get(dataset_id).unwrap().try_read() {
+                Some(x) => x,
+                None => {
+                    return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
+                        format!(
+                            "<p><b>RwLock timeout</b>: {} not available yet</p>",
+                            dataset_id
+                        ),
+                    )))
+                    .responder();
                 }
-                Err(_) => HttpResponse::NotFound()
+            };
+
+            if !fits.has_header {
+                HttpResponse::Accepted()
                     .content_type("text/html")
                     .body(format!(
-                        "<p><b>Critical Error</b>: spectral lines not found</p>"
-                    )),
+                        "<p><b>spectral lines for {} not available yet</p>",
+                        dataset_id
+                    ))
+            } else {
+                if fits.is_optical {
+                    HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!(
+                            "<p><b>Critical Error</b>: spectral lines not found</p>"
+                        ))
+                } else {
+                    let (freq_start, freq_end) = fits.get_frequency_range();
+
+                    //stream molecules from sqlite
+                    match stream_molecules(freq_start, freq_end) {
+                        Some(rx) => {
+                            let molecules_stream = MoleculeStream::new(rx);
+
+                            HttpResponse::Ok()
+                                .content_type("application/json")
+                                .streaming(molecules_stream)
+                        }
+                        None => HttpResponse::Ok()
+                            .content_type("application/json")
+                            .body(format!("{{\"molecules\" : []}}")),
+                    }
+                }
             }
         } else {
             //stream molecules from sqlite without waiting for a FITS header
