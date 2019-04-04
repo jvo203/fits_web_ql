@@ -3060,14 +3060,22 @@ fn get_molecules(
             };
 
             if !fits.has_header {
-                HttpResponse::Accepted()
-                    .content_type("text/html")
-                    .body(format!(
-                        "<p><b>spectral lines for {} not available yet</p>",
-                        dataset_id
-                    ))
+                if fits.is_dummy {
+                    HttpResponse::Accepted()
+                        .content_type("text/html")
+                        .body(format!(
+                            "<p><b>spectral lines for {} not available yet</p>",
+                            dataset_id
+                        ))
+                } else {
+                    HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!(
+                            "<p><b>Critical Error</b>: spectral lines not found</p>"
+                        ))
+                }
             } else {
-                if fits.is_optical || !fits.is_dummy {
+                if fits.is_optical {
                     HttpResponse::NotFound()
                         .content_type("text/html")
                         .body(format!(
