@@ -3527,11 +3527,13 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
             };
 
             let sql = format!("SELECT path FROM {} WHERE data_id = '{}';", table, data_id);
+            println!("SQL: {}", sql);
             let res = conn.query(&sql, &[]);
 
             match res {
                 Ok(rows) => {
                     for row in &rows {
+                        println!("ROW: {:?}", row);
                         let path: String = row.get(0);
 
                         let filename = match table.find('.') {
