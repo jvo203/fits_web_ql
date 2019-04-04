@@ -3067,7 +3067,7 @@ fn get_molecules(
                         dataset_id
                     ))
             } else {
-                if fits.is_optical {
+                if fits.is_optical || !fits.is_dummy {
                     HttpResponse::NotFound()
                         .content_type("text/html")
                         .body(format!(
