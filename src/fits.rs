@@ -1577,7 +1577,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //enable automatic URL relocations
         match easy.follow_location(true) {
             Ok(_) => {}
-            Err(err) => println!("curl: {}", err),
+            Err(err) => println!("curl::follow_location: {}", err),
+        }
+
+        match easy.fail_on_error(true) {
+            Ok(_) => {}
+            Err(err) => println!("curl::fail_on_error: {}", err),
         }
 
         let mut header: Vec<u8> = Vec::new();

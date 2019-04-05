@@ -9,7 +9,7 @@ fn main() {
     ispc::Config::new()
         .file("src/fits.ispc")
         .optimization_opt(ispc::opt::OptimizationOpt::FastMath)
-        .addressing(ispc::opt::Addressing::A32)
+        .addressing(ispc::opt::Addressing::A64)
         .woff()
         .compile("spmd");
 
