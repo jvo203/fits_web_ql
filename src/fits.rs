@@ -1574,6 +1574,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut buffer = Vec::new();
         let mut easy = Easy::new();
 
+        //enable automatic URL relocations
+        match easy.follow_location(true) {
+            Ok(_) => {}
+            Err(err) => println!("curl: {}", err),
+        }
+
         let mut header: Vec<u8> = Vec::new();
         let mut end: bool = false;
         let mut no_hdu: i32 = 0;
