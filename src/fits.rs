@@ -1840,6 +1840,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             let _ = std::fs::rename(tmp, filename);
         } else {
             fits.send_progress_notification(&server, &"error downloading FITS".to_owned(), 0, 0);
+            let _ = std::fs::remove_file(tmp);
         };
 
         fits
