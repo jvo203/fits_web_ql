@@ -3284,18 +3284,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut len = ord_pixels.len();
         let mut hist: Vec<i32> = vec![0; NBINS];
 
-        //ignore pixels with IGNRVAL
-        let mut start = 0;
-        while ord_pixels[start] <= self.ignrval {
-            start = start + 1;
-
-            if start == len - 1 {
-                break;
-            }
-        }
-
-        let pmin = ord_pixels[start];
-
         //ignore all the NaNs at the end of the vector
         while !ord_pixels[len - 1].is_finite() {
             len = len - 1;
@@ -3305,6 +3293,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
+        let pmin = ord_pixels[0];
         let pmax = ord_pixels[len - 1];
 
         let median = {
@@ -3432,18 +3421,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //println!("{:?}", ord_pixels);
 
-        //ignore pixels with IGNRVAL
-        let mut start = 0;
-        while ord_pixels[start] <= self.ignrval {
-            start = start + 1;
-
-            if start == len - 1 {
-                break;
-            }
-        }
-
-        let pmin = ord_pixels[start];
-
         //ignore all the NaNs at the end of the vector
         while !ord_pixels[len - 1].is_finite() {
             len = len - 1;
@@ -3453,6 +3430,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
+        let pmin = ord_pixels[0];
         let pmax = ord_pixels[len - 1];
 
         let median = {

@@ -1591,3 +1591,15 @@ export LIBCLANG_PATH=/opt/llvm-3.9.0/lib64
             Err(err) => println!("error serializing a FITSImage structure: {}", err),
         }
     }
+
+ //ignore pixels with IGNRVAL
+        /*let mut start = 0;
+        while ord_pixels[start] <= self.ignrval {
+            start = start + 1;
+
+            if start == len - 1 {
+                break;
+            }
+        }
+
+        let pmin = ord_pixels[start];*/
