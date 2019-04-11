@@ -1603,3 +1603,14 @@ export LIBCLANG_PATH=/opt/llvm-3.9.0/lib64
         }
 
         let pmin = ord_pixels[start];*/
+
+fn restore_nan(&self, pixels: &mut Vec<f32>, mask: &Vec<u8>) {
+        pixels
+            .par_iter_mut()
+            .zip(mask.par_iter())
+            .for_each(|(x, m)| {
+                if *m == 0 {
+                    *x = std::f32::NAN
+                }
+            });
+    }
