@@ -1732,31 +1732,19 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     } else {
                         //then the data part
                         if !fits.has_data {
-                            if fits.depth <= 1 {
-                                //kB downloaded progress
-                                fits.send_progress_notification(
-                                    &server,
-                                    &"downloading FITS".to_owned(),
-                                    (frame_size / 1024) as i32,
-                                    (buffer.len().min(frame_size) / 1024) as i32,
-                                );
-                            }
+                            //kB downloaded progress
+                            fits.send_progress_notification(
+                                &server,
+                                &"downloading FITS".to_owned(),
+                                (fits.depth * frame_size / 1024) as i32,
+                                ((frame * frame_size + buffer.len().min(frame_size)) / 1024) as i32,
+                            );
 
                             while buffer.len() >= frame_size && !fits.has_data {
                                 let data: Vec<u8> = buffer.drain(0..frame_size).collect();
 
                                 fits.process_cube_frame(&data, cdelt3 as f32, frame);
                                 frame = frame + 1;
-
-                                if fits.depth > 1 {
-                                    //frame-by-frame progress
-                                    fits.send_progress_notification(
-                                        &server,
-                                        &"downloading FITS".to_owned(),
-                                        total as i32,
-                                        frame as i32,
-                                    );
-                                }
 
                                 if frame == fits.depth {
                                     //all data frames have been received
