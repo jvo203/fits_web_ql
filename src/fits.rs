@@ -2095,7 +2095,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             {
                 let tmp = line.to_lowercase();
-                if tmp.contains("suzaku") || tmp.contains("hitomi") {
+                if tmp.contains("suzaku") || tmp.contains("hitomi") || tmp.contains("x-ray") {
                     //switch on JAXA X-Ray settings
                     self.is_optical = false;
                     self.is_xray = true;
@@ -3588,6 +3588,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //the histogram part
         let dx = (pmax - pmin) / (NBINS as f32);
+        self.hist.resize(NBINS, 0);
 
         if dx <= 0.0 {
             return;
@@ -3595,8 +3596,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let mut bin = pmin + dx;
         let mut index = 0;
-
-        self.hist.resize(NBINS, 0);
 
         let start = precise_time::precise_time_ns();
 
@@ -3620,6 +3619,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     }
 
     fn histogram_classifier(&mut self) {
+        if self.hist.len() <= 0 {
+            return;
+        }
+
         let mut cdf: Vec<i64> = vec![0; NBINS];
         let mut slot: Vec<f64> = vec![0.0; NBINS];
 
@@ -4857,6 +4860,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     ) -> Option<f32> {
         println!("auto-adjusting brightness");
         let start = precise_time::precise_time_ns();
+
+        if !initial_sensitivity.is_finite() {
+            return None;
+        }
 
         let target_brightness: f32 = 0.1;
         let max_iter = 20;
