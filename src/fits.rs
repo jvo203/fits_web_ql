@@ -1268,7 +1268,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     no_hdu = no_hdu + 1;
 
                     //parse a FITS header chunk
-                    end = fits.parse_fits_header_chunk(&chunk);
+                    match fits.parse_fits_header_chunk(&chunk) {
+                        Ok(x) => end = x,
+                        Err(err) => {
+                            println!("CRITICAL ERROR parsing FITS header: {}", err);
+                            return fits;
+                        }
+                    };
+
                     header.extend_from_slice(&chunk);
                 }
                 Err(err) => {
@@ -1292,7 +1299,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         no_hdu = no_hdu + 1;
 
                         //parse a FITS header chunk
-                        end = fits.parse_fits_header_chunk(&chunk);
+                        match fits.parse_fits_header_chunk(&chunk) {
+                            Ok(x) => end = x,
+                            Err(err) => {
+                                println!("CRITICAL ERROR parsing FITS header: {}", err);
+                                return fits;
+                            }
+                        };
+
                         header.extend_from_slice(&chunk);
                     }
                     Err(err) => {
@@ -1678,7 +1692,15 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             no_hdu = no_hdu + 1;
 
                             //parse a FITS header chunk
-                            end = fits.parse_fits_header_chunk(&chunk);
+                            match fits.parse_fits_header_chunk(&chunk) {
+                                Ok(x) => end = x,
+                                Err(err) => {
+                                    println!("CRITICAL ERROR parsing FITS header: {}", err);
+                                    //terminate the transfer early
+                                    return Ok(0);
+                                }
+                            };
+
                             header.extend_from_slice(&chunk);
 
                             //try again, there may be an image extension
@@ -2026,7 +2048,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         return false;
     }
 
-    fn parse_fits_header_chunk(&mut self, buf: &[u8]) -> bool {
+    fn parse_fits_header_chunk(&mut self, buf: &[u8]) -> Result<bool, &str> {
         let mut offset: usize = 0;
 
         while offset < FITS_CHUNK_LENGTH {
@@ -2035,12 +2057,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 Ok(x) => x,
                 Err(err) => {
                     println!("non-UTF8 characters found: {}", err);
-                    return true;
+                    return Err("non-UTF8 characters found in the FITS header");
                 }
             };
 
             if line.contains("END       ") {
-                return true;
+                return Ok(true);
             }
 
             if line.contains("TELESCOP= ") {
@@ -2588,7 +2610,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             offset = offset + FITS_LINE_LENGTH;
         }
 
-        return false;
+        return Ok(false);
     }
 
     fn process_cube_frame(&mut self, buf: &[u8], cdelt3: f32, frame: usize) {
@@ -2743,7 +2765,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
             }
 
-            _ => println!("unsupported bitpix: {}", self.bitpix),
+            _ => {
+                println!("unsupported bitpix: {}", self.bitpix);
+                return;
+            }
         };
 
         self.frame_min[frame] = self.frame_min[frame].min(frame_min);
