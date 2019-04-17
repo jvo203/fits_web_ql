@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-04-03.0";
+	return "JS2019-04-17.0";
 }
 
 const wasm_supported = (() => {
@@ -9090,6 +9090,10 @@ function fetch_image(datasetId, index, add_timestamp) {
 		url += '&timestamp=' + Date.now();
 
 	xmlhttp.onreadystatechange = function () {
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 404) {
+			show_error();
+		}
+
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 502) {
 			console.log("Connection error, re-fetching image after 1 second.");
 			setTimeout(function () {
