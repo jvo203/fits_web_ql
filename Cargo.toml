@@ -48,7 +48,7 @@ rayon = "*"
 time = "*"
 num-integer = "*"
 num-rational = "*"
-libvpx-native-sys = "*"
+libvpx-native-sys = {version = "*", git = "https://github.com/jvo203/rust-vpx.git", features = ["generate"]}
 num = "*"
 num_cpus = "*"
 serde = "*"
