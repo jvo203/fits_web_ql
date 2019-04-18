@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-04-18.0";
+	return "JS2019-04-18.1";
 }
 
 const wasm_supported = (() => {
@@ -9091,6 +9091,17 @@ function fetch_image(datasetId, index, add_timestamp) {
 
 	xmlhttp.onreadystatechange = function () {
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 404) {
+			hide_hourglass();
+			show_not_found();
+		}
+
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 415) {
+			hide_hourglass();
+			show_unsupported_media_type();
+		}
+
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 500) {
+			hide_hourglass();
 			show_critical_error();
 		}
 
@@ -10716,7 +10727,7 @@ function show_critical_error() {
 		.attr("class", "container timeout");
 
 	var title = div.append("h1")
-		.style("margin-top", "20%")
+		.style("margin-top", "25%")
 		.style("color", "red")
 		.attr("align", "center")
 		.text("CRITICAL ERROR");
@@ -10728,6 +10739,61 @@ function show_critical_error() {
 		.attr("class", "links")
 		.attr("href", "mailto:help_desk@jvo.nao.ac.jp?subject=" + votable.getAttribute('data-server-string') + " error [" + votable.getAttribute('data-server-version') + "/" + get_js_version() + "]&body=Error accessing " + datasetId)
 		.html('PLEASE INFORM AN ADMINISTRATOR');
+}
+
+function show_unsupported_media_type() {
+	try {
+		$('#welcomeScreen').modal('hide');
+	}
+	catch (e) { };
+
+	var div = d3.select("body")
+		.append("div")
+		.attr("class", "container timeout");
+
+	var title = div.append("h1")
+		.style("margin-top", "25%")
+		.style("color", "red")
+		.attr("align", "center")
+		.text("UNSUPPORTED MEDIA TYPE");
+
+	div.append("h2")
+		.attr("align", "center")
+		//.style("color", "red")
+		.text("FITSWEBQL SUPPORTS ONLY FITS DATA");
+}
+
+function show_not_found() {
+	try {
+		$('#welcomeScreen').modal('hide');
+	}
+	catch (e) { };
+
+	var div = d3.select("body")
+		.append("div")
+		.attr("class", "container timeout");
+
+	var title = div.append("h1")
+		.style("margin-top", "20%")
+		.style("color", "red")
+		.attr("align", "center")
+		.text("DATA NOT FOUND ON THE REMOTE SITE");
+
+	div.append("h2")
+		.attr("align", "center")
+		//.style("color", "red")
+		.text("THE FITS FILE CANNOT BE FOUND");
+
+	div.append("h2")
+		.attr("align", "center")
+		//.style("color", "red")
+		.text("AND/OR");
+
+	div.append("h2")
+		.attr("align", "center")
+		//.style("color", "red")
+		.text("THE REMOTE URL MAY BE INCORRECT/OUT-OF-DATE");
+
 }
 
 function show_welcome() {
