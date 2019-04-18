@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-04-17.0";
+	return "JS2019-04-18.0";
 }
 
 const wasm_supported = (() => {
@@ -1401,8 +1401,8 @@ function process_progress_event(data, index) {
 			if (notifications_completed == va_count)
 				document.getElementById('welcome').style.display = "none";
 
-			if (message.indexOf("error") >= 0)
-				show_error();
+			/*if (message.indexOf("error") >= 0)
+				show_critical_error();*/
 		}
 	}
 }
@@ -9091,7 +9091,7 @@ function fetch_image(datasetId, index, add_timestamp) {
 
 	xmlhttp.onreadystatechange = function () {
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 404) {
-			show_error();
+			show_critical_error();
 		}
 
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 502) {
@@ -10705,7 +10705,7 @@ function show_timeout() {
 		.text("PLEASE RELOAD THE PAGE");
 }
 
-function show_error() {
+function show_critical_error() {
 	try {
 		$('#welcomeScreen').modal('hide');
 	}

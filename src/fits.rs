@@ -359,6 +359,7 @@ pub struct FITS {
     pub is_optical: bool,
     pub is_xray: bool,
     pub is_dummy: bool,
+    pub status_code: u16,
 }
 
 #[derive(Serialize, Debug)]
@@ -470,6 +471,7 @@ impl FITS {
             is_optical: true,
             is_xray: false,
             is_dummy: true,
+            status_code: 404,
         };
 
         fits
@@ -1212,6 +1214,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             Ok(x) => x,
             Err(x) => {
                 println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
+                fits.status_code = 500;
 
                 #[cfg(not(feature = "jvo"))]
                 return fits;
@@ -1235,11 +1238,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 fits.filesize = len;
 
                 if len < FITS_CHUNK_LENGTH as u64 {
+                    fits.status_code = 500;
                     return fits;
                 };
             }
             Err(err) => {
                 println!("CRITICAL ERROR file metadata reading problem: {}", err);
+                fits.status_code = 500;
                 return fits;
             }
         };
@@ -1272,6 +1277,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         Ok(x) => end = x,
                         Err(err) => {
                             println!("CRITICAL ERROR parsing FITS header: {}", err);
+                            fits.status_code = 415;
                             return fits;
                         }
                     };
@@ -1280,6 +1286,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
                 Err(err) => {
                     println!("CRITICAL ERROR reading FITS header: {}", err);
+                    fits.status_code = 500;
                     return fits;
                 }
             };
@@ -1303,6 +1310,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             Ok(x) => end = x,
                             Err(err) => {
                                 println!("CRITICAL ERROR parsing FITS header: {}", err);
+                                fits.status_code = 415;
                                 return fits;
                             }
                         };
@@ -1311,6 +1319,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                     Err(err) => {
                         println!("CRITICAL ERROR reading FITS header: {}", err);
+                        fits.status_code = 500;
                         return fits;
                     }
                 };
@@ -1342,6 +1351,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             Ok(x) => x,
             Err(err) => {
                 println!("FITS HEADER UTF8: {}", err);
+                fits.status_code = 500;
                 String::from("")
             }
         };
@@ -1410,9 +1420,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     &server,
                 ) {
                     println!("CRITICAL ERROR parallel reading from half-float cache");
+                    fits.status_code = 500;
 
                     if !fits.read_from_cache(binpath, frame_size / 2, cdelt3 as f32, &server) {
                         println!("CRITICAL ERROR reading from half-float cache");
+                        fits.status_code = 500;
                         return fits;
                     }
                 }
@@ -1433,6 +1445,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         &server,
                     ) {
                         println!("CRITICAL ERROR reading from FITS file");
+                        fits.status_code = 500;
                         return fits;
                     }
                 } else {
@@ -1487,6 +1500,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             "CRITICAL ERROR not all FITS cube frames have been read: {}/{}",
                             frame, fits.depth
                         );
+                        fits.status_code = 500;
                         return fits;
                     }
                 }
@@ -1575,6 +1589,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut cachefile = match File::create(&tmp) {
             Err(ref e) => {
                 println!("Could not create {} ({})!", tmp, e.description());
+                fits.status_code = 500;
                 return fits;
             }
             Ok(file) => file,
@@ -1629,6 +1644,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         Ok(_) => {}
                         Err(err) => {
                             println!("cannot append to the temporary FITS file: {}", err);
+                            fits.status_code = 500;
                         }
                     };
 
@@ -1647,6 +1663,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             }
                             Err(err) => {
                                 println!("Decompress: {}", err);
+                                fits.status_code = 500;
                             }
                         }
                     }
@@ -1675,6 +1692,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                                 Err(err) => {
                                     println!("Decompress: {}", err);
+                                    fits.status_code = 500;
                                 }
                             }
                         } else {
@@ -1696,6 +1714,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 Ok(x) => end = x,
                                 Err(err) => {
                                     println!("CRITICAL ERROR parsing FITS header: {}", err);
+                                    fits.status_code = 415;
                                     //terminate the transfer early
                                     return Ok(0);
                                 }
@@ -1731,6 +1750,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     Ok(x) => x,
                                     Err(err) => {
                                         println!("FITS HEADER UTF8: {}", err);
+                                        fits.status_code = 500;
                                         String::from("")
                                     }
                                 };
@@ -1849,6 +1869,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             let filename = format!("{}/{}.fits", FITSCACHE, id.replace("/", "_"));
             let _ = std::fs::rename(tmp, filename);
         } else {
+            fits.status_code = 404;
             fits.send_progress_notification(&server, &"error downloading FITS".to_owned(), 0, 0);
             let _ = std::fs::remove_file(tmp);
         };

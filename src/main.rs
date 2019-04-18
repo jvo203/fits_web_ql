@@ -38,8 +38,10 @@ use std::time::SystemTime;
 use std::{env, mem, ptr};
 
 use ::actix::*;
+use actix_web::dev::HttpResponseBuilder;
 use actix_web::http::header::HeaderValue;
 use actix_web::http::ContentEncoding;
+use actix_web::http::StatusCode;
 use actix_web::middleware::Logger;
 use actix_web::server::HttpServer;
 use actix_web::*;
@@ -2252,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.14";
-static VERSION_STRING: &'static str = "SV2019-04-17.0";
+static VERSION_STRING: &'static str = "SV2019-04-18.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2852,9 +2854,22 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpRespons
             };
         }
         else {
-            HttpResponse::NotFound()
-                .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: image not found</p>"))
+            //custom HTTP error responses
+            match fits.status_code {
+                415 => {
+                    HttpResponseBuilder::new(StatusCode::from_u16(415).unwrap())
+                        .content_type("text/html")
+                        .body(format!("UNSUPPORTED MEDIA TYPE"))                    
+                },
+                500 => {
+                    HttpResponse::InternalServerError()
+                        .content_type("text/html")
+                        .body(format!("CRITICAL ERROR"))                    
+                },
+                _ => HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!("DATA NOT FOUND ON THE REMOTE SITE/SERVER"))
+            }
         }
     }))
     .responder()
