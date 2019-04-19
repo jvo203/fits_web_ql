@@ -1512,6 +1512,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //we've gotten so far, we have the data, pixels, mask and spectrum
         fits.has_data = true;
+        fits.status_code = 200;
 
         if !fits.pixels.is_empty() && !fits.mask.is_empty() {
             //apply std::f32::NAN to masked pixels
@@ -1791,6 +1792,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 if frame == fits.depth {
                                     //all data frames have been received
                                     fits.has_data = true;
+                                    fits.status_code = 200;
                                 }
                             }
                         }
@@ -1866,8 +1868,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         };
 
         if fits.filesize >= FITS_CHUNK_LENGTH as u64 {
-            let filename = format!("{}/{}.fits", FITSCACHE, id.replace("/", "_"));
-            let _ = std::fs::rename(tmp, filename);
+            if fits.status_code == 200 {
+                let filename = format!("{}/{}.fits", FITSCACHE, id.replace("/", "_"));
+                let _ = std::fs::rename(tmp, filename);
+            } else {
+                let _ = std::fs::remove_file(tmp);
+            }
         } else {
             fits.status_code = 404;
             fits.send_progress_notification(&server, &"error downloading FITS".to_owned(), 0, 0);
