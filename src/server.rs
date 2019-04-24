@@ -58,6 +58,7 @@ pub struct WsMessage {
     pub notification: String,
     pub total: i32,
     pub running: i32,
+    pub elapsed: std::time::Duration,
     /// dataset
     pub dataset_id: String,
 }
@@ -323,7 +324,8 @@ impl Handler<WsMessage> for SessionServer {
                         "type" : "progress",
                         "message" : msg.notification,
                         "total" : msg.total,
-                        "running" : msg.running
+                        "running" : msg.running,
+                        "elapsed" : (msg.elapsed.as_millis() as f64) / 1000.0
                     })
                     .to_string();
 

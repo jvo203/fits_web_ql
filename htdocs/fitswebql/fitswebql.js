@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-04-18.1";
+	return "JS2019-04-24.0";
 }
 
 const wasm_supported = (() => {
@@ -1369,8 +1369,9 @@ function process_progress_event(data, index) {
 		var message = data.message;
 		var running = data.running;
 		var total = data.total;
+		var elapsed = data.elapsed;
 
-		//console.log(data, index) ;
+		//console.log(data, index);
 
 		if (total > 0) {
 			notifications_received[index - 1] = Math.max(running, notifications_received[index - 1]);
@@ -1380,18 +1381,23 @@ function process_progress_event(data, index) {
 			else*/
 			var PROGRESS_VARIABLE = notifications_received[index - 1] / total;
 
-			var progress = Math.round(100 * PROGRESS_VARIABLE);
+			if (PROGRESS_VARIABLE != previous_progress[index - 1]) {
+				previous_progress[index - 1] = PROGRESS_VARIABLE;
 
-			if (progress != previous_progress[index - 1]) {
-				previous_progress[index - 1] = progress;
+				PROGRESS_INFO = "&nbsp;" + numeral(PROGRESS_VARIABLE).format('0.0%');
 
-				PROGRESS_INFO = "&nbsp;" + message + " " + progress + "%";
+				var speed = notifications_received[index - 1] / elapsed;
+				var remaining_time = (total - notifications_received[index - 1]) / speed;//[s]
+
+				//console.log("speed:", speed, "remaining:", remaining_time);
+				if (remaining_time > 1)
+					PROGRESS_INFO += ", " + numeral(remaining_time).format('00:00:00');
 
 				//console.log(PROGRESS_INFO) ;
 
 				d3.select("#progress-bar" + index)
-					.attr("aria-valuenow", progress)
-					.style("width", progress + "%")
+					.attr("aria-valuenow", (100.0 * PROGRESS_VARIABLE))
+					.style("width", (100.0 * PROGRESS_VARIABLE) + "%")
 					.html(PROGRESS_INFO);
 			}
 		}
