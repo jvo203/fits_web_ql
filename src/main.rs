@@ -371,7 +371,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[init_video]") {
                     //println!("{}", text.replace("&", " "));
-                    let (frame, view, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt!(
+                    let (frame, view, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt_some!(
                         &text.replace("&", " "),
                         "[init_video] frame={} view={} ref_freq={} fps={} seq_id={} bitrate={} timestamp={}",
                         String,
@@ -738,7 +738,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[spectrum]") {
                     //println!("{}", text.replace("&", " "));
-                    let (x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt!(&text.replace("&"," "), "[spectrum] x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
+                    let (x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[spectrum] x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
 
                     let x1 = match x1 {
                         Some(x) => x,
@@ -915,7 +915,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[image]") {
                     //println!("{}", text.replace("&", " "));
-                    let (black, white, median, noise, flux, frame_start, frame_end, ref_freq, hist, timestamp) = scan_fmt!(&text.replace("&"," "), "[image] black={} white={} median={} noise={} flux={} frame_start={} frame_end={} ref_freq={} hist={} timestamp={}", String, String, String, String, String, String, String, String, bool, String);
+                    let (black, white, median, noise, flux, frame_start, frame_end, ref_freq, hist, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[image] black={} white={} median={} noise={} flux={} frame_start={} frame_end={} ref_freq={} hist={} timestamp={}", String, String, String, String, String, String, String, String, bool, String);
 
                     let black = match black {
                         Some(s) => match s.parse::<f32>() {
@@ -1583,7 +1583,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[video]") {
                     //println!("{}", text.replace("&"," "));
-                    let (frame, key, view, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt!(
+                    let (frame, key, view, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt_some!(
                         &text.replace("&", " "),
                         "[video] frame={} key={} view={} ref_freq={} fps={} seq_id={} bitrate={} timestamp={}",
                         String,
@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-04-24.0";
+static VERSION_STRING: &'static str = "SV2019-05-04.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]

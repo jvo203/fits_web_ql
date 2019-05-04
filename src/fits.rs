@@ -2096,7 +2096,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("TELESCOP= ") {
-                let telescope = match scan_fmt!(line, "TELESCOP= {}", String) {
+                let telescope = match scan_fmt_some!(line, "TELESCOP= {}", String) {
                     Some(x) => x.replace("'", "").to_lowercase(),
                     _ => String::from(""),
                 };
@@ -2133,7 +2133,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("FRAMEID = ") {
-                let frameid = match scan_fmt!(line, "FRAMEID = {}", String) {
+                let frameid = match scan_fmt_some!(line, "FRAMEID = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 };
@@ -2166,63 +2166,63 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("DATE-OBS= ") {
-                self.obs_date = match scan_fmt!(line, "DATE-OBS= {}", String) {
+                self.obs_date = match scan_fmt_some!(line, "DATE-OBS= {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("LINE    = ") {
-                self.line = match scan_fmt!(line, "LINE    = {}", String) {
+                self.line = match scan_fmt_some!(line, "LINE    = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("FILTER  = ") {
-                self.filter = match scan_fmt!(line, "FILTER  = {}", String) {
+                self.filter = match scan_fmt_some!(line, "FILTER  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("J_LINE  = ") {
-                self.line = match scan_fmt!(line, "J_LINE  = {}", String) {
+                self.line = match scan_fmt_some!(line, "J_LINE  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("SPECSYS = ") {
-                self.specsys = match scan_fmt!(line, "SPECSYS = {}", String) {
+                self.specsys = match scan_fmt_some!(line, "SPECSYS = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("TIMESYS = ") {
-                self.timesys = match scan_fmt!(line, "TIMESYS = {}", String) {
+                self.timesys = match scan_fmt_some!(line, "TIMESYS = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("BITPIX  = ") {
-                self.bitpix = match scan_fmt!(line, "BITPIX  = {d}", i32) {
+                self.bitpix = match scan_fmt_some!(line, "BITPIX  = {d}", i32) {
                     Some(x) => x,
                     _ => 0,
                 }
             }
 
             if line.contains("NAXIS   = ") {
-                self.naxis = match scan_fmt!(line, "NAXIS   = {d}", i32) {
+                self.naxis = match scan_fmt_some!(line, "NAXIS   = {d}", i32) {
                     Some(x) => x,
                     _ => 0,
                 }
             }
 
             if line.contains("NAXIS1  = ") {
-                self.width = match scan_fmt!(line, "NAXIS1  = {d}", usize) {
+                self.width = match scan_fmt_some!(line, "NAXIS1  = {d}", usize) {
                     Some(x) => x,
                     _ => 0,
                 };
@@ -2231,7 +2231,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("NAXIS2  = ") {
-                self.height = match scan_fmt!(line, "NAXIS2  = {d}", usize) {
+                self.height = match scan_fmt_some!(line, "NAXIS2  = {d}", usize) {
                     Some(x) => x,
                     _ => 0,
                 };
@@ -2240,7 +2240,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("NAXIS3  = ") {
-                self.depth = match scan_fmt!(line, "NAXIS3  = {d}", usize) {
+                self.depth = match scan_fmt_some!(line, "NAXIS3  = {d}", usize) {
                     Some(x) => x,
                     _ => 1,
                 };
@@ -2249,7 +2249,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("NAXIS4  = ") {
-                self.polarisation = match scan_fmt!(line, "NAXIS4  = {d}", usize) {
+                self.polarisation = match scan_fmt_some!(line, "NAXIS4  = {d}", usize) {
                     Some(x) => x,
                     _ => 1,
                 };
@@ -2258,21 +2258,21 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("BTYPE   = ") {
-                self.beam_type = match scan_fmt!(line, "BTYPE   = {}", String) {
+                self.beam_type = match scan_fmt_some!(line, "BTYPE   = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("BUNIT   = ") {
-                self.beam_unit = match scan_fmt!(line, "BUNIT   = {}", String) {
+                self.beam_unit = match scan_fmt_some!(line, "BUNIT   = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("BMAJ    = ") {
-                let s = match scan_fmt!(line, "BMAJ    = {}", String) {
+                let s = match scan_fmt_some!(line, "BMAJ    = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2284,7 +2284,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("BMIN    = ") {
-                let s = match scan_fmt!(line, "BMIN    = {}", String) {
+                let s = match scan_fmt_some!(line, "BMIN    = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2296,7 +2296,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("BPA     = ") {
-                let s = match scan_fmt!(line, "BPA     = {}", String) {
+                let s = match scan_fmt_some!(line, "BPA     = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2308,7 +2308,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("RESTFRQ = ") {
-                let s = match scan_fmt!(line, "RESTFRQ = {}", String) {
+                let s = match scan_fmt_some!(line, "RESTFRQ = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2320,7 +2320,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("RESTFREQ= ") {
-                let s = match scan_fmt!(line, "RESTFREQ= {}", String) {
+                let s = match scan_fmt_some!(line, "RESTFREQ= {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2332,7 +2332,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("OBSRA   = ") {
-                let s = match scan_fmt!(line, "OBSRA   = {}", String) {
+                let s = match scan_fmt_some!(line, "OBSRA   = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2344,7 +2344,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("RA_OBJ  = ") {
-                let s = match scan_fmt!(line, "RA_OBJ  = {}", String) {
+                let s = match scan_fmt_some!(line, "RA_OBJ  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2356,7 +2356,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("OBSDEC  = ") {
-                let s = match scan_fmt!(line, "OBSDEC  = {}", String) {
+                let s = match scan_fmt_some!(line, "OBSDEC  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2368,7 +2368,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("DEC_OBJ = ") {
-                let s = match scan_fmt!(line, "DEC_OBJ = {}", String) {
+                let s = match scan_fmt_some!(line, "DEC_OBJ = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2380,7 +2380,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("DATAMIN = ") {
-                let s = match scan_fmt!(line, "DATAMIN = {}", String) {
+                let s = match scan_fmt_some!(line, "DATAMIN = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2392,7 +2392,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("DATAMAX = ") {
-                let s = match scan_fmt!(line, "DATAMAX = {}", String) {
+                let s = match scan_fmt_some!(line, "DATAMAX = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2404,7 +2404,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("BSCALE  = ") {
-                let s = match scan_fmt!(line, "BSCALE  = {}", String) {
+                let s = match scan_fmt_some!(line, "BSCALE  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2416,7 +2416,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("BZERO   = ") {
-                let s = match scan_fmt!(line, "BZERO   = {}", String) {
+                let s = match scan_fmt_some!(line, "BZERO   = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2428,7 +2428,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("IGNRVAL = ") {
-                let s = match scan_fmt!(line, "IGNRVAL = {}", String) {
+                let s = match scan_fmt_some!(line, "IGNRVAL = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2440,7 +2440,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CRVAL1  = ") {
-                let s = match scan_fmt!(line, "CRVAL1  = {}", String) {
+                let s = match scan_fmt_some!(line, "CRVAL1  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2452,7 +2452,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CRVAL2  = ") {
-                let s = match scan_fmt!(line, "CRVAL2  = {}", String) {
+                let s = match scan_fmt_some!(line, "CRVAL2  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2464,7 +2464,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CRVAL3  = ") {
-                let s = match scan_fmt!(line, "CRVAL3  = {}", String) {
+                let s = match scan_fmt_some!(line, "CRVAL3  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2476,7 +2476,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CDELT1  = ") {
-                let s = match scan_fmt!(line, "CDELT1  = {}", String) {
+                let s = match scan_fmt_some!(line, "CDELT1  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2488,7 +2488,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CDELT2  = ") {
-                let s = match scan_fmt!(line, "CDELT2  = {}", String) {
+                let s = match scan_fmt_some!(line, "CDELT2  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2500,7 +2500,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CDELT3  = ") {
-                let s = match scan_fmt!(line, "CDELT3  = {}", String) {
+                let s = match scan_fmt_some!(line, "CDELT3  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2512,7 +2512,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CRPIX1  = ") {
-                let s = match scan_fmt!(line, "CRPIX1  = {}", String) {
+                let s = match scan_fmt_some!(line, "CRPIX1  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2524,7 +2524,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CRPIX2  = ") {
-                let s = match scan_fmt!(line, "CRPIX2  = {}", String) {
+                let s = match scan_fmt_some!(line, "CRPIX2  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2536,7 +2536,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CRPIX3  = ") {
-                let s = match scan_fmt!(line, "CRPIX3  = {}", String) {
+                let s = match scan_fmt_some!(line, "CRPIX3  = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2548,49 +2548,49 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CUNIT1  = ") {
-                self.cunit1 = match scan_fmt!(line, "CUNIT1  = {}", String) {
+                self.cunit1 = match scan_fmt_some!(line, "CUNIT1  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("CUNIT2  = ") {
-                self.cunit2 = match scan_fmt!(line, "CUNIT2  = {}", String) {
+                self.cunit2 = match scan_fmt_some!(line, "CUNIT2  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("CUNIT3  = ") {
-                self.cunit3 = match scan_fmt!(line, "CUNIT3  = {}", String) {
+                self.cunit3 = match scan_fmt_some!(line, "CUNIT3  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("CTYPE1  = ") {
-                self.ctype1 = match scan_fmt!(line, "CTYPE1  = {}", String) {
+                self.ctype1 = match scan_fmt_some!(line, "CTYPE1  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("CTYPE2  = ") {
-                self.ctype2 = match scan_fmt!(line, "CTYPE2  = {}", String) {
+                self.ctype2 = match scan_fmt_some!(line, "CTYPE2  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("CTYPE3  = ") {
-                self.ctype3 = match scan_fmt!(line, "CTYPE3  = {}", String) {
+                self.ctype3 = match scan_fmt_some!(line, "CTYPE3  = {}", String) {
                     Some(x) => x.replace("'", ""),
                     _ => String::from(""),
                 }
             }
 
             if line.contains("CD1_1   = ") {
-                let s = match scan_fmt!(line, "CD1_1   = {}", String) {
+                let s = match scan_fmt_some!(line, "CD1_1   = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2602,7 +2602,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CD1_2   = ") {
-                let s = match scan_fmt!(line, "CD1_2   = {}", String) {
+                let s = match scan_fmt_some!(line, "CD1_2   = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2614,7 +2614,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CD2_1   = ") {
-                let s = match scan_fmt!(line, "CD2_1   = {}", String) {
+                let s = match scan_fmt_some!(line, "CD2_1   = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };
@@ -2626,7 +2626,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
 
             if line.contains("CD2_2   = ") {
-                let s = match scan_fmt!(line, "CD2_2   = {}", String) {
+                let s = match scan_fmt_some!(line, "CD2_2   = {}", String) {
                     Some(x) => x,
                     _ => String::from(""),
                 };

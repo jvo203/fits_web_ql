@@ -36,7 +36,7 @@ dirs = "*"
 #half = { version = "*", features = ["use-intrinsics"] }
 half = "*"
 lazy_static = "*"
-scan_fmt = "*"
+scan_fmt = "0.2.1"
 bytes = "*"
 byteorder = "*"
 uuid = { version = "*", features = ["v3", "v4"] }
