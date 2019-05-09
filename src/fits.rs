@@ -2388,7 +2388,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 self.datamin = match s.parse::<f32>() {
                     Ok(x) => x,
                     Err(_) => std::f32::MIN,
-                }
+                };
+
+                if self.datamin == self.datamax {
+                    self.datamin = std::f32::MIN;
+                    self.datamax = std::f32::MAX;
+                };
             }
 
             if line.contains("DATAMAX = ") {
@@ -2400,7 +2405,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 self.datamax = match s.parse::<f32>() {
                     Ok(x) => x,
                     Err(_) => std::f32::MAX,
-                }
+                };
+
+                if self.datamin == self.datamax {
+                    self.datamin = std::f32::MIN;
+                    self.datamax = std::f32::MAX;
+                };
             }
 
             if line.contains("BSCALE  = ") {
