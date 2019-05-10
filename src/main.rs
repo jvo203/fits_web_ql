@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-09.0";
+static VERSION_STRING: &'static str = "SV2019-05-10.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2579,7 +2579,10 @@ fn directory_handler(
 fn websocket_entry(
     req: &HttpRequest<WsSessionState>,
 ) -> Result<Box<Future<Item = HttpResponse, Error = Error>>, Error> /*Result<HttpResponse>*/ {
-    let dataset_id_orig: String = req.match_info().query("id").unwrap();
+    let dataset_id_orig: String = match req.match_info().query("id") {
+        Ok(x) => x,
+        Err(err) => return Err(actix_web::error::Error::from(err)),
+    };
 
     //dataset_id needs to be URI-decoded
     let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
@@ -2608,7 +2611,10 @@ fn websocket_entry(
 fn fitswebql_entry(
     req: &HttpRequest<WsSessionState>,
 ) -> Box<Future<Item = HttpResponse, Error = Error>> /*HttpResponse*/ {
-    let fitswebql_path: String = req.match_info().query("path").unwrap();
+    let fitswebql_path: String = match req.match_info().query("path") {
+        Ok(x) => x,
+        Err(err) => return result(Err(actix_web::error::Error::from(err))).responder(),
+    };
 
     let state = req.state();
     let server = &state.addr;
