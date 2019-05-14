@@ -2251,7 +2251,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-14.0";
+static VERSION_STRING: &'static str = "SV2019-05-15.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4140,8 +4140,13 @@ fn main() {
     let sys = actix::System::new("fits_web_ql");
 
     // Start the WebSocket message server actor in a separate thread
-    let server = Arbiter::start(|_| server::SessionServer::default());
-    //let server: Addr<Syn, _> = SyncArbiter::start(32,|| server::SessionServer::default());//16 or 32 threads at most
+    let server = Arbiter::start(|ctx: &mut Context<_>| {
+        ctx.set_mailbox_capacity(1 << 31);
+        server::SessionServer::default()
+    });
+    /*let num_threads = (num_cpus::get() / 2).max(1);
+    let server = SyncArbiter::start(num_threads, || server::SessionServer::default()); //16 or 32 threads at most
+    */
 
     let actix_server_path = server_path.clone();
 
