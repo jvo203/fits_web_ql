@@ -27,7 +27,7 @@ vpx = "1.7.0"
 
 [dependencies]
 #jemallocator = "*"
-actix = "0.7.9"
+actix = "0.7"
 actix-web = "*"
 serde_json = "*"
 chrono = "*"
