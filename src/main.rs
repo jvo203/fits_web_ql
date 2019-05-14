@@ -3,9 +3,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-//#[global_allocator]
-//static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[macro_use]
