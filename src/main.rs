@@ -3,8 +3,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+//#[global_allocator]
+//static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -2254,7 +2254,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-10.0";
+static VERSION_STRING: &'static str = "SV2019-05-14.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
