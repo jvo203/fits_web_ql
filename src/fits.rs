@@ -4106,121 +4106,242 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let y: Vec<u8> = vec![0; len];
 
-        (0..num_threads).into_par_iter().for_each(|index| {
-            let offset = index * work_size;
+        match pool {
+            Some(pool) => pool.install(|| {
+                (0..num_threads).into_par_iter().for_each(|index| {
+                    let offset = index * work_size;
 
-            let work_size = if index == num_threads - 1 {
-                len - offset
-            } else {
-                work_size
-            };
+                    let work_size = if index == num_threads - 1 {
+                        len - offset
+                    } else {
+                        work_size
+                    };
 
-            let vec = &vec[offset..offset + work_size];
-            let ptr = vec.as_ptr() as *mut i16;
-            let len = vec.len();
+                    let vec = &vec[offset..offset + work_size];
+                    let ptr = vec.as_ptr() as *mut i16;
+                    let len = vec.len();
 
-            println!(
-                "index: {}, offset: {}, work_size: {}, len = {}",
-                index, offset, work_size, len
-            );
+                    println!(
+                        "index: {}, offset: {}, work_size: {}, len = {}",
+                        index, offset, work_size, len
+                    );
 
-            let mask = &self.mask[offset..offset + work_size];
-            let mask_ptr = mask.as_ptr() as *mut u8;
-            let mask_len = mask.len();
+                    let mask = &self.mask[offset..offset + work_size];
+                    let mask_ptr = mask.as_ptr() as *mut u8;
+                    let mask_len = mask.len();
 
-            let y = &y[offset..offset + work_size]; //partial outputs go in here
-            let y_ptr = y.as_ptr() as *mut u8;
+                    let y = &y[offset..offset + work_size]; //partial outputs go in here
+                    let y_ptr = y.as_ptr() as *mut u8;
 
-            match flux.as_ref() {
-                "linear" => {
-                    let slope = 1.0 / (white - black);
+                    match flux.as_ref() {
+                        "linear" => {
+                            let slope = 1.0 / (white - black);
 
-                    unsafe {
-                        let raw = slice::from_raw_parts_mut(ptr, len);
-                        let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-                        let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+                            unsafe {
+                                let raw = slice::from_raw_parts_mut(ptr, len);
+                                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                                let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
-                        spmd::data_to_luminance_f16_linear(
-                            raw.as_mut_ptr(),
-                            mask_raw.as_mut_ptr(),
-                            self.bzero,
-                            self.bscale,
-                            black,
-                            slope,
-                            y_raw.as_mut_ptr(),
-                            len as u32,
-                        );
+                                spmd::data_to_luminance_f16_linear(
+                                    raw.as_mut_ptr(),
+                                    mask_raw.as_mut_ptr(),
+                                    self.bzero,
+                                    self.bscale,
+                                    black,
+                                    slope,
+                                    y_raw.as_mut_ptr(),
+                                    len as u32,
+                                );
+                            }
+                        }
+                        "logistic" => unsafe {
+                            let raw = slice::from_raw_parts_mut(ptr, len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                            let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                            spmd::data_to_luminance_f16_logistic(
+                                raw.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                median,
+                                sensitivity,
+                                y_raw.as_mut_ptr(),
+                                len as u32,
+                            );
+                        },
+                        "ratio" => unsafe {
+                            let raw = slice::from_raw_parts_mut(ptr, len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                            let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                            spmd::data_to_luminance_f16_ratio(
+                                raw.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                black,
+                                sensitivity,
+                                y_raw.as_mut_ptr(),
+                                len as u32,
+                            );
+                        },
+                        "square" => unsafe {
+                            let raw = slice::from_raw_parts_mut(ptr, len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                            let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                            spmd::data_to_luminance_f16_square(
+                                raw.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                black,
+                                sensitivity,
+                                y_raw.as_mut_ptr(),
+                                len as u32,
+                            );
+                        },
+                        //by default assume "legacy"
+                        _ => unsafe {
+                            let raw = slice::from_raw_parts_mut(ptr, len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                            let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                            spmd::data_to_luminance_f16_legacy(
+                                raw.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                self.dmin,
+                                self.dmax,
+                                self.lmin,
+                                self.lmax,
+                                y_raw.as_mut_ptr(),
+                                len as u32,
+                            );
+                        },
                     }
-                }
-                "logistic" => unsafe {
-                    let raw = slice::from_raw_parts_mut(ptr, len);
-                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-                    let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+                });
+            }),
+            None => {
+                (0..num_threads).into_par_iter().for_each(|index| {
+                    let offset = index * work_size;
 
-                    spmd::data_to_luminance_f16_logistic(
-                        raw.as_mut_ptr(),
-                        mask_raw.as_mut_ptr(),
-                        self.bzero,
-                        self.bscale,
-                        median,
-                        sensitivity,
-                        y_raw.as_mut_ptr(),
-                        len as u32,
-                    );
-                },
-                "ratio" => unsafe {
-                    let raw = slice::from_raw_parts_mut(ptr, len);
-                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-                    let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+                    let work_size = if index == num_threads - 1 {
+                        len - offset
+                    } else {
+                        work_size
+                    };
 
-                    spmd::data_to_luminance_f16_ratio(
-                        raw.as_mut_ptr(),
-                        mask_raw.as_mut_ptr(),
-                        self.bzero,
-                        self.bscale,
-                        black,
-                        sensitivity,
-                        y_raw.as_mut_ptr(),
-                        len as u32,
-                    );
-                },
-                "square" => unsafe {
-                    let raw = slice::from_raw_parts_mut(ptr, len);
-                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-                    let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+                    let vec = &vec[offset..offset + work_size];
+                    let ptr = vec.as_ptr() as *mut i16;
+                    let len = vec.len();
 
-                    spmd::data_to_luminance_f16_square(
-                        raw.as_mut_ptr(),
-                        mask_raw.as_mut_ptr(),
-                        self.bzero,
-                        self.bscale,
-                        black,
-                        sensitivity,
-                        y_raw.as_mut_ptr(),
-                        len as u32,
+                    println!(
+                        "index: {}, offset: {}, work_size: {}, len = {}",
+                        index, offset, work_size, len
                     );
-                },
-                //by default assume "legacy"
-                _ => unsafe {
-                    let raw = slice::from_raw_parts_mut(ptr, len);
-                    let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
-                    let y_raw = slice::from_raw_parts_mut(y_ptr, len);
 
-                    spmd::data_to_luminance_f16_legacy(
-                        raw.as_mut_ptr(),
-                        mask_raw.as_mut_ptr(),
-                        self.bzero,
-                        self.bscale,
-                        self.dmin,
-                        self.dmax,
-                        self.lmin,
-                        self.lmax,
-                        y_raw.as_mut_ptr(),
-                        len as u32,
-                    );
-                },
+                    let mask = &self.mask[offset..offset + work_size];
+                    let mask_ptr = mask.as_ptr() as *mut u8;
+                    let mask_len = mask.len();
+
+                    let y = &y[offset..offset + work_size]; //partial outputs go in here
+                    let y_ptr = y.as_ptr() as *mut u8;
+
+                    match flux.as_ref() {
+                        "linear" => {
+                            let slope = 1.0 / (white - black);
+
+                            unsafe {
+                                let raw = slice::from_raw_parts_mut(ptr, len);
+                                let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                                let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                                spmd::data_to_luminance_f16_linear(
+                                    raw.as_mut_ptr(),
+                                    mask_raw.as_mut_ptr(),
+                                    self.bzero,
+                                    self.bscale,
+                                    black,
+                                    slope,
+                                    y_raw.as_mut_ptr(),
+                                    len as u32,
+                                );
+                            }
+                        }
+                        "logistic" => unsafe {
+                            let raw = slice::from_raw_parts_mut(ptr, len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                            let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                            spmd::data_to_luminance_f16_logistic(
+                                raw.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                median,
+                                sensitivity,
+                                y_raw.as_mut_ptr(),
+                                len as u32,
+                            );
+                        },
+                        "ratio" => unsafe {
+                            let raw = slice::from_raw_parts_mut(ptr, len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                            let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                            spmd::data_to_luminance_f16_ratio(
+                                raw.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                black,
+                                sensitivity,
+                                y_raw.as_mut_ptr(),
+                                len as u32,
+                            );
+                        },
+                        "square" => unsafe {
+                            let raw = slice::from_raw_parts_mut(ptr, len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                            let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                            spmd::data_to_luminance_f16_square(
+                                raw.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                black,
+                                sensitivity,
+                                y_raw.as_mut_ptr(),
+                                len as u32,
+                            );
+                        },
+                        //by default assume "legacy"
+                        _ => unsafe {
+                            let raw = slice::from_raw_parts_mut(ptr, len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+                            let y_raw = slice::from_raw_parts_mut(y_ptr, len);
+
+                            spmd::data_to_luminance_f16_legacy(
+                                raw.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                self.dmin,
+                                self.dmax,
+                                self.lmin,
+                                self.lmax,
+                                y_raw.as_mut_ptr(),
+                                len as u32,
+                            );
+                        },
+                    }
+                });
             }
-        });
+        };
 
         y
     }
