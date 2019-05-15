@@ -4071,12 +4071,12 @@ fn main() {
         }
     };*/
 
-    let num_threads = (num_cpus::get() / 2).max(1);
-    println!("Number of threads: {}", num_threads);
+    let num_threads = (num_cpus::get() / 2).max(1);//divide by 2 to avoid hyperthreading
+    println!("Number of threads in a global pool: {}", num_threads);
 
     rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
-        .breadth_first()
+        //.breadth_first()//causes stack overflow!!!
         .build_global()
         .unwrap();
 
