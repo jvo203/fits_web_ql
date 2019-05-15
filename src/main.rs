@@ -1746,8 +1746,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                             //HEVC (x265)
                             #[cfg(feature = "hevc")]
-                            match fits.get_video_frame(frame_index, self.width, self.height, &flux)
-                            {
+                            match fits.get_video_frame(
+                                frame_index,
+                                self.width,
+                                self.height,
+                                &flux,
+                                &self.pool,
+                            ) {
                                 Some(mut y) => {
                                     unsafe {
                                         (*self.pic).stride[0] = self.width as i32;
@@ -2050,6 +2055,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             width,
                                             height,
                                             &flux,
+                                            &None,
                                         ) {
                                             Some(y) => y,
                                             None => vec![0; (width * height) as usize],
@@ -2269,7 +2275,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-15.1";
+static VERSION_STRING: &'static str = "SV2019-05-15.3";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4187,6 +4193,8 @@ fn main() {
 
     let actix_server_path = server_path.clone();
 
+    let num_http_workers = (num_cpus::get() / 4).max(1);
+
     HttpServer::new(
         move || {
             // WebSocket sessions state
@@ -4215,6 +4223,7 @@ fn main() {
                 .resource("/{path}/get_fits", |r| {r.method(http::Method::GET).f(get_fits)})
                 .handler("/", fs::StaticFiles::new("htdocs").unwrap().index_file(index_file))
         })
+        .workers(num_http_workers)
         .bind(&format!("{}:{}", server_address, server_port)).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port))        
         .start();
 

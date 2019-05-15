@@ -780,7 +780,7 @@ impl FITS {
         let start = precise_time::precise_time_ns();
 
         //set an upper bound as there are not enough memory channels anyway
-        let num_threads = num::clamp(num_cpus::get(), 1, 32);
+        let num_threads = num::clamp(num_cpus::get(), 1, 16);
         //let num_threads = (num_cpus::get() / 2).max(1);
         //use all the threads available
         //let num_threads = num_cpus::get();
@@ -3722,7 +3722,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         );
     }
 
-    fn data_to_luminance_u8(&self, frame: usize, flux: &String) -> Vec<u8> {
+    fn data_to_luminance_u8(
+        &self,
+        frame: usize,
+        flux: &String,
+        pool: &Option<rayon::ThreadPool>,
+    ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -3834,7 +3839,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    fn data_to_luminance_i16(&self, frame: usize, flux: &String) -> Vec<u8> {
+    fn data_to_luminance_i16(
+        &self,
+        frame: usize,
+        flux: &String,
+        pool: &Option<rayon::ThreadPool>,
+    ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -3946,7 +3956,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    fn data_to_luminance_i32(&self, frame: usize, flux: &String) -> Vec<u8> {
+    fn data_to_luminance_i32(
+        &self,
+        frame: usize,
+        flux: &String,
+        pool: &Option<rayon::ThreadPool>,
+    ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4058,7 +4073,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    fn data_to_luminance_f16(&self, frame: usize, flux: &String) -> Vec<u8> {
+    fn data_to_luminance_f16(
+        &self,
+        frame: usize,
+        flux: &String,
+        pool: &Option<rayon::ThreadPool>,
+    ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4205,7 +4225,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         y
     }
 
-    fn data_to_luminance_f64(&self, frame: usize, flux: &String) -> Vec<u8> {
+    fn data_to_luminance_f64(
+        &self,
+        frame: usize,
+        flux: &String,
+        pool: &Option<rayon::ThreadPool>,
+    ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4317,13 +4342,18 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    fn data_to_luminance(&self, frame: usize, flux: &String) -> Option<Vec<u8>> {
+    fn data_to_luminance(
+        &self,
+        frame: usize,
+        flux: &String,
+        pool: &Option<rayon::ThreadPool>,
+    ) -> Option<Vec<u8>> {
         match self.bitpix {
-            8 => Some(self.data_to_luminance_u8(frame, flux)),
-            16 => Some(self.data_to_luminance_i16(frame, flux)),
-            32 => Some(self.data_to_luminance_i32(frame, flux)),
-            -32 => Some(self.data_to_luminance_f16(frame, flux)),
-            -64 => Some(self.data_to_luminance_f64(frame, flux)),
+            8 => Some(self.data_to_luminance_u8(frame, flux, pool)),
+            16 => Some(self.data_to_luminance_i16(frame, flux, pool)),
+            32 => Some(self.data_to_luminance_i32(frame, flux, pool)),
+            -32 => Some(self.data_to_luminance_f16(frame, flux, pool)),
+            -64 => Some(self.data_to_luminance_f64(frame, flux, pool)),
             _ => {
                 println!("unsupported bitpix: {}", self.bitpix);
                 None
@@ -4543,12 +4573,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         width: u32,
         height: u32,
         flux: &String,
+        pool: &Option<rayon::ThreadPool>,
     ) -> Option<Vec<u8>> {
         println!("frame index = {}", frame);
 
         let start = precise_time::precise_time_ns();
 
-        let y: Vec<u8> = match self.data_to_luminance(frame, flux) {
+        let y: Vec<u8> = match self.data_to_luminance(frame, flux, pool) {
             Some(y) => y,
             None => vec![0; (width * height) as usize],
         };
