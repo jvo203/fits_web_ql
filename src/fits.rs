@@ -25,6 +25,7 @@ use uuid::Uuid;
 
 use crate::server;
 use crate::UserParams;
+use crate::DROP_MTX;
 use ::actix::*;
 use rayon;
 use rayon::prelude::*;
@@ -7550,6 +7551,8 @@ impl Clone for FITS {
 impl Drop for FITS {
     fn drop(&mut self) {
         if self.has_data {
+            //drop datasets "one thread" at a time to avoid a server slowdown
+            let _guard = DROP_MTX.lock();
             println!("deleting {}", self.dataset_id);
 
             #[cfg(not(feature = "zfp"))]

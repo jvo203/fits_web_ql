@@ -3,6 +3,12 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+/*#[global_allocator]
+static GLOBAL: System = System;*/
+
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[macro_use]
@@ -68,7 +74,7 @@ use ocl::core;
 
 use std::collections::{HashMap, HashSet};
 
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 
 mod fits;
 mod kalman;
@@ -2271,11 +2277,15 @@ lazy_static! {
         { Arc::new(RwLock::new(HashMap::new())) };
 }
 
+lazy_static! {
+    static ref DROP_MTX: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
+}
+
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-15.4";
+static VERSION_STRING: &'static str = "SV2019-05-15.5";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]

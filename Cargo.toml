@@ -26,6 +26,7 @@ x265 = "2.8"
 vpx = "1.7.0"
 
 [dependencies]
+jemallocator = "*"
 cupid = "*"
 actix = "0.7"
 actix-web = "*"
