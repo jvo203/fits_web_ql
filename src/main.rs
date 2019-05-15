@@ -169,6 +169,7 @@ pub struct UserParams {
 struct UserSession {
     dataset_id: Vec<String>,
     session_id: Uuid,
+    pool: Option<rayon::ThreadPool>,
     user: Option<UserParams>,
     timestamp: std::time::Instant,
     log: std::io::Result<File>,
@@ -218,9 +219,22 @@ impl UserSession {
 
         let hevc = File::create(filename);*/
 
+        let num_threads = (num_cpus::get() / 2).max(1);
+        let pool = match rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build()
+        {
+            Ok(pool) => Some(pool),
+            Err(err) => {
+                println!("{:?}, switching to a global rayon pool", err);
+                None
+            }
+        };
+
         let session = UserSession {
             dataset_id: id.clone(),
             session_id: uuid,
+            pool: pool,
             user: None,
             timestamp: std::time::Instant::now(), //SpawnHandle::default(),
             log: log,
@@ -849,6 +863,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             frame_start,
                             frame_end,
                             ref_freq,
+                            &self.pool,
                         ) {
                             Some(spectrum) => {
                                 let stop = precise_time::precise_time_ns();
@@ -878,7 +893,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         }
 
                         if image {
-                            match fits.get_viewport(x1, y1, x2, y2, &self.user, self.wasm) {
+                            match fits
+                                .get_viewport(x1, y1, x2, y2, &self.user, self.wasm, &self.pool)
+                            {
                                 Some((width, height, frame, alpha, identifier)) => {
                                     //send a binary response message (serialize a structure to a binary stream)
                                     let ws_viewport = WsViewport {
@@ -1369,6 +1386,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     user.sensitivity,
                                     user.ratio_sensitivity,
                                     &user.flux,
+                                    &self.pool,
                                 );
 
                                 {
@@ -4071,7 +4089,7 @@ fn main() {
         }
     };*/
 
-    let num_threads = (num_cpus::get() / 2).max(1);//divide by 2 to avoid hyperthreading
+    let num_threads = (num_cpus::get() / 2).max(1); //divide by 2 to avoid hyperthreading
     println!("Number of threads in a global pool: {}", num_threads);
 
     rayon::ThreadPoolBuilder::new()

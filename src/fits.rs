@@ -4345,93 +4345,195 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         sensitivity: f32,
         ratio_sensitivity: f32,
         flux: &String,
+        pool: &Option<rayon::ThreadPool>,
     ) -> Vec<u8> {
         match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
-                pixels
+                match pool {
+                    Some(pool) => pool.install(|| {
+                        pixels
+                            .par_iter()
+                            .zip(mask.par_iter())
+                            .map(|(x, m)| {
+                                if *m > 0 {
+                                    let pixel = num::clamp((x - black) * slope, 0.0, 1.0);
+                                    (255.0 * pixel) as u8
+                                } else {
+                                    0
+                                }
+                            })
+                            .collect()
+                    }),
+                    None => pixels
+                        .par_iter()
+                        .zip(mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m > 0 {
+                                let pixel = num::clamp((x - black) * slope, 0.0, 1.0);
+                                (255.0 * pixel) as u8
+                            } else {
+                                0
+                            }
+                        })
+                        .collect(),
+                }
+            }
+            "logistic" => match pool {
+                Some(pool) => pool.install(|| {
+                    pixels
+                        .par_iter()
+                        .zip(mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m > 0 {
+                                let pixel = num::clamp(
+                                    1.0 / (1.0 + (-6.0 * (x - median) * sensitivity).exp()),
+                                    0.0,
+                                    1.0,
+                                );
+                                (255.0 * pixel) as u8
+                            } else {
+                                0
+                            }
+                        })
+                        .collect()
+                }),
+                None => pixels
                     .par_iter()
                     .zip(mask.par_iter())
                     .map(|(x, m)| {
                         if *m > 0 {
-                            let pixel = num::clamp((x - black) * slope, 0.0, 1.0);
+                            let pixel = num::clamp(
+                                1.0 / (1.0 + (-6.0 * (x - median) * sensitivity).exp()),
+                                0.0,
+                                1.0,
+                            );
                             (255.0 * pixel) as u8
                         } else {
                             0
                         }
                     })
-                    .collect()
-            }
-            "logistic" => pixels
-                .par_iter()
-                .zip(mask.par_iter())
-                .map(|(x, m)| {
-                    if *m > 0 {
-                        let pixel = num::clamp(
-                            1.0 / (1.0 + (-6.0 * (x - median) * sensitivity).exp()),
-                            0.0,
-                            1.0,
-                        );
-                        (255.0 * pixel) as u8
-                    } else {
-                        0
-                    }
-                })
-                .collect(),
-            "ratio" => pixels
-                .par_iter()
-                .zip(mask.par_iter())
-                .map(|(x, m)| {
-                    if *m > 0 {
-                        let pixel = 5.0 * (x - black) * ratio_sensitivity;
+                    .collect(),
+            },
+            "ratio" => match pool {
+                Some(pool) => pool.install(|| {
+                    pixels
+                        .par_iter()
+                        .zip(mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m > 0 {
+                                let pixel = 5.0 * (x - black) * ratio_sensitivity;
 
-                        if pixel > 0.0 {
-                            (255.0 * pixel / (1.0 + pixel)) as u8
+                                if pixel > 0.0 {
+                                    (255.0 * pixel / (1.0 + pixel)) as u8
+                                } else {
+                                    0
+                                }
+                            } else {
+                                0
+                            }
+                        })
+                        .collect()
+                }),
+                None => pixels
+                    .par_iter()
+                    .zip(mask.par_iter())
+                    .map(|(x, m)| {
+                        if *m > 0 {
+                            let pixel = 5.0 * (x - black) * ratio_sensitivity;
+
+                            if pixel > 0.0 {
+                                (255.0 * pixel / (1.0 + pixel)) as u8
+                            } else {
+                                0
+                            }
                         } else {
                             0
                         }
-                    } else {
-                        0
-                    }
-                })
-                .collect(),
-            "square" => pixels
-                .par_iter()
-                .zip(mask.par_iter())
-                .map(|(x, m)| {
-                    if *m > 0 {
-                        let pixel = (x - black) * sensitivity;
+                    })
+                    .collect(),
+            },
+            "square" => match pool {
+                Some(pool) => pool.install(|| {
+                    pixels
+                        .par_iter()
+                        .zip(mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m > 0 {
+                                let pixel = (x - black) * sensitivity;
 
-                        if pixel > 0.0 {
-                            (255.0 * num::clamp(pixel * pixel, 0.0, 1.0)) as u8
+                                if pixel > 0.0 {
+                                    (255.0 * num::clamp(pixel * pixel, 0.0, 1.0)) as u8
+                                } else {
+                                    0
+                                }
+                            } else {
+                                0
+                            }
+                        })
+                        .collect()
+                }),
+                None => pixels
+                    .par_iter()
+                    .zip(mask.par_iter())
+                    .map(|(x, m)| {
+                        if *m > 0 {
+                            let pixel = (x - black) * sensitivity;
+
+                            if pixel > 0.0 {
+                                (255.0 * num::clamp(pixel * pixel, 0.0, 1.0)) as u8
+                            } else {
+                                0
+                            }
                         } else {
                             0
                         }
-                    } else {
-                        0
-                    }
-                })
-                .collect(),
+                    })
+                    .collect(),
+            },
             //by default assume "legacy"
-            _ => pixels
-                .par_iter()
-                .zip(mask.par_iter())
-                .map(|(x, m)| {
-                    if *m > 0 {
-                        let pixel = 0.5 + (x - pmin) / (pmax - pmin);
+            _ => match pool {
+                Some(pool) => pool.install(|| {
+                    pixels
+                        .par_iter()
+                        .zip(mask.par_iter())
+                        .map(|(x, m)| {
+                            if *m > 0 {
+                                let pixel = 0.5 + (x - pmin) / (pmax - pmin);
 
-                        if pixel > 0.0 {
-                            (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
-                                as u8
+                                if pixel > 0.0 {
+                                    (255.0
+                                        * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
+                                        as u8
+                                } else {
+                                    0
+                                }
+                            } else {
+                                0
+                            }
+                        })
+                        .collect()
+                }),
+                None => pixels
+                    .par_iter()
+                    .zip(mask.par_iter())
+                    .map(|(x, m)| {
+                        if *m > 0 {
+                            let pixel = 0.5 + (x - pmin) / (pmax - pmin);
+
+                            if pixel > 0.0 {
+                                (255.0 * num::clamp((pixel.ln() - lmin) / (lmax - lmin), 0.0, 1.0))
+                                    as u8
+                            } else {
+                                0
+                            }
                         } else {
                             0
                         }
-                    } else {
-                        0
-                    }
-                })
-                .collect(),
+                    })
+                    .collect(),
+            },
         }
     }
 
@@ -5177,6 +5279,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 self.sensitivity,
                 self.ratio_sensitivity,
                 &self.flux,
+                &None,
             );
 
             let stop = precise_time::precise_time_ns();
@@ -5433,6 +5536,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         y2: i32,
         user: &Option<UserParams>,
         wasm: bool,
+        pool: &Option<rayon::ThreadPool>,
     ) -> Option<(u32, u32, Vec<Vec<u8>>, Vec<u8>, String)> {
         //spatial range checks
         let width = self.width as i32;
@@ -5505,6 +5609,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 params.sensitivity,
                 params.ratio_sensitivity,
                 &params.flux,
+                pool,
             ),
             None => self.pixels_to_luminance(
                 &pixels,
@@ -5519,6 +5624,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 self.sensitivity,
                 self.ratio_sensitivity,
                 &self.flux,
+                pool,
             ),
         };
 
@@ -5564,6 +5670,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame_start: f64,
         frame_end: f64,
         ref_freq: f64,
+        pool: &Option<rayon::ThreadPool>,
     ) -> Option<Vec<f32>> {
         if self.depth <= 1 {
             return None;
@@ -5605,38 +5712,77 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         println!("cx = {}, cy = {}, r = {}", cx, cy, r);
 
-                        (start..end + 1)
+                        match pool {
+                            Some(pool) => pool.install(|| {
+                                (start..end + 1)
+                                    .into_par_iter()
+                                    .map(|frame| {
+                                        self.get_radial_spectrum_at_ispc(
+                                            frame,
+                                            x1,
+                                            x2,
+                                            y1,
+                                            y2,
+                                            cx,
+                                            cy,
+                                            r2,
+                                            mean,
+                                            cdelt3 as f32,
+                                        )
+                                    })
+                                    .collect()
+                            }),
+                            None => (start..end + 1)
+                                .into_par_iter()
+                                .map(|frame| {
+                                    self.get_radial_spectrum_at_ispc(
+                                        frame,
+                                        x1,
+                                        x2,
+                                        y1,
+                                        y2,
+                                        cx,
+                                        cy,
+                                        r2,
+                                        mean,
+                                        cdelt3 as f32,
+                                    )
+                                })
+                                .collect(),
+                        }
+                    }
+                    _ => match pool {
+                        Some(pool) => pool.install(|| {
+                            (start..end + 1)
+                                .into_par_iter()
+                                .map(|frame| {
+                                    self.get_square_spectrum_at_ispc(
+                                        frame,
+                                        x1,
+                                        x2,
+                                        y1,
+                                        y2,
+                                        mean,
+                                        cdelt3 as f32,
+                                    )
+                                })
+                                .collect()
+                        }),
+                        None => (start..end + 1)
                             .into_par_iter()
                             .map(|frame| {
-                                self.get_radial_spectrum_at_ispc(
+                                self.get_square_spectrum_at_ispc(
                                     frame,
                                     x1,
                                     x2,
                                     y1,
                                     y2,
-                                    cx,
-                                    cy,
-                                    r2,
                                     mean,
                                     cdelt3 as f32,
                                 )
                             })
-                            .collect()
-                    }
-                    _ => (start..end + 1)
-                        .into_par_iter()
-                        .map(|frame| {
-                            self.get_square_spectrum_at_ispc(
-                                frame,
-                                x1,
-                                x2,
-                                y1,
-                                y2,
-                                mean,
-                                cdelt3 as f32,
-                            )
-                        })
-                        .collect(),
+                            .collect(),
+                    },
                 };
 
                 let stop_watch = precise_time::precise_time_ns();
