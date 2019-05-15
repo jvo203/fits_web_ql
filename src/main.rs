@@ -74,7 +74,7 @@ use ocl::core;
 
 use std::collections::{HashMap, HashSet};
 
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 
 mod fits;
 mod kalman;

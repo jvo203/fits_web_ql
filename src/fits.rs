@@ -3,7 +3,6 @@ use atomic;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use half::f16;
 use num_cpus;
-use parking_lot::MutexGuard;
 use parking_lot::RwLock;
 use positioned_io::ReadAt;
 use regex::Regex;
@@ -26,7 +25,6 @@ use uuid::Uuid;
 
 use crate::server;
 use crate::UserParams;
-use crate::DROP_MTX;
 use ::actix::*;
 use rayon;
 use rayon::prelude::*;

@@ -1619,7 +1619,7 @@ fn restore_nan(&self, pixels: &mut Vec<f32>, mask: &Vec<u8>) {
 lazy_static! {
     static ref DROP_MTX: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
 }
-
+use crate::DROP_MTX;
   //drop datasets "one thread" at a time to avoid a server slowdown
             /*let mut guard: Option<MutexGuard<i32>> = None;
 
