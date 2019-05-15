@@ -1614,3 +1614,18 @@ fn restore_nan(&self, pixels: &mut Vec<f32>, mask: &Vec<u8>) {
                 }
             });
     }
+
+
+lazy_static! {
+    static ref DROP_MTX: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
+}
+
+  //drop datasets "one thread" at a time to avoid a server slowdown
+            /*let mut guard: Option<MutexGuard<i32>> = None;
+
+            while guard.is_none() {
+                match DROP_MTX.try_lock() {
+                    Some(x) => guard = Some(x),
+                    None => thread::sleep(std::time::Duration::from_secs(1)),
+                }
+            }*/

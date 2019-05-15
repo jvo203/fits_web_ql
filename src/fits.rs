@@ -3,6 +3,7 @@ use atomic;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use half::f16;
 use num_cpus;
+use parking_lot::MutexGuard;
 use parking_lot::RwLock;
 use positioned_io::ReadAt;
 use regex::Regex;
@@ -7551,8 +7552,6 @@ impl Clone for FITS {
 impl Drop for FITS {
     fn drop(&mut self) {
         if self.has_data {
-            //drop datasets "one thread" at a time to avoid a server slowdown
-            let _guard = DROP_MTX.lock();
             println!("deleting {}", self.dataset_id);
 
             #[cfg(not(feature = "zfp"))]
