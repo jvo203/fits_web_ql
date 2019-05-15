@@ -4061,15 +4061,24 @@ fn http_fits_response(
 }
 
 fn main() {
-    let num_cores = match cpuid::identify() {
+    /*let information = cupid::master();
+    println!("{:#?}", information);*/
+    /*let num_cores = match cpuid::identify() {
         Ok(info) => info.num_cores as usize,
         Err(err) => {
             println!("Couldn't get the CPU info structure: {}.", err);
             num_cpus::get()
         }
-    };
+    };*/
 
-    println!("Number of physical cores: {}", num_cores);
+    let num_threads = (num_cpus::get() / 2).max(1);
+    println!("Number of threads: {}", num_threads);
+
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .breadth_first()
+        .build_global()
+        .unwrap();
 
     //std::env::set_var("RUST_LOG", "info");
     std::env::set_var("RUST_LOG", "actix_web=info");
