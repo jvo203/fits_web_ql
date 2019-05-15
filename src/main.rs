@@ -2251,7 +2251,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-15.0";
+static VERSION_STRING: &'static str = "SV2019-05-15.1";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4061,6 +4061,16 @@ fn http_fits_response(
 }
 
 fn main() {
+    let num_cores = match cpuid::identify() {
+        Ok(info) => info.num_cores as usize,
+        Err(err) => {
+            println!("Couldn't get the CPU info structure: {}.", err);
+            num_cpus::get()
+        }
+    };
+
+    println!("Number of physical cores: {}", num_cores);
+
     //std::env::set_var("RUST_LOG", "info");
     std::env::set_var("RUST_LOG", "actix_web=info");
 
