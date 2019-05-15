@@ -3726,7 +3726,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         &self,
         frame: usize,
         flux: &String,
-        pool: &Option<rayon::ThreadPool>,
+        _pool: &Option<rayon::ThreadPool>,
     ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
@@ -3843,7 +3843,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         &self,
         frame: usize,
         flux: &String,
-        pool: &Option<rayon::ThreadPool>,
+        _pool: &Option<rayon::ThreadPool>,
     ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
@@ -3960,7 +3960,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         &self,
         frame: usize,
         flux: &String,
-        pool: &Option<rayon::ThreadPool>,
+        _pool: &Option<rayon::ThreadPool>,
     ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
@@ -4350,7 +4350,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         &self,
         frame: usize,
         flux: &String,
-        pool: &Option<rayon::ThreadPool>,
+        _pool: &Option<rayon::ThreadPool>,
     ) -> Vec<u8> {
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
