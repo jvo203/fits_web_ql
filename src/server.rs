@@ -9,6 +9,7 @@ use std::time::SystemTime;
 use timer;
 
 use actix::*;
+use thread_priority::*;
 use uuid::Uuid;
 
 use crate::DATASETS;
@@ -141,9 +142,16 @@ impl Default for SessionServer {
                         match entry {
                             Some(value) => {
                                 std::thread::spawn(move || {
-                                        let fits = value.read();
-                                        println!("non-blocking drop for {}", fits.dataset_id);
-                                    });
+                                    let thread_id = thread_native_id();
+                                    match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
+                                        Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
+                                        Err(err) => println!("error changing the thread priority: {:?}", err),
+                                    };
+
+                                    let fits = value.read();
+                                    println!("non-blocking drop for {}", fits.dataset_id);
+                                    fits.drop_to_cache();
+                                });
 
                                 println!("resuming the actix server thread");
                             },
@@ -267,8 +275,15 @@ impl Handler<Disconnect> for SessionServer {
                                 match entry {
                                     Some(value) => {
                                         std::thread::spawn(move || {
+                                            let thread_id = thread_native_id();
+                                            match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
+                                                Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
+                                                Err(err) => println!("error changing the thread priority: {:?}", err),
+                                            };
+
                                             let fits = value.read();
                                             println!("non-blocking drop for {}", fits.dataset_id);
+                                            fits.drop_to_cache();
                                         });
 
                                         println!("resuming the actix server thread");

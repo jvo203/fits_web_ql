@@ -7517,41 +7517,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             println!("grad_w: {:?}", grad_w);
         }
     }
-}
 
-impl Clone for FITS {
-    fn clone(&self) -> FITS {
-        let mut fits = FITS::new(&self.dataset_id, &self.flux);
-
-        //only a limited clone (fields needed by get_frequency_range())
-
-        fits.has_header = self.has_header;
-        fits.has_frequency = self.has_frequency;
-        fits.has_velocity = self.has_velocity;
-
-        fits.crval3 = self.crval3;
-        fits.cdelt3 = self.cdelt3;
-        fits.crpix3 = self.crpix3;
-        fits.cunit3 = self.cunit3.clone();
-        fits.ctype3 = self.ctype3.clone();
-        fits.frame_multiplier = self.frame_multiplier;
-
-        fits.is_optical = self.is_optical;
-        fits.is_xray = self.is_xray;
-        fits.width = self.width;
-        fits.height = self.height;
-        fits.depth = self.depth;
-        fits.polarisation = self.polarisation;
-
-        fits
-    }
-}
-
-impl Drop for FITS {
-    fn drop(&mut self) {
+    pub fn drop_to_cache(&self) {
         if self.has_data {
-            println!("deleting {}", self.dataset_id);
-
             #[cfg(not(feature = "zfp"))]
             let write_to_zfp = false;
 
@@ -7636,7 +7604,44 @@ impl Drop for FITS {
                     self.rbf_compress();
                 }
             }
+        }
+    }
+}
 
+impl Clone for FITS {
+    fn clone(&self) -> FITS {
+        let mut fits = FITS::new(&self.dataset_id, &self.flux);
+
+        //only a limited clone (fields needed by get_frequency_range())
+
+        fits.has_header = self.has_header;
+        fits.has_frequency = self.has_frequency;
+        fits.has_velocity = self.has_velocity;
+
+        fits.crval3 = self.crval3;
+        fits.cdelt3 = self.cdelt3;
+        fits.crpix3 = self.crpix3;
+        fits.cunit3 = self.cunit3.clone();
+        fits.ctype3 = self.ctype3.clone();
+        fits.frame_multiplier = self.frame_multiplier;
+
+        fits.is_optical = self.is_optical;
+        fits.is_xray = self.is_xray;
+        fits.width = self.width;
+        fits.height = self.height;
+        fits.depth = self.depth;
+        fits.polarisation = self.polarisation;
+
+        fits
+    }
+}
+
+impl Drop for FITS {
+    fn drop(&mut self) {
+        println!("deleting {}", self.dataset_id);
+        self.drop_to_cache();
+
+        if self.has_data {
             //remove a symbolic link
             let filename = format!("{}/{}.fits", FITSCACHE, self.dataset_id.replace("/", "_"));
             let filepath = std::path::Path::new(&filename);
