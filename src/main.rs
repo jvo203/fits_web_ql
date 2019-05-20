@@ -471,7 +471,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
 
-                    let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
+                    let fits = match datasets.get(&self.dataset_id[0]) {
+                        Some(x) => x,
+                        None => {
+                            println!("[WS] cannot find {}", self.dataset_id[0]);
+                            return;
+                        }
+                    };
+
+                    let fits = match fits.try_read() {
                         Some(x) => x,
                         None => {
                             println!("[WS] cannot find {}", self.dataset_id[0]);
@@ -840,7 +848,20 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
 
-                    let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
+                    let fits = match datasets.get(&self.dataset_id[0]) {
+                        Some(x) => x,
+                        None => {
+                            let msg = json!({
+                                "type" : "spectrum",
+                                "message" : "unavailable",
+                            });
+
+                            ctx.text(msg.to_string());
+                            return;
+                        }
+                    };
+
+                    let fits = match fits.try_read() {
                         Some(x) => x,
                         None => {
                             let msg = json!({
@@ -1015,7 +1036,20 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                     let datasets = DATASETS.read();
 
-                    let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
+                    let fits = match datasets.get(&self.dataset_id[0]) {
+                        Some(x) => x,
+                        None => {
+                            let msg = json!({
+                                "type" : "image",
+                                "message" : "unavailable",
+                            });
+
+                            ctx.text(msg.to_string());
+                            return;
+                        }
+                    };
+
+                    let fits = match fits.try_read() {
                         Some(x) => x,
                         None => {
                             let msg = json!({
@@ -1709,7 +1743,20 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     if self.dataset_id.len() == 1 || !is_composite {
                         let datasets = DATASETS.read();
 
-                        let fits = match datasets.get(&self.dataset_id[0]).unwrap().try_read() {
+                        let fits = match datasets.get(&self.dataset_id[0]) {
+                            Some(x) => x,
+                            None => {
+                                let msg = json!({
+                                    "type" : "video",
+                                    "message" : "unavailable",
+                                });
+
+                                ctx.text(msg.to_string());
+                                return;
+                            }
+                        };
+
+                        let fits = match fits.try_read() {
                             Some(x) => x,
                             None => {
                                 let msg = json!({
@@ -2034,7 +2081,18 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             .map(|ref dataset_id| {
                                 let datasets = DATASETS.read();
 
-                                let fits = match datasets.get(*dataset_id).unwrap().try_read() {
+                                let fits = match datasets.get(*dataset_id) {
+                                    Some(x) => x,
+                                    None => {
+                                        println!(
+                                            "[video] error getting {} from DATASETS; aborting",
+                                            dataset_id
+                                        );
+                                        return vec![0; (width * height) as usize];
+                                    }
+                                };
+
+                                let fits = match fits.try_read() {
                                     Some(x) => x,
                                     None => {
                                         println!(
@@ -2281,7 +2339,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-20.0";
+static VERSION_STRING: &'static str = "SV2019-05-20.1";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -3747,10 +3805,15 @@ fn external_fits(
     } else {
         //update the timestamp
         let datasets = DATASETS.read();
-        let dataset = datasets.get(dataset_id).unwrap().read();
 
-        has_fits = has_fits && dataset.has_data;
-        *dataset.timestamp.write() = SystemTime::now();
+        match datasets.get(dataset_id) {
+            Some(x) => {
+                let dataset = x.read();
+                has_fits = has_fits && dataset.has_data;
+                *dataset.timestamp.write() = SystemTime::now();
+            }
+            None => {}
+        }
     };
 
     http_fits_response(&fitswebql_path, &vec![dataset_id], false, has_fits)
@@ -3855,10 +3918,15 @@ fn internal_fits(
         } else {
             //update the timestamp
             let datasets = DATASETS.read();
-            let dataset = datasets.get(data_id).unwrap().read();
 
-            has_fits = has_fits && dataset.has_data;
-            *dataset.timestamp.write() = SystemTime::now();
+            match datasets.get(data_id) {
+                Some(x) => {
+                    let dataset = x.read();
+                    has_fits = has_fits && dataset.has_data;
+                    *dataset.timestamp.write() = SystemTime::now();
+                }
+                None => {}
+            }
         };
     }
 
