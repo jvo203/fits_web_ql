@@ -3078,91 +3078,105 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //parallel histogram of all data
         //actually serial so as not to affect other threads, smooth real-time spectrum calculation etc?
         //into_par_iter or into_iter
-        (0..self.depth).into_par_iter().for_each(|frame| {
-            //init a local histogram
-            let mut hist = vec![0; NBINS2];
-
-            //build a local histogram using frame data
-            match self.bitpix {
-                8 => {
-                    for x in self.data_u8[frame as usize].iter().step_by(data_step) {
-                        let tmp = self.bzero + self.bscale * (*x as f32);
-                        increment_histogram(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            self.dmin,
-                            self.dmax,
-                            &mut hist,
-                        );
-                    }
-                }
-                16 => {
-                    for x in self.data_i16[frame as usize].iter().step_by(data_step) {
-                        let tmp = self.bzero + self.bscale * (*x as f32);
-                        increment_histogram(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            self.dmin,
-                            self.dmax,
-                            &mut hist,
-                        );
-                    }
-                }
-                32 => {
-                    for x in self.data_i32[frame as usize].iter().step_by(data_step) {
-                        let tmp = self.bzero + self.bscale * (*x as f32);
-                        increment_histogram(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            self.dmin,
-                            self.dmax,
-                            &mut hist,
-                        );
-                    }
-                }
-                -32 => {
-                    /*self.data_f16[frame as usize].iter()
-                    .zip(self.mask.iter())
-                        .for_each(|(x, m)| {*/
-                    for x in self.data_f16[frame as usize].iter().step_by(data_step) {
-                        //            if *m {
-                        let tmp = self.bzero + self.bscale * (*x).to_f32(); //convert from half to f32
-                        increment_histogram(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            self.dmin,
-                            self.dmax,
-                            &mut hist,
-                        );
-                    }
-                    //    })
-                }
-                -64 => {
-                    for x in self.data_f64[frame as usize].iter().step_by(data_step) {
-                        let tmp = self.bzero + self.bscale * (*x as f32);
-                        increment_histogram(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            self.dmin,
-                            self.dmax,
-                            &mut hist,
-                        );
-                    }
-                }
-                _ => println!("unsupported bitpix: {}", self.bitpix),
-            };
-
-            //get a write lock to the global histogram, update it
-            let mut data_hist = self.data_hist.write();
-
-            for i in 0..NBINS2 {
-                data_hist[i] = data_hist[i] + hist[i];
+        let num_threads = (num_cpus::get() / 2).max(1);
+        let pool = match rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build()
+        {
+            Ok(pool) => pool,
+            Err(err) => {
+                println!("{:?}, switching to a global rayon pool", err);
+                return;
             }
+        };
+
+        pool.install(|| {
+            (0..self.depth).into_par_iter().for_each(|frame| {
+                //init a local histogram
+                let mut hist = vec![0; NBINS2];
+
+                //build a local histogram using frame data
+                match self.bitpix {
+                    8 => {
+                        for x in self.data_u8[frame as usize].iter().step_by(data_step) {
+                            let tmp = self.bzero + self.bscale * (*x as f32);
+                            increment_histogram(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                self.dmin,
+                                self.dmax,
+                                &mut hist,
+                            );
+                        }
+                    }
+                    16 => {
+                        for x in self.data_i16[frame as usize].iter().step_by(data_step) {
+                            let tmp = self.bzero + self.bscale * (*x as f32);
+                            increment_histogram(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                self.dmin,
+                                self.dmax,
+                                &mut hist,
+                            );
+                        }
+                    }
+                    32 => {
+                        for x in self.data_i32[frame as usize].iter().step_by(data_step) {
+                            let tmp = self.bzero + self.bscale * (*x as f32);
+                            increment_histogram(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                self.dmin,
+                                self.dmax,
+                                &mut hist,
+                            );
+                        }
+                    }
+                    -32 => {
+                        /*self.data_f16[frame as usize].iter()
+                        .zip(self.mask.iter())
+                            .for_each(|(x, m)| {*/
+                        for x in self.data_f16[frame as usize].iter().step_by(data_step) {
+                            //            if *m {
+                            let tmp = self.bzero + self.bscale * (*x).to_f32(); //convert from half to f32
+                            increment_histogram(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                self.dmin,
+                                self.dmax,
+                                &mut hist,
+                            );
+                        }
+                        //    })
+                    }
+                    -64 => {
+                        for x in self.data_f64[frame as usize].iter().step_by(data_step) {
+                            let tmp = self.bzero + self.bscale * (*x as f32);
+                            increment_histogram(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                self.dmin,
+                                self.dmax,
+                                &mut hist,
+                            );
+                        }
+                    }
+                    _ => println!("unsupported bitpix: {}", self.bitpix),
+                };
+
+                //get a write lock to the global histogram, update it
+                let mut data_hist = self.data_hist.write();
+
+                for i in 0..NBINS2 {
+                    data_hist[i] = data_hist[i] + hist[i];
+                }
+            });
         });
 
         let data_hist = self.data_hist.read();
@@ -3195,106 +3209,108 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let data_count_n = RwLock::new(0_i64);
 
         //into_par_iter or into_iter
-        (0..self.depth).into_par_iter().for_each(|frame| {
-            //init local madP, madN
-            let mut mad_p = 0.0_f32;
-            let mut mad_n = 0.0_f32;
-            let mut count_p = 0_i64;
-            let mut count_n = 0_i64;
+        pool.install(|| {
+            (0..self.depth).into_par_iter().for_each(|frame| {
+                //init local madP, madN
+                let mut mad_p = 0.0_f32;
+                let mut mad_n = 0.0_f32;
+                let mut count_p = 0_i64;
+                let mut count_n = 0_i64;
 
-            //build a local histogram using frame data
-            match self.bitpix {
-                8 => {
-                    for x in self.data_u8[frame as usize].iter().step_by(data_step) {
-                        let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            median,
-                            &mut mad_p,
-                            &mut mad_n,
-                            &mut count_p,
-                            &mut count_n,
-                        );
+                //build a local histogram using frame data
+                match self.bitpix {
+                    8 => {
+                        for x in self.data_u8[frame as usize].iter().step_by(data_step) {
+                            let tmp = self.bzero + self.bscale * (*x as f32);
+                            update_deviation(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                median,
+                                &mut mad_p,
+                                &mut mad_n,
+                                &mut count_p,
+                                &mut count_n,
+                            );
+                        }
                     }
-                }
-                16 => {
-                    for x in self.data_i16[frame as usize].iter().step_by(data_step) {
-                        let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            median,
-                            &mut mad_p,
-                            &mut mad_n,
-                            &mut count_p,
-                            &mut count_n,
-                        );
+                    16 => {
+                        for x in self.data_i16[frame as usize].iter().step_by(data_step) {
+                            let tmp = self.bzero + self.bscale * (*x as f32);
+                            update_deviation(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                median,
+                                &mut mad_p,
+                                &mut mad_n,
+                                &mut count_p,
+                                &mut count_n,
+                            );
+                        }
                     }
-                }
-                32 => {
-                    for x in self.data_i32[frame as usize].iter().step_by(data_step) {
-                        let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            median,
-                            &mut mad_p,
-                            &mut mad_n,
-                            &mut count_p,
-                            &mut count_n,
-                        );
+                    32 => {
+                        for x in self.data_i32[frame as usize].iter().step_by(data_step) {
+                            let tmp = self.bzero + self.bscale * (*x as f32);
+                            update_deviation(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                median,
+                                &mut mad_p,
+                                &mut mad_n,
+                                &mut count_p,
+                                &mut count_n,
+                            );
+                        }
                     }
-                }
-                -32 => {
-                    for x in self.data_f16[frame as usize].iter().step_by(data_step) {
-                        //            if *m {
-                        let tmp = self.bzero + self.bscale * (*x).to_f32(); //convert from half to f32
-                        update_deviation(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            median,
-                            &mut mad_p,
-                            &mut mad_n,
-                            &mut count_p,
-                            &mut count_n,
-                        );
+                    -32 => {
+                        for x in self.data_f16[frame as usize].iter().step_by(data_step) {
+                            //            if *m {
+                            let tmp = self.bzero + self.bscale * (*x).to_f32(); //convert from half to f32
+                            update_deviation(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                median,
+                                &mut mad_p,
+                                &mut mad_n,
+                                &mut count_p,
+                                &mut count_n,
+                            );
+                        }
                     }
-                }
-                -64 => {
-                    for x in self.data_f64[frame as usize].iter().step_by(data_step) {
-                        let tmp = self.bzero + self.bscale * (*x as f32);
-                        update_deviation(
-                            tmp,
-                            self.datamin,
-                            self.datamax,
-                            median,
-                            &mut mad_p,
-                            &mut mad_n,
-                            &mut count_p,
-                            &mut count_n,
-                        );
+                    -64 => {
+                        for x in self.data_f64[frame as usize].iter().step_by(data_step) {
+                            let tmp = self.bzero + self.bscale * (*x as f32);
+                            update_deviation(
+                                tmp,
+                                self.datamin,
+                                self.datamax,
+                                median,
+                                &mut mad_p,
+                                &mut mad_n,
+                                &mut count_p,
+                                &mut count_n,
+                            );
+                        }
                     }
-                }
-                _ => println!("unsupported bitpix: {}", self.bitpix),
-            };
+                    _ => println!("unsupported bitpix: {}", self.bitpix),
+                };
 
-            //update global mad,count
-            let mut data_mad_p = self.data_mad_p.write();
-            let mut data_mad_n = self.data_mad_n.write();
+                //update global mad,count
+                let mut data_mad_p = self.data_mad_p.write();
+                let mut data_mad_n = self.data_mad_n.write();
 
-            let mut data_count_p = data_count_p.write();
-            let mut data_count_n = data_count_n.write();
+                let mut data_count_p = data_count_p.write();
+                let mut data_count_n = data_count_n.write();
 
-            *data_mad_p += mad_p;
-            *data_mad_n += mad_n;
+                *data_mad_p += mad_p;
+                *data_mad_n += mad_n;
 
-            *data_count_p += count_p;
-            *data_count_n += count_n;
+                *data_count_p += count_p;
+                *data_count_n += count_n;
+            });
         });
 
         let mut data_mad_p = self.data_mad_p.write();
@@ -7186,7 +7202,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     }
 
     #[cfg(feature = "opencl")]
-    fn rbf_compress(&mut self) {
+    fn rbf_compress(&self) {
         //check if the RBF file already exists in the FITSCACHE
         let filename = format!("{}/{}.rbf", FITSCACHE, self.dataset_id.replace("/", "_"));
         let filepath = std::path::Path::new(&filename);

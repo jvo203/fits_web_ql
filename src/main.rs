@@ -2281,7 +2281,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-19.0";
+static VERSION_STRING: &'static str = "SV2019-05-20.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2844,11 +2844,21 @@ fn get_image(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpRespons
     };
 
     result(Ok({
-        let datasets = DATASETS.read();//.unwrap();
+        let datasets = DATASETS.read();
+
+        let fits = match datasets.get(dataset_id) {
+                Some(x) => x,
+                None => {
+                    return result(Ok(HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))))
+                    .responder();
+                }
+            };
 
         //println!("[get_image] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
 
-        let fits = match datasets.get(dataset_id).unwrap().try_read()/*_for(time::Duration::from_millis(LONG_POLL_TIMEOUT))*/ {
+        let fits = match fits.try_read()/*_for(time::Duration::from_millis(LONG_POLL_TIMEOUT))*/ {
             Some(x) => x,
             None => {
                 //println!("[get_image]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
@@ -2928,11 +2938,21 @@ fn get_spectrum(
     //println!("[get_spectrum] http request for {}", dataset_id);
 
     result(Ok({
-        let datasets = DATASETS.read();//.unwrap();
+        let datasets = DATASETS.read();
+
+        let fits = match datasets.get(dataset_id) {
+                Some(x) => x,
+                None => {
+                    return result(Ok(HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))))
+                    .responder();
+                }
+            };
 
         //println!("[get_spectrum] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
 
-        let fits = match datasets.get(dataset_id).unwrap().try_read()/*_for(time::Duration::from_millis(LONG_POLL_TIMEOUT))*/ {
+        let fits = match fits.try_read()/*_for(time::Duration::from_millis(LONG_POLL_TIMEOUT))*/ {
             Some(x) => x,
             None => {
                 //println!("[get_spectrum]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
@@ -3090,9 +3110,19 @@ fn get_molecules(
 
     result(Ok({
         if freq_start == 0.0 || freq_end == 0.0 {
-            let datasets = DATASETS.read(); //.unwrap();
+            let datasets = DATASETS.read();
 
-            let fits = match datasets.get(dataset_id).unwrap().try_read() {
+            let fits = match datasets.get(dataset_id) {
+                Some(x) => x,
+                None => {
+                    return result(Ok(HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))))
+                    .responder();
+                }
+            };
+
+            let fits = match fits.try_read() {
                 Some(x) => x,
                 None => {
                     return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
@@ -3367,7 +3397,17 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
         for entry in dataset_id {
             let datasets = DATASETS.read();
 
-            let fits = match datasets.get(entry).unwrap().try_read() {
+            let fits = match datasets.get(entry) {
+                Some(x) => x,
+                None => {
+                    return result(Ok(HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))))
+                    .responder();
+                }
+            };
+
+            let fits = match fits.try_read() {
                 Some(x) => x,
                 None => {
                     println!("[get_fits] error getting {} from DATASETS; aborting", entry);
@@ -3467,7 +3507,17 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
 
         let datasets = DATASETS.read();
 
-        let fits = match datasets.get(entry).unwrap().try_read() {
+        let fits = match datasets.get(entry) {
+            Some(x) => x,
+            None => {
+                return result(Ok(HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))))
+                .responder();
+            }
+        };
+
+        let fits = match fits.try_read() {
             Some(x) => x,
             None => {
                 println!("[get_fits] error getting {} from DATASETS; aborting", entry);
@@ -4087,7 +4137,12 @@ fn http_fits_response(
 
     html.push_str("</body></html>\n");
 
-    HttpResponse::Ok().content_type("text/html").body(html)
+    HttpResponse::Ok()
+        .header("Cache-Control", "no-cache, no-store, must-revalidate")
+        .header("Pragma", "no-cache")
+        .header("Expires", "0")
+        .content_type("text/html")
+        .body(html)
 }
 
 fn main() {
