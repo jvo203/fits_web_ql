@@ -503,12 +503,11 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
-        //let num_threads = (num_cpus::get() / 2).max(1);
         let num_threads = if is_cache {
-            num::clamp(num_cpus::get(), 1, 16)
+            num_cpus::get_physical()
         } else {
             //reduce the number of threads for NFS
-            num::clamp(num_cpus::get(), 1, 8)
+            num::clamp(num_cpus::get_physical(), 1, 8)
         };
 
         let pool = match rayon::ThreadPoolBuilder::new()
@@ -779,12 +778,7 @@ impl FITS {
 
         let start = precise_time::precise_time_ns();
 
-        //set an upper bound as there are not enough memory channels anyway
-        let num_threads = num::clamp(num_cpus::get(), 1, 16);
-        //let num_threads = (num_cpus::get() / 2).max(1);
-        //use all the threads available
-        //let num_threads = num_cpus::get();
-        //let num_threads = 1;
+        let num_threads = num_cpus::get_physical();
 
         let pool = match rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
@@ -2831,7 +2825,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     ) -> Option<(Vec<f32>, Vec<u8>, Vec<f32>, Vec<f32>)> {
         let start_watch = precise_time::precise_time_ns();
 
-        let num_threads = (num_cpus::get() / 2).max(1);
+        let num_threads = num_cpus::get_physical();
 
         let pool = match rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
@@ -3078,7 +3072,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //parallel histogram of all data
         //actually serial so as not to affect other threads, smooth real-time spectrum calculation etc?
         //into_par_iter or into_iter
-        let num_threads = (num_cpus::get() / 2).max(1);
+        let num_threads = num_cpus::get_physical();
         let pool = match rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .build()
@@ -4108,11 +4102,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        //interfacing with Intel SPMD Program Compiler
+        //interfacing with the Intel SPMD Program Compiler
         let vec = &self.data_f16[frame];
         let len = vec.len();
         let tmp = (len / (1024 * 1024)).max(1);
-        let num_threads = tmp.min(num_cpus::get());
+        let num_threads = tmp.min(num_cpus::get_physical());
         let work_size = len / num_threads;
 
         println!(
@@ -5100,7 +5094,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         cfg.rc_max_quantizer = 42;
         cfg.rc_target_bitrate = 4096; // [kilobits per second]
         cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
-        cfg.g_threads = num_cpus::get().min(4) as u32; //set the upper limit on the number of threads to 4
+        cfg.g_threads = num_cpus::get_physical().min(4) as u32; //set the upper limit on the number of threads to 4
 
         ret = unsafe {
             vpx_codec_enc_init_ver(
@@ -5269,7 +5263,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     ) -> f32 {
         let len = pixels.len();
         let tmp = (len / (1024 * 1024)).max(1);
-        let num_threads = tmp.min(num_cpus::get());
+        let num_threads = tmp.min(num_cpus::get_physical());
         let work_size = len / num_threads;
 
         /*println!(
@@ -5357,7 +5351,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     self.width, self.height, w, h, ratio
                 );
 
-            /*num_threads = num_cpus::get();
+            /*num_threads = num_cpus::get_physical();
             thread_height = self.height / num_threads;
             thread_h = (h as usize) / num_threads;
 
@@ -5564,7 +5558,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         cfg.rc_max_quantizer = 42;
         cfg.rc_target_bitrate = 4096; // [kilobits per second]
         cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
-        cfg.g_threads = num_cpus::get().min(4) as u32; //set the upper limit on the number of threads to 4
+        cfg.g_threads = num_cpus::get_physical().min(4) as u32; //set the upper limit on the number of threads to 4
 
         ret = unsafe {
             vpx_codec_enc_init_ver(
@@ -7095,7 +7089,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //use only half the number of CPUs in OpenMP
                 /*#[cfg(not(feature = "cuda"))]
                 {
-                    let num_threads = (num_cpus::get() / 2).max(1);
+                    let num_threads = num_cpus::get_physical() / 2).max(1);
                     //no need to call zfp_stream_set_execution(zfp, zfp_exec_policy_zfp_exec_omp)
                     unsafe { zfp_stream_set_omp_threads(zfp, num_threads as u32) };
                 }*/

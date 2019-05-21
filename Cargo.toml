@@ -28,7 +28,6 @@ vpx = "1.7.0"
 [dependencies]
 thread-priority = "*"
 jemallocator = "*"
-cupid = "*"
 actix = "0.7"
 actix-web = "*"
 serde_json = "*"

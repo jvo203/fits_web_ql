@@ -225,7 +225,7 @@ impl UserSession {
 
         let hevc = File::create(filename);*/
 
-        let num_threads = (num_cpus::get() / 2).max(1);
+        let num_threads = num_cpus::get_physical();
         let pool = match rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .build()
@@ -690,7 +690,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                         self.cfg.g_lag_in_frames = 0;
                         self.cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
-                        self.cfg.g_threads = num_cpus::get().min(4) as u32; //set the upper limit on the number of threads to 4
+                        self.cfg.g_threads = num_cpus::get_physical().min(4) as u32; //set the upper limit on the number of threads to 4
 
                         //self.cfg.g_profile = 0 ;
 
@@ -1520,7 +1520,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 cfg.rc_max_quantizer = 42;
                                 cfg.rc_target_bitrate = 4096; // [kilobits per second]
                                 cfg.g_pass = vpx_enc_pass::VPX_RC_ONE_PASS;
-                                cfg.g_threads = num_cpus::get().min(4) as u32; //set the upper limit on the number of threads to 4
+                                cfg.g_threads = num_cpus::get_physical().min(4) as u32; //set the upper limit on the number of threads to 4
 
                                 ret = unsafe {
                                     vpx_codec_enc_init_ver(
@@ -2339,7 +2339,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
-static VERSION_STRING: &'static str = "SV2019-05-20.1";
+static VERSION_STRING: &'static str = "SV2019-05-21.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4214,17 +4214,7 @@ fn http_fits_response(
 }
 
 fn main() {
-    /*let information = cupid::master();
-    println!("{:#?}", information);*/
-    /*let num_cores = match cpuid::identify() {
-        Ok(info) => info.num_cores as usize,
-        Err(err) => {
-            println!("Couldn't get the CPU info structure: {}.", err);
-            num_cpus::get()
-        }
-    };*/
-
-    let num_threads = (num_cpus::get() / 2).max(1); //divide by 2 to avoid hyperthreading
+    let num_threads = num_cpus::get_physical();
     println!("Number of threads in a global pool: {}", num_threads);
 
     rayon::ThreadPoolBuilder::new()
@@ -4316,13 +4306,13 @@ fn main() {
         ctx.set_mailbox_capacity(1 << 31);
         server::SessionServer::default()
     });
-    /*let num_threads = (num_cpus::get() / 2).max(1);
+    /*let num_threads = num_cpus::get_physical();
     let server = SyncArbiter::start(num_threads, || server::SessionServer::default()); //16 or 32 threads at most
     */
 
     let actix_server_path = server_path.clone();
 
-    let num_http_workers = (num_cpus::get() / 4).max(1);
+    let num_http_workers = (num_cpus::get_physical() / 2).max(1); //half the number of physical (not Hyper-Threading) cores
 
     HttpServer::new(
         move || {
@@ -4356,7 +4346,11 @@ fn main() {
         .bind(&format!("{}:{}", server_address, server_port)).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port))        
         .start();
 
-    println!("detected number of CPUs: {}", num_cpus::get());
+    println!(
+        "detected number of logical CPUs: {}, physical: {}",
+        num_cpus::get(),
+        num_cpus::get_physical()
+    );
 
     #[cfg(feature = "opencl")]
     match core::default_platform() {
