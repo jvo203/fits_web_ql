@@ -2338,7 +2338,7 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.1.16";
+static SERVER_STRING: &'static str = "FITSWebQL v4.1.17";
 static VERSION_STRING: &'static str = "SV2019-05-21.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
@@ -4347,7 +4347,7 @@ fn main() {
         .start();
 
     println!(
-        "detected number of logical CPUs: {}, physical: {}",
+        "detected number of logical CPU cores: {}, physical: {}",
         num_cpus::get(),
         num_cpus::get_physical()
     );
