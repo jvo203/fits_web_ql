@@ -9,7 +9,9 @@ use std::time::SystemTime;
 use timer;
 
 use actix::*;
+#[cfg(target_os = "linux")]
 use thread_priority::*;
+
 use uuid::Uuid;
 
 use crate::DATASETS;
@@ -142,10 +144,13 @@ impl Default for SessionServer {
                         match entry {
                             Some(value) => {
                                 std::thread::spawn(move || {
-                                    let thread_id = thread_native_id();
-                                    match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
-                                        Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
-                                        Err(err) => println!("error changing the thread priority: {:?}", err),
+                                    #[cfg(target_os = "linux")]
+                                    {
+                                        let thread_id = thread_native_id();
+                                        match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
+                                            Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
+                                            Err(err) => println!("error changing the thread priority: {:?}", err),
+                                        }
                                     };
 
                                     let fits = value.read();
@@ -275,10 +280,13 @@ impl Handler<Disconnect> for SessionServer {
                                 match entry {
                                     Some(value) => {
                                         std::thread::spawn(move || {
-                                            let thread_id = thread_native_id();
-                                            match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
-                                                Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
-                                                Err(err) => println!("error changing the thread priority: {:?}", err),
+                                            #[cfg(target_os = "linux")]
+                                            {
+                                                let thread_id = thread_native_id();
+                                                match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
+                                                    Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
+                                                    Err(err) => println!("error changing the thread priority: {:?}", err),
+                                                }
                                             };
 
                                             let fits = value.read();
