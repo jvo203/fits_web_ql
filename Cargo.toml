@@ -30,8 +30,11 @@ thread-priority = "*"
 
 [dependencies]
 jemallocator = "*"
-actix = "0.7"
-actix-web = "0.7.19"
+actix = "*"
+actix-web = "*"
+actix-web-actors = "*"
+actix-files = "*"
+http = "*"
 serde_json = "*"
 chrono = "*"
 dirs = "*"

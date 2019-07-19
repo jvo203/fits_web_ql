@@ -40,14 +40,14 @@ use std::thread;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
 
-use ::actix::*;
+use actix::*;
+use actix_files as fs;
+use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web::http::{header::HeaderValue, ContentEncoding, StatusCode};
 use actix_web::dev::HttpResponseBuilder;
-use actix_web::http::header::HeaderValue;
-use actix_web::http::ContentEncoding;
-use actix_web::http::StatusCode;
 use actix_web::middleware::Logger;
-use actix_web::server::HttpServer;
-use actix_web::*;
+use actix_web_actors::ws;
+
 use futures::future::{result, Future};
 use percent_encoding::percent_decode;
 use tar::{Builder, Header};
@@ -2338,8 +2338,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.1.17";
-static VERSION_STRING: &'static str = "SV2019-05-21.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
+static VERSION_STRING: &'static str = "SV2019-07-19.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4333,14 +4333,14 @@ fn main() {
                     .exclude(format!("/{}/get_image", actix_server_path))
                     .exclude(format!("/{}/get_spectrum", actix_server_path))
                 )
-                .resource("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
-                .resource("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})                
-                .resource("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
-                .resource("/{path}/get_image", |r| {r.method(http::Method::GET).f(get_image)})
-                .resource("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})
-                .resource("/{path}/get_molecules", |r| {r.method(http::Method::GET).f(get_molecules)})
-                .resource("/{path}/get_fits", |r| {r.method(http::Method::GET).f(get_fits)})
-                .handler("/", fs::StaticFiles::new("htdocs").unwrap().index_file(index_file))
+                .service("/{path}/FITSWebQL.html", |r| {r.method(http::Method::GET).f(fitswebql_entry)})  
+                .service("/{path}/websocket/{id}", |r| {r.route().f(websocket_entry)})                
+                .service("/get_directory", |r| {r.method(http::Method::GET).f(directory_handler)})
+                .service("/{path}/get_image", |r| {r.method(http::Method::GET).f(get_image)})
+                .service("/{path}/get_spectrum", |r| {r.method(http::Method::GET).f(get_spectrum)})
+                .service("/{path}/get_molecules", |r| {r.method(http::Method::GET).f(get_molecules)})
+                .service("/{path}/get_fits", |r| {r.method(http::Method::GET).f(get_fits)})
+                .service("/", fs::Files::new("htdocs").unwrap().index_file(index_file))
         })
         .workers(num_http_workers)
         .bind(&format!("{}:{}", server_address, server_port)).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port))        
