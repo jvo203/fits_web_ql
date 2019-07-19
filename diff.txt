@@ -1,0 +1,38 @@
+diff --git a/src/fits.rs b/src/fits.rs
+index 5b626f9..1133ac4 100644
+--- a/src/fits.rs
++++ b/src/fits.rs
+@@ -222,7 +222,7 @@ static JVO_FITS_SERVER: &'static str = "jvox.vo.nao.ac.jp";
+ static JVO_FITS_DB: &'static str = "alma";
+ 
+ #[cfg(feature = "jvo")]
+-pub static FITSHOME: &'static str = "/home";
++pub static FITSHOME: &'static str = "/home/fitswebql";
+ 
+ //#[cfg(not(feature = "production"))]
+ pub static FITSCACHE: &'static str = "FITSCACHE";
+diff --git a/src/main.rs b/src/main.rs
+index fb85a88..b2b0546 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -2358,7 +2358,10 @@ const SERVER_ADDRESS: &'static str = "0.0.0.0";
+ const JVO_USER: &'static str = "jvo";
+ 
+ #[cfg(feature = "jvo")]
+-const JVO_HOST: &'static str = "localhost";
++const JVO_PASSWORD: &'static str = "jvo!";
++
++#[cfg(feature = "jvo")]
++const JVO_HOST: &'static str = "jvox.vo.nao.ac.jp";
+ 
+ const SERVER_PORT: i32 = 8080;
+ const SERVER_PATH: &'static str = "fitswebql";
+@@ -3674,7 +3677,7 @@ fn get_fits(req: &HttpRequest<WsSessionState>) -> Box<Future<Item = HttpResponse
+ 
+ #[cfg(feature = "jvo")]
+ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path::PathBuf> {
+-    let connection_url = format!("postgresql://{}@{}/{}", JVO_USER, JVO_HOST, db);
++    let connection_url = format!("postgresql://{}:{}@{}/{}", JVO_USER, JVO_PASSWORD, JVO_HOST, db);
+ 
+     println!("PostgreSQL connection URL: {}", connection_url);
+ 
