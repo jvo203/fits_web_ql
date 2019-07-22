@@ -53,7 +53,7 @@ use tar::{Builder, Header};
 use uuid::Uuid;
 
 use bytes::Bytes;
-use futures::future::ok;
+use futures::future::result;
 use futures::{Async, Future, Poll, Stream};
 use std::sync::mpsc;
 
@@ -2634,7 +2634,7 @@ fn directory_handler(
     state: web::Data<WsSessionState>,
     query: web::Query<HashMap<String, String>>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    ok(match query.get("dir") {
+    result(Ok(match query.get("dir") {
         Some(x) => get_directory(std::path::PathBuf::from(x)),
         None => {
             let home_dir = &state.home_dir;
@@ -2642,7 +2642,7 @@ fn directory_handler(
             //default location
             get_home_directory(home_dir)
         }
-    })
+    }))
 }
 
 fn websocket_entry(
@@ -2676,7 +2676,7 @@ fn websocket_entry(
         id, user_agent
     );
 
-    Ok(ok(ws::start(
+    Ok(result(ws::start(
         UserSession::new(state.addr.clone(), &id),
         req,
         stream,
