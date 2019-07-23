@@ -46,6 +46,7 @@ use actix_web::dev::HttpResponseBuilder;
 use actix_web::http::{header::HeaderValue, ContentEncoding, StatusCode};
 use actix_web::middleware::{Compress, Logger};
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
 
 use percent_encoding::percent_decode;
@@ -2340,8 +2341,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-07-22.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.1.18";
+static VERSION_STRING: &'static str = "SV2019-07-23.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2651,8 +2652,8 @@ fn websocket_entry(
     state: web::Data<WsSessionState>,
 ) -> Result<impl Future<Item = HttpResponse, Error = Error>, Error> /*Result<HttpResponse>*/ {
     let dataset_id_orig: String = match req.match_info().get("id") {
-        Ok(x) => x,
-        Err(err) => return Err(actix_web::error::Error::from(err)),
+        Some(x) => x.to_string(),
+        None => return Err(actix_http::error::ErrorBadRequest("websocket_entry")),
     };
 
     //dataset_id needs to be URI-decoded
@@ -2686,17 +2687,17 @@ fn websocket_entry(
 fn fitswebql_entry(
     state: web::Data<WsSessionState>,
     req: &HttpRequest,
-    //query: web::Query<HashMap<String, String>>,
 ) -> impl Future<Item = HttpResponse, Error = Error> /*HttpResponse*/ {
-    let fitswebql_path: String = match req.match_info().query("path") {
-        Ok(x) => x,
-        Err(err) => return Err(actix_web::error::Error::from(err)),
+    let fitswebql_path: String = match req.match_info().get("path") {
+        Some(x) => x.to_string(),
+        None => return result(Err(actix_http::error::ErrorBadRequest("fitswebql_entry"))),
     };
 
     let server = &state.addr;
-
-    //let query = req.query_string();
-    let query = web::Query::<HashMap<String, String>>::extract(req);
+    let query = match web::Query::<HashMap<String, String>>::extract(req) {
+        Ok(x) => x,
+        Err(_) => return result(Err(actix_http::error::ErrorBadRequest("fitswebql_entry"))),
+    };
 
     #[cfg(feature = "jvo")]
     let db = match query.get("db") {
@@ -2733,12 +2734,12 @@ fn fitswebql_entry(
         Some(x) => {
             let dataset_id = Uuid::new_v3(&Uuid::NAMESPACE_URL, x.as_bytes());
             println!("external URL: {}, uuid: {}", x, dataset_id);
-            return Ok(external_fits(
+            return result(Ok(external_fits(
                 &fitswebql_path,
                 x,
                 &dataset_id.to_string(),
                 &server,
-            ));
+            )));
         }
         None => {}
     };
@@ -2767,12 +2768,9 @@ fn fitswebql_entry(
 
             //the last resort
             if v.is_empty() {
-                return Ok(HttpResponse::NotFound()
-                    .content_type("text/html")
-                    .body(format!(
-                        "<p><b>Critical Error</b>: no {} available</p>",
-                        dataset
-                    )));
+                return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                    format!("<p><b>Critical Error</b>: no {} available</p>", dataset),
+                )));
             };
 
             v
@@ -2840,7 +2838,7 @@ fn fitswebql_entry(
 
     //server version
     #[cfg(feature = "jvo")]
-    return Ok(internal_fits(
+    return result(Ok(internal_fits(
         &fitswebql_path,
         &db,
         &table,
@@ -2850,11 +2848,11 @@ fn fitswebql_entry(
         composite,
         &flux,
         &server,
-    ));
+    )));
 
     //local (Personal Edition)
     #[cfg(not(feature = "jvo"))]
-    return Ok(internal_fits(
+    return result(Ok(internal_fits(
         &fitswebql_path,
         "",
         "",
@@ -2864,22 +2862,21 @@ fn fitswebql_entry(
         composite,
         &flux,
         &server,
-    ));
+    )));
 }
 
 fn get_image(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
-    //println!("{:?}", req);
-
-    let query = req.query_string();
+    let query = match web::Query::<HashMap<String, String>>::extract(req) {
+        Ok(x) => x,
+        Err(_) => return result(Err(actix_http::error::ErrorBadRequest("get_image"))),
+    };
 
     let dataset_id = match query.get("datasetId") {
         Some(x) => x,
         None => {
-            return Ok(HttpResponse::NotFound()
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_image/datasetId parameter not found</p>"
-                )));
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_image/datasetId parameter not found</p>"),
+            )));
         }
     };
 
@@ -2890,18 +2887,18 @@ fn get_image(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Erro
     let filepath = std::path::Path::new(&filename);
 
     if filepath.exists() {
-        return fs::NamedFile::open(filepath).respond_to(&req);
+        return result(fs::NamedFile::open(filepath).unwrap().respond_to(&req));
     };
 
-    Ok({
+    result(Ok({
         let datasets = DATASETS.read();
 
         let fits = match datasets.get(dataset_id) {
             Some(x) => x,
             None => {
-                return Ok(HttpResponse::NotFound()
+                return result(Ok(HttpResponse::NotFound()
                     .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>")));
+                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))));
             }
         };
 
@@ -2912,9 +2909,9 @@ fn get_image(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Erro
             None => {
                 //println!("[get_image]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
-                return Ok(HttpResponse::Accepted()
+                return result(Ok(HttpResponse::Accepted()
                     .content_type("text/html")
-                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id)));                    
+                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id))));
             }
         };
 
@@ -2925,12 +2922,12 @@ fn get_image(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Erro
         //println!("[get_image] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
 
         if fits.is_dummy {
-            return Ok(HttpResponse::Accepted()
-                .content_type("text/html")
-                .body(format!(
+            return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
+                format!(
                     "<p><b>RwLock timeout</b>: {} not available yet</p>",
                     dataset_id
-                )));
+                ),
+            )));
         }
 
         if fits.has_data {
@@ -2939,11 +2936,11 @@ fn get_image(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Erro
             let filepath = std::path::Path::new(&filename);
 
             if filepath.exists() {
-                return fs::NamedFile::open(filepath).respond_to(&req);
+                return result(fs::NamedFile::open(filepath).unwrap().respond_to(&req));
             } else {
-                return Ok(HttpResponse::NotFound()
+                return result(Ok(HttpResponse::NotFound()
                     .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: image not found</p>")));
+                    .body(format!("<p><b>Critical Error</b>: image not found</p>"))));
             };
         } else {
             //custom HTTP error responses
@@ -2959,36 +2956,32 @@ fn get_image(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Erro
                     .body(format!("DATA NOT FOUND ON THE REMOTE SITE/SERVER")),
             }
         }
-    })
+    }))
 }
 
-fn get_spectrum(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
-    //println!("{:?}", req);
-
-    let query = req.query_string();
-
+fn get_spectrum(
+    query: web::Query<HashMap<String, String>>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
     let dataset_id = match query.get("datasetId") {
         Some(x) => x,
         None => {
-            return Ok(HttpResponse::NotFound()
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"
-                )));
+            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
+                format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"),
+            )));
         }
     };
 
     //println!("[get_spectrum] http request for {}", dataset_id);
 
-    Ok({
+    result(Ok({
         let datasets = DATASETS.read();
 
         let fits = match datasets.get(dataset_id) {
             Some(x) => x,
             None => {
-                return Ok(HttpResponse::NotFound()
+                return result(Ok(HttpResponse::NotFound()
                     .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>")))
+                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))));
             }
         };
 
@@ -2999,9 +2992,9 @@ fn get_spectrum(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = E
             None => {
                 //println!("[get_spectrum]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
-                return Ok(HttpResponse::Accepted()
+                return result(Ok(HttpResponse::Accepted()
                     .content_type("text/html")
-                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id)))                    
+                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id))));
             }
         };
 
@@ -3012,12 +3005,12 @@ fn get_spectrum(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = E
         //println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
 
         if fits.is_dummy {
-            return Ok(HttpResponse::Accepted()
-                .content_type("text/html")
-                .body(format!(
+            return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
+                format!(
                     "<p><b>RwLock timeout</b>: {} not available yet</p>",
                     dataset_id
-                )));
+                ),
+            )));
         }
 
         if fits.has_data {
@@ -3029,7 +3022,7 @@ fn get_spectrum(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = E
                 .content_type("text/html")
                 .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
         }
-    })
+    }))
 }
 
 struct MoleculeStream {
@@ -3093,11 +3086,9 @@ impl Stream for MoleculeStream {
     }
 }
 
-fn get_molecules(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
-    //println!("{:?}", req);
-
-    let query = req.query_string();
-
+fn get_molecules(
+    query: web::Query<HashMap<String, String>>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
     let dataset_id = match query.get("datasetId") {
         Some(x) => x,
         None => {
@@ -3260,11 +3251,9 @@ impl Stream for FITSDataStream {
     }
 }
 
-fn get_fits(req: &HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
-    //println!("{:?}", req);
-
-    let query = req.query_string();
-
+fn get_fits(
+    query: web::Query<HashMap<String, String>>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
     /*#[cfg(not(feature = "jvo"))]
     let dataset = "filename";
 
