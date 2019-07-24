@@ -309,6 +309,7 @@ impl Actor for UserSession {
 
     fn started(&mut self, ctx: &mut Self::Context) {
         println!("websocket connection started for {}", self.dataset_id[0]);
+        ctx.set_mailbox_capacity(1024);
 
         let addr = ctx.address();
 
@@ -330,7 +331,7 @@ impl Actor for UserSession {
         });
     }
 
-    fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
+    fn stopping(&mut self, _: &mut Self::Context) -> Running {
         println!(
             "stopping a websocket connection for {}/{}",
             self.dataset_id[0], self.session_id
@@ -2342,7 +2343,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.18";
-static VERSION_STRING: &'static str = "SV2019-07-23.0";
+static VERSION_STRING: &'static str = "SV2019-07-24.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4215,16 +4216,13 @@ fn main() {
 
     let sys = actix::System::new("fits_web_ql");
 
+    let num_http_workers = (num_cpus::get_physical() / 2).max(1); //half the number of physical (not Hyper-Threading) cores
+
     // Start the WebSocket message server actor in a separate thread
-    /*let server = Arbiter::start(|ctx: &mut Context<_>| {
-        ctx.set_mailbox_capacity(1 << 31);
-        server::SessionServer::default()
-    });*/
-    let server = server::SessionServer::default().start();
+    //let server = server::SessionServer::default().start();
+    let server = SyncArbiter::start(num_http_workers, || server::SessionServer::default());
 
     let actix_server_path = server_path.clone();
-
-    let num_http_workers = (num_cpus::get_physical() / 2).max(1); //half the number of physical (not Hyper-Threading) cores
 
     HttpServer::new(
         move || {

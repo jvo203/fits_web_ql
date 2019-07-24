@@ -183,7 +183,11 @@ impl Default for SessionServer {
 
 /// Make actor from `SessionServer`
 impl Actor for SessionServer {
-    type Context = Context<Self>;
+    type Context = SyncContext<Self>;
+
+    /*fn started(&mut self, ctx: &mut Self::Context) {
+        ctx.set_mailbox_capacity(1 << 31);
+    }*/
 }
 
 /// Handler for Connect message.
@@ -191,7 +195,7 @@ impl Actor for SessionServer {
 impl Handler<Connect> for SessionServer {
     type Result = String;
 
-    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: Connect, _: &mut SyncContext<Self>) -> Self::Result {
         // register a new session
         let id = msg.id;
         self.sessions.insert(id, msg.addr);
@@ -216,7 +220,7 @@ impl Handler<Connect> for SessionServer {
 impl Handler<Disconnect> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: Disconnect, _: &mut SyncContext<Self>) {
         //let id = Uuid::parse_str(&msg.id).unwrap();
         let id = msg.id;
 
@@ -311,7 +315,7 @@ impl Handler<Disconnect> for SessionServer {
 impl Handler<Remove> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: Remove, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: Remove, _: &mut SyncContext<Self>) {
         println!(
             "[SessionServer]: received a Remove request for '{}'",
             &msg.dataset_id
@@ -323,7 +327,7 @@ impl Handler<Remove> for SessionServer {
 impl Handler<WsMessage> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: WsMessage, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: WsMessage, _: &mut SyncContext<Self>) {
         //println!("[SessionServer]: received a WsMessage '{}' bound for '{}'", &msg.msg, &msg.dataset_id);
 
         match self.datasets.read().get(&msg.dataset_id) {

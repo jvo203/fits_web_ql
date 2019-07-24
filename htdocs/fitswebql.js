@@ -148,9 +148,9 @@ function show_directory_contents(response) {
 			if (optical) {
 				url += "&colourmap=negative";
 				url += "&flux=ratio";
-			} else
+			}/* else
 				//enforce tone mapping
-				url += "&flux=logistic";
+				url += "&flux=logistic";*/
 
 			//single-file URL
 			//var url = "/fitswebql/FITSWebQL.html?dir=" + encodeURIComponent(path) + "&ext=" + encodeURIComponent(ext) + "&filename=" + encodeURIComponent(name) ;
