@@ -85,6 +85,8 @@ mod server;
 use crate::kalman::KalmanFilter;
 use crate::molecule::Molecule;
 
+const PROGRESS_INTERVAL: u64 = 500; //[ms]
+
 #[derive(Serialize, Debug)]
 pub struct WsSpectrum {
     pub ts: f32,
@@ -179,7 +181,8 @@ struct UserSession {
     session_id: Uuid,
     pool: Option<rayon::ThreadPool>,
     user: Option<UserParams>,
-    timestamp: std::time::Instant,
+    timestamp: std::time::Instant,          //inactivity timeout
+    progress_timestamp: std::time::Instant, //WebSocket progress timestamp
     log: std::io::Result<File>,
     wasm: bool,
     //hevc: std::io::Result<File>,
@@ -246,6 +249,8 @@ impl UserSession {
             pool: pool,
             user: None,
             timestamp: std::time::Instant::now(), //SpawnHandle::default(),
+            progress_timestamp: std::time::Instant::now()
+                - std::time::Duration::from_millis(PROGRESS_INTERVAL),
             log: log,
             wasm: false,
             //hevc: hevc,
@@ -347,13 +352,37 @@ impl Actor for UserSession {
 }
 
 /// forward progress messages from FITS loading to the websocket
-impl Handler<server::Message> for UserSession {
+impl Handler<server::WsMessage> for UserSession {
     type Result = ();
 
-    fn handle(&mut self, msg: server::Message, ctx: &mut Self::Context) {
-        //println!("websocket sending '{}'", msg.0);
+    fn handle(&mut self, msg: server::WsMessage, ctx: &mut Self::Context) {
+        let sending = {
+            if msg.running < msg.total {
+                if std::time::Instant::now().duration_since(self.progress_timestamp)
+                    >= std::time::Duration::from_millis(PROGRESS_INTERVAL)
+                {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                true
+            }
+        };
 
-        ctx.text(msg.0);
+        if sending {
+            let msg = json!({
+                "type" : "progress",
+                "message" : msg.notification,
+                "total" : msg.total,
+                "running" : msg.running,
+                "elapsed" : (msg.elapsed.as_millis() as f64) / 1000.0
+            })
+            .to_string();
+
+            ctx.text(msg);
+            self.progress_timestamp = std::time::Instant::now();
+        }
     }
 }
 
@@ -2342,8 +2371,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.1.18";
-static VERSION_STRING: &'static str = "SV2019-07-26.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.1.19";
+static VERSION_STRING: &'static str = "SV2019-07-26.1";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4219,8 +4248,8 @@ fn main() {
     let num_workers = (num_cpus::get_physical() / 2).max(1); //half the number of physical (not Hyper-Threading) cores
 
     // Start the WebSocket message server actor in a separate thread
-    //let server = server::SessionServer::default().start();
-    let server = SyncArbiter::start(1, || server::SessionServer::default());//replaced num_workers with only 1 for now...
+    let server = server::SessionServer::default().start();
+    //let server = SyncArbiter::start(1, || server::SessionServer::default()); //replaced num_workers with only 1 for now...
 
     let actix_server_path = server_path.clone();
 

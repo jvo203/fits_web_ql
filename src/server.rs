@@ -16,8 +16,6 @@ use uuid::Uuid;
 
 use crate::DATASETS;
 
-const PROGRESS_INTERVAL: u64 = 500; //[ms]
-
 #[cfg(feature = "jvo")]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60
 
@@ -28,15 +26,12 @@ const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactiv
 
 const DUMMY_DATASET_TIMEOUT: u64 = 24 * 60 * 60; //[s]; 24 hours, plenty of time for a local jvox download to complete (or fail)
 
-/// the server sends this messages to session
-#[derive(Message)]
-pub struct Message(pub String);
-
+/// the server sends these messages to session
 /// New session is created
 #[derive(Message)]
 #[rtype(String)]
 pub struct Connect {
-    pub addr: Recipient<Message>,
+    pub addr: Recipient<WsMessage>,
     pub dataset_id: String,
     pub id: Uuid,
 }
@@ -68,12 +63,10 @@ pub struct WsMessage {
 
 /// `SessionServer` manages sending messages from the FITSWebQL host server to WebSocket clients
 pub struct SessionServer {
-    sessions: HashMap<Uuid, Recipient<Message>>,
+    sessions: HashMap<Uuid, Recipient<WsMessage>>,
     datasets: Arc<RwLock<HashMap<String, HashSet<Uuid>>>>,
     timer: timer::Timer,
     _guard: timer::Guard,
-    //WebSocket progress timestamp
-    progress_timestamp: std::time::Instant,
 }
 
 impl Default for SessionServer {
@@ -175,19 +168,17 @@ impl Default for SessionServer {
             datasets: datasets,
             timer: timer,
             _guard: guard,
-            progress_timestamp: std::time::Instant::now()
-                - std::time::Duration::from_millis(PROGRESS_INTERVAL),
         }
     }
 }
 
 /// Make actor from `SessionServer`
 impl Actor for SessionServer {
-    type Context = SyncContext<Self>;
+    type Context = Context<Self>;
 
-    /*fn started(&mut self, ctx: &mut Self::Context) {
+    fn started(&mut self, ctx: &mut Self::Context) {
         ctx.set_mailbox_capacity(1 << 31);
-    }*/
+    }
 }
 
 /// Handler for Connect message.
@@ -195,7 +186,7 @@ impl Actor for SessionServer {
 impl Handler<Connect> for SessionServer {
     type Result = String;
 
-    fn handle(&mut self, msg: Connect, _: &mut SyncContext<Self>) -> Self::Result {
+    fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
         // register a new session
         let id = msg.id;
         self.sessions.insert(id, msg.addr);
@@ -220,7 +211,7 @@ impl Handler<Connect> for SessionServer {
 impl Handler<Disconnect> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: Disconnect, _: &mut SyncContext<Self>) {
+    fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
         //let id = Uuid::parse_str(&msg.id).unwrap();
         let id = msg.id;
 
@@ -315,7 +306,7 @@ impl Handler<Disconnect> for SessionServer {
 impl Handler<Remove> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: Remove, _: &mut SyncContext<Self>) {
+    fn handle(&mut self, msg: Remove, _: &mut Context<Self>) {
         println!(
             "[SessionServer]: received a Remove request for '{}'",
             &msg.dataset_id
@@ -327,42 +318,23 @@ impl Handler<Remove> for SessionServer {
 impl Handler<WsMessage> for SessionServer {
     type Result = ();
 
-    fn handle(&mut self, msg: WsMessage, _: &mut SyncContext<Self>) {
+    fn handle(&mut self, msg: WsMessage, _: &mut Context<Self>) {
         //println!("[SessionServer]: received a WsMessage '{}' bound for '{}'", &msg.msg, &msg.dataset_id);
 
         match self.datasets.read().get(&msg.dataset_id) {
             Some(dataset) => {
-                let sending = {
-                    if msg.running < msg.total {
-                        if std::time::Instant::now().duration_since(self.progress_timestamp)
-                            >= std::time::Duration::from_millis(PROGRESS_INTERVAL)
-                        {
-                            true
-                        } else {
-                            false
-                        }
-                    } else {
-                        true
+                //progress interval checking has been moved to the websocket actor
+                //simply pass through all progress notifications
+                for id in dataset {
+                    if let Some(addr) = self.sessions.get(id) {
+                        let _ = addr.do_send(WsMessage {
+                            notification: msg.notification.clone(),
+                            total: msg.total,
+                            running: msg.running,
+                            elapsed: msg.elapsed,
+                            dataset_id: msg.dataset_id.clone(),
+                        });
                     }
-                };
-
-                if sending {
-                    let msg = json!({
-                        "type" : "progress",
-                        "message" : msg.notification,
-                        "total" : msg.total,
-                        "running" : msg.running,
-                        "elapsed" : (msg.elapsed.as_millis() as f64) / 1000.0
-                    })
-                    .to_string();
-
-                    for id in dataset {
-                        if let Some(addr) = self.sessions.get(id) {
-                            let _ = addr.do_send(Message(msg.to_owned()));
-                        }
-                    }
-
-                    self.progress_timestamp = std::time::Instant::now();
                 }
             }
             None => {
