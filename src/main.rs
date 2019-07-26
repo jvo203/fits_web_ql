@@ -2343,7 +2343,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.18";
-static VERSION_STRING: &'static str = "SV2019-07-24.0";
+static VERSION_STRING: &'static str = "SV2019-07-26.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4216,11 +4216,11 @@ fn main() {
 
     let sys = actix::System::new("fits_web_ql");
 
-    let num_http_workers = (num_cpus::get_physical() / 2).max(1); //half the number of physical (not Hyper-Threading) cores
+    let num_workers = (num_cpus::get_physical() / 2).max(1); //half the number of physical (not Hyper-Threading) cores
 
     // Start the WebSocket message server actor in a separate thread
     //let server = server::SessionServer::default().start();
-    let server = SyncArbiter::start(num_http_workers, || server::SessionServer::default());
+    let server = SyncArbiter::start(num_workers, || server::SessionServer::default());
 
     let actix_server_path = server_path.clone();
 
@@ -4253,7 +4253,7 @@ fn main() {
                 .service(web::resource("/{path}/get_fits").route(web::get().to_async(get_fits)))
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
         })
-        .workers(num_http_workers)
+        .workers(num_workers)
         .bind(&format!("{}:{}", server_address, server_port)).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port))        
         .start();
 
