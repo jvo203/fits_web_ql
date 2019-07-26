@@ -4220,7 +4220,7 @@ fn main() {
 
     // Start the WebSocket message server actor in a separate thread
     //let server = server::SessionServer::default().start();
-    let server = SyncArbiter::start(num_workers, || server::SessionServer::default());
+    let server = SyncArbiter::start(1, || server::SessionServer::default());//replaced num_workers with only 1 for now...
 
     let actix_server_path = server_path.clone();
 
