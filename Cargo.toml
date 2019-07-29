@@ -15,6 +15,7 @@ cdn = []
 cuda = []
 opencl = ["ocl", "rand"]
 zfp = ["zfp-sys"]
+ipp = ["ipp-sys"]
 
 [build-dependencies]
 bindgen = "*"
@@ -76,6 +77,7 @@ ispc = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
 zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
+ipp-sys = { version = "*", features=["2019"], optional = true }
 
 #rulinalg = "*"
 #linearkalman = "*"
