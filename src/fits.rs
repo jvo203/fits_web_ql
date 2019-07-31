@@ -32,6 +32,16 @@ use rayon::prelude::*;
 use flate2::read::GzDecoder;
 use flate2::write::GzDecoder as Decompressor;
 
+#[cfg(feature = "ipp")]
+macro_rules! ipp_assert {
+    ($result:expr) => {
+        assert!(unsafe { $result } == ipp_sys::ippStsNoErr as i32);
+    };
+}
+
+#[cfg(feature = "ipp")]
+const IPPI_INTER_LANCZOS: u32 = 16;
+
 #[cfg(feature = "zfp")]
 use zfp_sys::*;
 
@@ -238,6 +248,7 @@ pub static IMAGECACHE: &'static str = "/ssd0/chris/fitswebql/IMAGECACHE";*/
 
 pub const IMAGE_PIXEL_COUNT_LIMIT: u64 = 1280 * 720;
 pub const VIDEO_PIXEL_COUNT_LIMIT: u64 = 720 * 480;
+pub const HEIGHT_PER_THREAD: u32 = 256;
 
 const FITS_CHUNK_LENGTH: usize = 2880;
 const FITS_LINE_LENGTH: usize = 80;
@@ -4810,6 +4821,58 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         Some(raw)
     }
 
+    #[cfg(feature = "ipp")]
+    pub fn resize_and_invert(
+        &self,
+        src: &Vec<u8>,
+        dst: &mut Vec<u8>,
+        width: u32,
+        height: u32,
+        _: u32,
+    ) {
+        let num_threads = ((self.height as u32 / HEIGHT_PER_THREAD).max(1) as usize)
+            .min(num_cpus::get_physical());
+        println!(
+            "[ipp_resize] src height: {}, using {} threads",
+            self.height, num_threads
+        );
+
+        let pool = match rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build()
+        {
+            Ok(pool) => pool,
+            Err(err) => {
+                println!("[ipp_resize] {:?}", err);
+                return;
+            }
+        };
+
+        let src_size = ipp_sys::IppiSize {
+            width: self.width as i32,
+            height: self.height as i32,
+        };
+        let dst_size = ipp_sys::IppiSize {
+            width: width as i32,
+            height: height as i32,
+        };
+
+        let mut spec_size: i32 = 0;
+        let mut init_size: i32 = 0;
+
+        ipp_assert!(ipp_sys::ippiResizeGetSize_8u(
+            src_size,
+            dst_size,
+            IPPI_INTER_LANCZOS,
+            0,
+            &mut spec_size as *mut i32,
+            &mut init_size as *mut i32
+        ));
+
+        println!("[ipp_resize] spec_size: {}, init_size: {}", spec_size, init_size);
+    }
+
+    #[cfg(not(feature = "ipp"))]
     pub fn resize_and_invert(
         &self,
         src: &Vec<u8>,

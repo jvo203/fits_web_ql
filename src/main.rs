@@ -2372,7 +2372,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.19";
-static VERSION_STRING: &'static str = "SV2019-07-26.1";
+static VERSION_STRING: &'static str = "SV2019-07-31.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4157,7 +4157,25 @@ fn http_fits_response(
         .body(html)
 }
 
+#[cfg(feature = "ipp")]
+macro_rules! ipp_assert {
+    ($result:expr) => {
+        assert!(unsafe { $result } == ipp_sys::ippStsNoErr as i32);
+    };
+}
+
 fn main() {
+    #[cfg(feature = "ipp")]
+    {
+        ipp_assert!(ipp_sys::ippInit());
+
+        let ipp_version = unsafe { *ipp_sys::ippGetLibVersion() };
+        println!(
+            "Using Intel IPP {}.{}.{}.{}",
+            ipp_version.major, ipp_version.minor, ipp_version.majorBuild, ipp_version.build
+        );
+    }
+
     let num_threads = num_cpus::get_physical();
     println!("Number of threads in a global pool: {}", num_threads);
 
