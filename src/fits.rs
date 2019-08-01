@@ -42,6 +42,9 @@ macro_rules! ipp_assert {
 #[cfg(feature = "ipp")]
 const IPPI_INTER_LANCZOS: u32 = 16;
 
+#[cfg(feature = "ipp")]
+pub const HEIGHT_PER_THREAD: u32 = 256;
+
 #[cfg(feature = "zfp")]
 use zfp_sys::*;
 
@@ -248,7 +251,6 @@ pub static IMAGECACHE: &'static str = "/ssd0/chris/fitswebql/IMAGECACHE";*/
 
 pub const IMAGE_PIXEL_COUNT_LIMIT: u64 = 1280 * 720;
 pub const VIDEO_PIXEL_COUNT_LIMIT: u64 = 720 * 480;
-pub const HEIGHT_PER_THREAD: u32 = 256;
 
 const FITS_CHUNK_LENGTH: usize = 2880;
 const FITS_LINE_LENGTH: usize = 80;
@@ -4848,28 +4850,187 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         };
 
-        let src_size = ipp_sys::IppiSize {
+        let srcSize = ipp_sys::IppiSize {
             width: self.width as i32,
             height: self.height as i32,
         };
-        let dst_size = ipp_sys::IppiSize {
+        let dstSize = ipp_sys::IppiSize {
             width: width as i32,
             height: height as i32,
         };
 
-        let mut spec_size: i32 = 0;
-        let mut init_size: i32 = 0;
+        let srcStep = srcSize.width;
+        let dstStep = dstSize.width;
+
+        let mut specSize: i32 = 0;
+        let mut initSize: i32 = 0;
 
         ipp_assert!(ipp_sys::ippiResizeGetSize_8u(
-            src_size,
-            dst_size,
+            srcSize,
+            dstSize,
             IPPI_INTER_LANCZOS,
             0,
-            &mut spec_size as *mut i32,
-            &mut init_size as *mut i32
+            &mut specSize,
+            &mut initSize
         ));
 
-        println!("[ipp_resize] spec_size: {}, init_size: {}", spec_size, init_size);
+        println!(
+            "[ipp_resize] specSize: {}, initSize: {}",
+            specSize, initSize
+        );
+
+        //memory allocation
+        let pInitBuf = unsafe { ipp_sys::ippsMalloc_8u(initSize) };
+        //let pSpec: *const ipp_sys::IppiResizeSpec_32f =
+        unsafe { ipp_sys::ippsMalloc_8u(specSize) as *const ipp_sys::IppiResizeSpec_32f };
+        let pSpec = vec![0; specSize as usize];
+
+        if pInitBuf.is_null()
+        /*|| pSpec.is_null()*/
+        {
+            println!("[ipp_resize] memory allocation error. aborting.");
+
+            unsafe {
+                ipp_sys::ippsFree(pInitBuf as *mut std::ffi::c_void);
+                //ipp_sys::ippsFree(pSpec as *mut std::ffi::c_void);
+            };
+
+            return;
+        }
+
+        let status = unsafe {
+            ipp_sys::ippiResizeLanczosInit_8u(
+                srcSize,
+                dstSize,
+                3,
+                pSpec.as_ptr() as *mut ipp_sys::IppiResizeSpec_32f,
+                pInitBuf,
+            )
+        };
+        unsafe { ipp_sys::ippsFree(pInitBuf as *mut std::ffi::c_void) };
+
+        if status != ipp_sys::ippStsNoErr as i32 {
+            println!("[ipp_resize] memory allocation error. aborting.");
+
+            //unsafe { ipp_sys::ippsFree(pSpec as *mut std::ffi::c_void) };
+            return;
+        }
+
+        let mut borderSize: ipp_sys::IppiBorderSize = unsafe { mem::zeroed() };
+        let status = unsafe {
+            ipp_sys::ippiResizeGetBorderSize_8u(
+                pSpec.as_ptr() as *const ipp_sys::IppiResizeSpec_32f,
+                &mut borderSize,
+            )
+        };
+
+        if status != ipp_sys::ippStsNoErr as i32 {
+            println!("[ipp_resize] memory allocation error. aborting.");
+
+            //unsafe { ipp_sys::ippsFree(pSpec as *mut std::ffi::c_void) };
+            return;
+        }
+
+        //prepare the buffers
+        let slice = dstSize.height / (num_threads as i32);
+        let tail = dstSize.height % (num_threads as i32);
+
+        let dstTileSize = ipp_sys::IppiSize {
+            width: dstSize.width,
+            height: slice,
+        };
+
+        let dstLastTileSize = ipp_sys::IppiSize {
+            width: dstSize.width,
+            height: slice + tail,
+        };
+
+        let mut bufSize1: i32 = 0;
+        let mut bufSize2: i32 = 0;
+
+        unsafe {
+            ipp_sys::ippiResizeGetBufferSize_8u(
+                pSpec.as_ptr() as *const ipp_sys::IppiResizeSpec_32f,
+                dstTileSize,
+                ipp_sys::IppChannels::ippC1,
+                &mut bufSize1,
+            );
+            ipp_sys::ippiResizeGetBufferSize_8u(
+                pSpec.as_ptr() as *const ipp_sys::IppiResizeSpec_32f,
+                dstLastTileSize,
+                ipp_sys::IppChannels::ippC1,
+                &mut bufSize2,
+            );
+        };
+
+        //let pBuffer =
+        unsafe { ipp_sys::ippsMalloc_8u(bufSize1 * (num_threads as i32 - 1) + bufSize2) };
+        let pBuffer = vec![0; (bufSize1 as usize) * (num_threads - 1) + (bufSize2 as usize)];
+
+        //let pSpecVal = unsafe { *pSpec };
+
+        //parallel downscaling
+        //if !pBuffer.is_null() {
+        pool.install(|| {
+            (0..num_threads).into_par_iter().for_each(|i| {
+                println!("[ipp_resize] tid {}", i);
+
+                let mut srcOffset: ipp_sys::IppiPoint = unsafe { mem::zeroed() };
+                let mut dstOffset: ipp_sys::IppiPoint = unsafe { mem::zeroed() };
+
+                let mut srcSizeT = ipp_sys::IppiSize { ..srcSize };
+                let mut dstSizeT = ipp_sys::IppiSize { ..dstTileSize };
+
+                dstSizeT.height = slice;
+                dstOffset.y += (i as i32) * slice;
+
+                if i == num_threads - 1 {
+                    dstSizeT = ipp_sys::IppiSize { ..dstLastTileSize };
+                };
+
+                let status = unsafe {
+                    ipp_sys::ippiResizeGetSrcRoi_8u(
+                        pSpec.as_ptr() as *const ipp_sys::IppiResizeSpec_32f,
+                        dstOffset,
+                        dstSizeT,
+                        &mut srcOffset,
+                        &mut srcSizeT,
+                    )
+                };
+
+                println!("srcOffset:{:?}", srcOffset);
+
+                if status == ipp_sys::ippStsNoErr as i32 {
+                    println!("[ipp_resize] proceeding with downsampling");
+
+                    let pSrcT = srcOffset.y * srcStep;
+                    let pDstT = dstOffset.y * dstStep;
+                    let pOneBuf = i * (bufSize1 as usize);
+
+                    let pSrc = &src[pSrcT as usize..];
+                    let pDst = &dst[pDstT as usize..];
+                    let pOneBuf = &pBuffer[pOneBuf..];
+
+                    ipp_assert!(ipp_sys::ippiResizeLanczos_8u_C1R(
+                        pSrc.as_ptr() as *mut u8,
+                        srcStep,
+                        pDst.as_ptr() as *mut u8,
+                        dstStep,
+                        dstOffset,
+                        dstSizeT,
+                        ipp_sys::_IppiBorderType::ippBorderRepl,
+                        ptr::null(),
+                        pSpec.as_ptr() as *const ipp_sys::IppiResizeSpec_32f,
+                        pOneBuf.as_ptr() as *mut u8
+                    ));
+                }
+            })
+        });
+        //}
+
+        //memory clean-up
+        //unsafe { ipp_sys::ippsFree(pSpec as *mut std::ffi::c_void) };
+        //unsafe { ipp_sys::ippsFree(pBuffer as *mut std::ffi::c_void) };
     }
 
     #[cfg(not(feature = "ipp"))]
