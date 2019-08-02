@@ -17,6 +17,16 @@ uint32_t bswap32(uint32_t u)
   return ((u&0xFF)<<24) | (((u>>8)&0xFF)<<16) | (((u>>16)&0xFF)<<8) | (((u>>24)&0xFF)<<0);
 }
 
+export void revert_image_u8(uniform unsigned int8 image[], uniform int32 width, uniform int32 height)
+{  
+  foreach(j = 0 ... height / 2, i = 0 ... width)
+  {
+    float tmp = image[j * width + i];
+    image[j * width + i] = image[(height - 1 - j) * width + i];
+    image[(height - 1 - j) * width + i] = tmp;    
+  }
+}
+
 export uniform float pixels_mean_brightness_ratio(uniform float pixels[], uniform unsigned int8 mask[], uniform float black, uniform float sensitivity, uniform unsigned int total_size)
 {
   float partial_sum = 0.0f ;
