@@ -4881,8 +4881,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //memory allocation
         let pInitBuf = unsafe { ipp_sys::ippsMalloc_8u(initSize) };
-        //let pSpec: *const ipp_sys::IppiResizeSpec_32f =
-        unsafe { ipp_sys::ippsMalloc_8u(specSize) as *const ipp_sys::IppiResizeSpec_32f };
+        /*let pSpec: *const ipp_sys::IppiResizeSpec_32f =
+        unsafe { ipp_sys::ippsMalloc_8u(specSize) as *const ipp_sys::IppiResizeSpec_32f };*/
         let pSpec = vec![0; specSize as usize];
 
         if pInitBuf.is_null()
@@ -4963,9 +4963,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             );
         };
 
-        //let pBuffer =
-        unsafe { ipp_sys::ippsMalloc_8u(bufSize1 * (num_threads as i32 - 1) + bufSize2) };
-        let pBuffer = vec![0; (bufSize1 as usize) * (num_threads - 1) + (bufSize2 as usize)];
+        /*let pBuffer =
+        unsafe { ipp_sys::ippsMalloc_8u(bufSize1 * (num_threads as i32 - 1) + bufSize2) };*/
+        let pBufferSize = (bufSize1 as usize) * (num_threads - 1) + (bufSize2 as usize);
+        let pBuffer = vec![0; pBufferSize];
 
         //let pSpecVal = unsafe { *pSpec };
 
@@ -4988,6 +4989,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     dstSizeT = ipp_sys::IppiSize { ..dstLastTileSize };
                 };
 
+                //reverse the vertical order of tiles
+                dstOffset.y = if i == num_threads - 1 {
+                    0
+                } else {
+                    dstSize.height - (i as i32 + 1) * slice
+                };
+
                 let status = unsafe {
                     ipp_sys::ippiResizeGetSrcRoi_8u(
                         pSpec.as_ptr() as *const ipp_sys::IppiResizeSpec_32f,
@@ -5005,7 +5013,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     let pSrcT = srcOffset.y * srcStep;
                     let pDstT = dstOffset.y * dstStep;
-                    let pOneBuf = i * (bufSize1 as usize);
+                    //let pOneBuf = i * (bufSize1 as usize);
+                    let pOneBuf = if i == num_threads - 1 {
+                        0
+                    } else {
+                        pBufferSize - (i + 1) * (bufSize1 as usize)
+                    };
 
                     let pSrc = &src[pSrcT as usize..];
                     let pDst = &dst[pDstT as usize..];
