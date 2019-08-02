@@ -4978,8 +4978,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             pool.install(|| {
                 (0..num_threads).into_par_iter().for_each(|i| {
-                    println!("[ipp_resize] tid {}", i);
-
                     let mut srcOffset: ipp_sys::IppiPoint = unsafe { mem::zeroed() };
                     let mut dstOffset: ipp_sys::IppiPoint = unsafe { mem::zeroed() };
 
@@ -5002,15 +5000,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             &mut srcSizeT,
                         )
                     };
-
-                    //reverse the vertical order of tiles (a mirror image)
-                    /*dstOffset.y = if i == num_threads - 1 {
-                        0
-                    } else {
-                        dstSize.height - (i as i32 + 1) * slice
-                    };*/
-
-                    println!("srcOffset:{:?}", srcOffset);
 
                     if status == ipp_sys::ippStsNoErr as i32 {
                         println!("[ipp_resize] proceeding with downsampling");
