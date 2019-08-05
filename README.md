@@ -195,9 +195,13 @@ cd into the fits_web_ql directory and execute
 
 cargo run --features 'jvo production cdn zfp' --release
 
+or
+
+cargo run --features 'jvo production cdn zfp' --release -- --path fitswebql_v4
+
 # extra features and options
 
-The "--features" option enables extra functionality. JVO-reserved features are "jvo" and "production". "cdn" can be used by anyone to speed up delivery of static resources by utilising a jsDelivr open-source content delivery network (https://www.jsdelivr.com). "cdn" is especially recommended if many users are accessing a remote FITSWebQL server. There is no need to use it on your personal computer. "zfp" enables ZFP compression for FITS data cubes held in an internal FITSWebQL cache in order to (theoretically) speed-up loading times (see a note at the end of this README).
+The "--features" option enables extra functionality. JVO-reserved features are "jvo" and "production". "cdn" can be used by anyone to speed up delivery of static resources by utilising a jsDelivr open-source content delivery network (https://www.jsdelivr.com). "cdn" is especially recommended if many users are accessing a remote FITSWebQL server. There is no need to use it on your personal computer. "zfp" enables ZFP compression for FITS data cubes held in an internal FITSWebQL cache in order to (theoretically) speed-up loading times (see a note at the end of this README). "ipp" enables use of the Intel Integrated Performance Primitives (IPP) library in some places (for example rescaling images/videos).
 
 an alternative HTTP port
 
@@ -252,7 +256,7 @@ A personal comment: ZFP compresses data using 4x4 blocks which introduces undesi
 
 i.e. cargo run --features 'zfp ipp' --release
 
-The Intel Integrated Performance Primitives (IPP) Library can be obtained free of charge from https://software.intel.com/en-us/intel-ipp
+The Intel Integrated Performance Primitives (IPP) library can be obtained free of charge from https://software.intel.com/en-us/intel-ipp
 
 IMPORTANT: please make sure that the <b>IPPROOT</b> environment variable is set following the IPP installation instructions (i.e. echo $IPPROOT
 /opt/intel/compilers_and_libraries_2019.4.243/linux/ipp)
