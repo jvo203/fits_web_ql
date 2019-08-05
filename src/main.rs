@@ -50,6 +50,7 @@ use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
 
 use percent_encoding::percent_decode;
+use std::net::UdpSocket;
 use tar::{Builder, Header};
 use uuid::Uuid;
 
@@ -2371,8 +2372,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.1.20";
-static VERSION_STRING: &'static str = "SV2019-08-05.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
+static VERSION_STRING: &'static str = "SV2019-08-05.1";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4202,6 +4203,8 @@ fn main() {
     let mut server_path = String::from(SERVER_PATH);
     let mut server_address = String::from(SERVER_ADDRESS);
     let mut home_dir = dirs::home_dir();
+    let mut root_node: Option<String> = None;
+
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 2 {
@@ -4229,6 +4232,10 @@ fn main() {
                 server_address = value.clone();
             }
 
+            if key == "--root" {
+                root_node = Some(value.clone());
+            }
+
             if key == "--home" {
                 let path = std::path::PathBuf::from(value);
 
@@ -4248,6 +4255,40 @@ fn main() {
         "server interface: {}, port: {}, path: {}",
         server_address, server_port, server_path
     );
+
+    match root_node {
+        Some(address) => {
+            println!("initiating a cluster mode; root node: {}", address);
+            thread::spawn(move || {
+                println!("trying to contact {}", address);
+
+                let socket =
+                    UdpSocket::bind("localhost:34254").expect("[UDP] couldn't bind to address");
+
+                let buf = "connect";
+
+                let mut got_through = false;
+
+                loop {
+                    match socket.send_to(buf.as_bytes(), format!("{}:34254", address)) {
+                        Ok(_) => {
+                            got_through = true;
+                            println!("[UDP] connected to the root cluster node.");
+                        }
+                        Err(err) => println!("[UDP] {}", err),
+                    }
+
+                    if got_through {
+                        break;
+                    }
+
+                    let wait_interval = std::time::Duration::from_secs(10);
+                    thread::sleep(wait_interval);
+                }
+            });
+        }
+        _ => {}
+    };
 
     remove_symlinks(None);
 
