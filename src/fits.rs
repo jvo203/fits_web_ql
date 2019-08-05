@@ -43,7 +43,7 @@ macro_rules! ipp_assert {
 const IPPI_INTER_LANCZOS: u32 = 16;
 
 #[cfg(feature = "ipp")]
-pub const HEIGHT_PER_THREAD: u32 = 256;
+pub const HEIGHT_PER_THREAD: u32 = 512;
 
 #[cfg(feature = "zfp")]
 use zfp_sys::*;
@@ -4874,17 +4874,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             &mut initSize
         ));
 
-        println!(
-            "[ipp_resize] specSize: {}, initSize: {}",
-            specSize, initSize
-        );
-
         //memory allocation
         let pInitBuf = unsafe { ipp_sys::ippsMalloc_8u(initSize) };
-        /*let pSpec =
-        unsafe { ipp_sys::ippsMalloc_8u(specSize) as *const ipp_sys::IppiResizeSpec_32f };*/
         let pSpec = unsafe { ipp_sys::ippsMalloc_8u(specSize) };
-        //let pSpec = vec![0; specSize as usize];
 
         if pInitBuf.is_null() || pSpec.is_null() {
             println!("[ipp_resize] memory allocation error. aborting.");
@@ -5002,8 +4994,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     };
 
                     if status == ipp_sys::ippStsNoErr as i32 {
-                        println!("[ipp_resize] proceeding with downsampling");
-
                         let pSrcT = srcOffset.y * srcStep;
                         //let pDstT = dstOffset.y * dstStep;
                         //reverse the vertical order of tiles (a mirror image)

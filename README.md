@@ -246,3 +246,13 @@ i.e. cargo run --features 'zfp' --release
 This feature replaces the half-float storage with ZFP compression (https://github.com/LLNL/zfp), which speeds-up second-time loads on multi-core systems. The HDD/SSD cache storage uses zfp 2d arrays instead of half-floats, which are converted to a half-float RAM storage upon loading. Decompressing data is very CPU intensive, hence this feature is only recommended if your server contains a sufficient number of CPU cores (i.e. >= than #memory channels). Otherwise speed savings from reading smaller file sizes will be eaten-up by increased CPU times of decompressing the data. cmake3 needs to be installed on your system.
 
 A personal comment: ZFP compresses data using 4x4 blocks which introduces undesirable blocky artifacts at too high compression ratios. Compression/decompression speeds are not fast. In author's experience, compressing FITS data cubes with Radial Basis Functions (a terribly slow process by itself!) results in much better compression ratios with no visible artifacts. The author will continue experimenting with various compression methods (including wavelets).
+
+##
+<i>enable use of Intel IPP via an experimental feature "ipp"</i>
+
+i.e. cargo run --features 'zfp ipp' --release
+
+The Intel Integrated Performance Primitives (IPP) Library can be obtained free of charge from https://software.intel.com/en-us/intel-ipp
+
+IMPORTANT: please make sure that the <b>IPPROOT</b> environment variable is set following the IPP installation instructions (i.e. echo $IPPROOT
+/opt/intel/compilers_and_libraries_2019.4.243/linux/ipp)
