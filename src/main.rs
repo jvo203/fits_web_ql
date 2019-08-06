@@ -4254,9 +4254,9 @@ fn main() {
     println!(
         "server interface: {}, port: {}, path: {}",
         server_address, server_port, server_path
-    );
+    );    
 
-    let socket = UdpSocket::bind("127.0.0.1:34254").expect("[UDP] couldn't bind to address");
+    let socket = UdpSocket::bind("0.0.0.0:34254").expect("[UDP] couldn't bind to address");
 
     match root_node {
         Some(address) => {
@@ -4290,7 +4290,7 @@ fn main() {
             //await incoming connections from other nodes
             thread::spawn(move || {
                 println!("listening to connect requests from cluster nodes");
-
+                
                 loop {
                     let mut buf = [0; 256];
                     let (number_of_bytes, src_addr) =
