@@ -2370,8 +2370,8 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref CLUSTER_NODES: Arc<RwLock<HashSet<std::net::IpAddr>>> =
-        { Arc::new(RwLock::new(HashSet::new())) };
+    static ref CLUSTER_NODES: Arc<RwLock<HashMap<std::net::IpAddr, usize>>> =
+        { Arc::new(RwLock::new(HashMap::new())) };
 }
 
 #[cfg(feature = "jvo")]
@@ -4269,10 +4269,11 @@ fn main() {
             thread::spawn(move || {
                 println!("trying to contact {}", address);
 
-                let buf = "connect";
+                let num_threads = num_cpus::get_physical();
+                let msg = format!("connect {}", num_threads);
 
                 loop {
-                    match socket.send_to(buf.as_bytes(), format!("{}:50000", address)) {
+                    match socket.send_to(msg.as_bytes(), format!("{}:50000", address)) {
                         Ok(_) => {
                             //println!("[UDP] connected to the root cluster node.");
                         }
@@ -4296,17 +4297,23 @@ fn main() {
                     let filled_buf = &mut buf[..number_of_bytes];
 
                     match std::str::from_utf8(filled_buf) {
-                        Ok(_msg) => {
+                        Ok(msg) => {
                             //println!("[UDP] received [{}] from {}", msg, src_addr.ip());
 
                             let mut nodes = CLUSTER_NODES.write();
 
-                            if !nodes.contains(&src_addr.ip()) {
+                            if !nodes.contains_key(&src_addr.ip()) {
+                                let num_threads = match scan_fmt_some!(msg, "connect {d}", usize) {
+                                    Some(x) => x,
+                                    _ => 1,
+                                };
+
                                 println!(
-                                    "[UDP] registered a new cluster node at {}",
+                                    "[UDP] registered {} threads at {}",
+                                    num_threads,
                                     src_addr.ip()
                                 );
-                                nodes.insert(src_addr.ip());
+                                nodes.insert(src_addr.ip(), num_threads);
                             }
                         }
                         Err(err) => println!("UDP message conversion error: {}", err),
