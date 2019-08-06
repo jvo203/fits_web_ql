@@ -4256,7 +4256,7 @@ fn main() {
         server_address, server_port, server_path
     );
 
-    let socket = UdpSocket::bind("localhost:34254").expect("[UDP] couldn't bind to address");
+    let socket = UdpSocket::bind("127.0.0.1:34254").expect("[UDP] couldn't bind to address");
 
     match root_node {
         Some(address) => {
