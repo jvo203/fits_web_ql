@@ -4237,7 +4237,7 @@ fn main() {
                 server_address = value.clone();
             }
 
-            if key == "--cluster_root" {
+            if key == "--root" {
                 root_node = Some(value.clone());
             }
 
