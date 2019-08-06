@@ -2369,6 +2369,11 @@ lazy_static! {
         { Arc::new(RwLock::new(HashMap::new())) };
 }
 
+lazy_static! {
+    static ref CLUSTER_NODES: Arc<RwLock<HashSet<std::net::IpAddr>>> =
+        { Arc::new(RwLock::new(HashSet::new())) };
+}
+
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
@@ -4232,7 +4237,7 @@ fn main() {
                 server_address = value.clone();
             }
 
-            if key == "--root" {
+            if key == "--cluster_root_host" {
                 root_node = Some(value.clone());
             }
 
@@ -4292,7 +4297,17 @@ fn main() {
 
                     match std::str::from_utf8(filled_buf) {
                         Ok(msg) => {
-                            println!("received {} from {}", msg, src_addr.ip());
+                            println!("[UDP] received [{}] from {}", msg, src_addr.ip());
+
+                            let mut nodes = CLUSTER_NODES.write();
+
+                            if !nodes.contains(&src_addr.ip()) {
+                                println!(
+                                    "[UDP] registered a new cluster node at {}",
+                                    src_addr.ip()
+                                );
+                                nodes.insert(src_addr.ip());
+                            }
                         }
                         Err(err) => println!("UDP message conversion error: {}", err),
                     }
