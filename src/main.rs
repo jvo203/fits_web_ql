@@ -4296,7 +4296,7 @@ fn main() {
                     let filled_buf = &mut buf[..number_of_bytes];
 
                     match std::str::from_utf8(filled_buf) {
-                        Ok(msg) => {
+                        Ok(_msg) => {
                             //println!("[UDP] received [{}] from {}", msg, src_addr.ip());
 
                             let mut nodes = CLUSTER_NODES.write();
