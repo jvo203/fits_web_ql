@@ -2373,7 +2373,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-08-05.1";
+static VERSION_STRING: &'static str = "SV2019-08-06.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4256,14 +4256,13 @@ fn main() {
         server_address, server_port, server_path
     );
 
+    let socket = UdpSocket::bind("localhost:34254").expect("[UDP] couldn't bind to address");
+
     match root_node {
         Some(address) => {
             println!("initiating a cluster mode; root node: {}", address);
             thread::spawn(move || {
                 println!("trying to contact {}", address);
-
-                let socket =
-                    UdpSocket::bind("localhost:34254").expect("[UDP] couldn't bind to address");
 
                 let buf = "connect";
 
@@ -4287,7 +4286,24 @@ fn main() {
                 }
             });
         }
-        _ => {}
+        None => {
+            //await incoming connections from other nodes
+            thread::spawn(move || {
+                println!("listening to connect requests from cluster nodes");
+
+                loop {
+                    let mut buf = [0; 256];
+                    let (number_of_bytes, src_addr) =
+                        socket.recv_from(&mut buf).expect("Didn't receive data");
+                    let filled_buf = &mut buf[..number_of_bytes];
+
+                    match std::str::from_utf8(filled_buf) {
+                        Ok(msg) => println!("received {} from {}", msg, src_addr),
+                        Err(err) => println!("UDP message conversion error: {}", err),
+                    }
+                }
+            });
+        }
     };
 
     remove_symlinks(None);
