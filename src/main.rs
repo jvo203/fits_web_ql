@@ -4254,9 +4254,9 @@ fn main() {
     println!(
         "server interface: {}, port: {}, path: {}",
         server_address, server_port, server_path
-    );    
+    );
 
-    let socket = UdpSocket::bind("0.0.0.0:34254").expect("[UDP] couldn't bind to address");
+    let socket = UdpSocket::bind("0.0.0.0:50000").expect("[UDP] couldn't bind to address");
 
     match root_node {
         Some(address) => {
@@ -4266,19 +4266,12 @@ fn main() {
 
                 let buf = "connect";
 
-                let mut got_through = false;
-
                 loop {
-                    match socket.send_to(buf.as_bytes(), format!("{}:34254", address)) {
+                    match socket.send_to(buf.as_bytes(), format!("{}:50000", address)) {
                         Ok(_) => {
-                            got_through = true;
-                            println!("[UDP] connected to the root cluster node.");
+                            //println!("[UDP] connected to the root cluster node.");
                         }
                         Err(err) => println!("[UDP] {}", err),
-                    }
-
-                    if got_through {
-                        break;
                     }
 
                     let wait_interval = std::time::Duration::from_secs(10);
@@ -4290,7 +4283,7 @@ fn main() {
             //await incoming connections from other nodes
             thread::spawn(move || {
                 println!("listening to connect requests from cluster nodes");
-                
+
                 loop {
                     let mut buf = [0; 256];
                     let (number_of_bytes, src_addr) =
@@ -4298,7 +4291,9 @@ fn main() {
                     let filled_buf = &mut buf[..number_of_bytes];
 
                     match std::str::from_utf8(filled_buf) {
-                        Ok(msg) => println!("received {} from {}", msg, src_addr),
+                        Ok(msg) => {
+                            println!("received {} from {}", msg, src_addr.ip());
+                        }
                         Err(err) => println!("UDP message conversion error: {}", err),
                     }
                 }
