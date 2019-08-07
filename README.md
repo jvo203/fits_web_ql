@@ -1,5 +1,5 @@
 # fits_web_ql
-A next-generation re-write of the C/C++ FITSWebQL in Rust. The previous C/C++ version can still be found here:
+A next-generation Rust re-write of the C/C++ FITSWebQL. The previous C/C++ version can still be found here:
 
 http://jvo.nao.ac.jp/~chris/fitswebql.html
 
