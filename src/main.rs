@@ -2737,19 +2737,16 @@ fn fitswebql_entry(
         Err(_) => return result(Err(actix_http::error::ErrorBadRequest("fitswebql_entry"))),
     };
 
-    let uri = req.uri();
     let nodes = CLUSTER_NODES.read();
 
     //broadcast the URL to all nodes (only root has a non-empty HashMap)
     if !nodes.is_empty() {
+        let uri = req.uri();
+
         nodes.par_iter().for_each(|(ip, _)| {
             println!("forwarding a new request to {}", ip);
 
             let url = format!("http://{}{}", ip, uri);
-            match reqwest::get(&url) {
-                Ok(res) => println!("HTTP response: {:#?}", res),
-                Err(err) => println!("error forwarding the request to {}: {}", ip, err),
-            }
 
             Client::new()
                 .get(&url)
