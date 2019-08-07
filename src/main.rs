@@ -2378,7 +2378,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-08-06.0";
+static VERSION_STRING: &'static str = "SV2019-08-07.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2733,6 +2733,16 @@ fn fitswebql_entry(
     let query = match web::Query::<HashMap<String, String>>::extract(&req) {
         Ok(x) => x,
         Err(_) => return result(Err(actix_http::error::ErrorBadRequest("fitswebql_entry"))),
+    };
+
+    let url = req.uri();
+    let nodes = CLUSTER_NODES.read();
+
+    //broadcast the URL to all nodes (only root has a non-empty HashMap)
+    if !nodes.is_empty() {
+        nodes.par_iter().for_each(|(ip, _)| {
+            println!("forwarding a request to {}", ip);
+        });
     };
 
     #[cfg(feature = "jvo")]
