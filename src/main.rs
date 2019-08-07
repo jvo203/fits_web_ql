@@ -48,6 +48,8 @@ use actix_web::middleware::{BodyEncoding, Compress, Logger};
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
+use reqwest::r#async::{Client, Decoder};
+use std::io::{self, Cursor};
 
 use percent_encoding::percent_decode;
 use std::net::UdpSocket;
@@ -2748,6 +2750,24 @@ fn fitswebql_entry(
                 Ok(res) => println!("HTTP response: {:#?}", res),
                 Err(err) => println!("error forwarding the request to {}: {}", ip, err),
             }
+
+            Client::new()
+                .get(&url)
+                .send()
+                .and_then(|mut res| {
+                    println!("{}", res.status());
+
+                    let body = mem::replace(res.body_mut(), Decoder::empty());
+                    body.concat2()
+                    //println!("HTTP response: {:#?}", res);
+                })
+                .map_err(|err| println!("request error: {}", err))
+                .map(|body| {
+                    let mut body = Cursor::new(body);
+                    let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
+                        println!("stdout error: {}", err);
+                    });
+                });
         });
     };
 
