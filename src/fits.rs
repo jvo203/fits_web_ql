@@ -1934,7 +1934,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             32 => self
                 .data_i32
                 .resize(self.depth as usize, Vec::with_capacity(capacity)),
-            //-32 => self.data_f16.resize(self.depth as usize, Vec::with_capacity(capacity as usize)),
             -32 => self.data_f16.resize(self.depth as usize, Vec::new()),
             -64 => self
                 .data_f64

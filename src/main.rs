@@ -49,10 +49,11 @@ use actix_web::middleware::{BodyEncoding, Compress, Logger};
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
-use reqwest::r#async::{Client, Decoder};
-use std::io::{self, Cursor};
+/*use reqwest::r#async::{Client, Decoder};
+use std::io::{self, Cursor};*/
 
 use percent_encoding::percent_decode;
+#[cfg(feature = "cluster")]
 use std::net::UdpSocket;
 use tar::{Builder, Header};
 use uuid::Uuid;
@@ -160,6 +161,7 @@ pub struct WsViewport {
 struct WsSessionState {
     addr: Addr<server::SessionServer>,
     home_dir: Option<std::path::PathBuf>,
+    #[cfg(feature = "cluster")]
     port: i32,
 }
 
@@ -2373,6 +2375,7 @@ lazy_static! {
         { Arc::new(RwLock::new(HashMap::new())) };
 }
 
+#[cfg(feature = "cluster")]
 lazy_static! {
     static ref CLUSTER_NODES: Arc<RwLock<HashMap<std::net::IpAddr, usize>>> =
         { Arc::new(RwLock::new(HashMap::new())) };
@@ -2739,62 +2742,64 @@ fn fitswebql_entry(
         Err(_) => return result(Err(actix_http::error::ErrorBadRequest("fitswebql_entry"))),
     };
 
-    let nodes = CLUSTER_NODES.read();
+    #[cfg(feature = "cluster")]
+    {
+        let nodes = CLUSTER_NODES.read();
 
-    //broadcast the URL to all nodes (only root has a non-empty HashMap)
-    if !nodes.is_empty() {
-        let uri = req.uri();
+        //broadcast the URL to all nodes (only root has a non-empty HashMap)
+        if !nodes.is_empty() {
+            let uri = req.uri();
 
-        nodes.iter().for_each(|(ip, _)| {
-            let url = format!("http://{}:{}{}", ip, state.port, uri);
-            let thread_ip = ip.clone();
-            println!("routing {}", url);
+            nodes.iter().for_each(|(ip, _)| {
+                let url = format!("http://{}:{}{}", ip, state.port, uri);
+                let thread_ip = ip.clone();
+                println!("routing {}", url);
 
-            thread::spawn(move || match reqwest::get(&url) {
-                Ok(res) => {
-                    println!("Status: {}", res.status());
-                    println!("Headers:\n{:?}", res.headers());
-                }
-                Err(err) => {
-                    println!("{}, removing {} from the cluster", err, thread_ip);
-                    CLUSTER_NODES.write().remove(&thread_ip);
-                    println!("{} removed", thread_ip);
-                }
-            });
+                thread::spawn(move || match reqwest::get(&url) {
+                    Ok(res) => {
+                        println!("{}: status: {}", thread_ip, res.status());
+                    }
+                    Err(err) => {
+                        println!("{}, removing {} from the cluster", err, thread_ip);
+                        CLUSTER_NODES.write().remove(&thread_ip);
+                        println!("{} removed", thread_ip);
+                    }
+                });
 
-            /*let client = Client::default();
-            let _ = client
-                .get(url) // <- Create request builder
-                .header("User-Agent", "fits_web_ql")
-                .send() // <- Send http request
+                /*let client = Client::default();
+                let _ = client
+                    .get(url) // <- Create request builder
+                    .header("User-Agent", "fits_web_ql")
+                    .send() // <- Send http request
+                    .map_err(|err| println!("request error: {}", err))
+                    .and_then(|response| {
+                        // <- server http response
+                        println!("Response: {:?}", response);
+                        Ok(())
+                    })
+                    .wait();*/
+
+                /*let _ = Client::new()
+                .get(&url)
+                .send()
+                .and_then(|mut res| {
+                    println!("{}", res.status());
+
+                    let body = mem::replace(res.body_mut(), Decoder::empty());
+                    body.concat2()
+                    //println!("HTTP response: {:#?}", res);
+                })
                 .map_err(|err| println!("request error: {}", err))
-                .and_then(|response| {
-                    // <- server http response
-                    println!("Response: {:?}", response);
-                    Ok(())
+                .map(|body| {
+                    let mut body = Cursor::new(body);
+                    let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
+                        println!("stdout error: {}", err);
+                    });
                 })
                 .wait();*/
-
-            /*let _ = Client::new()
-            .get(&url)
-            .send()
-            .and_then(|mut res| {
-                println!("{}", res.status());
-
-                let body = mem::replace(res.body_mut(), Decoder::empty());
-                body.concat2()
-                //println!("HTTP response: {:#?}", res);
-            })
-            .map_err(|err| println!("request error: {}", err))
-            .map(|body| {
-                let mut body = Cursor::new(body);
-                let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
-                    println!("stdout error: {}", err);
-                });
-            })
-            .wait();*/
-        });
-    };
+            });
+        };
+    }
 
     #[cfg(feature = "jvo")]
     let db = match query.get("db") {
@@ -4269,6 +4274,8 @@ fn main() {
     let mut server_path = String::from(SERVER_PATH);
     let mut server_address = String::from(SERVER_ADDRESS);
     let mut home_dir = dirs::home_dir();
+
+    #[cfg(feature = "cluster")]
     let mut root_node: Option<String> = None;
 
     let args: Vec<String> = env::args().collect();
@@ -4298,8 +4305,11 @@ fn main() {
                 server_address = value.clone();
             }
 
-            if key == "--root" {
-                root_node = Some(value.clone());
+            #[cfg(feature = "cluster")]
+            {
+                if key == "--root" {
+                    root_node = Some(value.clone());
+                }
             }
 
             if key == "--home" {
@@ -4322,67 +4332,71 @@ fn main() {
         server_address, server_port, server_path
     );
 
-    let socket = UdpSocket::bind("0.0.0.0:50000").expect("[UDP] couldn't bind to address");
+    #[cfg(feature = "cluster")]
+    {
+        let socket = UdpSocket::bind("0.0.0.0:50000").expect("[UDP] couldn't bind to address");
 
-    match root_node {
-        Some(address) => {
-            println!("initiating a cluster mode; root node: {}", address);
-            thread::spawn(move || {
-                println!("trying to contact {}", address);
+        match root_node {
+            Some(address) => {
+                println!("initiating a cluster mode; root node: {}", address);
+                thread::spawn(move || {
+                    println!("trying to contact {}", address);
 
-                let num_threads = num_cpus::get_physical();
-                let msg = format!("connect {}", num_threads);
+                    let num_threads = num_cpus::get_physical();
+                    let msg = format!("connect {}", num_threads);
 
-                loop {
-                    match socket.send_to(msg.as_bytes(), format!("{}:50000", address)) {
-                        Ok(_) => {
-                            //println!("[UDP] connected to the root cluster node.");
-                        }
-                        Err(err) => println!("[UDP] {}", err),
-                    }
-
-                    let wait_interval = std::time::Duration::from_secs(10);
-                    thread::sleep(wait_interval);
-                }
-            });
-        }
-        None => {
-            //await incoming connections from other nodes
-            thread::spawn(move || {
-                println!("listening to connect requests from cluster nodes");
-
-                loop {
-                    let mut buf = [0; 256];
-                    let (number_of_bytes, src_addr) =
-                        socket.recv_from(&mut buf).expect("Didn't receive data");
-                    let filled_buf = &mut buf[..number_of_bytes];
-
-                    match std::str::from_utf8(filled_buf) {
-                        Ok(msg) => {
-                            //println!("[UDP] received [{}] from {}", msg, src_addr.ip());
-
-                            let mut nodes = CLUSTER_NODES.write();
-
-                            if !nodes.contains_key(&src_addr.ip()) {
-                                let num_threads = match scan_fmt_some!(msg, "connect {d}", usize) {
-                                    Some(x) => x,
-                                    _ => 1,
-                                };
-
-                                println!(
-                                    "[UDP] registered {} threads at {}",
-                                    num_threads,
-                                    src_addr.ip()
-                                );
-                                nodes.insert(src_addr.ip(), num_threads);
+                    loop {
+                        match socket.send_to(msg.as_bytes(), format!("{}:50000", address)) {
+                            Ok(_) => {
+                                //println!("[UDP] connected to the root cluster node.");
                             }
+                            Err(err) => println!("[UDP] {}", err),
                         }
-                        Err(err) => println!("UDP message conversion error: {}", err),
+
+                        let wait_interval = std::time::Duration::from_secs(10);
+                        thread::sleep(wait_interval);
                     }
-                }
-            });
-        }
-    };
+                });
+            }
+            None => {
+                //await incoming connections from other nodes
+                thread::spawn(move || {
+                    println!("listening to connect requests from cluster nodes");
+
+                    loop {
+                        let mut buf = [0; 256];
+                        let (number_of_bytes, src_addr) =
+                            socket.recv_from(&mut buf).expect("Didn't receive data");
+                        let filled_buf = &mut buf[..number_of_bytes];
+
+                        match std::str::from_utf8(filled_buf) {
+                            Ok(msg) => {
+                                //println!("[UDP] received [{}] from {}", msg, src_addr.ip());
+
+                                let mut nodes = CLUSTER_NODES.write();
+
+                                if !nodes.contains_key(&src_addr.ip()) {
+                                    let num_threads =
+                                        match scan_fmt_some!(msg, "connect {d}", usize) {
+                                            Some(x) => x,
+                                            _ => 1,
+                                        };
+
+                                    println!(
+                                        "[UDP] registered {} threads at {}",
+                                        num_threads,
+                                        src_addr.ip()
+                                    );
+                                    nodes.insert(src_addr.ip(), num_threads);
+                                }
+                            }
+                            Err(err) => println!("UDP message conversion error: {}", err),
+                        }
+                    }
+                });
+            }
+        };
+    }
 
     remove_symlinks(None);
 
@@ -4412,6 +4426,7 @@ fn main() {
             let state = WsSessionState {
                 addr: server.clone(),
                 home_dir: home_dir.clone(),
+                #[cfg(feature = "cluster")]
                 port: server_port,
             };
 

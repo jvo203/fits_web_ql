@@ -16,6 +16,7 @@ cuda = []
 opencl = ["ocl", "rand"]
 zfp = ["zfp-sys"]
 ipp = ["ipp-sys"]
+cluster = []
 
 [build-dependencies]
 bindgen = "*"
