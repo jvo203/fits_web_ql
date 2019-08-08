@@ -2747,6 +2747,7 @@ fn fitswebql_entry(
 
         nodes.iter().for_each(|(ip, _)| {
             let url = format!("http://{}:{}{}", ip, state.port, uri);
+            let thread_ip = ip.clone();
             println!("routing {}", url);
 
             thread::spawn(move || match reqwest::get(&url) {
@@ -2754,7 +2755,11 @@ fn fitswebql_entry(
                     println!("Status: {}", res.status());
                     println!("Headers:\n{:?}", res.headers());
                 }
-                Err(err) => println!("{}", err),
+                Err(err) => {
+                    println!("{}, removing {} from the cluster", err, thread_ip);
+                    CLUSTER_NODES.write().remove(&thread_ip);
+                    println!("{} removed", thread_ip);
+                }
             });
 
             /*let client = Client::default();
