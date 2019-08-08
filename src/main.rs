@@ -2745,9 +2745,17 @@ fn fitswebql_entry(
     if !nodes.is_empty() {
         let uri = req.uri();
 
-        nodes.par_iter().for_each(|(ip, _)| {
+        nodes.iter().for_each(|(ip, _)| {
             let url = format!("http://{}:{}{}", ip, state.port, uri);
             println!("routing {}", url);
+
+            thread::spawn(move || match reqwest::get(&url) {
+                Ok(res) => {
+                    println!("Status: {}", res.status());
+                    println!("Headers:\n{:?}", res.headers());
+                }
+                Err(err) => println!("{}", err),
+            });
 
             /*let client = Client::default();
             let _ = client
@@ -2762,24 +2770,24 @@ fn fitswebql_entry(
                 })
                 .wait();*/
 
-            let _ = Client::new()
-                .get(&url)
-                .send()
-                .and_then(|mut res| {
-                    println!("{}", res.status());
+            /*let _ = Client::new()
+            .get(&url)
+            .send()
+            .and_then(|mut res| {
+                println!("{}", res.status());
 
-                    let body = mem::replace(res.body_mut(), Decoder::empty());
-                    body.concat2()
-                    //println!("HTTP response: {:#?}", res);
-                })
-                .map_err(|err| println!("request error: {}", err))
-                .map(|body| {
-                    let mut body = Cursor::new(body);
-                    let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
-                        println!("stdout error: {}", err);
-                    });
-                })
-                .wait();
+                let body = mem::replace(res.body_mut(), Decoder::empty());
+                body.concat2()
+                //println!("HTTP response: {:#?}", res);
+            })
+            .map_err(|err| println!("request error: {}", err))
+            .map(|body| {
+                let mut body = Cursor::new(body);
+                let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
+                    println!("stdout error: {}", err);
+                });
+            })
+            .wait();*/
         });
     };
 
