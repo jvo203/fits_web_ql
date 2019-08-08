@@ -160,6 +160,7 @@ pub struct WsViewport {
 struct WsSessionState {
     addr: Addr<server::SessionServer>,
     home_dir: Option<std::path::PathBuf>,
+    port: i32,
 }
 
 pub struct UserParams {
@@ -2381,7 +2382,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-08-07.0";
+static VERSION_STRING: &'static str = "SV2019-08-08.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2745,10 +2746,10 @@ fn fitswebql_entry(
         let uri = req.uri();
 
         nodes.par_iter().for_each(|(ip, _)| {
-            let url = format!("http://{}{}", ip, uri);
+            let url = format!("http://{}:{}{}", ip, state.port, uri);
             println!("routing {}", url);
 
-            let mut client = Client::default();
+            let client = Client::default();
 
             let _ = client
                 .get(url) // <- Create request builder
@@ -4398,6 +4399,7 @@ fn main() {
             let state = WsSessionState {
                 addr: server.clone(),
                 home_dir: home_dir.clone(),
+                port: server_port,
             };
 
             App::new()
