@@ -161,10 +161,6 @@ pub struct WsViewport {
 struct WsSessionState {
     addr: Addr<server::SessionServer>,
     home_dir: Option<std::path::PathBuf>,
-    #[cfg(feature = "cluster")]
-    root_ip: Option<String>,
-    #[cfg(feature = "cluster")]
-    root_port: i32,
 }
 
 pub struct UserParams {
@@ -2383,6 +2379,11 @@ lazy_static! {
         { Arc::new(RwLock::new(HashMap::new())) };
 }
 
+#[cfg(feature = "cluster")]
+lazy_static! {
+    static ref root_node: Arc<RwLock<Option<String>>> = Arc::new(RwLock::new(None));
+}
+
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
@@ -2408,7 +2409,10 @@ const JVO_USER: &'static str = "jvo";
 #[cfg(feature = "jvo")]
 const JVO_HOST: &'static str = "localhost";
 
-const SERVER_PORT: i32 = 8080;
+lazy_static! {
+    static ref server_port: Arc<RwLock<i32>> = Arc::new(RwLock::new(8080_i32));
+}
+
 const SERVER_PATH: &'static str = "fitswebql";
 
 const WEBSOCKET_TIMEOUT: u64 = 60 * 60; //[s]; a websocket inactivity timeout
@@ -2753,7 +2757,7 @@ fn fitswebql_entry(
             let uri = req.uri();
 
             nodes.iter().for_each(|(ip, _)| {
-                let url = format!("http://{}:{}{}", ip, state.root_port, uri);
+                let url = format!("http://{}:{}{}", ip, server_port.read(), uri);
                 let thread_ip = ip.clone();
                 println!("routing {}", url);
 
@@ -4272,13 +4276,9 @@ fn main() {
 
     info!("{} main()", SERVER_STRING);
 
-    let mut server_port = SERVER_PORT;
     let mut server_path = String::from(SERVER_PATH);
     let mut server_address = String::from(SERVER_ADDRESS);
     let mut home_dir = dirs::home_dir();
-
-    #[cfg(feature = "cluster")]
-    let mut root_node: Option<String> = None;
 
     let args: Vec<String> = env::args().collect();
 
@@ -4289,10 +4289,11 @@ fn main() {
 
             if key == "--port" {
                 match value.parse::<i32>() {
-                    Ok(port) => server_port = port,
+                    Ok(port) => *server_port.write() = port,
                     Err(err) => println!(
                         "error parsing the port number: {}, defaulting to {}",
-                        err, server_port
+                        err,
+                        server_port.read()
                     ),
                 }
             }
@@ -4310,7 +4311,7 @@ fn main() {
             #[cfg(feature = "cluster")]
             {
                 if key == "--root" {
-                    root_node = Some(value.clone());
+                    *root_node.write() = Some(value.clone());
                 }
             }
 
@@ -4331,14 +4332,16 @@ fn main() {
 
     println!(
         "server interface: {}, port: {}, path: {}",
-        server_address, server_port, server_path
+        server_address,
+        server_port.read(),
+        server_path
     );
 
     #[cfg(feature = "cluster")]
     {
         let socket = UdpSocket::bind("0.0.0.0:50000").expect("[UDP] couldn't bind to address");
 
-        match root_node.clone() {
+        match root_node.read().clone() {
             Some(address) => {
                 println!("initiating a cluster mode; root node: {}", address);
                 thread::spawn(move || {
@@ -4428,10 +4431,6 @@ fn main() {
             let state = WsSessionState {
                 addr: server.clone(),
                 home_dir: home_dir.clone(),
-                #[cfg(feature = "cluster")]
-                root_ip: root_node.clone(),
-                #[cfg(feature = "cluster")]
-                root_port: server_port,
             };
 
             App::new()
@@ -4456,7 +4455,7 @@ fn main() {
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
         })
         .workers(num_workers)
-        .bind(&format!("{}:{}", server_address, server_port)).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port))        
+        .bind(&format!("{}:{}", server_address, server_port.read())).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port.read()))
         .start();
 
     println!(
@@ -4496,7 +4495,7 @@ fn main() {
     {
         println!(
             "started a fits_web_ql server process on port {}",
-            server_port
+            server_port.read()
         );
         println!("send SIGINT to shut down, i.e. killall -s SIGINT fits_web_ql");
     }

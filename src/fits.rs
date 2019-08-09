@@ -841,10 +841,20 @@ impl FITS {
             thread_frame_max.push(atomic::Atomic::new(std::f32::MIN));
         }
 
-        //at first fill-in the self.data_f16 vector in parallel
-        let gather_f16: Vec<_> =
-            pool.install(|| {
-                (0..self.depth)
+        loop {
+            #[cfg(not(feature = "cluster"))]
+            let (start, end) = (0, self.depth);
+
+            #[cfg(feature = "cluster")]
+            let (start, end) = {
+                //request a data range from the root node
+
+                (0, self.depth)
+            };
+
+            //at first fill-in the self.data_f16 vector in parallel
+            let gather_f16: Vec<_> = pool.install(|| {
+                (start..end)
                 .into_par_iter()
                 .map(|frame| {
                     let data_f16: Vec<f16> = vec![f16::from_f32(0.0); self.width * self.height];
@@ -883,16 +893,6 @@ impl FITS {
                                                         Some(tid) => tid,
                                                         None => 0,
                                                     };
-
-                                                    /*println!(
-                                                        "tid: {}, frame_min: {}, frame_max: {}, self.width: {}, self.height: {}",
-                                                        tid, frame_min, frame_max, self.width, self.height
-                                                    );
-
-                                                    if frame == self.depth / 2 {
-                                                        println!("array: {:?}", array);
-                                                        //println!("mask: {:?}", mask);
-                                                    }*/
 
                                                     //convert the (array,mask) into f16
                                                     let mut references: [f32; 2] =
@@ -1012,7 +1012,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 .collect()
             });
 
-        self.data_f16 = gather_f16;
+            self.data_f16[start..end].clone_from_slice(&gather_f16[start..end]);
+
+            //#[cfg(not(feature = "cluster"))]
+            break;
+        }
 
         self.frame_min = thread_frame_min
             .iter()
