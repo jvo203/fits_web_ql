@@ -16,7 +16,7 @@ cuda = []
 opencl = ["ocl", "rand"]
 zfp = ["zfp-sys"]
 ipp = ["ipp-sys"]
-cluster = []
+cluster = ["reqwest"]
 
 [build-dependencies]
 bindgen = "*"
@@ -38,7 +38,7 @@ actix-web = "*"
 actix-web-actors = "*"
 actix-files = "*"
 http = "*"
-reqwest = "*"
+reqwest = {version = "*", optional = true}
 serde_json = "*"
 chrono = "*"
 dirs = "*"
