@@ -162,7 +162,9 @@ struct WsSessionState {
     addr: Addr<server::SessionServer>,
     home_dir: Option<std::path::PathBuf>,
     #[cfg(feature = "cluster")]
-    port: i32,
+    root_ip: Option<String>,
+    #[cfg(feature = "cluster")]
+    root_port: i32,
 }
 
 pub struct UserParams {
@@ -2385,7 +2387,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-08-08.0";
+static VERSION_STRING: &'static str = "SV2019-08-09.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2751,7 +2753,7 @@ fn fitswebql_entry(
             let uri = req.uri();
 
             nodes.iter().for_each(|(ip, _)| {
-                let url = format!("http://{}:{}{}", ip, state.port, uri);
+                let url = format!("http://{}:{}{}", ip, state.root_port, uri);
                 let thread_ip = ip.clone();
                 println!("routing {}", url);
 
@@ -4336,7 +4338,7 @@ fn main() {
     {
         let socket = UdpSocket::bind("0.0.0.0:50000").expect("[UDP] couldn't bind to address");
 
-        match root_node {
+        match root_node.clone() {
             Some(address) => {
                 println!("initiating a cluster mode; root node: {}", address);
                 thread::spawn(move || {
@@ -4427,7 +4429,9 @@ fn main() {
                 addr: server.clone(),
                 home_dir: home_dir.clone(),
                 #[cfg(feature = "cluster")]
-                port: server_port,
+                root_ip: root_node.clone(),
+                #[cfg(feature = "cluster")]
+                root_port: server_port,
             };
 
             App::new()
