@@ -2388,7 +2388,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-08-19.0";
+static VERSION_STRING: &'static str = "SV2019-08-19.1";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4486,7 +4486,7 @@ fn main() {
     {
         println!(
             "started a local FITSWebQL server; point your web browser to http://localhost:{}",
-            server_port
+            server_port.read()
         );
         println!("press CTRL+C to exit");
     }
