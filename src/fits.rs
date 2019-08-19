@@ -1267,7 +1267,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //OK, we have a FITS file with at least one chunk
         println!("{}: reading a FITS file header...", id);
 
-        let mut f: Box<Read + Send> = if is_compressed {
+        let mut f: Box<dyn Read + Send> = if is_compressed {
             Box::new(GzDecoder::new(f))
         } else {
             Box::new(f)
