@@ -2760,7 +2760,10 @@ fn fitswebql_entry(
 
         if !is_root {
             match req.connection_info().remote() {
-                Some(server_ip) => println!("root-rank node: {}", server_ip),
+                Some(server_address) => {
+                    let server_ip: Vec<&str> = server_address.split(':').collect();
+                    println!("root-rank node: {}", server_ip[0]);
+                }
                 None => {}
             }
         };
@@ -4266,6 +4269,9 @@ macro_rules! ipp_assert {
 }
 
 fn main() {
+    let my_ip = local_ip::get().unwrap();
+    println!("local ip address: {:?}", my_ip.to_string());
+
     #[cfg(feature = "ipp")]
     {
         ipp_assert!(ipp_sys::ippInit());
