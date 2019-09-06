@@ -4269,8 +4269,11 @@ macro_rules! ipp_assert {
 }
 
 fn main() {
-    let my_ip = machine_ip::get().unwrap();
-    println!("local ip address: {:?}", my_ip.to_string());
+    #[cfg(feature = "cluster")]
+    {
+        let my_ip = machine_ip::get().unwrap();
+        println!("local ip address: {:?}", my_ip.to_string());
+    }
 
     #[cfg(feature = "ipp")]
     {
