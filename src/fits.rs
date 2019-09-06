@@ -373,8 +373,7 @@ pub struct FITS {
     pub is_optical: bool,
     pub is_xray: bool,
     pub is_dummy: bool,
-    #[cfg(feature = "cluster")]
-    pub is_slave: bool,
+    pub _is_slave: bool,
     pub status_code: u16,
 }
 
@@ -388,7 +387,7 @@ struct FITSImage {
 }
 
 impl FITS {
-    pub fn new(id: &String, flux: &String) -> FITS {
+    pub fn new(id: &String, flux: &String, is_slave: bool) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
             Ok(_) => String::from(""),
             Err(_) => id.clone().replace(".fits", "").replace(".FITS", ""),
@@ -488,8 +487,7 @@ impl FITS {
             is_optical: true,
             is_xray: false,
             is_dummy: true,
-            #[cfg(feature = "cluster")]
-            is_slave: false,
+            _is_slave: is_slave,
             status_code: 404,
         };
 
@@ -850,9 +848,10 @@ impl FITS {
             let (start, end) = (0, self.depth);
 
             #[cfg(feature = "cluster")]
-            let (start, end) = {
+            let (start, end) = if self._is_slave {
                 //request a data range from the root node
-
+                (0, self.depth)
+            } else {
                 (0, self.depth)
             };
 
@@ -1222,8 +1221,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         flux: &String,
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
+        is_slave: bool,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux);
+        let mut fits = FITS::new(id, flux, is_slave);
         fits.is_dummy = false;
 
         //load data from filepath
@@ -1241,7 +1241,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 {
                     let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
 
-                    return FITS::from_url(&id, &flux, &url, &server);
+                    return FITS::from_url(&id, &flux, &url, &server, is_slave);
                 }
             }
         };
@@ -1596,8 +1596,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         flux: &String,
         url: &String,
         server: &Addr<server::SessionServer>,
+        is_slave: bool,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux);
+        let mut fits = FITS::new(id, flux, is_slave);
         fits.is_dummy = false;
 
         println!("FITS::from_url({})", url);
@@ -7858,7 +7859,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
 impl Clone for FITS {
     fn clone(&self) -> FITS {
-        let mut fits = FITS::new(&self.dataset_id, &self.flux);
+        let mut fits = FITS::new(&self.dataset_id, &self.flux, self._is_slave);
 
         //only a limited clone (fields needed by get_frequency_range())
 

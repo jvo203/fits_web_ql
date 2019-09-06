@@ -2748,15 +2748,15 @@ fn fitswebql_entry(
         Err(_) => return result(Err(actix_http::error::ErrorBadRequest("fitswebql_entry"))),
     };
 
+    //check if it is a slave node
+    let is_root = match query.get("slave") {
+        Some(_) => false,
+        None => true,
+    };
+
     #[cfg(feature = "cluster")]
     {
-        //check if it is a slave node
-        let is_root = match query.get("slave") {
-            Some(_) => false,
-            None => true,
-        };
-
-        println!("is_root: {}", is_root);
+        println!("is_slave: {}", !is_root);
 
         let nodes = CLUSTER_NODES.read();
 
@@ -2964,6 +2964,7 @@ fn fitswebql_entry(
         composite,
         &flux,
         &server,
+        !is_root,
     )));
 
     //local (Personal Edition)
@@ -2978,6 +2979,7 @@ fn fitswebql_entry(
         composite,
         &flux,
         &server,
+        false,
     )));
 }
 
@@ -3794,6 +3796,7 @@ fn external_fits(
             Arc::new(RwLock::new(Box::new(fits::FITS::new(
                 &my_data_id,
                 &"".to_owned(),
+                false,
             )))),
         );
 
@@ -3808,6 +3811,7 @@ fn external_fits(
                     &"".to_owned(),
                     filepath.as_path(),
                     &my_server,
+                    false,
                 )
             } else {
                 println!(
@@ -3819,6 +3823,7 @@ fn external_fits(
                     &"".to_owned(),
                     &my_url.clone(),
                     &my_server,
+                    false,
                 )
             };
 
@@ -3866,6 +3871,7 @@ fn internal_fits(
     composite: bool,
     flux: &str,
     server: &Addr<server::SessionServer>,
+    is_slave: bool,
 ) -> HttpResponse {
     //get fits location
 
@@ -3903,6 +3909,7 @@ fn internal_fits(
                 Arc::new(RwLock::new(Box::new(fits::FITS::new(
                     &my_data_id,
                     &my_flux,
+                    is_slave,
                 )))),
             );
 
@@ -3933,6 +3940,7 @@ fn internal_fits(
                     &my_flux.clone(),
                     filepath.as_path(),
                     &my_server,
+                    is_slave,
                 ); //from_path or from_path_mmap
 
                 let fits = Arc::new(RwLock::new(Box::new(fits)));
