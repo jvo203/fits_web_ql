@@ -373,6 +373,8 @@ pub struct FITS {
     pub is_optical: bool,
     pub is_xray: bool,
     pub is_dummy: bool,
+    #[cfg(feature = "cluster")]
+    pub is_slave: bool,
     pub status_code: u16,
 }
 
@@ -486,6 +488,8 @@ impl FITS {
             is_optical: true,
             is_xray: false,
             is_dummy: true,
+            #[cfg(feature = "cluster")]
+            is_slave: false,
             status_code: 404,
         };
 

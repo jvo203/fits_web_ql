@@ -2375,8 +2375,8 @@ lazy_static! {
 
 #[cfg(feature = "cluster")]
 lazy_static! {
-    static ref CLUSTER_NODES: Arc<RwLock<HashMap<std::net::IpAddr, usize>>> =
-        { Arc::new(RwLock::new(HashMap::new())) };
+    static ref CLUSTER_NODES: Arc<RwLock<HashSet<std::net::IpAddr>>> =
+        { Arc::new(RwLock::new(HashSet::new())) };
 }
 
 #[cfg(feature = "cluster")]
@@ -2388,7 +2388,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-08-19.1";
+static VERSION_STRING: &'static str = "SV2019-09-06.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2750,14 +2750,22 @@ fn fitswebql_entry(
 
     #[cfg(feature = "cluster")]
     {
+        //check if it is a slave node
+        let is_root = match query.get("slave") {
+            Some(_) => false,
+            None => true,
+        };
+
+        println!("is_root: {}", is_root);
+
         let nodes = CLUSTER_NODES.read();
 
         //broadcast the URL to all nodes (only root has a non-empty HashMap)
-        if !nodes.is_empty() {
+        if !nodes.is_empty() && is_root {
             let uri = req.uri();
 
-            nodes.iter().for_each(|(ip, _)| {
-                let url = format!("http://{}:{}{}", ip, server_port.read(), uri);
+            nodes.iter().for_each(|ip| {
+                let url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);
                 let thread_ip = ip.clone();
                 println!("routing {}", url);
 
@@ -4380,7 +4388,7 @@ fn main() {
 
                                 let mut nodes = CLUSTER_NODES.write();
 
-                                if !nodes.contains_key(&src_addr.ip()) {
+                                if !nodes.contains(&src_addr.ip()) {
                                     let num_threads =
                                         match scan_fmt_some!(msg, "connect {d}", usize) {
                                             Some(x) => x,
@@ -4392,7 +4400,7 @@ fn main() {
                                         num_threads,
                                         src_addr.ip()
                                     );
-                                    nodes.insert(src_addr.ip(), num_threads);
+                                    nodes.insert(src_addr.ip());
                                 }
                             }
                             Err(err) => println!("UDP message conversion error: {}", err),
