@@ -77,6 +77,7 @@ tar = "*"
 flate2 = "*"
 ispc = "*"
 machine-ip = "*"
+dns-lookup = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
 zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}

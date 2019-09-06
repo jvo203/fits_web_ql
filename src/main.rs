@@ -34,6 +34,7 @@ use chrono::Local;
 use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::fs::File;
+use std::io::BufRead;
 use std::io::Write;
 use std::sync::Arc;
 use std::thread;
@@ -4269,12 +4270,6 @@ macro_rules! ipp_assert {
 }
 
 fn main() {
-    #[cfg(feature = "cluster")]
-    {
-        let my_ip = machine_ip::get().unwrap();
-        println!("local ip address: {:?}", my_ip.to_string());
-    }
-
     #[cfg(feature = "ipp")]
     {
         ipp_assert!(ipp_sys::ippInit());
@@ -4344,6 +4339,42 @@ fn main() {
             {
                 if key == "--root" {
                     *root_node.write() = Some(value.clone());
+                }
+
+                if key == "--machines" {
+                    let my_ip = machine_ip::get().unwrap();
+                    println!("local ip address: {}", my_ip);
+
+                    //parse the machines file
+                    let path = std::path::Path::new(&value);
+
+                    match File::open(&path) {
+                        Err(why) => println!("couldn't open a machines file{}: {}", value, why),
+                        Ok(file) => {
+                            let machines = std::io::BufReader::new(file);
+
+                            for line in machines.lines() {
+                                match line {
+                                    Ok(host) => {
+                                        let ips: Vec<std::net::IpAddr> =
+                                            dns_lookup::lookup_host(&host.to_string()).unwrap();
+                                        println!("found a new host: {}/{:?}", host, ips);
+
+                                        if ips.len() > 0 {
+                                            if my_ip == ips[0] {
+                                                println!("omitting an own IP address");
+                                            } else {
+                                                let mut nodes = CLUSTER_NODES.write();
+                                                nodes.insert(ips[0]);
+                                                println!("added {} to a cluster", ips[0]);
+                                            }
+                                        }
+                                    }
+                                    Err(err) => println!("error parsing a machines file: {}", err),
+                                }
+                            }
+                        }
+                    };
                 }
             }
 
