@@ -4342,8 +4342,12 @@ fn main() {
                 }
 
                 if key == "--machines" {
-                    let my_ip = machine_ip::get().unwrap();
-                    println!("Local IP address: {}", my_ip);
+                    let local_ip = match machine_ip::get() {
+                        Some(ip) => ip,
+                        None => std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+                    };
+
+                    println!("Local IP address: {}", local_ip);
 
                     //parse the machines file
                     let path = std::path::Path::new(&value);
@@ -4361,7 +4365,7 @@ fn main() {
                                         println!("found a new host: {}/{:?}", host, ips);
 
                                         if ips.len() > 0 {
-                                            if my_ip == ips[0] {
+                                            if local_ip == ips[0] {
                                                 println!("omitting an own IP address");
                                             } else {
                                                 let mut nodes = CLUSTER_NODES.write();
