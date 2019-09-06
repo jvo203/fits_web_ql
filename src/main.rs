@@ -4343,7 +4343,7 @@ fn main() {
 
                 if key == "--machines" {
                     let my_ip = machine_ip::get().unwrap();
-                    println!("local ip address: {}", my_ip);
+                    println!("Local IP address: {}", my_ip);
 
                     //parse the machines file
                     let path = std::path::Path::new(&value);
