@@ -849,9 +849,10 @@ impl FITS {
 
             #[cfg(feature = "cluster")]
             let (start, end) = if self._is_slave {
-                //request a data range from the root node
+                //request a data range from the root-rank node
                 (0, self.depth)
             } else {
+                //assign partial work to itself
                 (0, self.depth)
             };
 

@@ -2758,6 +2758,13 @@ fn fitswebql_entry(
     {
         println!("is_slave: {}", !is_root);
 
+        if !is_root {
+            match req.connection_info().remote() {
+                Some(server_ip) => println!("root-rank node: {}", server_ip),
+                None => {}
+            }
+        };
+
         let nodes = CLUSTER_NODES.read();
 
         //broadcast the URL to all nodes (only root has a non-empty HashMap)
