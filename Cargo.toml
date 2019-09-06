@@ -76,7 +76,7 @@ postgres = "*"
 tar = "*"
 flate2 = "*"
 ispc = "*"
-local-ip = "*"
+machine-ip = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
 zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
