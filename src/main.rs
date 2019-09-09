@@ -3050,9 +3050,18 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
         node_ip, dataset_id, num_threads
     );
 
-    return result(Ok(HttpResponse::NotFound()
-        .content_type("text/html")
-        .body("not implemented yet")));
+    match schedule_jobs(dataset_id, num_threads) {
+        Some((start, end)) => result(Ok(HttpResponse::Ok()
+            .content_type("text/plain")
+            .body(format!("{} {}", start, end)))),
+        None => result(Ok(HttpResponse::Ok()
+            .content_type("text/plain")
+            .body("null null"))),
+    }
+}
+
+fn schedule_jobs(dataset_id: String, num_threads: usize) -> Option<(usize, usize)> {
+    None
 }
 
 fn get_image(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
