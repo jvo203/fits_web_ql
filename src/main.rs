@@ -2382,6 +2382,12 @@ lazy_static! {
 
 #[cfg(feature = "cluster")]
 lazy_static! {
+    static ref CLUSTER_JOBS: Arc<RwLock<HashMap<String, Vec<std::net::IpAddr>>>> =
+        { Arc::new(RwLock::new(HashMap::new())) };
+}
+
+#[cfg(feature = "cluster")]
+lazy_static! {
     static ref root_node: Arc<RwLock<Option<String>>> = Arc::new(RwLock::new(None));
 }
 
@@ -2389,7 +2395,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-09-06.0";
+static VERSION_STRING: &'static str = "SV2019-09-09.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2764,6 +2770,7 @@ fn fitswebql_entry(
                 Some(server_address) => {
                     let server_ip: Vec<&str> = server_address.split(':').collect();
                     println!("root-rank node: {}", server_ip[0]);
+                    *root_node.write() = Some(server_ip[0].to_string());
                 }
                 None => {}
             }
@@ -2774,6 +2781,11 @@ fn fitswebql_entry(
         //broadcast the URL to all nodes (only root has a non-empty HashMap)
         if !nodes.is_empty() && is_root {
             let uri = req.uri();
+
+            //create an empty jobs queue
+            {
+                //*CLUSTER_JOBS.write().insert(datasetid, Vec::new());
+            }
 
             nodes.iter().for_each(|ip| {
                 let url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);

@@ -4,6 +4,7 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use half::f16;
 use num_cpus;
 use parking_lot::RwLock;
+use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use positioned_io::ReadAt;
 use regex::Regex;
 use std;
@@ -849,8 +850,34 @@ impl FITS {
 
             #[cfg(feature = "cluster")]
             let (start, end) = if self._is_slave {
-                //request a data range from the root-rank node
-                (0, self.depth)
+                match &*root_node.read() {
+                    Some(root) => {
+                        //request a data range from the root
+                        let url = format!(
+                            "http://{}:{}/queue/{}/{}",
+                            root,
+                            server_port.read(),
+                            percent_encode(self.dataset_id.as_bytes(), NON_ALPHANUMERIC),
+                            num_threads
+                        );
+
+                        match reqwest::get(&url) {
+                            Ok(mut res) => {
+                                println!(
+                                    "a job request response: status: {}, text: {:?}",
+                                    res.status(),
+                                    res.text()
+                                );
+                            }
+                            Err(err) => {
+                                println!("error submitting a job request ({}): {}", url, err);
+                            }
+                        };
+
+                        (0, self.depth)
+                    }
+                    None => (0, self.depth),
+                }
             } else {
                 //assign partial work to itself
                 (0, self.depth)
