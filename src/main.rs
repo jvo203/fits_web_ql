@@ -3006,6 +3006,55 @@ fn fitswebql_entry(
     )));
 }
 
+fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
+    let dataset_id: String = match req.match_info().get("id") {
+        Some(x) => x.to_string(),
+        None => return result(Err(actix_http::error::ErrorBadRequest("queue_handler/id"))),
+    };
+
+    //dataset_id needs to be URI-decoded
+    let dataset_id = match percent_decode(dataset_id.as_bytes()).decode_utf8() {
+        Ok(x) => x.into_owned(),
+        Err(_) => dataset_id,
+    };
+
+    let num_threads: String = match req.match_info().get("num_threads") {
+        Some(x) => x.to_string(),
+        None => {
+            return result(Err(actix_http::error::ErrorBadRequest(
+                "queue_handler/num_threads",
+            )))
+        }
+    };
+
+    let num_threads = match num_threads.parse::<usize>() {
+        Ok(x) => x,
+        Err(_) => 1,
+    };
+
+    let info = req.connection_info();
+    let node_ip = match info.remote() {
+        Some(server_address) => {
+            let server_ip: Vec<&str> = server_address.split(':').collect();
+            server_ip[0]
+        }
+        None => {
+            return result(Err(actix_http::error::ErrorBadRequest(
+                "queue_handler/num_threads",
+            )))
+        }
+    };
+
+    println!(
+        "received a job request from {}: dataset_id: {}, num_threads: {}",
+        node_ip, dataset_id, num_threads
+    );
+
+    return result(Ok(HttpResponse::NotFound()
+        .content_type("text/html")
+        .body("not implemented yet")));
+}
+
 fn get_image(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
     let query = match web::Query::<HashMap<String, String>>::extract(&req) {
         Ok(x) => x,
@@ -4531,6 +4580,7 @@ fn main() {
                 .service(web::resource("/{path}/get_spectrum").route(web::get().to_async(get_spectrum)))
                 .service(web::resource("/{path}/get_molecules").route(web::get().to_async(get_molecules)))
                 .service(web::resource("/{path}/get_fits").route(web::get().to_async(get_fits)))
+                .service(web::resource("/queue/{id}/{num_threads}").route(web::get().to_async(queue_handler)))
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
         })
         .workers(num_workers)
