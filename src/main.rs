@@ -36,6 +36,7 @@ use std::ffi::CString;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::Write;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
 use std::time::SystemTime;
@@ -3050,7 +3051,7 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
         node_ip, dataset_id, num_threads
     );
 
-    match schedule_jobs(dataset_id, num_threads) {
+    match schedule_jobs(dataset_id, node_ip, num_threads) {
         Some((start, end)) => result(Ok(HttpResponse::Ok()
             .content_type("text/plain")
             .body(format!("{} {}", start, end)))),
@@ -3060,8 +3061,14 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
     }
 }
 
-fn schedule_jobs(dataset_id: String, num_threads: usize) -> Option<(usize, usize)> {
-    None
+fn schedule_jobs(dataset_id: String, node_ip: &str, num_threads: usize) -> Option<(usize, usize)> {
+    match std::net::IpAddr::from_str(node_ip) {
+        Ok(ip) => {
+            //TO DO
+            None
+        }
+        Err(_) => None,
+    }
 }
 
 fn get_image(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
