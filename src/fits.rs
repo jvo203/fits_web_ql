@@ -875,8 +875,9 @@ impl FITS {
                                 match res.text() {
                                     Ok(body) => {
                                         if let Ok((start, end)) =
-                                            scan_fmt!(&body, "{d} {d}", usize, usize)
+                                            scan_fmt!(&body, "{d}{d}", usize, usize)
                                         {
+                                            println!("start: {}, end: {}", start, end);
                                             _break_loop = false;
                                             (start, end)
                                         } else {
@@ -903,6 +904,7 @@ impl FITS {
 
                 match schedule_jobs(self.dataset_id.clone(), self.depth, &local_ip, num_threads) {
                     Some((start, end)) => {
+                        println!("start: {}, end: {}", start, end);
                         _break_loop = false;
                         (start, end)
                     }
