@@ -845,6 +845,8 @@ impl FITS {
         }
 
         loop {
+            let mut _break_loop = true;
+
             #[cfg(not(feature = "cluster"))]
             let (start, end) = (0, self.depth);
 
@@ -854,10 +856,11 @@ impl FITS {
                     Some(root) => {
                         //request a data range from the root
                         let url = format!(
-                            "http://{}:{}/queue/{}/{}",
+                            "http://{}:{}/queue/{}/{}/{}",
                             root,
                             server_port.read(),
                             percent_encode(self.dataset_id.as_bytes(), NON_ALPHANUMERIC),
+                            self.depth,
                             num_threads
                         );
 
@@ -868,20 +871,51 @@ impl FITS {
                                     res.status(),
                                     res.text()
                                 );
+
+                                match res.text() {
+                                    Ok(body) => {
+                                        if let Ok((start, end)) =
+                                            scan_fmt!(&body, "{d} {d}", usize, usize)
+                                        {
+                                            _break_loop = false;
+                                            (start, end)
+                                        } else {
+                                            (0, 0)
+                                        }
+                                    }
+                                    _ => (0, 0),
+                                }
                             }
                             Err(err) => {
                                 println!("error submitting a job request ({}): {}", url, err);
+                                (0, 0)
                             }
-                        };
-
-                        (0, self.depth)
+                        }
                     }
-                    None => (0, self.depth),
+                    None => (0, 0),
                 }
             } else {
                 //assign partial work to itself
-                (0, self.depth)
+                let local_ip = match machine_ip::get() {
+                    Some(ip) => ip.to_string(),
+                    None => String::from("127.0.0.1"),
+                };
+
+                match schedule_jobs(self.dataset_id.clone(), self.depth, &local_ip, num_threads) {
+                    Some((start, end)) => {
+                        _break_loop = false;
+                        (start, end)
+                    }
+                    _ => (0, 0),
+                }
             };
+
+            #[cfg(feature = "cluster")]
+            {
+                if _break_loop {
+                    break;
+                }
+            }
 
             //at first fill-in the self.data_f16 vector in parallel
             let gather_f16: Vec<_> = pool.install(|| {
@@ -1045,7 +1079,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             self.data_f16[start..end].clone_from_slice(&gather_f16[start..end]);
 
-            //#[cfg(not(feature = "cluster"))]
+            #[cfg(not(feature = "cluster"))]
             break;
         }
 

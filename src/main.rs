@@ -2396,7 +2396,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-09-09.0";
+static VERSION_STRING: &'static str = "SV2019-09-10.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2783,11 +2783,6 @@ fn fitswebql_entry(
         if !nodes.is_empty() && is_root {
             let uri = req.uri();
 
-            //create an empty jobs queue
-            {
-                //*CLUSTER_JOBS.write().insert(datasetid, Vec::new());
-            }
-
             nodes.iter().for_each(|ip| {
                 let url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);
                 let thread_ip = ip.clone();
@@ -3019,6 +3014,20 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
         Err(_) => dataset_id,
     };
 
+    let depth: String = match req.match_info().get("depth") {
+        Some(x) => x.to_string(),
+        None => {
+            return result(Err(actix_http::error::ErrorBadRequest(
+                "queue_handler/depth",
+            )))
+        }
+    };
+
+    let depth = match depth.parse::<usize>() {
+        Ok(x) => x,
+        Err(_) => 0,
+    };
+
     let num_threads: String = match req.match_info().get("num_threads") {
         Some(x) => x.to_string(),
         None => {
@@ -3047,11 +3056,11 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
     };
 
     println!(
-        "received a job request from {}: dataset_id: {}, num_threads: {}",
-        node_ip, dataset_id, num_threads
+        "received a job request from {}: dataset_id: {}, depth: {}, num_threads: {}",
+        node_ip, dataset_id, depth, num_threads
     );
 
-    match schedule_jobs(dataset_id, node_ip, num_threads) {
+    match schedule_jobs(dataset_id, depth, node_ip, num_threads) {
         Some((start, end)) => result(Ok(HttpResponse::Ok()
             .content_type("text/plain")
             .body(format!("{} {}", start, end)))),
@@ -3061,11 +3070,42 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
     }
 }
 
-fn schedule_jobs(dataset_id: String, node_ip: &str, num_threads: usize) -> Option<(usize, usize)> {
+fn schedule_jobs(
+    dataset_id: String,
+    depth: usize,
+    node_ip: &str,
+    num_threads: usize,
+) -> Option<(usize, usize)> {
     match std::net::IpAddr::from_str(node_ip) {
         Ok(ip) => {
-            //TO DO
-            None
+            let mut jobs = CLUSTER_JOBS.write();
+
+            if !jobs.contains_key(&dataset_id) {
+                //create an empty jobs queue
+                jobs.insert(dataset_id.clone(), Vec::new());
+            };
+
+            match jobs.get_mut(&dataset_id) {
+                Some(queue) => {
+                    //search for the next available job
+                    //get the current index
+                    let current = queue.len();
+
+                    if current == depth {
+                        return None;
+                    }
+
+                    let next = (current + num_threads).min(depth);
+
+                    //append ip to the queue
+                    for _ in current..next {
+                        queue.push(ip);
+                    }
+
+                    Some((current, next))
+                }
+                None => None,
+            }
         }
         Err(_) => None,
     }
@@ -4596,7 +4636,7 @@ fn main() {
                 .service(web::resource("/{path}/get_spectrum").route(web::get().to_async(get_spectrum)))
                 .service(web::resource("/{path}/get_molecules").route(web::get().to_async(get_molecules)))
                 .service(web::resource("/{path}/get_fits").route(web::get().to_async(get_fits)))
-                .service(web::resource("/queue/{id}/{num_threads}").route(web::get().to_async(queue_handler)))
+                .service(web::resource("/queue/{id}/{depth}/{num_threads}").route(web::get().to_async(queue_handler)))
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
         })
         .workers(num_workers)
