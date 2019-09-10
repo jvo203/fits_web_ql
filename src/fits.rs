@@ -866,14 +866,15 @@ impl FITS {
 
                         match reqwest::get(&url) {
                             Ok(mut res) => {
-                                println!(
+                                /*println!(
                                     "a job request response: status: {}, text: {:?}",
                                     res.status(),
                                     res.text()
-                                );
+                                );*/
 
                                 match res.text() {
                                     Ok(body) => {
+                                        println!("parsing {}", &body);
                                         if let Ok((start, end)) =
                                             scan_fmt!(&body, "{d}{d}", usize, usize)
                                         {
@@ -1083,6 +1084,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             #[cfg(not(feature = "cluster"))]
             break;
+        }
+
+        for i in 0..self.data_f16.len() {
+            print!("{} ", self.data_f16[i].len());
         }
 
         self.frame_min = thread_frame_min
