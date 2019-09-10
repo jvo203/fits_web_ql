@@ -1077,7 +1077,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 .collect()
             });
 
-            self.data_f16[start..end].clone_from_slice(&gather_f16[start..end]);
+            self.data_f16[start..end].clone_from_slice(&gather_f16);
 
             #[cfg(not(feature = "cluster"))]
             break;
