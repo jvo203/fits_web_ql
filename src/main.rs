@@ -3055,10 +3055,10 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
         }
     };
 
-    println!(
+    /*println!(
         "received a job request from {}: dataset_id: {}, depth: {}, num_threads: {}",
         node_ip, dataset_id, depth, num_threads
-    );
+    );*/
 
     match schedule_jobs(dataset_id, depth, node_ip, num_threads) {
         Some((start, end)) => result(Ok(HttpResponse::Ok()
