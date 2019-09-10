@@ -874,7 +874,7 @@ impl FITS {
 
                                 match res.text() {
                                     Ok(body) => {
-                                        println!("parsing {}", &body);
+                                        //println!("parsing {}", &body);
                                         if let Ok((start, end)) =
                                             scan_fmt!(&body, "{d}{d}", usize, usize)
                                         {
