@@ -2951,6 +2951,43 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         mean_spectrum = references[2];
                         integrated_spectrum = references[3];
                     }
+                    -64 => {
+                        let mut references: [f32; 4] =
+                            [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+
+                        let vec = &self.data_f64[frame];
+                        let vec_ptr = vec.as_ptr() as *mut f64;
+                        let vec_len = vec.len();
+
+                        let mut pixels = thread_pixels[tid].write();
+                        let mask = thread_mask[tid].write();
+                        let mask_ptr = mask.as_ptr() as *mut u8;
+                        let mask_len = mask.len();
+
+                        unsafe {
+                            let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                            spmd::make_image_spectrumF64_minmax(
+                                vec_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                self.ignrval,
+                                self.datamin,
+                                self.datamax,
+                                cdelt3,
+                                pixels.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                vec_len as u32,
+                                references.as_mut_ptr(),
+                            );
+                        }
+
+                        frame_min = references[0];
+                        frame_max = references[1];
+                        mean_spectrum = references[2];
+                        integrated_spectrum = references[3];
+                    }
                     _ => println!("unsupported bitpix: {}", self.bitpix),
                 }
 
