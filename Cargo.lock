@@ -903,7 +903,7 @@ dependencies = [
 
 [[package]]
 name = "fits_web_ql"
-version = "4.1.20"
+version = "4.1.21"
 dependencies = [
  "actix 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-files 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
