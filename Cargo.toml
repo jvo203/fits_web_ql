@@ -16,7 +16,7 @@ cuda = []
 opencl = ["ocl", "rand"]
 zfp = ["zfp-sys"]
 ipp = ["ipp-sys"]
-cluster = ["reqwest"]
+cluster = ["reqwest", "libzmq"]
 
 [build-dependencies]
 bindgen = "*"
@@ -78,6 +78,7 @@ flate2 = "*"
 ispc = "*"
 machine-ip = "*"
 dns-lookup = "*"
+libzmq =  {version = "*", optional = true}
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
 zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}

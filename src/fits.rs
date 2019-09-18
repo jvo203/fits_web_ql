@@ -1145,7 +1145,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             "[zfp_decompress] elapsed time: {} [ms]",
             (stop - start) / 1000000
         );
-        
+
         #[cfg(feature = "cluster")]
         {
             //if it's a root gather the partial statistics from other nodes (exclude itself)

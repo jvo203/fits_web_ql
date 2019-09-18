@@ -72,6 +72,12 @@ use log::info;
 use time as precise_time;
 //use rav1e::*;
 
+#[cfg(feature = "cluster")]
+use libzmq::{prelude::*, *};
+
+#[cfg(feature = "cluster")]
+use std::convert::TryInto;
+
 #[cfg(feature = "jvo")]
 use postgres::{Connection, TlsMode};
 
@@ -2396,7 +2402,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-09-17.0";
+static VERSION_STRING: &'static str = "SV2019-09-18.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2762,6 +2768,9 @@ fn fitswebql_entry(
         None => true,
     };
 
+    //#[cfg(feature = "cluster")]
+    let mut zmq_server: Option<libzmq::Server> = None;
+
     #[cfg(feature = "cluster")]
     {
         println!("is_slave: {}", !is_root);
@@ -2781,12 +2790,52 @@ fn fitswebql_entry(
 
         //broadcast the URL to all nodes (only root has a non-empty HashMap)
         if !nodes.is_empty() && is_root {
+            let mut zmq_port: libzmq::addr::Port = libzmq::addr::Port::Unspecified;
+
+            let addr: Option<TcpAddr> = match "0.0.0.0:*".try_into() {
+                Ok(x) => Some(x),
+                Err(err) => {
+                    println!("ØMQ error: {}", err);
+                    None
+                }
+            };
+
+            if let Some(x) = addr {
+                println!("ØMQ address: {:?}", x);
+                match ServerBuilder::new().bind(x).build() {
+                    Ok(server) => {
+                        // Retrieve the addr that was assigned.
+                        match server.last_endpoint() {
+                            Ok(bound) => {
+                                println!("ØMQ endpoint: {:?}", bound);
+                                match bound {
+                                    libzmq::addr::Endpoint::Tcp(host) => {
+                                        let socket = host.host();
+                                        let port = socket.port();
+                                        zmq_port = port;
+                                    }
+                                    _ => {}
+                                };
+                            }
+                            _ => {}
+                        };
+                        zmq_server = Some(server);
+                    }
+                    Err(err) => println!("ØMQ error: {}", err),
+                };
+            };
+
             let uri = req.uri();
 
             nodes.iter().for_each(|ip| {
-                let url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);
+                let mut url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);
+
+                if let libzmq::addr::Port::Specified(port) = zmq_port {
+                    url = format!("{}&zmq_port={}", url, port);
+                };
+
                 let thread_ip = ip.clone();
-                println!("routing {}", url);
+                println!("forwarding {}", url);
 
                 thread::spawn(move || match reqwest::get(&url) {
                     Ok(res) => {
