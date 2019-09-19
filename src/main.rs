@@ -2768,132 +2768,6 @@ fn fitswebql_entry(
         None => true,
     };
 
-    #[cfg(feature = "cluster")]
-    let mut zmq_server: Option<libzmq::Server> = None;
-
-    let zmq_port: Option<u16> = match query.get("zmq_port") {
-        Some(port) => match port.parse::<u16>() {
-            Ok(x) => Some(x),
-            Err(_) => None,
-        },
-        _ => None,
-    };
-
-    #[cfg(feature = "cluster")]
-    {
-        println!("is_slave: {}", !is_root);
-
-        if !is_root {
-            match req.connection_info().remote() {
-                Some(server_address) => {
-                    let server_ip: Vec<&str> = server_address.split(':').collect();
-                    println!(
-                        "root-rank node: {}, ØMQ port: {:?}",
-                        server_ip[0], zmq_port
-                    );
-                    *root_node.write() = Some(server_ip[0].to_string());
-                }
-                None => {}
-            }
-        };
-
-        let nodes = CLUSTER_NODES.read();
-
-        //broadcast the URL to all nodes (only root has a non-empty HashMap)
-        if !nodes.is_empty() && is_root {
-            let mut zmq_port: libzmq::addr::Port = libzmq::addr::Port::Unspecified;
-
-            let addr: Option<TcpAddr> = match "0.0.0.0:*".try_into() {
-                Ok(x) => Some(x),
-                Err(err) => {
-                    println!("ØMQ error: {}", err);
-                    None
-                }
-            };
-
-            if let Some(x) = addr {
-                println!("ØMQ address: {:?}", x);
-                match ServerBuilder::new().bind(x).build() {
-                    Ok(server) => {
-                        // Retrieve the addr that was assigned.
-                        match server.last_endpoint() {
-                            Ok(bound) => {
-                                println!("ØMQ endpoint: {:?}", bound);
-                                match bound {
-                                    libzmq::addr::Endpoint::Tcp(host) => {
-                                        let socket = host.host();
-                                        let port = socket.port();
-                                        zmq_port = port;
-                                    }
-                                    _ => {}
-                                };
-                            }
-                            _ => {}
-                        };
-                        zmq_server = Some(server);
-                    }
-                    Err(err) => println!("ØMQ error: {}", err),
-                };
-            };
-
-            let uri = req.uri();
-
-            nodes.iter().for_each(|ip| {
-                let mut url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);
-
-                if let libzmq::addr::Port::Specified(port) = zmq_port {
-                    url = format!("{}&zmq_port={}", url, port);
-                };
-
-                let thread_ip = ip.clone();
-                println!("forwarding {}", url);
-
-                thread::spawn(move || match reqwest::get(&url) {
-                    Ok(res) => {
-                        println!("{}: status: {}", thread_ip, res.status());
-                    }
-                    Err(err) => {
-                        println!("{}, removing {} from the cluster", err, thread_ip);
-                        CLUSTER_NODES.write().remove(&thread_ip);
-                        println!("{} removed", thread_ip);
-                    }
-                });
-
-                /*let client = Client::default();
-                let _ = client
-                    .get(url) // <- Create request builder
-                    .header("User-Agent", "fits_web_ql")
-                    .send() // <- Send http request
-                    .map_err(|err| println!("request error: {}", err))
-                    .and_then(|response| {
-                        // <- server http response
-                        println!("Response: {:?}", response);
-                        Ok(())
-                    })
-                    .wait();*/
-
-                /*let _ = Client::new()
-                .get(&url)
-                .send()
-                .and_then(|mut res| {
-                    println!("{}", res.status());
-
-                    let body = mem::replace(res.body_mut(), Decoder::empty());
-                    body.concat2()
-                    //println!("HTTP response: {:#?}", res);
-                })
-                .map_err(|err| println!("request error: {}", err))
-                .map(|body| {
-                    let mut body = Cursor::new(body);
-                    let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
-                        println!("stdout error: {}", err);
-                    });
-                })
-                .wait();*/
-            });
-        };
-    }
-
     #[cfg(feature = "jvo")]
     let db = match query.get("db") {
         Some(x) => x,
@@ -2971,6 +2845,163 @@ fn fitswebql_entry(
             v
         }
     };
+
+    let va_count = dataset_id.len();
+
+    let zmq_port: Vec<Option<u16>> = match query.get("zmq_port") {
+        Some(port) => match port.parse::<u16>() {
+            Ok(x) => vec![Some(x)],
+            Err(_) => vec![None],
+        },
+        _ => {
+            //iterate through all datasets looking for zmq_portX
+            (0..va_count)
+                .into_iter()
+                .map(|i| {
+                    let pattern = format!("zmq_port{}", (i + 1));
+                    match query.get(&pattern) {
+                        Some(port) => match port.parse::<u16>() {
+                            Ok(x) => Some(x),
+                            Err(_) => None,
+                        },
+                        _ => None,
+                    }
+                })
+                .collect()
+        }
+    };
+
+    if zmq_port.len() > 0 {
+        println!("ØMQ ports: {:?}", zmq_port);
+    };
+
+    #[cfg(feature = "cluster")]
+    let mut zmq_server: Vec<Option<libzmq::Server>> = vec![None; va_count];
+
+    #[cfg(feature = "cluster")]
+    {
+        println!("is_slave: {}, va_count: {}", !is_root, va_count);
+
+        if !is_root {
+            match req.connection_info().remote() {
+                Some(server_address) => {
+                    let server_ip: Vec<&str> = server_address.split(':').collect();
+                    println!("root-rank node: {}", server_ip[0]);
+                    *root_node.write() = Some(server_ip[0].to_string());
+                }
+                None => {}
+            }
+        };
+
+        let nodes = CLUSTER_NODES.read();
+
+        //broadcast the URL to all nodes (only root has a non-empty HashMap)
+        if !nodes.is_empty() && is_root {
+            let mut zmq_port: Vec<libzmq::addr::Port> =
+                vec![libzmq::addr::Port::Unspecified; va_count];
+
+            for i in 0..va_count {
+                let addr: Option<TcpAddr> = match "0.0.0.0:*".try_into() {
+                    Ok(x) => Some(x),
+                    Err(err) => {
+                        println!("ØMQ error: {}", err);
+                        None
+                    }
+                };
+
+                if let Some(x) = addr {
+                    println!("ØMQ address: {:?}", x);
+                    match ServerBuilder::new().bind(x).build() {
+                        Ok(server) => {
+                            // Retrieve the addr that was assigned.
+                            match server.last_endpoint() {
+                                Ok(bound) => {
+                                    println!("ØMQ endpoint: {:?}", bound);
+                                    match bound {
+                                        libzmq::addr::Endpoint::Tcp(host) => {
+                                            let socket = host.host();
+                                            let port = socket.port();
+                                            zmq_port[i] = port;
+                                        }
+                                        _ => {}
+                                    };
+                                }
+                                _ => {}
+                            };
+                            zmq_server[i] = Some(server);
+                        }
+                        Err(err) => println!("ØMQ error: {}", err),
+                    };
+                };
+            }
+
+            let uri = req.uri();
+
+            nodes.iter().for_each(|ip| {
+                let mut url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);
+
+                if va_count == 1 {
+                    if let libzmq::addr::Port::Specified(port) = zmq_port[0] {
+                        url = format!("{}&zmq_port={}", url, port);
+                    };
+                };
+
+                if va_count > 1 {
+                    for i in 0..va_count {
+                        if let libzmq::addr::Port::Specified(port) = zmq_port[i] {
+                            url = format!("{}&zmq_port{}={}", url, (i + 1), port);
+                        };
+                    }
+                };
+
+                let thread_ip = ip.clone();
+                println!("forwarding {}", url);
+
+                thread::spawn(move || match reqwest::get(&url) {
+                    Ok(res) => {
+                        println!("{}: status: {}", thread_ip, res.status());
+                    }
+                    Err(err) => {
+                        println!("{}, removing {} from the cluster", err, thread_ip);
+                        CLUSTER_NODES.write().remove(&thread_ip);
+                        println!("{} removed", thread_ip);
+                    }
+                });
+
+                /*let client = Client::default();
+                let _ = client
+                    .get(url) // <- Create request builder
+                    .header("User-Agent", "fits_web_ql")
+                    .send() // <- Send http request
+                    .map_err(|err| println!("request error: {}", err))
+                    .and_then(|response| {
+                        // <- server http response
+                        println!("Response: {:?}", response);
+                        Ok(())
+                    })
+                    .wait();*/
+
+                /*let _ = Client::new()
+                .get(&url)
+                .send()
+                .and_then(|mut res| {
+                    println!("{}", res.status());
+
+                    let body = mem::replace(res.body_mut(), Decoder::empty());
+                    body.concat2()
+                    //println!("HTTP response: {:#?}", res);
+                })
+                .map_err(|err| println!("request error: {}", err))
+                .map(|body| {
+                    let mut body = Cursor::new(body);
+                    let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
+                        println!("stdout error: {}", err);
+                    });
+                })
+                .wait();*/
+            });
+        };
+    }
 
     //sane defaults
     let mut composite = false;
