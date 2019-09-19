@@ -2768,8 +2768,16 @@ fn fitswebql_entry(
         None => true,
     };
 
-    //#[cfg(feature = "cluster")]
+    #[cfg(feature = "cluster")]
     let mut zmq_server: Option<libzmq::Server> = None;
+
+    let zmq_port: Option<u16> = match query.get("zmq_port") {
+        Some(port) => match port.parse::<u16>() {
+            Ok(x) => Some(x),
+            Err(_) => None,
+        },
+        _ => None,
+    };
 
     #[cfg(feature = "cluster")]
     {
@@ -2779,7 +2787,10 @@ fn fitswebql_entry(
             match req.connection_info().remote() {
                 Some(server_address) => {
                     let server_ip: Vec<&str> = server_address.split(':').collect();
-                    println!("root-rank node: {}", server_ip[0]);
+                    println!(
+                        "root-rank node: {}, ØMQ port: {:?}",
+                        server_ip[0], zmq_port
+                    );
                     *root_node.write() = Some(server_ip[0].to_string());
                 }
                 None => {}
