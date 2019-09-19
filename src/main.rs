@@ -2879,6 +2879,9 @@ fn fitswebql_entry(
     let mut zmq_server: Vec<Option<libzmq::Server>> = vec![None; va_count];
 
     #[cfg(feature = "cluster")]
+    let mut zmq_client: Vec<Option<libzmq::Client>> = vec![None; va_count];
+
+    #[cfg(feature = "cluster")]
     {
         println!("is_slave: {}, va_count: {}", !is_root, va_count);
 

@@ -377,6 +377,7 @@ pub struct FITS {
     pub _is_slave: bool,
     pub status_code: u16,
     pub zmq_server: Option<libzmq::Server>,
+    pub zmq_client: Option<libzmq::Client>,
 }
 
 #[derive(Serialize, Debug)]
@@ -497,6 +498,7 @@ impl FITS {
             _is_slave: is_slave,
             status_code: 404,
             zmq_server: zmq_server,
+            zmq_client: None,
         };
 
         fits
