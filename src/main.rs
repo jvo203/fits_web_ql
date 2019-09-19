@@ -3075,6 +3075,7 @@ fn fitswebql_entry(
         &flux,
         &server,
         !is_root,
+        zmq_server,
     )));
 
     //local (Personal Edition)
@@ -3090,6 +3091,7 @@ fn fitswebql_entry(
         &flux,
         &server,
         false,
+        zmq_server,
     )));
 }
 
@@ -4016,6 +4018,7 @@ fn external_fits(
                 &my_data_id,
                 &"".to_owned(),
                 false,
+                None,
             )))),
         );
 
@@ -4031,6 +4034,7 @@ fn external_fits(
                     filepath.as_path(),
                     &my_server,
                     false,
+                    None,
                 )
             } else {
                 println!(
@@ -4091,6 +4095,7 @@ fn internal_fits(
     flux: &str,
     server: &Addr<server::SessionServer>,
     is_slave: bool,
+    zmq_server: Vec<Option<libzmq::Server>>,
 ) -> HttpResponse {
     //get fits location
 
@@ -4122,6 +4127,7 @@ fn internal_fits(
             let my_ext = ext.to_string();
             let my_server = server.clone();
             let my_flux = flux.to_string();
+            let my_zmq_server = zmq_server[i].clone();
 
             DATASETS.write().insert(
                 my_data_id.clone(),
@@ -4129,6 +4135,7 @@ fn internal_fits(
                     &my_data_id,
                     &my_flux,
                     is_slave,
+                    None,
                 )))),
             );
 
@@ -4160,6 +4167,7 @@ fn internal_fits(
                     filepath.as_path(),
                     &my_server,
                     is_slave,
+                    my_zmq_server,
                 ); //from_path or from_path_mmap
 
                 let fits = Arc::new(RwLock::new(Box::new(fits)));

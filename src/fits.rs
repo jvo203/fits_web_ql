@@ -376,6 +376,7 @@ pub struct FITS {
     pub is_dummy: bool,
     pub _is_slave: bool,
     pub status_code: u16,
+    pub zmq_server: Option<libzmq::Server>,
 }
 
 #[derive(Serialize, Debug)]
@@ -388,7 +389,12 @@ struct FITSImage {
 }
 
 impl FITS {
-    pub fn new(id: &String, flux: &String, is_slave: bool) -> FITS {
+    pub fn new(
+        id: &String,
+        flux: &String,
+        is_slave: bool,
+        zmq_server: Option<libzmq::Server>,
+    ) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
             Ok(_) => String::from(""),
             Err(_) => id.clone().replace(".fits", "").replace(".FITS", ""),
@@ -490,6 +496,7 @@ impl FITS {
             is_dummy: true,
             _is_slave: is_slave,
             status_code: 404,
+            zmq_server: zmq_server,
         };
 
         fits
@@ -918,6 +925,15 @@ impl FITS {
                 if _break_loop {
                     break;
                 }
+
+                //periodically poll for messages from cluster nodes
+                match &self.zmq_server {
+                    Some(server) => {
+                        let res = server.try_recv_msg();
+                        println!("ØMQ res: {:?}", res);
+                    }
+                    _ => {}
+                }
             }
 
             //at first fill-in the self.data_f16 vector in parallel
@@ -1146,7 +1162,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             (stop - start) / 1000000
         );
 
-        #[cfg(feature = "cluster")]
+        /*#[cfg(feature = "cluster")]
         {
             //if it's a root gather the partial statistics from other nodes (exclude itself)
             if !self._is_slave {
@@ -1155,7 +1171,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     None => String::from("127.0.0.1"),
                 };
             }
-        }
+        }*/
 
         success.load(Ordering::SeqCst)
     }
@@ -1302,8 +1318,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
         is_slave: bool,
+        zmq_server: Option<libzmq::Server>,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux, is_slave);
+        let mut fits = FITS::new(id, flux, is_slave, zmq_server);
         fits.is_dummy = false;
 
         //load data from filepath
@@ -1678,7 +1695,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         server: &Addr<server::SessionServer>,
         is_slave: bool,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux, is_slave);
+        let mut fits = FITS::new(id, flux, is_slave, None);
         fits.is_dummy = false;
 
         println!("FITS::from_url({})", url);
@@ -7976,7 +7993,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
 impl Clone for FITS {
     fn clone(&self) -> FITS {
-        let mut fits = FITS::new(&self.dataset_id, &self.flux, self._is_slave);
+        let mut fits = FITS::new(
+            &self.dataset_id,
+            &self.flux,
+            self._is_slave,
+            None, /*self.zmq_server.clone()*/
+        );
 
         //only a limited clone (fields needed by get_frequency_range())
 
