@@ -874,13 +874,15 @@ impl FITS {
                 match &*root_node.read() {
                     Some(root) => {
                         //request a data range from the root
+                        let work_size = num_threads * 128;
+
                         let url = format!(
                             "http://{}:{}/queue/{}/{}/{}",
                             root,
                             server_port.read(),
                             percent_encode(self.dataset_id.as_bytes(), NON_ALPHANUMERIC),
                             self.depth,
-                            num_threads
+                            work_size,
                         );
 
                         match reqwest::get(&url) {
