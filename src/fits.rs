@@ -933,7 +933,12 @@ impl FITS {
                 match &self.zmq_server {
                     Some(server) => {
                         match server.try_recv_msg() {
-                            Ok(msg) => println!("ØMQ received msg: {:?}", msg),
+                            Ok(msg) => {
+                                match msg.to_str() {
+                                    Ok(msg) => println!("ØMQ received msg: {:?}", msg),
+                                    _ => {}
+                                };
+                            }
                             _ => {}
                         };
                     }
@@ -1111,7 +1116,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //push the spectrum updates to the root node
                 match &self.zmq_client {
                     Some(client) => {
-                        match client.send("hello from ØMQ") {
+                        let msg = json!({
+                            "type" : "spectrum",
+                            "start" : start,
+                            "end" : end,
+                            //"spectrum" : &gather_f16,
+                        });
+
+                        match client.send(msg.to_string()) {
                             Ok(_) => {}
                             Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
                         };
