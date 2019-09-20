@@ -66,6 +66,15 @@ pub struct ZFPMaskedArray {
     pub rate: f64,
 }
 
+#[cfg(feature = "cluster")]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SpectrumRange {
+    pub start: usize,
+    pub end: usize,
+    pub mean_spectrum: Vec<f32>,
+    pub integrated_spectrum: Vec<f32>,
+}
+
 #[cfg(feature = "opencl")]
 use ocl::ProQue;
 
@@ -1134,18 +1143,34 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             .map(|x| x.load(Ordering::SeqCst))
                             .collect();
 
-                        let msg = json!({
+                        /*let msg = json!({
                             "type" : "spectrum",
                             "start" : start,
                             "end" : end,
                             "mean_spectrum" : &mean_spectrum,
                             "integrated_spectrum" : &integrated_spectrum,
-                        });
+                        });*/
 
-                        match client.send(msg.to_string()) {
-                            Ok(_) => {}
-                            Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
+                        let msg = SpectrumRange {
+                            start: start,
+                            end: end,
+                            mean_spectrum: mean_spectrum,
+                            integrated_spectrum: integrated_spectrum,
                         };
+
+                        match serialize(&msg) {
+                            Ok(bin) => {
+                                match client.send(bin) {
+                                    Ok(_) => {}
+                                    Err(msg) => {
+                                        println!("ØMQ could not send a message: {:?}", msg)
+                                    }
+                                };
+                            }
+                            Err(err) => {
+                                println!("error serializing a SpectrumRange ØMQ response: {}", err)
+                            }
+                        }
                     }
                     _ => {}
                 }
