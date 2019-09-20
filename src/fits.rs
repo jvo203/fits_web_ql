@@ -935,7 +935,7 @@ impl FITS {
                         match server.try_recv_msg() {
                             Ok(msg) => {
                                 match msg.to_str() {
-                                    Ok(msg) => println!("ØMQ received msg: {:?}", msg),
+                                    Ok(msg) => /*println!("ØMQ received msg: {:?}", msg)*/{},
                                     _ => {}
                                 };
                             }
