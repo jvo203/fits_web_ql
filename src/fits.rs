@@ -933,7 +933,7 @@ impl FITS {
                 match &self.zmq_server {
                     Some(server) => {
                         match server.try_recv_msg() {
-                            Ok(res) => println!("ØMQ res: {:?}", res),
+                            Ok(msg) => println!("ØMQ received msg: {:?}", msg),
                             _ => {}
                         };
                     }
@@ -1105,6 +1105,20 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             #[cfg(not(feature = "cluster"))]
             break;
+
+            #[cfg(feature = "cluster")]
+            {
+                //push the spectrum updates to the root node
+                match &self.zmq_client {
+                    Some(client) => {
+                        match client.send("hello from ØMQ") {
+                            Ok(_) => {}
+                            Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
+                        };
+                    }
+                    _ => {}
+                }
+            }
         }
 
         for i in 0..self.data_f16.len() {
