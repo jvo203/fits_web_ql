@@ -946,10 +946,12 @@ impl FITS {
                             match server.try_recv_msg() {
                                 Ok(msg) => {
                                     println!("ØMQ received msg len: {} bytes.", msg.len());
-                                    /*match msg.to_str() {
+                                    let res: Result<SpectrumRange, _> =
+                                        deserialize(&msg.as_bytes());
+                                    match res {
                                         Ok(msg) => println!("ØMQ received msg: {:?}", msg),
                                         _ => {}
-                                    };*/
+                                    };
                                 }
                                 _ => nothing_to_report = true,
                             };
