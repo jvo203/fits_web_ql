@@ -1130,8 +1130,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             "type" : "spectrum",
                             "start" : start,
                             "end" : end,
-                            /*"mean_spectrum" : &mean_spectrum,
-                            "integrated_spectrum" : &integrated_spectrum,*/
+                            "mean_spectrum" : &mean_spectrum,
+                            //"integrated_spectrum" : &integrated_spectrum,
                         });
 
                         match client.send(msg.to_string()) {
