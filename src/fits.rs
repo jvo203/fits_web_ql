@@ -932,7 +932,7 @@ impl FITS {
                 //periodically poll for messages from cluster nodes
                 match &self.zmq_server {
                     Some(server) => {
-                        let nothing_to_report = false;
+                        let mut nothing_to_report = false;
                         loop {
                             match server.try_recv_msg() {
                                 Ok(msg) => {
