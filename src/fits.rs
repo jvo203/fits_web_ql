@@ -395,6 +395,7 @@ impl FITS {
         flux: &String,
         is_slave: bool,
         zmq_server: Option<libzmq::Server>,
+        zmq_client: Option<libzmq::Client>,
     ) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
             Ok(_) => String::from(""),
@@ -498,7 +499,7 @@ impl FITS {
             _is_slave: is_slave,
             status_code: 404,
             zmq_server: zmq_server,
-            zmq_client: None,
+            zmq_client: zmq_client,
         };
 
         fits
@@ -931,8 +932,10 @@ impl FITS {
                 //periodically poll for messages from cluster nodes
                 match &self.zmq_server {
                     Some(server) => {
-                        let res = server.try_recv_msg();
-                        println!("ØMQ res: {:?}", res);
+                        match server.try_recv_msg() {
+                            Ok(res) => println!("ØMQ res: {:?}", res),
+                            _ => {}
+                        };
                     }
                     _ => {}
                 }
@@ -1321,8 +1324,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         server: &Addr<server::SessionServer>,
         is_slave: bool,
         zmq_server: Option<libzmq::Server>,
+        zmq_client: Option<libzmq::Client>,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux, is_slave, zmq_server);
+        let mut fits = FITS::new(id, flux, is_slave, zmq_server, zmq_client);
         fits.is_dummy = false;
 
         //load data from filepath
@@ -1697,7 +1701,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         server: &Addr<server::SessionServer>,
         is_slave: bool,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux, is_slave, None);
+        let mut fits = FITS::new(id, flux, is_slave, None, None);
         fits.is_dummy = false;
 
         println!("FITS::from_url({})", url);
@@ -8000,6 +8004,7 @@ impl Clone for FITS {
             &self.flux,
             self._is_slave,
             None, /*self.zmq_server.clone()*/
+            None, /*self.zmq_client.clone()*/
         );
 
         //only a limited clone (fields needed by get_frequency_range())

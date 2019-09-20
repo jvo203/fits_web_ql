@@ -2402,7 +2402,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-09-18.0";
+static VERSION_STRING: &'static str = "SV2019-09-20.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2875,10 +2875,7 @@ fn fitswebql_entry(
         println!("ØMQ ports: {:?}", zmq_port);
     };
 
-    #[cfg(feature = "cluster")]
     let mut zmq_server: Vec<Option<libzmq::Server>> = vec![None; va_count];
-
-    #[cfg(feature = "cluster")]
     let mut zmq_client: Vec<Option<libzmq::Client>> = vec![None; va_count];
 
     #[cfg(feature = "cluster")]
@@ -3004,6 +3001,34 @@ fn fitswebql_entry(
                 .wait();*/
             });
         };
+
+        if !is_root {
+            for i in 0..va_count {
+                //launch ØMQ clients
+                if let Some(port) = zmq_port[i] {
+                    if let Some(root) = &*root_node.read() {
+                        let addr = format!("{}:{}", root, port);
+                        println!("ØMQ client --> {}", addr);
+
+                        let addr: Option<TcpAddr> = match addr.try_into() {
+                            Ok(x) => Some(x),
+                            Err(err) => {
+                                println!("ØMQ error: {}", err);
+                                None
+                            }
+                        };
+
+                        if let Some(x) = addr {
+                            println!("ØMQ root address: {:?}", x);
+                            match ClientBuilder::new().connect(x).build() {
+                                Ok(client) => zmq_client[i] = Some(client),
+                                Err(err) => println!("ØMQ error: {}", err),
+                            };
+                        };
+                    };
+                };
+            }
+        }
     }
 
     //sane defaults
@@ -3079,6 +3104,7 @@ fn fitswebql_entry(
         &server,
         !is_root,
         zmq_server,
+        zmq_client,
     )));
 
     //local (Personal Edition)
@@ -3095,6 +3121,7 @@ fn fitswebql_entry(
         &server,
         false,
         zmq_server,
+        zmq_client,
     )));
 }
 
@@ -4022,6 +4049,7 @@ fn external_fits(
                 &"".to_owned(),
                 false,
                 None,
+                None,
             )))),
         );
 
@@ -4037,6 +4065,7 @@ fn external_fits(
                     filepath.as_path(),
                     &my_server,
                     false,
+                    None,
                     None,
                 )
             } else {
@@ -4099,6 +4128,7 @@ fn internal_fits(
     server: &Addr<server::SessionServer>,
     is_slave: bool,
     zmq_server: Vec<Option<libzmq::Server>>,
+    zmq_client: Vec<Option<libzmq::Client>>,
 ) -> HttpResponse {
     //get fits location
 
@@ -4131,6 +4161,7 @@ fn internal_fits(
             let my_server = server.clone();
             let my_flux = flux.to_string();
             let my_zmq_server = zmq_server[i].clone();
+            let my_zmq_client = zmq_client[i].clone();
 
             DATASETS.write().insert(
                 my_data_id.clone(),
@@ -4138,6 +4169,7 @@ fn internal_fits(
                     &my_data_id,
                     &my_flux,
                     is_slave,
+                    None,
                     None,
                 )))),
             );
@@ -4171,6 +4203,7 @@ fn internal_fits(
                     &my_server,
                     is_slave,
                     my_zmq_server,
+                    my_zmq_client,
                 ); //from_path or from_path_mmap
 
                 let fits = Arc::new(RwLock::new(Box::new(fits)));
