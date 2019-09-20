@@ -874,7 +874,7 @@ impl FITS {
                 match &*root_node.read() {
                     Some(root) => {
                         //request a data range from the root
-                        let work_size = num_threads * 128;
+                        let work_size = num_threads * 32;
 
                         let url = format!(
                             "http://{}:{}/queue/{}/{}/{}",
