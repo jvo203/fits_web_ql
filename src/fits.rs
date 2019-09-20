@@ -938,18 +938,48 @@ impl FITS {
                     break;
                 }
 
-                //periodically poll for messages from cluster nodes
+                //periodically poll for incoming messages from the cluster
                 match &self.zmq_server {
-                    Some(server) => {
+                    Some(my_server) => {
                         let mut nothing_to_report = false;
                         loop {
-                            match server.try_recv_msg() {
+                            match my_server.try_recv_msg() {
                                 Ok(msg) => {
                                     println!("ØMQ received msg len: {} bytes.", msg.len());
                                     let res: Result<SpectrumRange, _> =
                                         deserialize(&msg.as_bytes());
                                     match res {
-                                        Ok(msg) => println!("ØMQ received msg: {:?}", msg),
+                                        Ok(msg) => {
+                                            println!("ØMQ received msg: {:?}", msg);
+
+                                            //fill-in blanks in the spectra
+                                            let mut offset = 0;
+                                            for frame in msg.start..msg.end {
+                                                thread_mean_spectrum[frame].store(
+                                                    msg.mean_spectrum[offset],
+                                                    Ordering::SeqCst,
+                                                );
+                                                thread_integrated_spectrum[frame].store(
+                                                    msg.integrated_spectrum[offset],
+                                                    Ordering::SeqCst,
+                                                );
+                                                offset += 1;
+
+                                                //add frame_min and frame_max too
+
+                                                //update the progress
+                                                let previous_frame_count = frame_count
+                                                    .fetch_add(1, Ordering::SeqCst)
+                                                    as i32;
+                                                let current_frame_count = previous_frame_count + 1;
+                                                self.send_progress_notification(
+                                                    &server,
+                                                    &"loading FITS".to_owned(),
+                                                    total as i32,
+                                                    current_frame_count,
+                                                );
+                                            }
+                                        }
                                         _ => {}
                                     };
                                 }
