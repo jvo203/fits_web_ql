@@ -3125,6 +3125,7 @@ fn fitswebql_entry(
     )));
 }
 
+#[cfg(feature = "cluster")]
 fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
     let dataset_id: String = match req.match_info().get("id") {
         Some(x) => x.to_string(),
@@ -3193,6 +3194,14 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
     }
 }
 
+#[cfg(not(feature = "cluster"))]
+fn queue_handler(_req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
+    result(Ok(HttpResponse::Ok()
+        .content_type("text/plain")
+        .body("null null")))
+}
+
+#[cfg(feature = "cluster")]
 fn schedule_jobs(
     dataset_id: String,
     depth: usize,
