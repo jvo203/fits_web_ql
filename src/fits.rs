@@ -932,15 +932,22 @@ impl FITS {
                 //periodically poll for messages from cluster nodes
                 match &self.zmq_server {
                     Some(server) => {
-                        match server.try_recv_msg() {
-                            Ok(msg) => {
-                                match msg.to_str() {
-                                    Ok(msg) => println!("ØMQ received msg: {:?}", msg),
-                                    _ => {}
-                                };
+                        let nothing_to_report = false;
+                        loop {
+                            match server.try_recv_msg() {
+                                Ok(msg) => {
+                                    match msg.to_str() {
+                                        Ok(msg) => println!("ØMQ received msg: {:?}", msg),
+                                        _ => {}
+                                    };
+                                }
+                                _ => nothing_to_report = true,
+                            };
+
+                            if nothing_to_report {
+                                break;
                             }
-                            _ => {}
-                        };
+                        }
                     }
                     _ => {}
                 }
@@ -1131,7 +1138,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             "start" : start,
                             "end" : end,
                             "mean_spectrum" : &mean_spectrum,
-                            //"integrated_spectrum" : &integrated_spectrum,
+                            "integrated_spectrum" : &integrated_spectrum,
                         });
 
                         match client.send(msg.to_string()) {
