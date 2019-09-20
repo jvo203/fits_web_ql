@@ -936,10 +936,11 @@ impl FITS {
                         loop {
                             match server.try_recv_msg() {
                                 Ok(msg) => {
-                                    match msg.to_str() {
+                                    println!("ØMQ received msg len: {} bytes.", msg.len());
+                                    /*match msg.to_str() {
                                         Ok(msg) => println!("ØMQ received msg: {:?}", msg),
                                         _ => {}
-                                    };
+                                    };*/
                                 }
                                 _ => nothing_to_report = true,
                             };
