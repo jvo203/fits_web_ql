@@ -1116,11 +1116,22 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //push the spectrum updates to the root node
                 match &self.zmq_client {
                     Some(client) => {
+                        let mean_spectrum: Vec<f32> = thread_mean_spectrum[start..end]
+                            .iter()
+                            .map(|x| x.load(Ordering::SeqCst))
+                            .collect();
+
+                        let integrated_spectrum: Vec<f32> = thread_integrated_spectrum[start..end]
+                            .iter()
+                            .map(|x| x.load(Ordering::SeqCst))
+                            .collect();
+
                         let msg = json!({
                             "type" : "spectrum",
                             "start" : start,
                             "end" : end,
-                            //"spectrum" : &gather_f16,
+                            "mean_spectrum" : &mean_spectrum,
+                            "integrated_spectrum" : &integrated_spectrum,
                         });
 
                         match client.send(msg.to_string()) {
