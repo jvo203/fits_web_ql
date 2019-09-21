@@ -924,7 +924,9 @@ impl FITS {
                     None => String::from("127.0.0.1"),
                 };
 
-                match schedule_jobs(self.dataset_id.clone(), self.depth, &local_ip, num_threads) {
+                let work_size = num_threads * 32;
+
+                match schedule_jobs(self.dataset_id.clone(), self.depth, &local_ip, work_size) {
                     Some((start, end)) => {
                         //println!("start: {}, end: {}", start, end);
                         _break_loop = false;
