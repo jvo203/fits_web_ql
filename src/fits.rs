@@ -71,6 +71,8 @@ pub struct ZFPMaskedArray {
 pub struct SpectrumRange {
     pub start: usize,
     pub end: usize,
+    pub frame_min: Vec<f32>,
+    pub frame_max: Vec<f32>,
     pub mean_spectrum: Vec<f32>,
     pub integrated_spectrum: Vec<f32>,
 }
@@ -959,6 +961,20 @@ impl FITS {
                                             //fill-in blanks in the spectra
                                             let mut offset = 0;
                                             for frame in msg.start..msg.end {
+                                                let current_frame_min =
+                                                    thread_frame_min[frame].load(Ordering::SeqCst);
+                                                thread_frame_min[frame].store(
+                                                    msg.frame_min[offset].min(current_frame_min),
+                                                    Ordering::SeqCst,
+                                                );
+
+                                                let current_frame_max =
+                                                    thread_frame_max[frame].load(Ordering::SeqCst);
+                                                thread_frame_max[frame].store(
+                                                    msg.frame_max[offset].max(current_frame_max),
+                                                    Ordering::SeqCst,
+                                                );
+
                                                 thread_mean_spectrum[frame].store(
                                                     msg.mean_spectrum[offset],
                                                     Ordering::SeqCst,
@@ -1169,6 +1185,16 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //push the spectrum updates to the root node
                 match &self.zmq_client {
                     Some(client) => {
+                        let frame_min: Vec<f32> = thread_frame_min[start..end]
+                            .iter()
+                            .map(|x| x.load(Ordering::SeqCst))
+                            .collect();
+
+                        let frame_max: Vec<f32> = thread_frame_max[start..end]
+                            .iter()
+                            .map(|x| x.load(Ordering::SeqCst))
+                            .collect();
+
                         let mean_spectrum: Vec<f32> = thread_mean_spectrum[start..end]
                             .iter()
                             .map(|x| x.load(Ordering::SeqCst))
@@ -1179,17 +1205,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             .map(|x| x.load(Ordering::SeqCst))
                             .collect();
 
-                        /*let msg = json!({
-                            "type" : "spectrum",
-                            "start" : start,
-                            "end" : end,
-                            "mean_spectrum" : &mean_spectrum,
-                            "integrated_spectrum" : &integrated_spectrum,
-                        });*/
-
                         let msg = SpectrumRange {
                             start: start,
                             end: end,
+                            frame_min: frame_min,
+                            frame_max: frame_max,
                             mean_spectrum: mean_spectrum,
                             integrated_spectrum: integrated_spectrum,
                         };
