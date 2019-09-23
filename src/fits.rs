@@ -68,13 +68,13 @@ pub struct ZFPMaskedArray {
 
 #[cfg(feature = "cluster")]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SpectrumRange {
-    pub start: usize,
-    pub end: usize,
-    pub frame_min: Vec<f32>,
-    pub frame_max: Vec<f32>,
-    pub mean_spectrum: Vec<f32>,
-    pub integrated_spectrum: Vec<f32>,
+struct SpectrumRange {
+    start: usize,
+    end: usize,
+    frame_min: Vec<f32>,
+    frame_max: Vec<f32>,
+    mean_spectrum: Vec<f32>,
+    integrated_spectrum: Vec<f32>,
 }
 
 #[cfg(feature = "opencl")]
@@ -1133,12 +1133,15 @@ impl FITS {
                                                         as i32;
                                                     let current_frame_count =
                                                         previous_frame_count + 1;
+
+                                                    if !self._is_slave {
                                                     self.send_progress_notification(
                                                         &server,
                                                         &"loading FITS".to_owned(),
                                                         total as i32,
                                                         current_frame_count,
                                                     );
+                                                    }
                                                 }
                                                 Err(err) => {
                                                     println!("{}", err);
