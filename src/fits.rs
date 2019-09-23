@@ -1289,6 +1289,23 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
+        #[cfg(feature = "cluster")]
+        {
+            //handle any remaining messages from the cluster
+            match &self.zmq_server {
+                    Some(my_server) => {
+                        loop {
+                            if frame_count.load(Ordering::SeqCst) as usize == self.depth {
+                                break;
+                            }
+
+                            //poll for messages with a timeout
+                        }
+                    },
+                    _ => {},
+            }
+        }
+
         let stop = precise_time::precise_time_ns();
 
         println!(
