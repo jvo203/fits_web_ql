@@ -66,15 +66,6 @@ pub struct ZFPMaskedArray {
     pub rate: f64,
 }
 
-/*#[cfg(feature = "cluster")]
-#[derive(Serialize, Deserialize, Debug)]
-struct SpectrumRange {
-    start: usize,
-    end: usize,
-    mean_spectrum: Vec<f32>,
-    integrated_spectrum: Vec<f32>,
-}*/
-
 #[cfg(feature = "cluster")]
 #[derive(Serialize, Deserialize, Debug)]
 enum ZMQ_MSG {
@@ -84,14 +75,13 @@ enum ZMQ_MSG {
         _mean_spectrum: Vec<f32>,
         _integrated_spectrum: Vec<f32>,
     },
+    PixelsMask {
+        _dmin: f32,
+        _dmax: f32,
+        _pixels: Vec<f32>,
+        _mask: Vec<u8>,
+    },
 }
-
-/*#[cfg(feature = "cluster")]
-#[derive(Serialize, Deserialize, Debug)]
-struct ZMQ_MSG {
-    r#type: ZMQ_MSG_TYPE,
-    bin: Vec<u8>,
-}*/
 
 #[cfg(feature = "opencl")]
 use ocl::ProQue;
@@ -826,7 +816,8 @@ impl FITS {
         server: &Addr<server::SessionServer>,
     ) -> bool {
         let total = self.depth;
-        let frame_count: AtomicIsize = AtomicIsize::new(0);
+        let spectrum_count: AtomicIsize = AtomicIsize::new(0);
+        let plane_count: AtomicIsize = AtomicIsize::new(0);
         let success: AtomicBool = AtomicBool::new(true);
 
         let start = precise_time::precise_time_ns();
@@ -971,7 +962,7 @@ impl FITS {
                                     let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
                                     match res {
                                         Ok(msg) => {
-                                            println!("ØMQ received msg: {:?}", msg);
+                                            //println!("ØMQ received msg: {:?}", msg);
                                             match msg {
                                                 ZMQ_MSG::SpectrumRange {
                                                     _start,
@@ -993,20 +984,46 @@ impl FITS {
                                                         offset += 1;
 
                                                         //update the progress
-                                                        let previous_frame_count = frame_count
+                                                        let previous_count = spectrum_count
                                                             .fetch_add(1, Ordering::SeqCst)
                                                             as i32;
-                                                        let current_frame_count =
-                                                            previous_frame_count + 1;
+                                                        let current_count = previous_count + 1;
                                                         self.send_progress_notification(
                                                             &server,
                                                             &"loading FITS".to_owned(),
                                                             total as i32,
-                                                            current_frame_count,
+                                                            current_count,
                                                         );
                                                     }
                                                 }
-                                                _ => {}
+                                                ZMQ_MSG::PixelsMask {
+                                                    _dmin,
+                                                    _dmax,
+                                                    _pixels,
+                                                    _mask,
+                                                } => {
+                                                    plane_count.fetch_add(1, Ordering::SeqCst)
+                                                        as i32;
+
+                                                    self.dmin = self.dmin.min(_dmin);
+                                                    self.dmax = self.dmax.max(_dmax);
+
+                                                    //fuse self.pixels and self.mask with received data
+                                                    let pixels_ptr = _pixels.as_ptr() as *mut f32;
+                                                    let mask_ptr = _mask.as_ptr() as *mut u8;
+                                                    let total_size = self.pixels.len();
+
+                                                    unsafe {
+                                                        spmd::join_pixels_masks(
+                                                            self.pixels.as_mut_ptr(),
+                                                            pixels_ptr,
+                                                            self.mask.as_mut_ptr(),
+                                                            mask_ptr,
+                                                            cdelt3,
+                                                            total_size as u32,
+                                                        );
+                                                    }
+                                                }
                                             }
                                         }
                                         _ => {}
@@ -1137,18 +1154,22 @@ impl FITS {
                                                     );
                                                     //end of parallel data processing
 
-                                                    let previous_frame_count = frame_count
+                                                    plane_count
+                                                            .fetch_add(1, Ordering::SeqCst)
+                                                            as i32;
+
+                                                    let previous_count = spectrum_count
                                                         .fetch_add(1, Ordering::SeqCst)
                                                         as i32;
-                                                    let current_frame_count =
-                                                        previous_frame_count + 1;
+                                                    let current_count =
+                                                        previous_count + 1;
 
                                                     if !self._is_slave {
                                                     self.send_progress_notification(
                                                         &server,
                                                         &"loading FITS".to_owned(),
                                                         total as i32,
-                                                        current_frame_count,
+                                                        current_count,
                                                     );
                                                     }
                                                 }
@@ -1252,7 +1273,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     };
 
                     loop {
-                        if frame_count.load(Ordering::SeqCst) as usize == self.depth {
+                        if spectrum_count.load(Ordering::SeqCst) as usize == self.depth
+                            && plane_count.load(Ordering::SeqCst) as usize == self.depth
+                        {
                             break;
                         }
 
@@ -1263,7 +1286,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
                                 match res {
                                     Ok(msg) => {
-                                        println!("ØMQ received msg: {:?}", msg);
+                                        //println!("ØMQ received msg: {:?}", msg);
                                         match msg {
                                             ZMQ_MSG::SpectrumRange {
                                                 _start,
@@ -1285,20 +1308,45 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                                     offset += 1;
 
                                                     //update the progress
-                                                    let previous_frame_count = frame_count
+                                                    let previous_count = spectrum_count
                                                         .fetch_add(1, Ordering::SeqCst)
                                                         as i32;
-                                                    let current_frame_count =
-                                                        previous_frame_count + 1;
+                                                    let current_count = previous_count + 1;
                                                     self.send_progress_notification(
                                                         &server,
                                                         &"loading FITS".to_owned(),
                                                         total as i32,
-                                                        current_frame_count,
+                                                        current_count,
                                                     );
                                                 }
                                             }
-                                            _ => {}
+                                            ZMQ_MSG::PixelsMask {
+                                                _dmin,
+                                                _dmax,
+                                                _pixels,
+                                                _mask,
+                                            } => {
+                                                plane_count.fetch_add(1, Ordering::SeqCst) as i32;
+
+                                                self.dmin = self.dmin.min(_dmin);
+                                                self.dmax = self.dmax.max(_dmax);
+
+                                                //fuse self.pixels and self.mask with received data
+                                                let pixels_ptr = _pixels.as_ptr() as *mut f32;
+                                                let mask_ptr = _mask.as_ptr() as *mut u8;
+                                                let total_size = self.pixels.len();
+
+                                                unsafe {
+                                                    spmd::join_pixels_masks(
+                                                        self.pixels.as_mut_ptr(),
+                                                        pixels_ptr,
+                                                        self.mask.as_mut_ptr(),
+                                                        mask_ptr,
+                                                        cdelt3,
+                                                        total_size as u32,
+                                                    );
+                                                }
+                                            }
                                         }
                                     }
                                     _ => {}
@@ -1338,26 +1386,48 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             self.dmax = self.dmax.max(thread_max[tid].load(Ordering::SeqCst));
 
             let mut pixels_tid = thread_pixels[tid].write();
-
             let mask_tid = thread_mask[tid].read();
             let mask_tid_ptr = mask_tid.as_ptr() as *mut u8;
-
-            let mask_ptr = self.mask.as_ptr() as *mut u8;
 
             let total_size = self.pixels.len();
 
             unsafe {
-                let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
-                let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
-
                 spmd::join_pixels_masks(
                     self.pixels.as_mut_ptr(),
                     pixels_tid.as_mut_ptr(),
-                    mask_raw.as_mut_ptr(),
-                    mask_tid_raw.as_mut_ptr(),
+                    self.mask.as_mut_ptr(),
+                    mask_tid_ptr,
                     cdelt3,
                     total_size as u32,
                 );
+            }
+        }
+
+        #[cfg(feature = "cluster")]
+        {
+            //push the Pixels, Mask and dmin/dmax to the root node
+            match &self.zmq_client {
+                Some(client) => {
+                    let msg = ZMQ_MSG::PixelsMask {
+                        _dmin: self.dmin,
+                        _dmax: self.dmax,
+                        _pixels: self.pixels.clone(),
+                        _mask: self.mask.clone(),
+                    };
+
+                    match serialize(&msg) {
+                        Ok(bin) => {
+                            match client.send(bin) {
+                                Ok(_) => {}
+                                Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
+                            };
+                        }
+                        Err(err) => {
+                            println!("error serializing a SpectrumRange ØMQ response: {}", err)
+                        }
+                    }
+                }
+                _ => {}
             }
         }
 
