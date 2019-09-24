@@ -1293,16 +1293,16 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         {
             //handle any remaining messages from the cluster
             match &self.zmq_server {
-                    Some(my_server) => {
-                        loop {
-                            if frame_count.load(Ordering::SeqCst) as usize == self.depth {
-                                break;
-                            }
-
-                            //poll for messages with a timeout
+                Some(my_server) => {
+                    loop {
+                        if frame_count.load(Ordering::SeqCst) as usize == self.depth {
+                            break;
                         }
-                    },
-                    _ => {},
+
+                        //poll for messages with a timeout
+                    }
+                }
+                _ => {}
             }
         }
 
