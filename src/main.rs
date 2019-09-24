@@ -2752,7 +2752,7 @@ fn websocket_entry(
         id, user_agent
     );
 
-    let mut ws_clients: Vec<websocket::client::ClientBuilder> = Vec::new();
+    /*let mut ws_clients: Vec<websocket::client::ClientBuilder> = Vec::new();
 
     #[cfg(feature = "cluster")]
     {
@@ -2766,7 +2766,7 @@ fn websocket_entry(
                 println!("forwarding a websocket connection: {}", url);
             });
         }
-    }
+    }*/
 
     result(ws::start(
         UserSession::new(state.addr.clone(), &id),
