@@ -1280,11 +1280,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         {
                             break;
                         } else {
-                            println!(
+                            /*println!(
                                 "spectrum_count: {}, plane_count: {}",
                                 spectrum_count.load(Ordering::SeqCst),
                                 plane_count.load(Ordering::SeqCst)
-                            );
+                            );*/
                         }
 
                         //poll for messages with a timeout
@@ -1905,7 +1905,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         fits.has_data = true;
         fits.status_code = 200;
 
-        if !fits.pixels.is_empty() && !fits.mask.is_empty() {
+        if !fits.pixels.is_empty() && !fits.mask.is_empty() && !fits._is_slave {
             //apply std::f32::NAN to masked pixels
             let mut ord_pixels: Vec<f32> = fits
                 .pixels
