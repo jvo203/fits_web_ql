@@ -80,6 +80,7 @@ enum ZMQ_MSG {
         _dmax: f32,
         _pixels: Vec<f32>,
         _mask: Vec<u8>,
+        _count: isize,
     },
 }
 
@@ -1001,8 +1002,9 @@ impl FITS {
                                                     _dmax,
                                                     _pixels,
                                                     _mask,
+                                                    _count,
                                                 } => {
-                                                    plane_count.fetch_add(1, Ordering::SeqCst)
+                                                    plane_count.fetch_add(_count, Ordering::SeqCst)
                                                         as i32;
 
                                                     self.dmin = self.dmin.min(_dmin);
@@ -1331,8 +1333,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                                 _dmax,
                                                 _pixels,
                                                 _mask,
+                                                _count,
                                             } => {
-                                                plane_count.fetch_add(1, Ordering::SeqCst) as i32;
+                                                plane_count.fetch_add(_count, Ordering::SeqCst)
+                                                    as i32;
 
                                                 self.dmin = self.dmin.min(_dmin);
                                                 self.dmax = self.dmax.max(_dmax);
@@ -1419,6 +1423,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         _dmax: self.dmax,
                         _pixels: self.pixels.clone(),
                         _mask: self.mask.clone(),
+                        _count: plane_count.load(Ordering::SeqCst),
                     };
 
                     match serialize(&msg) {
