@@ -79,6 +79,7 @@ ispc = "*"
 machine-ip = "*"
 dns-lookup = "*"
 libzmq =  "*"
+websocket = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
 zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}

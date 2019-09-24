@@ -2714,6 +2714,18 @@ fn websocket_entry(
     stream: web::Payload,
     state: web::Data<WsSessionState>,
 ) -> impl Future<Item = HttpResponse, Error = Error> /*Result<HttpResponse>*/ {
+    //check if it is a slave node
+    let is_root = match req.match_info().get("mode") {
+        Some(mode) => {
+            if mode == "slave" {
+                false
+            } else {
+                true
+            }
+        }
+        None => true,
+    };
+
     let dataset_id_orig: String = match req.match_info().get("id") {
         Some(x) => x.to_string(),
         None => return result(Err(actix_http::error::ErrorBadRequest("websocket_entry"))),
@@ -2739,6 +2751,22 @@ fn websocket_entry(
         "new websocket request for {:?}, user agent: {:?}",
         id, user_agent
     );
+
+    let mut ws_clients: Vec<websocket::client::ClientBuilder> = Vec::new();
+
+    #[cfg(feature = "cluster")]
+    {
+        let nodes = CLUSTER_NODES.read();
+
+        //broadcast the websocket connection to all nodes
+        if !nodes.is_empty() && is_root {
+            let uri = req.uri();
+            nodes.iter().for_each(|ip| {
+                let url = format!("ws://{}:{}{}/slave", ip, server_port.read(), uri);
+                println!("forwarding a websocket connection: {}", url);
+            });
+        }
+    }
 
     result(ws::start(
         UserSession::new(state.addr.clone(), &id),
@@ -2895,7 +2923,7 @@ fn fitswebql_entry(
 
         let nodes = CLUSTER_NODES.read();
 
-        //broadcast the URL to all nodes (only root has a non-empty HashMap)
+        //broadcast the URL to all nodes
         if !nodes.is_empty() && is_root {
             let mut zmq_port: Vec<libzmq::addr::Port> =
                 vec![libzmq::addr::Port::Unspecified; va_count];
@@ -4775,7 +4803,7 @@ fn main() {
                 )
                 .wrap(Compress::default())
                 .service(web::resource("/{path}/FITSWebQL.html").route(web::get().to_async(fitswebql_entry)))
-                .service(web::resource("/{path}/websocket/{id}").to_async(websocket_entry))                
+                .service(web::resource("/{path}/websocket/{id}/{mode}").to_async(websocket_entry))                
                 .service(web::resource("/get_directory").route(web::get().to_async(directory_handler)))
                 .service(web::resource("/{path}/get_image").route(web::get().to_async(get_image)))
                 .service(web::resource("/{path}/get_spectrum").route(web::get().to_async(get_spectrum)))
