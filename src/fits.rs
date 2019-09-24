@@ -66,16 +66,32 @@ pub struct ZFPMaskedArray {
     pub rate: f64,
 }
 
-#[cfg(feature = "cluster")]
+/*#[cfg(feature = "cluster")]
 #[derive(Serialize, Deserialize, Debug)]
 struct SpectrumRange {
     start: usize,
     end: usize,
-    frame_min: Vec<f32>,
-    frame_max: Vec<f32>,
     mean_spectrum: Vec<f32>,
     integrated_spectrum: Vec<f32>,
+}*/
+
+#[cfg(feature = "cluster")]
+#[derive(Serialize, Deserialize, Debug)]
+enum ZMQ_MSG {
+    SpectrumRange {
+        _start: usize,
+        _end: usize,
+        _mean_spectrum: Vec<f32>,
+        _integrated_spectrum: Vec<f32>,
+    },
 }
+
+/*#[cfg(feature = "cluster")]
+#[derive(Serialize, Deserialize, Debug)]
+struct ZMQ_MSG {
+    r#type: ZMQ_MSG_TYPE,
+    bin: Vec<u8>,
+}*/
 
 #[cfg(feature = "opencl")]
 use ocl::ProQue;
@@ -952,52 +968,45 @@ impl FITS {
                             match my_server.try_recv_msg() {
                                 Ok(msg) => {
                                     println!("ØMQ received msg len: {} bytes.", msg.len());
-                                    let res: Result<SpectrumRange, _> =
-                                        deserialize(&msg.as_bytes());
+                                    let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
                                     match res {
                                         Ok(msg) => {
                                             println!("ØMQ received msg: {:?}", msg);
+                                            match msg {
+                                                ZMQ_MSG::SpectrumRange {
+                                                    _start,
+                                                    _end,
+                                                    _mean_spectrum,
+                                                    _integrated_spectrum,
+                                                } => {
+                                                    //fill-in blanks in the spectra
+                                                    let mut offset = 0;
+                                                    for frame in _start.._end {
+                                                        thread_mean_spectrum[frame].store(
+                                                            _mean_spectrum[offset],
+                                                            Ordering::SeqCst,
+                                                        );
+                                                        thread_integrated_spectrum[frame].store(
+                                                            _integrated_spectrum[offset],
+                                                            Ordering::SeqCst,
+                                                        );
+                                                        offset += 1;
 
-                                            //fill-in blanks in the spectra
-                                            let mut offset = 0;
-                                            for frame in msg.start..msg.end {
-                                                let current_frame_min =
-                                                    thread_frame_min[frame].load(Ordering::SeqCst);
-                                                thread_frame_min[frame].store(
-                                                    msg.frame_min[offset].min(current_frame_min),
-                                                    Ordering::SeqCst,
-                                                );
-
-                                                let current_frame_max =
-                                                    thread_frame_max[frame].load(Ordering::SeqCst);
-                                                thread_frame_max[frame].store(
-                                                    msg.frame_max[offset].max(current_frame_max),
-                                                    Ordering::SeqCst,
-                                                );
-
-                                                thread_mean_spectrum[frame].store(
-                                                    msg.mean_spectrum[offset],
-                                                    Ordering::SeqCst,
-                                                );
-                                                thread_integrated_spectrum[frame].store(
-                                                    msg.integrated_spectrum[offset],
-                                                    Ordering::SeqCst,
-                                                );
-                                                offset += 1;
-
-                                                //add frame_min and frame_max too
-
-                                                //update the progress
-                                                let previous_frame_count = frame_count
-                                                    .fetch_add(1, Ordering::SeqCst)
-                                                    as i32;
-                                                let current_frame_count = previous_frame_count + 1;
-                                                self.send_progress_notification(
-                                                    &server,
-                                                    &"loading FITS".to_owned(),
-                                                    total as i32,
-                                                    current_frame_count,
-                                                );
+                                                        //update the progress
+                                                        let previous_frame_count = frame_count
+                                                            .fetch_add(1, Ordering::SeqCst)
+                                                            as i32;
+                                                        let current_frame_count =
+                                                            previous_frame_count + 1;
+                                                        self.send_progress_notification(
+                                                            &server,
+                                                            &"loading FITS".to_owned(),
+                                                            total as i32,
+                                                            current_frame_count,
+                                                        );
+                                                    }
+                                                }
+                                                _ => {}
                                             }
                                         }
                                         _ => {}
@@ -1188,16 +1197,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //push the spectrum updates to the root node
                 match &self.zmq_client {
                     Some(client) => {
-                        let frame_min: Vec<f32> = thread_frame_min[start..end]
-                            .iter()
-                            .map(|x| x.load(Ordering::SeqCst))
-                            .collect();
-
-                        let frame_max: Vec<f32> = thread_frame_max[start..end]
-                            .iter()
-                            .map(|x| x.load(Ordering::SeqCst))
-                            .collect();
-
                         let mean_spectrum: Vec<f32> = thread_mean_spectrum[start..end]
                             .iter()
                             .map(|x| x.load(Ordering::SeqCst))
@@ -1208,13 +1207,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             .map(|x| x.load(Ordering::SeqCst))
                             .collect();
 
-                        let msg = SpectrumRange {
-                            start: start,
-                            end: end,
-                            frame_min: frame_min,
-                            frame_max: frame_max,
-                            mean_spectrum: mean_spectrum,
-                            integrated_spectrum: integrated_spectrum,
+                        let msg = ZMQ_MSG::SpectrumRange {
+                            _start: start,
+                            _end: end,
+                            _mean_spectrum: mean_spectrum,
+                            _integrated_spectrum: integrated_spectrum,
                         };
 
                         match serialize(&msg) {
@@ -1294,12 +1291,70 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             //handle any remaining messages from the cluster
             match &self.zmq_server {
                 Some(my_server) => {
+                    //set a socket timeout
+                    let timeout = libzmq::Period::Finite(std::time::Duration::from_secs(60));
+                    match my_server.set_recv_timeout(timeout) {
+                        Ok(_) => {}
+                        Err(err) => {
+                            println!("could not change the ØMQ recv socket timeout: {}", err)
+                        }
+                    };
+
                     loop {
                         if frame_count.load(Ordering::SeqCst) as usize == self.depth {
                             break;
                         }
 
                         //poll for messages with a timeout
+                        match my_server.recv_msg() {
+                            Ok(msg) => {
+                                println!("ØMQ received msg len: {} bytes.", msg.len());
+                                let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
+                                match res {
+                                    Ok(msg) => {
+                                        println!("ØMQ received msg: {:?}", msg);
+                                        match msg {
+                                            ZMQ_MSG::SpectrumRange {
+                                                _start,
+                                                _end,
+                                                _mean_spectrum,
+                                                _integrated_spectrum,
+                                            } => {
+                                                //fill-in blanks in the spectra
+                                                let mut offset = 0;
+                                                for frame in _start.._end {
+                                                    thread_mean_spectrum[frame].store(
+                                                        _mean_spectrum[offset],
+                                                        Ordering::SeqCst,
+                                                    );
+                                                    thread_integrated_spectrum[frame].store(
+                                                        _integrated_spectrum[offset],
+                                                        Ordering::SeqCst,
+                                                    );
+                                                    offset += 1;
+
+                                                    //update the progress
+                                                    let previous_frame_count = frame_count
+                                                        .fetch_add(1, Ordering::SeqCst)
+                                                        as i32;
+                                                    let current_frame_count =
+                                                        previous_frame_count + 1;
+                                                    self.send_progress_notification(
+                                                        &server,
+                                                        &"loading FITS".to_owned(),
+                                                        total as i32,
+                                                        current_frame_count,
+                                                    );
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    _ => {}
+                                };
+                            }
+                            _ => {}
+                        };
                     }
                 }
                 _ => {}
