@@ -1237,55 +1237,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             print!("{} ", self.data_f16[i].len());
         }
 
-        self.frame_min = thread_frame_min
-            .iter()
-            .map(|x| x.load(Ordering::SeqCst))
-            .collect();
-
-        self.frame_max = thread_frame_max
-            .iter()
-            .map(|x| x.load(Ordering::SeqCst))
-            .collect();
-
-        self.mean_spectrum = thread_mean_spectrum
-            .iter()
-            .map(|x| x.load(Ordering::SeqCst))
-            .collect();
-
-        self.integrated_spectrum = thread_integrated_spectrum
-            .iter()
-            .map(|x| x.load(Ordering::SeqCst))
-            .collect();
-
-        //then fuse self.pixels and self.mask with the local thread versions
-        for tid in 0..num_threads {
-            self.dmin = self.dmin.min(thread_min[tid].load(Ordering::SeqCst));
-            self.dmax = self.dmax.max(thread_max[tid].load(Ordering::SeqCst));
-
-            let mut pixels_tid = thread_pixels[tid].write();
-
-            let mask_tid = thread_mask[tid].read();
-            let mask_tid_ptr = mask_tid.as_ptr() as *mut u8;
-
-            let mask_ptr = self.mask.as_ptr() as *mut u8;
-
-            let total_size = self.pixels.len();
-
-            unsafe {
-                let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
-                let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
-
-                spmd::join_pixels_masks(
-                    self.pixels.as_mut_ptr(),
-                    pixels_tid.as_mut_ptr(),
-                    mask_raw.as_mut_ptr(),
-                    mask_tid_raw.as_mut_ptr(),
-                    cdelt3,
-                    total_size as u32,
-                );
-            }
-        }
-
         #[cfg(feature = "cluster")]
         {
             //handle any remaining messages from the cluster
@@ -1361,23 +1312,61 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
+        self.frame_min = thread_frame_min
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        self.frame_max = thread_frame_max
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        self.mean_spectrum = thread_mean_spectrum
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        self.integrated_spectrum = thread_integrated_spectrum
+            .iter()
+            .map(|x| x.load(Ordering::SeqCst))
+            .collect();
+
+        //then fuse self.pixels and self.mask with the local thread versions
+        for tid in 0..num_threads {
+            self.dmin = self.dmin.min(thread_min[tid].load(Ordering::SeqCst));
+            self.dmax = self.dmax.max(thread_max[tid].load(Ordering::SeqCst));
+
+            let mut pixels_tid = thread_pixels[tid].write();
+
+            let mask_tid = thread_mask[tid].read();
+            let mask_tid_ptr = mask_tid.as_ptr() as *mut u8;
+
+            let mask_ptr = self.mask.as_ptr() as *mut u8;
+
+            let total_size = self.pixels.len();
+
+            unsafe {
+                let mask_raw = slice::from_raw_parts_mut(mask_ptr, total_size);
+                let mask_tid_raw = slice::from_raw_parts_mut(mask_tid_ptr, total_size);
+
+                spmd::join_pixels_masks(
+                    self.pixels.as_mut_ptr(),
+                    pixels_tid.as_mut_ptr(),
+                    mask_raw.as_mut_ptr(),
+                    mask_tid_raw.as_mut_ptr(),
+                    cdelt3,
+                    total_size as u32,
+                );
+            }
+        }
+
         let stop = precise_time::precise_time_ns();
 
         println!(
             "[zfp_decompress] elapsed time: {} [ms]",
             (stop - start) / 1000000
         );
-
-        /*#[cfg(feature = "cluster")]
-        {
-            //if it's a root gather the partial statistics from other nodes (exclude itself)
-            if !self._is_slave {
-                let local_ip = match machine_ip::get() {
-                    Some(ip) => ip.to_string(),
-                    None => String::from("127.0.0.1"),
-                };
-            }
-        }*/
 
         success.load(Ordering::SeqCst)
     }
