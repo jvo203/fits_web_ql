@@ -16,6 +16,9 @@ use uuid::Uuid;
 
 use crate::DATASETS;
 
+#[cfg(feature = "cluster")]
+use crate::CLUSTER_JOBS;
+
 #[cfg(feature = "jvo")]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60
 
@@ -133,6 +136,9 @@ impl Default for SessionServer {
                 match key {
                     Some(key) => {
                         //println!("[orphaned dataset cleanup]: no active sessions found, {} will be expunged from memory", key);                    
+                        #[cfg(feature = "cluster")]
+                        CLUSTER_JOBS.write().remove(&key);
+
                         let entry = DATASETS.write().remove(&key);
                         match entry {
                             Some(value) => {
@@ -271,6 +277,9 @@ impl Handler<Disconnect> for SessionServer {
                             //do not remove dummy datasets (loading progress etc)
                             //they will be cleaned in a separate garbage collection thread
                             if !is_dummy {
+                                #[cfg(feature = "cluster")]
+                                CLUSTER_JOBS.write().remove(&msg.dataset_id);
+
                                 let entry = DATASETS.write().remove(&msg.dataset_id) ;
                                 match entry {
                                     Some(value) => {
