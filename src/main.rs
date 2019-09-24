@@ -4620,21 +4620,22 @@ fn main() {
 
                             for line in machines.lines() {
                                 match line {
-                                    Ok(host) => {
-                                        let ips: Vec<std::net::IpAddr> =
-                                            dns_lookup::lookup_host(&host.to_string()).unwrap();
-                                        println!("found a new host: {}/{:?}", host, ips);
+                                    Ok(host) => match dns_lookup::lookup_host(&host.to_string()) {
+                                        Ok(ips) => {
+                                            println!("found a new host: {}/{:?}", host, ips);
 
-                                        if ips.len() > 0 {
-                                            if local_ip == ips[0] {
-                                                println!("omitting an own IP address");
-                                            } else {
-                                                let mut nodes = CLUSTER_NODES.write();
-                                                nodes.insert(ips[0]);
-                                                println!("added {} to a cluster", ips[0]);
+                                            if ips.len() > 0 {
+                                                if local_ip == ips[0] {
+                                                    println!("omitting an own IP address");
+                                                } else {
+                                                    let mut nodes = CLUSTER_NODES.write();
+                                                    nodes.insert(ips[0]);
+                                                    println!("added {} to a cluster", ips[0]);
+                                                }
                                             }
                                         }
-                                    }
+                                        _ => {}
+                                    },
                                     Err(err) => println!("error parsing a machines file: {}", err),
                                 }
                             }
