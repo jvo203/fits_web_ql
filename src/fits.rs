@@ -1274,9 +1274,15 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     loop {
                         if spectrum_count.load(Ordering::SeqCst) as usize == self.depth
-                            /*&& plane_count.load(Ordering::SeqCst) as usize == self.depth*/
+                            && plane_count.load(Ordering::SeqCst) as usize == self.depth
                         {
                             break;
+                        } else {
+                            println!(
+                                "spectrum_count: {}, plane_count: {}",
+                                spectrum_count.load(Ordering::SeqCst),
+                                plane_count.load(Ordering::SeqCst)
+                            );
                         }
 
                         //poll for messages with a timeout
