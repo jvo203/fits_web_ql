@@ -416,18 +416,18 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
         match msg {
             ws::Message::Ping(msg) => ctx.pong(&msg),
             ws::Message::Text(text) => {
-                #[cfg(feature = "cluster")]
-                {
-                    if self.is_root {
-                        //pass websocket messages to slaves
-                        self._slaves.iter_mut().for_each(|client| {
-                            let _ = client.send_message(&websocket::Message::text(&text));
-                        });
-                    }
-                }
-
                 if (&text).contains("[debug]") {
                     println!("{}", text);
+
+                    #[cfg(feature = "cluster")]
+                    {
+                        if self.is_root {
+                            //pass websocket messages to slaves
+                            self._slaves.iter_mut().for_each(|client| {
+                                let _ = client.send_message(&websocket::Message::text(&text));
+                            });
+                        }
+                    }
                 }
 
                 //check if WebAssembly is supported
@@ -437,6 +437,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                 if (&text).contains("[heartbeat]") {
                     ctx.text(&text);
+
+                    #[cfg(feature = "cluster")]
+                    {
+                        if self.is_root {
+                            //pass websocket messages to slaves
+                            self._slaves.iter_mut().for_each(|client| {
+                                let _ = client.send_message(&websocket::Message::text(&text));
+                            });
+                        }
+                    }
                 } else {
                     self.timestamp = std::time::Instant::now();
 
@@ -452,6 +462,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[init_video]") {
+                    #[cfg(feature = "cluster")]
+                    {
+                        if self.is_root {
+                            //pass websocket messages to slaves
+                            self._slaves.iter_mut().for_each(|client| {
+                                let _ = client.send_message(&websocket::Message::text(&text));
+                            });
+                        }
+                    }
+
                     //println!("{}", text.replace("&", " "));
                     let (frame, view, ref_freq, fps, seq_id, target_bitrate, timestamp) = scan_fmt_some!(
                         &text.replace("&", " "),
@@ -802,6 +822,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[end_video]") {
+                    #[cfg(feature = "cluster")]
+                    {
+                        if self.is_root {
+                            //pass websocket messages to slaves
+                            self._slaves.iter_mut().for_each(|client| {
+                                let _ = client.send_message(&websocket::Message::text(&text));
+                            });
+                        }
+                    }
+
                     println!("{}", text);
 
                     self.streaming = false;
@@ -827,6 +857,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[spectrum]") {
+                    #[cfg(feature = "cluster")]
+                    {
+                        if self.is_root {
+                            //pass websocket messages to slaves
+                            self._slaves.iter_mut().for_each(|client| {
+                                let _ = client.send_message(&websocket::Message::text(&text));
+                            });
+                        }
+                    }
+
                     //println!("{}", text.replace("&", " "));
                     let (x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[spectrum] x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
 
@@ -961,30 +1001,32 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 let stop = precise_time::precise_time_ns();
                                 let elapsed = (stop - start) / 1000000;
                                 //send a binary response message (serialize a structure to a binary stream)
-                                let ws_spectrum = WsSpectrum {
-                                    ts: timestamp as f32,
-                                    seq_id: seq_id as u32,
-                                    msg_type: 0,
-                                    elapsed: elapsed as f32,
-                                    spectrum: spectrum,
-                                };
+                                if self.is_root {
+                                    let ws_spectrum = WsSpectrum {
+                                        ts: timestamp as f32,
+                                        seq_id: seq_id as u32,
+                                        msg_type: 0,
+                                        elapsed: elapsed as f32,
+                                        spectrum: spectrum,
+                                    };
 
-                                match serialize(&ws_spectrum) {
-                                    Ok(bin) => {
-                                        println!("binary length: {}", bin.len());
-                                        //println!("{}", bin);
-                                        ctx.binary(bin);
+                                    match serialize(&ws_spectrum) {
+                                        Ok(bin) => {
+                                            println!("binary length: {}", bin.len());
+                                            //println!("{}", bin);
+                                            ctx.binary(bin);
+                                        }
+                                        Err(err) => println!(
+                                            "error serializing a WebSocket spectrum response: {}",
+                                            err
+                                        ),
                                     }
-                                    Err(err) => println!(
-                                        "error serializing a WebSocket spectrum response: {}",
-                                        err
-                                    ),
                                 }
                             }
                             None => {}
                         }
 
-                        if image {
+                        if image && self.is_root {
                             match fits
                                 .get_viewport(x1, y1, x2, y2, &self.user, self.wasm, &self.pool)
                             {
@@ -1020,6 +1062,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[image]") {
+                    #[cfg(feature = "cluster")]
+                    {
+                        if self.is_root {
+                            //pass websocket messages to slaves
+                            self._slaves.iter_mut().for_each(|client| {
+                                let _ = client.send_message(&websocket::Message::text(&text));
+                            });
+                        }
+                    }
+
                     //println!("{}", text.replace("&", " "));
                     let (black, white, median, noise, flux, frame_start, frame_end, ref_freq, hist, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[image] black={} white={} median={} noise={} flux={} frame_start={} frame_end={} ref_freq={} hist={} timestamp={}", String, String, String, String, String, String, String, String, bool, String);
 
