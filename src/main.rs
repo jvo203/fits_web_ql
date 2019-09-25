@@ -2752,7 +2752,7 @@ fn websocket_entry(
         id, user_agent
     );
 
-    let mut ws_clients: Vec<websocket::client::ClientBuilder> = Vec::new();
+    let mut ws_clients: Vec<websocket::client::sync::Client<std::net::TcpStream>> = Vec::new();
 
     #[cfg(feature = "cluster")]
     {
@@ -2768,6 +2768,27 @@ fn websocket_entry(
                     dataset_id_orig
                 );
                 println!("forwarding a websocket connection: {}", url);
+
+                match websocket::client::ClientBuilder::new(&url)
+                    .unwrap()
+                    .add_protocol("rust-websocket")
+                    .connect_insecure()
+                {
+                    Ok(client) => ws_clients.push(client),
+                    Err(err) => println!("[ws] connection error: {}", err),
+                };
+
+                /*match websocket::client::ClientBuilder::new(&url) {
+                    Ok(mut client) => {
+                        client.add_protocol("rust-websocket");
+                        let conn = client.connect_insecure();
+                        match conn {
+                            Ok(stream) => ws_clients.push(stream),
+                            Err(err) => println!("[ws] connection error: {}", err),
+                        }
+                    }
+                    Err(err) => println!("error creating a WebSocket client: {}", err),
+                }*/
             });
         }
     }
