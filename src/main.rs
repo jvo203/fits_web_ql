@@ -416,6 +416,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
         match msg {
             ws::Message::Ping(msg) => ctx.pong(&msg),
             ws::Message::Text(text) => {
+                #[cfg(feature = "cluster")]
+                {
+                    if self.is_root {
+                        //pass websocket messages to slaves
+                        self._slaves.iter_mut().for_each(|client| {
+                            let _ = client.send_message(&websocket::Message::text(&text));
+                        });
+                    }
+                }
+
                 if (&text).contains("[debug]") {
                     println!("{}", text);
                 }
