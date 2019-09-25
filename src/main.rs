@@ -198,6 +198,8 @@ struct UserSession {
     progress_timestamp: std::time::Instant, //WebSocket progress timestamp
     log: std::io::Result<File>,
     wasm: bool,
+    is_root: bool,
+    _slaves: Vec<websocket::client::sync::Client<std::net::TcpStream>>,
     //hevc: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t, //VP9 encoder config
     ctx: vpx_codec_ctx_t,     //VP9 encoder context
@@ -219,7 +221,12 @@ struct UserSession {
 }
 
 impl UserSession {
-    pub fn new(addr: Addr<server::SessionServer>, id: &Vec<String>) -> UserSession {
+    pub fn new(
+        addr: Addr<server::SessionServer>,
+        id: &Vec<String>,
+        is_root: bool,
+        slaves: Vec<websocket::client::sync::Client<std::net::TcpStream>>,
+    ) -> UserSession {
         let uuid = Uuid::new_v4();
 
         #[cfg(not(feature = "jvo"))]
@@ -266,6 +273,8 @@ impl UserSession {
                 - std::time::Duration::from_millis(PROGRESS_INTERVAL),
             log: log,
             wasm: false,
+            is_root: is_root,
+            _slaves: slaves,
             //hevc: hevc,
             cfg: vpx_codec_enc_cfg::default(),
             ctx: vpx_codec_ctx_t {
@@ -2752,6 +2761,10 @@ fn websocket_entry(
         id, user_agent
     );
 
+    #[cfg(not(feature = "cluster"))]
+    let ws_clients: Vec<websocket::client::sync::Client<std::net::TcpStream>> = Vec::new();
+
+    #[cfg(feature = "cluster")]
     let mut ws_clients: Vec<websocket::client::sync::Client<std::net::TcpStream>> = Vec::new();
 
     #[cfg(feature = "cluster")]
@@ -2785,7 +2798,7 @@ fn websocket_entry(
     }
 
     result(ws::start(
-        UserSession::new(state.addr.clone(), &id),
+        UserSession::new(state.addr.clone(), &id, is_root, ws_clients),
         &req,
         stream,
     ))
