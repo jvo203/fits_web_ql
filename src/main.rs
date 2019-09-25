@@ -2769,18 +2769,9 @@ fn websocket_entry(
                 );
                 println!("forwarding a websocket connection: {}", url);
 
-                match websocket::client::ClientBuilder::new(&url)
-                    .unwrap()
-                    .add_protocol("rust-websocket")
-                    .connect_insecure()
-                {
-                    Ok(client) => ws_clients.push(client),
-                    Err(err) => println!("[ws] connection error: {}", err),
-                };
-
-                /*match websocket::client::ClientBuilder::new(&url) {
-                    Ok(mut client) => {
-                        client.add_protocol("rust-websocket");
+                match websocket::client::ClientBuilder::new(&url) {
+                    Ok(builder) => {
+                        let mut client = builder.clone().add_protocol("rust-websocket");
                         let conn = client.connect_insecure();
                         match conn {
                             Ok(stream) => ws_clients.push(stream),
@@ -2788,7 +2779,7 @@ fn websocket_entry(
                         }
                     }
                     Err(err) => println!("error creating a WebSocket client: {}", err),
-                }*/
+                }
             });
         }
     }
