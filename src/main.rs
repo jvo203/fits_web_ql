@@ -2760,13 +2760,13 @@ fn websocket_entry(
 
         //broadcast the websocket connection to all nodes
         if !nodes.is_empty() && is_root {
-            let url = format!(
-                "ws://{}:{}/fitswebql/websocket/slave/{}",
-                ip,
-                server_port.read(),
-                dataset_id_orig
-            );
             nodes.iter().for_each(|ip| {
+                let url = format!(
+                    "ws://{}:{}/fitswebql/websocket/slave/{}",
+                    ip,
+                    server_port.read(),
+                    dataset_id_orig
+                );
                 println!("forwarding a websocket connection: {}", url);
             });
         }
