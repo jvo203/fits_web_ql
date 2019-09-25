@@ -2402,7 +2402,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-09-24.0";
+static VERSION_STRING: &'static str = "SV2019-09-25.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2709,8 +2709,7 @@ fn directory_handler(
     }))
 }
 
-/*#[cfg(feature = "cluster")]
-fn websocket_cluster_entry(
+fn websocket_entry(
     req: HttpRequest,
     stream: web::Payload,
     state: web::Data<WsSessionState>,
@@ -2755,56 +2754,23 @@ fn websocket_cluster_entry(
 
     let mut ws_clients: Vec<websocket::client::ClientBuilder> = Vec::new();
 
+    #[cfg(feature = "cluster")]
     {
         let nodes = CLUSTER_NODES.read();
 
         //broadcast the websocket connection to all nodes
         if !nodes.is_empty() && is_root {
-            let uri = req.uri();
+            let url = format!(
+                "ws://{}:{}/fitswebql/websocket/slave/{}",
+                ip,
+                server_port.read(),
+                dataset_id_orig
+            );
             nodes.iter().for_each(|ip| {
-                let url = format!("ws://{}:{}{}/slave", ip, server_port.read(), uri);
                 println!("forwarding a websocket connection: {}", url);
             });
         }
     }
-
-    result(ws::start(
-        UserSession::new(state.addr.clone(), &id),
-        &req,
-        stream,
-    ))
-}*/
-
-fn websocket_entry(
-    req: HttpRequest,
-    stream: web::Payload,
-    state: web::Data<WsSessionState>,
-) -> impl Future<Item = HttpResponse, Error = Error> /*Result<HttpResponse>*/ {
-    let dataset_id_orig: String = match req.match_info().get("id") {
-        Some(x) => x.to_string(),
-        None => return result(Err(actix_http::error::ErrorBadRequest("websocket_entry"))),
-    };
-
-    //dataset_id needs to be URI-decoded
-    let dataset_id = match percent_decode(dataset_id_orig.as_bytes()).decode_utf8() {
-        Ok(x) => x.into_owned(),
-        Err(_) => dataset_id_orig.clone(),
-    };
-
-    let empty_agent = HeaderValue::from_static("");
-
-    let headers = req.headers();
-    let user_agent = match headers.get("user-agent") {
-        Some(agent) => agent,
-        None => &empty_agent,
-    };
-
-    let id: Vec<String> = dataset_id.split(';').map(|s| s.to_string()).collect();
-
-    println!(
-        "new websocket request for {:?}, user agent: {:?}",
-        id, user_agent
-    );
 
     result(ws::start(
         UserSession::new(state.addr.clone(), &id),
@@ -4841,7 +4807,7 @@ fn main() {
                 )
                 .wrap(Compress::default())
                 .service(web::resource("/{path}/FITSWebQL.html").route(web::get().to_async(fitswebql_entry)))                
-                .service(web::resource("/{path}/websocket/{id}").to_async(websocket_entry))
+                .service(web::resource("/{path}/websocket/{mode}/{id}").to_async(websocket_entry))
                 .service(web::resource("/get_directory").route(web::get().to_async(directory_handler)))
                 .service(web::resource("/{path}/get_image").route(web::get().to_async(get_image)))
                 .service(web::resource("/{path}/get_spectrum").route(web::get().to_async(get_spectrum)))
