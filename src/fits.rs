@@ -6550,7 +6550,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                             );
 
                                         if _is_valid {
-                                            frame_count.fetch_add(1, Ordering::SeqCst);
+                                            frame_count.fetch_add(1, Ordering::Relaxed);//SeqCst
                                         };
 
                                         _spectrum
