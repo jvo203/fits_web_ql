@@ -296,6 +296,12 @@ export void join_pixels_masks(uniform float pixels[], uniform float pixels_tid[]
     } ;
 } ;
 
+export void add_spectrum(uniform float accum[], uniform float src[], uniform unsigned int length)
+{
+  foreach(i=0 ... length)
+    accum[i] += src[i];
+}
+
 export uniform float calculate_radial_spectrumF16(uniform int16 cubeData[], uniform float bzero, uniform float bscale, uniform float datamin, uniform float datamax, uniform unsigned int width, uniform int x1, uniform int x2, uniform int y1, uniform int y2, uniform int cx, uniform int cy, uniform int r2, uniform bool average, uniform float cdelt3)
 {  
   float partial_sum = 0.0f ;

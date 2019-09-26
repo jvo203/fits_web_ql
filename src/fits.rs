@@ -82,6 +82,10 @@ enum ZMQ_MSG {
         _mask: Vec<u8>,
         _count: isize,
     },
+    Spectrum {
+        _spectrum: Vec<f32>,
+        _count: isize,
+    },
 }
 
 #[cfg(feature = "opencl")]
@@ -1004,8 +1008,7 @@ impl FITS {
                                                     _mask,
                                                     _count,
                                                 } => {
-                                                    plane_count.fetch_add(_count, Ordering::SeqCst)
-                                                        as i32;
+                                                    plane_count.fetch_add(_count, Ordering::SeqCst);
 
                                                     self.dmin = self.dmin.min(_dmin);
                                                     self.dmax = self.dmax.max(_dmax);
@@ -1026,6 +1029,7 @@ impl FITS {
                                                         );
                                                     }
                                                 }
+                                                _ => {}
                                             }
                                         }
                                         _ => {}
@@ -1357,6 +1361,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                                     );
                                                 }
                                             }
+                                            _ => {}
                                         }
                                     }
                                     _ => {}
@@ -6624,6 +6629,80 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 };
 
                 let stop_watch = precise_time::precise_time_ns();
+
+                #[cfg(feature = "cluster")]
+                {
+                    if self._is_slave {
+                        //push the spectrum to the root node
+                        match &self.zmq_client {
+                            Some(client) => {
+                                let msg = ZMQ_MSG::Spectrum {
+                                    _spectrum: spectrum.clone(),
+                                    _count: frame_count.load(Ordering::SeqCst),
+                                };
+
+                                match serialize(&msg) {
+                                    Ok(bin) => {
+                                        match client.send(bin) {
+                                            Ok(_) => {}
+                                            Err(msg) => {
+                                                println!("ØMQ could not send a message: {:?}", msg)
+                                            }
+                                        };
+                                    }
+                                    Err(err) => println!(
+                                        "error serializing a Spectrum ØMQ response: {}",
+                                        err
+                                    ),
+                                }
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        match &self.zmq_server {
+                            Some(my_server) => loop {
+                                if frame_count.load(Ordering::SeqCst) as usize == self.depth {
+                                    break;
+                                }
+
+                                //poll for messages with a timeout
+                                match my_server.recv_msg() {
+                                    Ok(msg) => {
+                                        println!("ØMQ received msg len: {} bytes.", msg.len());
+                                        let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
+                                        match res {
+                                            Ok(msg) => {
+                                                //println!("ØMQ received msg: {:?}", msg);
+                                                match msg {
+                                                    ZMQ_MSG::Spectrum { _spectrum, _count } => {
+                                                        frame_count
+                                                            .fetch_add(_count, Ordering::SeqCst);
+
+                                                        let length = spectrum.len();
+                                                        //accumulate all the spectra
+                                                        if _spectrum.len() == spectrum.len() {
+                                                            unsafe {
+                                                                spmd::add_spectrum(
+                                                                    spectrum.as_ptr() as *mut f32,
+                                                                    _spectrum.as_ptr() as *mut f32,
+                                                                    length as u32,
+                                                                );
+                                                            }
+                                                        }
+                                                    }
+                                                    _ => {}
+                                                }
+                                            }
+                                            _ => {}
+                                        };
+                                    }
+                                    _ => {}
+                                };
+                            },
+                            _ => {}
+                        }
+                    }
+                }
 
                 //println!("{:?}", spectrum);
                 println!(
