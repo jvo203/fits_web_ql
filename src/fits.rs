@@ -6643,10 +6643,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                                 match serialize(&msg) {
                                     Ok(bin) => {
-                                        match client.send(bin) {
+                                        match client.try_send(bin) {
                                             Ok(_) => {}
-                                            Err(msg) => {
-                                                println!("ØMQ could not send a message: {:?}", msg)
+                                            Err(err) => {
+                                                println!("ØMQ could not send a message: {:?}", err)
                                             }
                                         };
                                     }
