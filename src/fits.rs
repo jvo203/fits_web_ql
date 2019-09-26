@@ -6518,7 +6518,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 };
 
                 let start_watch = precise_time::precise_time_ns();
-                let frame_count: AtomicIsize = AtomicIsize::new(0);
+                //let frame_count: AtomicIsize = AtomicIsize::new(0);
+                let frame_count = Arc::new(parking_lot::Mutex::new(0));
 
                 let spectrum: Vec<f32> = match beam {
                     Beam::Circle => {
@@ -6550,7 +6551,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                             );
 
                                         if _is_valid {
-                                            frame_count.fetch_add(1, Ordering::Relaxed);//SeqCst
+                                            //frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
+                                            let mut frame_count = frame_count.lock();
+                                            *frame_count += 1;
                                         };
 
                                         _spectrum
@@ -6574,7 +6577,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     );
 
                                     if _is_valid {
-                                        frame_count.fetch_add(1, Ordering::Relaxed);//SeqCst
+                                        //frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
+                                        let mut frame_count = frame_count.lock();
+                                        *frame_count += 1;
                                     };
 
                                     _spectrum
@@ -6598,7 +6603,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     );
 
                                     if _is_valid {
-                                        frame_count.fetch_add(1, Ordering::Relaxed);//SeqCst
+                                        //frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
+                                        let mut frame_count = frame_count.lock();
+                                        *frame_count += 1;
                                     };
 
                                     _spectrum
@@ -6619,7 +6626,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 );
 
                                 if _is_valid {
-                                    frame_count.fetch_add(1, Ordering::Relaxed);//SeqCst
+                                    //frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
+                                    let mut frame_count = frame_count.lock();
+                                    *frame_count += 1;
                                 };
 
                                 _spectrum
@@ -6636,9 +6645,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         //push the spectrum to the root node
                         match &self.zmq_client {
                             Some(client) => {
+                                let frame_count = frame_count.lock();
                                 let msg = ZMQ_MSG::Spectrum {
                                     _spectrum: spectrum.clone(),
-                                    _count: frame_count.load(Ordering::SeqCst),
+                                    _count: *frame_count, /*frame_count.load(Ordering::SeqCst)*/
                                 };
 
                                 match serialize(&msg) {
@@ -6661,13 +6671,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     } else {
                         match &self.zmq_server {
                             Some(my_server) => loop {
-                                if frame_count.load(Ordering::SeqCst) as usize == self.depth {
+                                let mut frame_count = frame_count.lock();
+                                if *frame_count/*.load(Ordering::SeqCst)*/ as usize == self.depth {
                                     break;
                                 } else {
                                     println!(
                                         "[ws]/master: depth: {}, count: {}",
-                                        self.depth,
-                                        frame_count.load(Ordering::SeqCst)
+                                        self.depth, *frame_count /*.load(Ordering::SeqCst)*/
                                     );
                                 }
 
@@ -6681,8 +6691,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                                 //println!("ØMQ received msg: {:?}", msg);
                                                 match msg {
                                                     ZMQ_MSG::Spectrum { _spectrum, _count } => {
-                                                        frame_count
-                                                            .fetch_add(_count, Ordering::SeqCst);
+                                                        //frame_count
+                                                        //.fetch_add(_count, Ordering::SeqCst);
+                                                        *frame_count += _count;
 
                                                         let length = spectrum.len();
                                                         //accumulate all the spectra
@@ -6711,10 +6722,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
 
                 //println!("{:?}", spectrum);
+                let frame_count = frame_count.lock();
                 println!(
                     "spectrum length = {}, valid: {}, elapsed time: {} [ms]",
                     spectrum.len(),
-                    frame_count.load(Ordering::SeqCst),
+                    *frame_count, /*.load(Ordering::SeqCst)*/
                     (stop_watch - start_watch) / 1000000
                 );
 
