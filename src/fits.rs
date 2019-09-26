@@ -6519,7 +6519,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                 let start_watch = precise_time::precise_time_ns();
                 let frame_count: AtomicIsize = AtomicIsize::new(0);
-                //let frame_count = Arc::new(parking_lot::Mutex::new(0));
 
                 let spectrum: Vec<f32> = match beam {
                     Beam::Circle => {
@@ -6551,9 +6550,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                             );
 
                                         if _is_valid {
-                                            /*frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
-                                            let mut frame_count = frame_count.lock();
-                                            *frame_count += 1;*/
+                                            frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
                                         };
 
                                         _spectrum
@@ -6577,9 +6574,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     );
 
                                     if _is_valid {
-                                        /*frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
-                                        let mut frame_count = frame_count.lock();
-                                        *frame_count += 1;*/
+                                        frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
                                     };
 
                                     _spectrum
@@ -6603,9 +6598,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     );
 
                                     if _is_valid {
-                                        /*frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
-                                        let mut frame_count = frame_count.lock();
-                                        *frame_count += 1;*/
+                                        frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
                                     };
 
                                     _spectrum
@@ -6626,9 +6619,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 );
 
                                 if _is_valid {
-                                    /*frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
-                                    let mut frame_count = frame_count.lock();
-                                    *frame_count += 1;*/
+                                    frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
                                 };
 
                                 _spectrum
@@ -6638,6 +6629,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 };
 
                 let stop_watch = precise_time::precise_time_ns();
+
+                //println!("{:?}", spectrum);
+                println!(
+                    "spectrum length = {}, valid: {}, elapsed time: {} [ms]",
+                    spectrum.len(),
+                    frame_count.load(Ordering::SeqCst),
+                    (stop_watch - start_watch) / 1000000
+                );
 
                 #[cfg(feature = "cluster")]
                 {
@@ -6652,7 +6651,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                                 match serialize(&msg) {
                                     Ok(bin) => {
-                                        match client.try_send(bin) {
+                                        match client.send(bin) {
                                             Ok(_) => {}
                                             Err(err) => {
                                                 println!("ØMQ could not send a message: {:?}", err)
@@ -6682,7 +6681,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
 
                                 //poll for messages with a timeout (recv_msg => try_recv_msg)
-                                match my_server.try_recv_msg() {
+                                match my_server.recv_msg() {
                                     Ok(msg) => {
                                         println!("ØMQ received msg len: {} bytes.", msg.len());
                                         let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
@@ -6720,14 +6719,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     }
                 }
-
-                //println!("{:?}", spectrum);
-                println!(
-                    "spectrum length = {}, valid: {}, elapsed time: {} [ms]",
-                    spectrum.len(),
-                    frame_count.load(Ordering::SeqCst),
-                    (stop_watch - start_watch) / 1000000
-                );
 
                 //return the spectrum
                 Some(spectrum)
