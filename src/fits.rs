@@ -6642,7 +6642,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 {
                     if self._is_slave {
                         //push the spectrum to the root node
-                        /*match &self.zmq_client {
+                        match &self.zmq_client {
                             Some(client) => {
                                 let msg = ZMQ_MSG::Spectrum {
                                     _spectrum: spectrum.clone(),
@@ -6665,11 +6665,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                             }
                             _ => {}
-                        }*/
+                        }
                     } else {
                         match &self.zmq_server {
                             Some(my_server) => loop {
-                                break;
                                 if frame_count.load(Ordering::SeqCst) as usize == self.depth {
                                     break;
                                 } else {
