@@ -6670,6 +6670,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     } else {
                         match &self.zmq_server {
                             Some(my_server) => loop {
+                                break;
                                 if frame_count.load(Ordering::SeqCst) as usize == self.depth {
                                     break;
                                 } else {
