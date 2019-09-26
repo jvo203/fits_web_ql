@@ -6513,6 +6513,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 };
 
                 let start_watch = precise_time::precise_time_ns();
+                let frame_count: AtomicIsize = AtomicIsize::new(0);
 
                 let spectrum: Vec<f32> = match beam {
                     Beam::Circle => {
@@ -6529,25 +6530,32 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 (start..end + 1)
                                     .into_par_iter()
                                     .map(|frame| {
-                                        self.get_radial_spectrum_at_ispc(
-                                            frame,
-                                            x1,
-                                            x2,
-                                            y1,
-                                            y2,
-                                            cx,
-                                            cy,
-                                            r2,
-                                            mean,
-                                            cdelt3 as f32,
-                                        )
+                                        let (_spectrum, _is_valid) = self
+                                            .get_radial_spectrum_at_ispc(
+                                                frame,
+                                                x1,
+                                                x2,
+                                                y1,
+                                                y2,
+                                                cx,
+                                                cy,
+                                                r2,
+                                                mean,
+                                                cdelt3 as f32,
+                                            );
+
+                                        if _is_valid {
+                                            frame_count.fetch_add(1, Ordering::SeqCst);
+                                        };
+
+                                        _spectrum
                                     })
                                     .collect()
                             }),
                             None => (start..end + 1)
                                 .into_par_iter()
                                 .map(|frame| {
-                                    self.get_radial_spectrum_at_ispc(
+                                    let (_spectrum, _is_valid) = self.get_radial_spectrum_at_ispc(
                                         frame,
                                         x1,
                                         x2,
@@ -6558,7 +6566,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                         r2,
                                         mean,
                                         cdelt3 as f32,
-                                    )
+                                    );
+
+                                    if _is_valid {
+                                        frame_count.fetch_add(1, Ordering::SeqCst);
+                                    };
+
+                                    _spectrum
                                 })
                                 .collect(),
                         }
@@ -6568,7 +6582,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             (start..end + 1)
                                 .into_par_iter()
                                 .map(|frame| {
-                                    self.get_square_spectrum_at_ispc(
+                                    let (_spectrum, _is_valid) = self.get_square_spectrum_at_ispc(
                                         frame,
                                         x1,
                                         x2,
@@ -6576,14 +6590,20 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                         y2,
                                         mean,
                                         cdelt3 as f32,
-                                    )
+                                    );
+
+                                    if _is_valid {
+                                        frame_count.fetch_add(1, Ordering::SeqCst);
+                                    };
+
+                                    _spectrum
                                 })
                                 .collect()
                         }),
                         None => (start..end + 1)
                             .into_par_iter()
                             .map(|frame| {
-                                self.get_square_spectrum_at_ispc(
+                                let (_spectrum, _is_valid) = self.get_square_spectrum_at_ispc(
                                     frame,
                                     x1,
                                     x2,
@@ -6591,7 +6611,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     y2,
                                     mean,
                                     cdelt3 as f32,
-                                )
+                                );
+
+                                if _is_valid {
+                                    frame_count.fetch_add(1, Ordering::SeqCst);
+                                };
+
+                                _spectrum
                             })
                             .collect(),
                     },
@@ -6601,8 +6627,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                 //println!("{:?}", spectrum);
                 println!(
-                    "spectrum length = {}, elapsed time: {} [ms]",
+                    "spectrum length = {}, valid: {}, elapsed time: {} [ms]",
                     spectrum.len(),
+                    frame_count.load(Ordering::SeqCst),
                     (stop_watch - start_watch) / 1000000
                 );
 
@@ -6628,7 +6655,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         r2: usize,
         mean: bool,
         cdelt3: f32,
-    ) -> f32 {
+    ) -> (f32, bool) {
         match self.bitpix {
             -32 => {
                 let vec = &self.data_f16[frame];
@@ -6657,10 +6684,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             cdelt3,
                         );
 
-                        spectrum
+                        (spectrum, true)
                     }
                 } else {
-                    0.0
+                    (0.0, false)
                 }
             }
             _ => {
@@ -6686,7 +6713,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         r2: usize,
         mean: bool,
         cdelt3: f32,
-    ) -> f32 {
+    ) -> (f32, bool) {
         let mut sum: f32 = 0.0;
         let mut count: i32 = 0;
 
@@ -6806,13 +6833,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         if count > 0 {
             if mean {
                 //mean intensity
-                sum / (count as f32)
+                (sum / (count as f32), true)
             } else {
                 //integrated intensity
-                sum * cdelt3
+                (sum * cdelt3, true)
             }
         } else {
-            0.0
+            (0.0, false)
         }
     }
 
@@ -6825,7 +6852,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         y2: usize,
         mean: bool,
         cdelt3: f32,
-    ) -> f32 {
+    ) -> (f32, bool) {
         match self.bitpix {
             -32 => {
                 let vec = &self.data_f16[frame];
@@ -6851,10 +6878,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             cdelt3,
                         );
 
-                        spectrum
+                        (spectrum, true)
                     }
                 } else {
-                    0.0
+                    (0.0, false)
                 }
             }
             _ => {
@@ -6877,7 +6904,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         y2: usize,
         mean: bool,
         cdelt3: f32,
-    ) -> f32 {
+    ) -> (f32, bool) {
         let mut sum: f32 = 0.0;
         let mut count: i32 = 0;
 
@@ -6977,13 +7004,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         if count > 0 {
             if mean {
                 //mean intensity
-                sum / (count as f32)
+                (sum / (count as f32), true)
             } else {
                 //integrated intensity
-                sum * cdelt3
+                (sum * cdelt3, true)
             }
         } else {
-            0.0
+            (0.0, false)
         }
     }
 
