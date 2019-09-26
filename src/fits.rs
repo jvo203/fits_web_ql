@@ -6663,10 +6663,16 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             Some(my_server) => loop {
                                 if frame_count.load(Ordering::SeqCst) as usize == self.depth {
                                     break;
+                                } else {
+                                    println!(
+                                        "[ws]/master: depth: {}, count: {}",
+                                        self.depth,
+                                        frame_count.load(Ordering::SeqCst)
+                                    );
                                 }
 
-                                //poll for messages with a timeout
-                                match my_server.recv_msg() {
+                                //poll for messages with a timeout (recv_msg => try_recv_msg)
+                                match my_server.try_recv_msg() {
                                     Ok(msg) => {
                                         println!("ØMQ received msg len: {} bytes.", msg.len());
                                         let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
