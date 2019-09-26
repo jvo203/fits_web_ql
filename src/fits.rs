@@ -6639,7 +6639,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                 let stop_watch = precise_time::precise_time_ns();
 
-                #[cfg(feature = "cluster")]
+                /*#[cfg(feature = "cluster")]
                 {
                     if self._is_slave {
                         //push the spectrum to the root node
@@ -6669,8 +6669,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     } else {
                         match &self.zmq_server {
-                            Some(my_server) => loop {
-                                break;
+                            Some(my_server) => loop {                                
                                 if frame_count.load(Ordering::SeqCst) as usize == self.depth {
                                     break;
                                 } else {
@@ -6719,7 +6718,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             _ => {}
                         }
                     }
-                }
+                }*/
 
                 //println!("{:?}", spectrum);
                 println!(
