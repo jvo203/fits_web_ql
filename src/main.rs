@@ -862,7 +862,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                         if self.is_root {
                             //pass websocket messages to slaves
                             self._slaves.iter_mut().for_each(|client| {
-                                let _ = client.send_message(&websocket::Message::text(&text));
+                                match client.send_message(&websocket::Message::text(&text)) {
+                                    Ok(_) => {}
+                                    Err(err) => {
+                                        println!("[ws] error routing a 'spectrum' message: {}", err)
+                                    }
+                                }
                             });
                         }
                     }

@@ -6711,7 +6711,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                             _ => {}
                                         };
                                     }
-                                    Err(err) => println!("ØMQ try_recv_msg: {:?}", err),
+                                    Err(err) => println!("ØMQ recv_msg: {:?}", err),
                                 };
                             },
                             _ => {}
