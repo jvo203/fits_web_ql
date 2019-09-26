@@ -6636,8 +6636,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     spectrum.len(),
                     frame_count.load(Ordering::SeqCst),
                     (stop_watch - start_watch) / 1000000
-                );
-                std::io::stdout().flush().unwrap();
+                );                
 
                 #[cfg(feature = "cluster")]
                 {
