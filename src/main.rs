@@ -73,10 +73,7 @@ use time as precise_time;
 //use rav1e::*;
 
 #[cfg(feature = "cluster")]
-use libzmq::{prelude::*, *};
-
-#[cfg(feature = "cluster")]
-use std::convert::TryInto;
+use libzmq::prelude::*;
 
 #[cfg(feature = "jvo")]
 use postgres::{Connection, TlsMode};
@@ -2972,17 +2969,17 @@ fn fitswebql_entry(
 
     let va_count = dataset_id.len();
 
-    let zmq_port: Vec<Option<u16>> = match query.get("zmq_port") {
+    let nn_port: Vec<Option<u16>> = match query.get("nn_port") {
         Some(port) => match port.parse::<u16>() {
             Ok(x) => vec![Some(x)],
             Err(_) => vec![None],
         },
         _ => {
-            //iterate through all datasets looking for zmq_portX
+            //iterate through all datasets looking for nn_portX
             (0..va_count)
                 .into_iter()
                 .map(|i| {
-                    let pattern = format!("zmq_port{}", (i + 1));
+                    let pattern = format!("nn_port{}", (i + 1));
                     match query.get(&pattern) {
                         Some(port) => match port.parse::<u16>() {
                             Ok(x) => Some(x),
@@ -2995,12 +2992,16 @@ fn fitswebql_entry(
         }
     };
 
-    if zmq_port.len() > 0 {
-        println!("ØMQ ports: {:?}", zmq_port);
+    if nn_port.len() > 0 {
+        println!("nanomsg ports: {:?}", nn_port);
     };
 
     let mut zmq_server: Vec<Option<Arc<Mutex<libzmq::Server>>>> = vec![None; va_count];
     let mut zmq_client: Vec<Option<Arc<Mutex<libzmq::Client>>>> = vec![None; va_count];
+
+    let mut nn_server: Vec<Option<Arc<Mutex<nanomsg::Socket>>>> = vec![None; va_count];
+    let mut nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
+        vec![None; va_count];
 
     #[cfg(feature = "cluster")]
     {
@@ -3021,19 +3022,22 @@ fn fitswebql_entry(
 
         //broadcast the URL to all nodes
         if !nodes.is_empty() && is_root {
-            let mut zmq_port: Vec<libzmq::addr::Port> =
-                vec![libzmq::addr::Port::Unspecified; va_count];
+            let mut nn_port: Vec<Option<u16>> = vec![None; va_count];
 
             for i in 0..va_count {
-                let addr: Option<TcpAddr> = match "0.0.0.0:*".try_into() {
+                if let Some(port) = get_available_port() {
+                    let addr = format!("tcp://0.0.0.0:{}", port);
+                    println!("nanomsg server address: {}", addr);
+                };
+                /* let addr: Option<TcpAddr> = match "0.0.0.0:*".try_into() {
                     Ok(x) => Some(x),
                     Err(err) => {
                         println!("ØMQ error: {}", err);
                         None
                     }
-                };
+                };*/
 
-                if let Some(x) = addr {
+                /*if let Some(x) = addr {
                     println!("ØMQ address: {:?}", x);
                     match ServerBuilder::new().bind(x).build() {
                         Ok(server) => {
@@ -3056,7 +3060,7 @@ fn fitswebql_entry(
                         }
                         Err(err) => println!("ØMQ error: {}", err),
                     };
-                };
+                };*/
             }
 
             let uri = req.uri();
@@ -3065,15 +3069,15 @@ fn fitswebql_entry(
                 let mut url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);
 
                 if va_count == 1 {
-                    if let libzmq::addr::Port::Specified(port) = zmq_port[0] {
-                        url = format!("{}&zmq_port={}", url, port);
+                    if let Some(port) = nn_port[0] {
+                        url = format!("{}&nn_port={}", url, port);
                     };
                 };
 
                 if va_count > 1 {
                     for i in 0..va_count {
-                        if let libzmq::addr::Port::Specified(port) = zmq_port[i] {
-                            url = format!("{}&zmq_port{}={}", url, (i + 1), port);
+                        if let Some(port) = nn_port[i] {
+                            url = format!("{}&nn_port{}={}", url, (i + 1), port);
                         };
                     }
                 };
@@ -3091,63 +3095,30 @@ fn fitswebql_entry(
                         println!("{} removed", thread_ip);
                     }
                 });
-
-                /*let client = Client::default();
-                let _ = client
-                    .get(url) // <- Create request builder
-                    .header("User-Agent", "fits_web_ql")
-                    .send() // <- Send http request
-                    .map_err(|err| println!("request error: {}", err))
-                    .and_then(|response| {
-                        // <- server http response
-                        println!("Response: {:?}", response);
-                        Ok(())
-                    })
-                    .wait();*/
-
-                /*let _ = Client::new()
-                .get(&url)
-                .send()
-                .and_then(|mut res| {
-                    println!("{}", res.status());
-
-                    let body = mem::replace(res.body_mut(), Decoder::empty());
-                    body.concat2()
-                    //println!("HTTP response: {:#?}", res);
-                })
-                .map_err(|err| println!("request error: {}", err))
-                .map(|body| {
-                    let mut body = Cursor::new(body);
-                    let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
-                        println!("stdout error: {}", err);
-                    });
-                })
-                .wait();*/
             });
         };
 
         if !is_root {
             for i in 0..va_count {
-                //launch ØMQ clients
-                if let Some(port) = zmq_port[i] {
+                //launch nanomsg clients
+                if let Some(port) = nn_port[i] {
                     if let Some(root) = &*root_node.read() {
-                        let addr = format!("{}:{}", root, port);
-                        println!("ØMQ client --> {}", addr);
+                        let addr = format!("tcp://{}:{}", root, port);
+                        println!("nanomsg client --> {}", addr);
 
-                        let addr: Option<TcpAddr> = match addr.try_into() {
-                            Ok(x) => Some(x),
-                            Err(err) => {
-                                println!("ØMQ error: {}", err);
-                                None
+                        let mut socket = nanomsg::Socket::new(nanomsg::Protocol::Req);
+                        match socket {
+                            Ok(mut socket) => {
+                                let mut endpoint = socket.connect(&addr);
+                                match endpoint {
+                                    Ok(mut endpoint) => {
+                                        nn_client[i] =
+                                            Some(Arc::new(Mutex::new((socket, endpoint))));
+                                    }
+                                    Err(err) => println!("nanomsg error: {}", err),
+                                }
                             }
-                        };
-
-                        if let Some(x) = addr {
-                            println!("ØMQ root address: {:?}", x);
-                            match ClientBuilder::new().connect(x).build() {
-                                Ok(client) => zmq_client[i] = Some(Arc::new(Mutex::new(client))),
-                                Err(err) => println!("ØMQ error: {}", err),
-                            };
+                            Err(err) => println!("nanomsg error: {}", err),
                         };
                     };
                 };
@@ -4652,6 +4623,19 @@ macro_rules! ipp_assert {
     ($result:expr) => {
         assert!(unsafe { $result } == ipp_sys::ippStsNoErr as i32);
     };
+}
+
+#[cfg(feature = "cluster")]
+fn get_available_port() -> Option<u16> {
+    (8000..9000).find(|port| port_is_available(*port))
+}
+
+#[cfg(feature = "cluster")]
+fn port_is_available(port: u16) -> bool {
+    match std::net::TcpListener::bind(("127.0.0.1", port)) {
+        Ok(_) => true,
+        Err(_) => false,
+    }
 }
 
 fn main() {
