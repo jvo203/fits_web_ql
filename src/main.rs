@@ -72,9 +72,6 @@ use log::info;
 use time as precise_time;
 //use rav1e::*;
 
-#[cfg(feature = "cluster")]
-use libzmq::prelude::*;
-
 #[cfg(feature = "jvo")]
 use postgres::{Connection, TlsMode};
 
@@ -2996,9 +2993,6 @@ fn fitswebql_entry(
         println!("nanomsg ports: {:?}", nn_port);
     };
 
-    let mut zmq_server: Vec<Option<Arc<Mutex<libzmq::Server>>>> = vec![None; va_count];
-    let mut zmq_client: Vec<Option<Arc<Mutex<libzmq::Client>>>> = vec![None; va_count];
-
     let mut nn_server: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
         vec![None; va_count];
     let mut nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
@@ -3182,8 +3176,8 @@ fn fitswebql_entry(
         &flux,
         &server,
         !is_root,
-        zmq_server,
-        zmq_client,
+        nn_server,
+        nn_client,
     )));
 
     //local (Personal Edition)
@@ -3199,8 +3193,8 @@ fn fitswebql_entry(
         &flux,
         &server,
         false,
-        zmq_server,
-        zmq_client,
+        nn_server,
+        nn_client,
     )));
 }
 
@@ -4215,8 +4209,8 @@ fn internal_fits(
     flux: &str,
     server: &Addr<server::SessionServer>,
     is_slave: bool,
-    zmq_server: Vec<Option<Arc<Mutex<libzmq::Server>>>>,
-    zmq_client: Vec<Option<Arc<Mutex<libzmq::Client>>>>,
+    nn_server: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>>,
+    nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>>,
 ) -> HttpResponse {
     //get fits location
 
@@ -4248,8 +4242,8 @@ fn internal_fits(
             let my_ext = ext.to_string();
             let my_server = server.clone();
             let my_flux = flux.to_string();
-            let my_zmq_server = zmq_server[i].clone();
-            let my_zmq_client = zmq_client[i].clone();
+            let my_nn_server = nn_server[i].clone();
+            let my_nn_client = nn_client[i].clone();
 
             DATASETS.write().insert(
                 my_data_id.clone(),
@@ -4290,8 +4284,8 @@ fn internal_fits(
                     filepath.as_path(),
                     &my_server,
                     is_slave,
-                    my_zmq_server,
-                    my_zmq_client,
+                    my_nn_server,
+                    my_nn_client,
                 ); //from_path or from_path_mmap
 
                 let fits = Arc::new(RwLock::new(Box::new(fits)));

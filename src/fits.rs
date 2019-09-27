@@ -299,7 +299,6 @@ pub enum Intensity {
     Integrated,
 }
 
-#[derive(Debug)]
 pub struct FITS {
     created: std::time::Instant,
     pub dataset_id: String,
@@ -398,8 +397,8 @@ pub struct FITS {
     pub is_dummy: bool,
     pub _is_slave: bool,
     pub status_code: u16,
-    pub zmq_server: Option<Arc<Mutex<libzmq::Server>>>,
-    pub zmq_client: Option<Arc<Mutex<libzmq::Client>>>,
+    pub nn_server: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+    pub nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
 }
 
 #[derive(Serialize, Debug)]
@@ -416,8 +415,8 @@ impl FITS {
         id: &String,
         flux: &String,
         is_slave: bool,
-        zmq_server: Option<Arc<Mutex<libzmq::Server>>>,
-        zmq_client: Option<Arc<Mutex<libzmq::Client>>>,
+        nn_server: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+        nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
     ) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
             Ok(_) => String::from(""),
@@ -520,8 +519,8 @@ impl FITS {
             is_dummy: true,
             _is_slave: is_slave,
             status_code: 404,
-            zmq_server: zmq_server,
-            zmq_client: zmq_client,
+            nn_server: nn_server,
+            nn_client: nn_client,
         };
 
         fits
@@ -1271,18 +1270,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             //handle any remaining messages from the cluster
             match &self.zmq_server {
                 Some(my_server) => {
-                    {
-                        let my_server = my_server.lock();
-                        //set a socket timeout
-                        let timeout = libzmq::Period::Finite(std::time::Duration::from_secs(60));
-                        match my_server.set_recv_timeout(timeout) {
-                            Ok(_) => {}
-                            Err(err) => {
-                                println!("could not change the ØMQ recv socket timeout: {}", err)
-                            }
-                        };
-                    }
-
                     loop {
                         if spectrum_count.load(Ordering::SeqCst) as usize == self.depth
                             && plane_count.load(Ordering::SeqCst) as usize == self.depth
@@ -1606,10 +1593,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
         is_slave: bool,
-        zmq_server: Option<Arc<Mutex<libzmq::Server>>>,
-        zmq_client: Option<Arc<Mutex<libzmq::Client>>>,
+        nn_server: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+        nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux, is_slave, zmq_server, zmq_client);
+        let mut fits = FITS::new(id, flux, is_slave, nn_server, nn_client);
         fits.is_dummy = false;
 
         //load data from filepath
@@ -1748,7 +1735,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             DATASETS.write().insert(id.clone(), fits.clone());
         }
 
-        println!("{}/#hdu = {}, {:?}", id, no_hdu, fits);
+        println!("{}/#hdu = {}", id, no_hdu);
 
         fits.header = match String::from_utf8(header) {
             Ok(x) => x,
@@ -2149,7 +2136,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     DATASETS.write().insert(id.clone(), fits.clone());
                                 }
 
-                                println!("{}/#hdu = {}, {:?}", id, no_hdu, fits);
+                                println!("{}/#hdu = {}", id, no_hdu);
 
                                 fits.header = match String::from_utf8(header.clone()) {
                                     Ok(x) => x,
@@ -8366,6 +8353,17 @@ impl Drop for FITS {
     fn drop(&mut self) {
         println!("deleting {}", self.dataset_id);
         self.drop_to_cache();
+
+        //end any nanomsg endpoints
+        if let Some(server) = self.nn_server {
+            let (_, endpoint) = *server.lock();
+            let _ = endpoint.shutdown();
+        }
+
+        if let Some(client) = self.nn_client {
+            let (_, endpoint) = *client.lock();
+            let _ = endpoint.shutdown();
+        }
 
         if self.has_data {
             //remove a symbolic link
