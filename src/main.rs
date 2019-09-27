@@ -88,7 +88,7 @@ use ocl::core;
 
 use std::collections::{HashMap, HashSet};
 
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 
 mod fits;
 mod kalman;
@@ -2478,7 +2478,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-09-26.0";
+static VERSION_STRING: &'static str = "SV2019-09-27.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2999,8 +2999,8 @@ fn fitswebql_entry(
         println!("ØMQ ports: {:?}", zmq_port);
     };
 
-    let mut zmq_server: Vec<Option<libzmq::Server>> = vec![None; va_count];
-    let mut zmq_client: Vec<Option<libzmq::Client>> = vec![None; va_count];
+    let mut zmq_server: Vec<Option<Arc<Mutex<libzmq::Server>>>> = vec![None; va_count];
+    let mut zmq_client: Vec<Option<Arc<Mutex<libzmq::Client>>>> = vec![None; va_count];
 
     #[cfg(feature = "cluster")]
     {
@@ -3052,7 +3052,7 @@ fn fitswebql_entry(
                                 }
                                 _ => {}
                             };
-                            zmq_server[i] = Some(server);
+                            zmq_server[i] = Some(Arc::new(Mutex::new(server)));
                         }
                         Err(err) => println!("ØMQ error: {}", err),
                     };
@@ -3145,7 +3145,7 @@ fn fitswebql_entry(
                         if let Some(x) = addr {
                             println!("ØMQ root address: {:?}", x);
                             match ClientBuilder::new().connect(x).build() {
-                                Ok(client) => zmq_client[i] = Some(client),
+                                Ok(client) => zmq_client[i] = Some(Arc::new(Mutex::new(client))),
                                 Err(err) => println!("ØMQ error: {}", err),
                             };
                         };
@@ -4260,8 +4260,8 @@ fn internal_fits(
     flux: &str,
     server: &Addr<server::SessionServer>,
     is_slave: bool,
-    zmq_server: Vec<Option<libzmq::Server>>,
-    zmq_client: Vec<Option<libzmq::Client>>,
+    zmq_server: Vec<Option<Arc<Mutex<libzmq::Server>>>>,
+    zmq_client: Vec<Option<Arc<Mutex<libzmq::Client>>>>,
 ) -> HttpResponse {
     //get fits location
 

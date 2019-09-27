@@ -3,7 +3,7 @@ use atomic;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use half::f16;
 use num_cpus;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use positioned_io::ReadAt;
 use regex::Regex;
@@ -398,8 +398,8 @@ pub struct FITS {
     pub is_dummy: bool,
     pub _is_slave: bool,
     pub status_code: u16,
-    pub zmq_server: Option<libzmq::Server>,
-    pub zmq_client: Option<libzmq::Client>,
+    pub zmq_server: Option<Arc<Mutex<libzmq::Server>>>,
+    pub zmq_client: Option<Arc<Mutex<libzmq::Client>>>,
 }
 
 #[derive(Serialize, Debug)]
@@ -416,8 +416,8 @@ impl FITS {
         id: &String,
         flux: &String,
         is_slave: bool,
-        zmq_server: Option<libzmq::Server>,
-        zmq_client: Option<libzmq::Client>,
+        zmq_server: Option<Arc<Mutex<libzmq::Server>>>,
+        zmq_client: Option<Arc<Mutex<libzmq::Client>>>,
     ) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
             Ok(_) => String::from(""),
@@ -959,6 +959,7 @@ impl FITS {
                 //periodically poll for incoming messages from the cluster
                 match &self.zmq_server {
                     Some(my_server) => {
+                        let my_server = my_server.lock();
                         let mut nothing_to_report = false;
                         loop {
                             match my_server.try_recv_msg() {
@@ -1243,6 +1244,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         match serialize(&msg) {
                             Ok(bin) => {
+                                let client = client.lock();
                                 match client.send(bin) {
                                     Ok(_) => {}
                                     Err(msg) => {
@@ -1269,6 +1271,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             //handle any remaining messages from the cluster
             match &self.zmq_server {
                 Some(my_server) => {
+                    let my_server = my_server.lock();
                     //set a socket timeout
                     let timeout = libzmq::Period::Finite(std::time::Duration::from_secs(60));
                     match my_server.set_recv_timeout(timeout) {
@@ -1433,6 +1436,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     match serialize(&msg) {
                         Ok(bin) => {
+                            let client = client.lock();
                             match client.send(bin) {
                                 Ok(_) => {}
                                 Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
@@ -1599,8 +1603,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
         is_slave: bool,
-        zmq_server: Option<libzmq::Server>,
-        zmq_client: Option<libzmq::Client>,
+        zmq_server: Option<Arc<Mutex<libzmq::Server>>>,
+        zmq_client: Option<Arc<Mutex<libzmq::Client>>>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux, is_slave, zmq_server, zmq_client);
         fits.is_dummy = false;
@@ -6636,7 +6640,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     spectrum.len(),
                     frame_count.load(Ordering::SeqCst),
                     (stop_watch - start_watch) / 1000000
-                );                
+                );
 
                 #[cfg(feature = "cluster")]
                 {
@@ -6651,6 +6655,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                                 match serialize(&msg) {
                                     Ok(bin) => {
+                                        let client = client.lock();
                                         match client.send(bin) {
                                             Ok(_) => {}
                                             Err(err) => {
@@ -6669,6 +6674,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     } else {
                         match &self.zmq_server {
                             Some(my_server) => loop {
+                                let my_server = my_server.lock();
+
                                 if frame_count.load(Ordering::SeqCst) as usize == self.depth {
                                     break;
                                 } else {
