@@ -397,7 +397,7 @@ pub struct FITS {
     pub is_dummy: bool,
     pub _is_slave: bool,
     pub status_code: u16,
-    pub nn_server: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+    pub nn_server: Option<Arc<Mutex<nanomsg::Socket>>>,
     pub nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
 }
 
@@ -415,7 +415,7 @@ impl FITS {
         id: &String,
         flux: &String,
         is_slave: bool,
-        nn_server: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+        nn_server: Option<Arc<Mutex<nanomsg::Socket>>>,
         nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
     ) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
@@ -955,16 +955,19 @@ impl FITS {
                     break;
                 }
 
-                //periodically poll for incoming messages from the cluster
-                match &self.zmq_server {
+                //periodically poll for incoming messages from the cluster                
+                match &self.nn_server {
                     Some(my_server) => {
                         let mut nothing_to_report = false;
                         loop {
-                            let my_server = my_server.lock();
-                            match my_server.try_recv_msg() {
-                                Ok(msg) => {
-                                    println!("ØMQ received msg len: {} bytes.", msg.len());
-                                    let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
+                            let my_server = *my_server.lock();
+                            //let my_server = my_server.clone();
+                            let mut msg = Vec::new();
+                            let res = my_server.nb_read_to_end(&mut msg);
+                            match res {
+                                Ok(len) => {
+                                    println!("nanomsg received msg len: {} bytes.", len);
+                                    let res: Result<ZMQ_MSG, _> = deserialize(&msg);
                                     match res {
                                         Ok(msg) => {
                                             //println!("ØMQ received msg: {:?}", msg);
@@ -1222,7 +1225,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             #[cfg(feature = "cluster")]
             {
                 //push the spectrum updates to the root node
-                match &self.zmq_client {
+                match &self.nn_client {
                     Some(client) => {
                         let mean_spectrum: Vec<f32> = thread_mean_spectrum[start..end]
                             .iter()
@@ -1243,13 +1246,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         match serialize(&msg) {
                             Ok(bin) => {
-                                let client = client.lock();
-                                match client.send(bin) {
+                                let (mut client, _) = *client.lock();
+                                client.write(&bin);
+                                /*match client.send(bin) {
                                     Ok(_) => {}
                                     Err(msg) => {
                                         println!("ØMQ could not send a message: {:?}", msg)
                                     }
-                                };
+                                };*/
                             }
                             Err(err) => {
                                 println!("error serializing a SpectrumRange ØMQ response: {}", err)
@@ -1268,7 +1272,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         #[cfg(feature = "cluster")]
         {
             //handle any remaining messages from the cluster
-            match &self.zmq_server {
+            match &self.nn_server {
                 Some(my_server) => {
                     loop {
                         if spectrum_count.load(Ordering::SeqCst) as usize == self.depth
@@ -1283,12 +1287,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             );*/
                         }
 
-                        let my_server = my_server.lock();
+                        let my_server = *my_server.lock();
+                        //let my_server = my_server.clone();
+                        let mut msg = Vec::new();
                         //poll for messages with a timeout
-                        match my_server.try_recv_msg() {
-                            Ok(msg) => {
-                                println!("ØMQ received msg len: {} bytes.", msg.len());
-                                let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
+                        match my_server.nb_read_to_end(&mut msg) {
+                            Ok(len) => {
+                                println!("nanomsg received msg len: {} bytes.", len);
+                                let res: Result<ZMQ_MSG, _> = deserialize(&msg);
                                 match res {
                                     Ok(msg) => {
                                         //println!("ØMQ received msg: {:?}", msg);
@@ -1414,7 +1420,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         #[cfg(feature = "cluster")]
         {
             //push the Pixels, Mask and dmin/dmax to the root node
-            match &self.zmq_client {
+            match &self.nn_client {
                 Some(client) => {
                     let msg = ZMQ_MSG::PixelsMask {
                         _dmin: self.dmin,
@@ -1426,11 +1432,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     match serialize(&msg) {
                         Ok(bin) => {
-                            let client = client.lock();
-                            match client.send(bin) {
+                            let (mut client, _) = &*client.lock();
+                            client.write(&bin);
+                            /*match client.send(bin) {
                                 Ok(_) => {}
                                 Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
-                            };
+                            };*/
                         }
                         Err(err) => {
                             println!("error serializing a SpectrumRange ØMQ response: {}", err)
@@ -1593,7 +1600,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
         is_slave: bool,
-        nn_server: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+        nn_server: Option<Arc<Mutex<&nanomsg::Socket>>>,
         nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux, is_slave, nn_server, nn_client);
@@ -8355,15 +8362,15 @@ impl Drop for FITS {
         self.drop_to_cache();
 
         //end any nanomsg endpoints
-        if let Some(server) = self.nn_server {
-            let (_, endpoint) = *server.lock();
+        /*if let Some(server) = &self.nn_server {
+            let (_, mut endpoint) = &*server.lock();
             let _ = endpoint.shutdown();
         }
 
-        if let Some(client) = self.nn_client {
-            let (_, endpoint) = *client.lock();
+        if let Some(client) = &self.nn_client {
+            let (_, mut endpoint) = &*client.lock();
             let _ = endpoint.shutdown();
-        }
+        }*/
 
         if self.has_data {
             //remove a symbolic link

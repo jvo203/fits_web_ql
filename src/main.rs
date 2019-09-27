@@ -2993,7 +2993,7 @@ fn fitswebql_entry(
         println!("nanomsg ports: {:?}", nn_port);
     };
 
-    let mut nn_server: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
+    let mut nn_server: Vec<Option<Arc<Mutex<&'static nanomsg::Socket>>>> =
         vec![None; va_count];
     let mut nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
         vec![None; va_count];
@@ -3024,13 +3024,13 @@ fn fitswebql_entry(
                     let addr = format!("tcp://0.0.0.0:{}", port);
                     println!("nanomsg server address: {}", addr);
 
-                    let mut socket = nanomsg::Socket::new(nanomsg::Protocol::Rep);
+                    let socket = nanomsg::Socket::new(nanomsg::Protocol::Rep);
                     match socket {
                         Ok(mut socket) => {
-                            let mut endpoint = socket.connect(&addr);
+                            let endpoint = socket.connect(&addr);
                             match endpoint {
-                                Ok(mut endpoint) => {
-                                    nn_server[i] = Some(Arc::new(Mutex::new((socket, endpoint))));
+                                Ok(endpoint) => {
+                                    nn_server[i] = Some(Arc::new(Mutex::new(&socket)));
                                     nn_port[i] = Some(port);
                                 }
                                 Err(err) => println!("nanomsg error: {}", err),
@@ -3084,12 +3084,12 @@ fn fitswebql_entry(
                         let addr = format!("tcp://{}:{}", root, port);
                         println!("nanomsg client --> {}", addr);
 
-                        let mut socket = nanomsg::Socket::new(nanomsg::Protocol::Req);
+                        let socket = nanomsg::Socket::new(nanomsg::Protocol::Req);
                         match socket {
                             Ok(mut socket) => {
-                                let mut endpoint = socket.connect(&addr);
+                                let endpoint = socket.connect(&addr);
                                 match endpoint {
-                                    Ok(mut endpoint) => {
+                                    Ok(endpoint) => {
                                         nn_client[i] =
                                             Some(Arc::new(Mutex::new((socket, endpoint))));
                                     }
@@ -4209,7 +4209,7 @@ fn internal_fits(
     flux: &str,
     server: &Addr<server::SessionServer>,
     is_slave: bool,
-    nn_server: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>>,
+    nn_server: Vec<Option<Arc<Mutex<&nanomsg::Socket>>>>,
     nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>>,
 ) -> HttpResponse {
     //get fits location
