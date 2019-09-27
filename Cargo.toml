@@ -79,6 +79,7 @@ ispc = "*"
 machine-ip = "*"
 dns-lookup = "*"
 libzmq =  "*"
+nanomsg = "*"
 websocket = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
