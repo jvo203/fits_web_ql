@@ -959,9 +959,9 @@ impl FITS {
                 //periodically poll for incoming messages from the cluster
                 match &self.zmq_server {
                     Some(my_server) => {
-                        let my_server = my_server.lock();
                         let mut nothing_to_report = false;
                         loop {
+                            let my_server = my_server.lock();
                             match my_server.try_recv_msg() {
                                 Ok(msg) => {
                                     println!("ØMQ received msg len: {} bytes.", msg.len());
@@ -1271,15 +1271,17 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             //handle any remaining messages from the cluster
             match &self.zmq_server {
                 Some(my_server) => {
-                    let my_server = my_server.lock();
-                    //set a socket timeout
-                    let timeout = libzmq::Period::Finite(std::time::Duration::from_secs(60));
-                    match my_server.set_recv_timeout(timeout) {
-                        Ok(_) => {}
-                        Err(err) => {
-                            println!("could not change the ØMQ recv socket timeout: {}", err)
-                        }
-                    };
+                    {
+                        let my_server = my_server.lock();
+                        //set a socket timeout
+                        let timeout = libzmq::Period::Finite(std::time::Duration::from_secs(60));
+                        match my_server.set_recv_timeout(timeout) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                println!("could not change the ØMQ recv socket timeout: {}", err)
+                            }
+                        };
+                    }
 
                     loop {
                         if spectrum_count.load(Ordering::SeqCst) as usize == self.depth
@@ -1294,8 +1296,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             );*/
                         }
 
+                        let my_server = my_server.lock();
                         //poll for messages with a timeout
-                        match my_server.recv_msg() {
+                        match my_server.try_recv_msg() {
                             Ok(msg) => {
                                 println!("ØMQ received msg len: {} bytes.", msg.len());
                                 let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
@@ -6687,7 +6690,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
 
                                 //poll for messages with a timeout (recv_msg => try_recv_msg)
-                                match my_server.recv_msg() {
+                                match my_server.try_recv_msg() {
                                     Ok(msg) => {
                                         println!("ØMQ received msg len: {} bytes.", msg.len());
                                         let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
