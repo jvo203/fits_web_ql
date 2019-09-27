@@ -2999,7 +2999,8 @@ fn fitswebql_entry(
     let mut zmq_server: Vec<Option<Arc<Mutex<libzmq::Server>>>> = vec![None; va_count];
     let mut zmq_client: Vec<Option<Arc<Mutex<libzmq::Client>>>> = vec![None; va_count];
 
-    let mut nn_server: Vec<Option<Arc<Mutex<nanomsg::Socket>>>> = vec![None; va_count];
+    let mut nn_server: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
+        vec![None; va_count];
     let mut nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
         vec![None; va_count];
 
@@ -3028,39 +3029,22 @@ fn fitswebql_entry(
                 if let Some(port) = get_available_port() {
                     let addr = format!("tcp://0.0.0.0:{}", port);
                     println!("nanomsg server address: {}", addr);
-                };
-                /* let addr: Option<TcpAddr> = match "0.0.0.0:*".try_into() {
-                    Ok(x) => Some(x),
-                    Err(err) => {
-                        println!("ØMQ error: {}", err);
-                        None
-                    }
-                };*/
 
-                /*if let Some(x) = addr {
-                    println!("ØMQ address: {:?}", x);
-                    match ServerBuilder::new().bind(x).build() {
-                        Ok(server) => {
-                            // Retrieve the addr that was assigned.
-                            match server.last_endpoint() {
-                                Ok(bound) => {
-                                    println!("ØMQ endpoint: {:?}", bound);
-                                    match bound {
-                                        libzmq::addr::Endpoint::Tcp(host) => {
-                                            let socket = host.host();
-                                            let port = socket.port();
-                                            zmq_port[i] = port;
-                                        }
-                                        _ => {}
-                                    };
+                    let mut socket = nanomsg::Socket::new(nanomsg::Protocol::Rep);
+                    match socket {
+                        Ok(mut socket) => {
+                            let mut endpoint = socket.connect(&addr);
+                            match endpoint {
+                                Ok(mut endpoint) => {
+                                    nn_server[i] = Some(Arc::new(Mutex::new((socket, endpoint))));
+                                    nn_port[i] = Some(port);
                                 }
-                                _ => {}
-                            };
-                            zmq_server[i] = Some(Arc::new(Mutex::new(server)));
+                                Err(err) => println!("nanomsg error: {}", err),
+                            }
                         }
-                        Err(err) => println!("ØMQ error: {}", err),
+                        Err(err) => println!("nanomsg error: {}", err),
                     };
-                };*/
+                };
             }
 
             let uri = req.uri();
