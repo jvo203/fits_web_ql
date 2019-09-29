@@ -2993,8 +2993,7 @@ fn fitswebql_entry(
         println!("nanomsg ports: {:?}", nn_port);
     };
 
-    let mut nn_server: Vec<Option<Arc<Mutex<&'static nanomsg::Socket>>>> =
-        vec![None; va_count];
+    let mut nn_server: Vec<Option<Arc<Mutex<nanomsg::Socket>>>> = vec![None; va_count];
     let mut nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
         vec![None; va_count];
 
@@ -3030,7 +3029,7 @@ fn fitswebql_entry(
                             let endpoint = socket.connect(&addr);
                             match endpoint {
                                 Ok(endpoint) => {
-                                    nn_server[i] = Some(Arc::new(Mutex::new(&socket)));
+                                    nn_server[i] = Some(Arc::new(Mutex::new(socket)));
                                     nn_port[i] = Some(port);
                                 }
                                 Err(err) => println!("nanomsg error: {}", err),
@@ -4209,7 +4208,7 @@ fn internal_fits(
     flux: &str,
     server: &Addr<server::SessionServer>,
     is_slave: bool,
-    nn_server: Vec<Option<Arc<Mutex<&nanomsg::Socket>>>>,
+    nn_server: Vec<Option<Arc<Mutex<nanomsg::Socket>>>>,
     nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>>,
 ) -> HttpResponse {
     //get fits location

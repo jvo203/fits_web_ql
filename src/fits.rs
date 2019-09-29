@@ -955,14 +955,14 @@ impl FITS {
                     break;
                 }
 
-                //periodically poll for incoming messages from the cluster                
+                //periodically poll for incoming messages from the cluster
                 match &self.nn_server {
                     Some(my_server) => {
                         let mut nothing_to_report = false;
                         loop {
-                            let my_server = *my_server.lock();
+                            //let my_server = *my_server.lock();
                             //let my_server = my_server.clone();
-                            let mut msg = Vec::new();
+                            /*let mut msg: Vec<u8> = Vec::new();
                             let res = my_server.nb_read_to_end(&mut msg);
                             match res {
                                 Ok(len) => {
@@ -1039,7 +1039,7 @@ impl FITS {
                                     };
                                 }
                                 _ => nothing_to_report = true,
-                            };
+                            };*/
 
                             if nothing_to_report {
                                 break;
@@ -1246,8 +1246,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         match serialize(&msg) {
                             Ok(bin) => {
-                                let (mut client, _) = *client.lock();
-                                client.write(&bin);
+                                //let (mut client, _) = *client.lock();
+                                //client.write(&bin);
                                 /*match client.send(bin) {
                                     Ok(_) => {}
                                     Err(msg) => {
@@ -1287,9 +1287,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             );*/
                         }
 
-                        let my_server = *my_server.lock();
+                        //let my_server = *my_server.lock();
                         //let my_server = my_server.clone();
-                        let mut msg = Vec::new();
+                        /*let mut msg: Vec<u8> = Vec::new();
                         //poll for messages with a timeout
                         match my_server.nb_read_to_end(&mut msg) {
                             Ok(len) => {
@@ -1367,7 +1367,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 };
                             }
                             _ => {}
-                        };
+                        };*/
                     }
                 }
                 _ => {}
@@ -1432,8 +1432,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     match serialize(&msg) {
                         Ok(bin) => {
-                            let (mut client, _) = &*client.lock();
-                            client.write(&bin);
+                            //let (mut client, _) = &*client.lock();
+                            //client.write(&bin);
                             /*match client.send(bin) {
                                 Ok(_) => {}
                                 Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
@@ -1600,7 +1600,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
         is_slave: bool,
-        nn_server: Option<Arc<Mutex<&nanomsg::Socket>>>,
+        nn_server: Option<Arc<Mutex<nanomsg::Socket>>>,
         nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux, is_slave, nn_server, nn_client);
@@ -8360,17 +8360,6 @@ impl Drop for FITS {
     fn drop(&mut self) {
         println!("deleting {}", self.dataset_id);
         self.drop_to_cache();
-
-        //end any nanomsg endpoints
-        /*if let Some(server) = &self.nn_server {
-            let (_, mut endpoint) = &*server.lock();
-            let _ = endpoint.shutdown();
-        }
-
-        if let Some(client) = &self.nn_client {
-            let (_, mut endpoint) = &*client.lock();
-            let _ = endpoint.shutdown();
-        }*/
 
         if self.has_data {
             //remove a symbolic link
