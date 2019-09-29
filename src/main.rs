@@ -3025,7 +3025,6 @@ fn fitswebql_entry(
                     let socket = nng::Socket::new(nng::Protocol::Rep0);
                     match socket {
                         Ok(socket) => {
-                            //socket.set_nonblocking(true);
                             let endpoint = socket.listen(&addr);
                             match endpoint {
                                 Ok(_) => {

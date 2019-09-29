@@ -961,7 +961,7 @@ impl FITS {
                         //my_server.set_nonblocking(true);
                         let mut nothing_to_report = false;
                         loop {
-                            match my_server.recv() {
+                            match my_server.try_recv() {
                                 Ok(msg) => {
                                     println!("nanomsg received msg len: {} bytes.", msg.len());
                                     let res: Result<ZMQ_MSG, _> = deserialize(&msg);
@@ -1283,7 +1283,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
 
                         //poll for messages with a timeout
-                        match my_server.recv() {
+                        match my_server.try_recv() {
                             Ok(msg) => {
                                 println!("nanomsg received msg len: {} bytes.", msg.len());
                                 let res: Result<ZMQ_MSG, _> = deserialize(&msg);
