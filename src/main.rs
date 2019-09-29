@@ -2472,7 +2472,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-09-27.0";
+static VERSION_STRING: &'static str = "SV2019-09-29.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2993,9 +2993,8 @@ fn fitswebql_entry(
         println!("nanomsg ports: {:?}", nn_port);
     };
 
-    let mut nn_server: Vec<Option<Arc<Mutex<nanomsg::Socket>>>> = vec![None; va_count];
-    let mut nn_client: Vec<Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>> =
-        vec![None; va_count];
+    let mut nn_server: Vec<Option<Arc<Mutex<nng::Socket>>>> = vec![None; va_count];
+    let mut nn_client: Vec<Option<Arc<Mutex<nng::Socket>>>> = vec![None; va_count];
 
     #[cfg(feature = "cluster")]
     {
@@ -3021,21 +3020,21 @@ fn fitswebql_entry(
             for i in 0..va_count {
                 if let Some(port) = get_available_port() {
                     let addr = format!("tcp://0.0.0.0:{}", port);
-                    println!("nanomsg server address: {}", addr);
+                    println!("nanomsg-next server address: {}", addr);
 
-                    let socket = nanomsg::Socket::new(nanomsg::Protocol::Rep);
+                    let socket = nng::Socket::new(nng::Protocol::Rep0);
                     match socket {
-                        Ok(mut socket) => {
-                            let endpoint = socket.connect(&addr);
+                        Ok(socket) => {
+                            let endpoint = socket.listen(&addr);
                             match endpoint {
                                 Ok(endpoint) => {
                                     nn_server[i] = Some(Arc::new(Mutex::new(socket)));
                                     nn_port[i] = Some(port);
                                 }
-                                Err(err) => println!("nanomsg error: {}", err),
+                                Err(err) => println!("nanomsg-next listen error: {}", err),
                             }
                         }
-                        Err(err) => println!("nanomsg error: {}", err),
+                        Err(err) => println!("nanomsg-next protocol error: {}", err),
                     };
                 };
             }
@@ -3077,25 +3076,24 @@ fn fitswebql_entry(
 
         if !is_root {
             for i in 0..va_count {
-                //launch nanomsg clients
+                //launch nanomsg-next clients
                 if let Some(port) = nn_port[i] {
                     if let Some(root) = &*root_node.read() {
                         let addr = format!("tcp://{}:{}", root, port);
-                        println!("nanomsg client --> {}", addr);
+                        println!("nanomsg-next client --> {}", addr);
 
-                        let socket = nanomsg::Socket::new(nanomsg::Protocol::Req);
+                        let socket = nng::Socket::new(nng::Protocol::Req0);
                         match socket {
-                            Ok(mut socket) => {
-                                let endpoint = socket.connect(&addr);
+                            Ok(socket) => {
+                                let endpoint = socket.dial(&addr);
                                 match endpoint {
                                     Ok(endpoint) => {
-                                        nn_client[i] =
-                                            Some(Arc::new(Mutex::new((socket, endpoint))));
+                                        nn_client[i] = Some(Arc::new(Mutex::new(socket)));
                                     }
-                                    Err(err) => println!("nanomsg error: {}", err),
+                                    Err(err) => println!("nanomsg-next dial error: {}", err),
                                 }
                             }
-                            Err(err) => println!("nanomsg error: {}", err),
+                            Err(err) => println!("nanomsg-next protocol error: {}", err),
                         };
                     };
                 };
