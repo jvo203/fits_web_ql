@@ -1432,12 +1432,21 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     match serialize(&msg) {
                         Ok(bin) => {
-                            //let (mut client, _) = &*client.lock();
-                            //client.write(&bin);
-                            /*match client.send(bin) {
+                            /*match nng::message.try_from(bin) {
+                                Ok(msg) => {
+                                    println!("nanomsg-next: created a new message");
+                                }
+                                Err(err) => {
+                                    println!("nanomsg-next: error creating a new message: {}", err)
+                                }
+                            }*/
+
+                            match client.send(&bin) {
                                 Ok(_) => {}
-                                Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
-                            };*/
+                                Err(msg) => {
+                                    println!("nanomsg-next could not send a message: {:?}", msg)
+                                }
+                            };
                         }
                         Err(err) => {
                             println!("error serializing a SpectrumRange ØMQ response: {}", err)
