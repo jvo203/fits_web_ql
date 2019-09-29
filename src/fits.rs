@@ -397,8 +397,8 @@ pub struct FITS {
     pub is_dummy: bool,
     pub _is_slave: bool,
     pub status_code: u16,
-    pub nn_server: Option<Arc<Mutex<nanomsg::Socket>>>,
-    pub nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+    pub nn_server: Option<nng::Socket>,
+    pub nn_client: Option<nng::Socket>,
 }
 
 #[derive(Serialize, Debug)]
@@ -415,8 +415,8 @@ impl FITS {
         id: &String,
         flux: &String,
         is_slave: bool,
-        nn_server: Option<Arc<Mutex<nanomsg::Socket>>>,
-        nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+        nn_server: Option<nng::Socket>,
+        nn_client: Option<nng::Socket>,
     ) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
             Ok(_) => String::from(""),
@@ -1600,8 +1600,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
         is_slave: bool,
-        nn_server: Option<Arc<Mutex<nanomsg::Socket>>>,
-        nn_client: Option<Arc<Mutex<(nanomsg::Socket, nanomsg::endpoint::Endpoint)>>>,
+        nn_server: Option<nng::Socket>,
+        nn_client: Option<nng::Socket>,
     ) -> FITS {
         let mut fits = FITS::new(id, flux, is_slave, nn_server, nn_client);
         fits.is_dummy = false;
