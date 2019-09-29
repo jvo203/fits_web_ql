@@ -958,15 +958,12 @@ impl FITS {
                 //periodically poll for incoming messages from the cluster
                 match &self.nn_server {
                     Some(my_server) => {
+                        //my_server.set_nonblocking(true);
                         let mut nothing_to_report = false;
                         loop {
-                            //let my_server = *my_server.lock();
-                            //let my_server = my_server.clone();
-                            /*let mut msg: Vec<u8> = Vec::new();
-                            let res = my_server.nb_read_to_end(&mut msg);
-                            match res {
-                                Ok(len) => {
-                                    println!("nanomsg received msg len: {} bytes.", len);
+                            match my_server.recv() {
+                                Ok(msg) => {
+                                    println!("nanomsg received msg len: {} bytes.", msg.len());
                                     let res: Result<ZMQ_MSG, _> = deserialize(&msg);
                                     match res {
                                         Ok(msg) => {
@@ -1039,7 +1036,7 @@ impl FITS {
                                     };
                                 }
                                 _ => nothing_to_report = true,
-                            };*/
+                            };
 
                             if nothing_to_report {
                                 break;
@@ -1246,14 +1243,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         match serialize(&msg) {
                             Ok(bin) => {
-                                //let (mut client, _) = *client.lock();
-                                //client.write(&bin);
-                                /*match client.send(bin) {
+                                match client.send(&bin) {
                                     Ok(_) => {}
                                     Err(msg) => {
-                                        println!("ØMQ could not send a message: {:?}", msg)
+                                        println!("nanomsg-next could not send a message: {:?}", msg)
                                     }
-                                };*/
+                                };
                             }
                             Err(err) => {
                                 println!("error serializing a SpectrumRange ØMQ response: {}", err)
@@ -1287,13 +1282,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             );*/
                         }
 
-                        //let my_server = *my_server.lock();
-                        //let my_server = my_server.clone();
-                        /*let mut msg: Vec<u8> = Vec::new();
                         //poll for messages with a timeout
-                        match my_server.nb_read_to_end(&mut msg) {
-                            Ok(len) => {
-                                println!("nanomsg received msg len: {} bytes.", len);
+                        match my_server.recv() {
+                            Ok(msg) => {
+                                println!("nanomsg received msg len: {} bytes.", msg.len());
                                 let res: Result<ZMQ_MSG, _> = deserialize(&msg);
                                 match res {
                                     Ok(msg) => {
@@ -1367,7 +1359,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 };
                             }
                             _ => {}
-                        };*/
+                        };
                     }
                 }
                 _ => {}
