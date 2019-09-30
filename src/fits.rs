@@ -3,7 +3,7 @@ use atomic;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use half::f16;
 use num_cpus;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use positioned_io::ReadAt;
 use regex::Regex;

@@ -88,7 +88,7 @@ use ocl::core;
 
 use std::collections::{HashMap, HashSet};
 
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 
 mod fits;
 mod kalman;
@@ -1012,9 +1012,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     {
                                         //receive websocket messages from slaves
                                         self._slaves_rx.iter_mut().for_each(|client| {
-                                            for msg in client.incoming_messages() {
-                                                println!("msg: {:?}", msg);
-                                            }
+                                            let msg = client.recv_message().unwrap();
+                                            println!("msg: {:?}", msg);
                                         });
                                     }
 
@@ -1049,16 +1048,23 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     //pass the response "as is" to the root
                                     #[cfg(feature = "cluster")]
                                     {
-                                        match serialize(&spectrum) {
-                                            Ok(bin) => {
-                                                println!("binary length: {}", bin.len());
-                                                //println!("{}", bin);
-                                                ctx.binary(bin);
-                                            }
-                                            Err(err) => println!(
+                                        if !self.is_root {
+                                            let spectrum = fits::ZMQ_MSG::Spectrum {
+                                                _spectrum: Vec::new(),
+                                                _count: 0,
+                                            };
+
+                                            match serialize(&spectrum) {
+                                                Ok(bin) => {
+                                                    println!("binary length: {}", bin.len());
+                                                    //println!("{}", bin);
+                                                    ctx.binary(bin);
+                                                }
+                                                Err(err) => println!(
                                                 "error serializing a Socket spectrum response: {}",
                                                 err
                                             ),
+                                            }
                                         }
                                     }
                                 }
@@ -2902,7 +2908,7 @@ fn websocket_entry(
                         let conn = client.connect_insecure();
                         match conn {
                             Ok(stream) => {
-                                let (mut receiver, mut sender) = stream.split().unwrap();
+                                let (receiver, sender) = stream.split().unwrap();
                                 ws_clients_rx.push(receiver);
                                 ws_clients_tx.push(sender);
                                 //ws_clients.push(stream);
