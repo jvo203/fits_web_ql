@@ -1102,10 +1102,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     #[cfg(feature = "cluster")]
                                     {
                                         if !self.is_root {
-                                            let spectrum = fits::ZMQ_MSG::Spectrum {
+                                            /*let spectrum = fits::ZMQ_MSG::Spectrum {
                                                 _spectrum: Vec::new(),
                                                 _count: 0,
-                                            };
+                                            };*/
 
                                             match serialize(&spectrum) {
                                                 Ok(bin) => {
