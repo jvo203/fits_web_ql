@@ -866,12 +866,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     #[cfg(feature = "cluster")]
                     {
                         if self.is_root {
-                            if self.is_root {
-                                //pass websocket messages to slaves
-                                self._slaves_tx.iter_mut().for_each(|client| {
-                                    let _ = client.send_message(&websocket::Message::text(&text));
-                                });
-                            }
+                            //pass websocket messages to slaves
+                            self._slaves_tx.iter_mut().for_each(|client| {
+                                let _ = client.send_message(&websocket::Message::text(&text));
+                            });
                         }
                     }
 
@@ -1010,6 +1008,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 let elapsed = (stop - start) / 1000000;
 
                                 if self.is_root {
+                                    #[cfg(feature = "cluster")]
+                                    {
+                                        //receive websocket messages from slaves
+                                        self._slaves_rx.iter_mut().for_each(|client| {
+                                            for msg in client.incoming_messages() {
+                                                println!("msg: {:?}", msg);
+                                            }
+                                        });
+                                    }
+
                                     match spectrum {
                                         fits::ZMQ_MSG::Spectrum { _spectrum, _count } => {
                                             //collate _spectrum, add-up the _count until == _spectrum.len()
