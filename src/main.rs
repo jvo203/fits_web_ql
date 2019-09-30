@@ -199,7 +199,9 @@ struct UserSession {
     log: std::io::Result<File>,
     wasm: bool,
     is_root: bool,
-    _slaves: Vec<websocket::client::sync::Client<std::net::TcpStream>>,
+    //_slaves: Vec<websocket::client::sync::Client<std::net::TcpStream>>,
+    _slaves_rx: Vec<websocket::receiver::Reader<std::net::TcpStream>>,
+    _slaves_tx: Vec<websocket::sender::Writer<std::net::TcpStream>>,
     //hevc: std::io::Result<File>,
     cfg: vpx_codec_enc_cfg_t, //VP9 encoder config
     ctx: vpx_codec_ctx_t,     //VP9 encoder context
@@ -225,7 +227,9 @@ impl UserSession {
         addr: Addr<server::SessionServer>,
         id: &Vec<String>,
         is_root: bool,
-        slaves: Vec<websocket::client::sync::Client<std::net::TcpStream>>,
+        //slaves: Vec<websocket::client::sync::Client<std::net::TcpStream>>,
+        slaves_rx: Vec<websocket::receiver::Reader<std::net::TcpStream>>,
+        slaves_tx: Vec<websocket::sender::Writer<std::net::TcpStream>>,
     ) -> UserSession {
         let uuid = Uuid::new_v4();
 
@@ -274,7 +278,9 @@ impl UserSession {
             log: log,
             wasm: false,
             is_root: is_root,
-            _slaves: slaves,
+            //_slaves: slaves,
+            _slaves_rx: slaves_rx,
+            _slaves_tx: slaves_tx,
             //hevc: hevc,
             cfg: vpx_codec_enc_cfg::default(),
             ctx: vpx_codec_ctx_t {
@@ -423,7 +429,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     {
                         if self.is_root {
                             //pass websocket messages to slaves
-                            self._slaves.iter_mut().for_each(|client| {
+                            self._slaves_tx.iter_mut().for_each(|client| {
                                 let _ = client.send_message(&websocket::Message::text(&text));
                             });
                         }
@@ -442,7 +448,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     {
                         if self.is_root {
                             //pass websocket messages to slaves
-                            self._slaves.iter_mut().for_each(|client| {
+                            self._slaves_tx.iter_mut().for_each(|client| {
                                 let _ = client.send_message(&websocket::Message::text(&text));
                             });
                         }
@@ -466,7 +472,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     {
                         if self.is_root {
                             //pass websocket messages to slaves
-                            self._slaves.iter_mut().for_each(|client| {
+                            self._slaves_tx.iter_mut().for_each(|client| {
                                 let _ = client.send_message(&websocket::Message::text(&text));
                             });
                         }
@@ -826,7 +832,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     {
                         if self.is_root {
                             //pass websocket messages to slaves
-                            self._slaves.iter_mut().for_each(|client| {
+                            self._slaves_tx.iter_mut().for_each(|client| {
                                 let _ = client.send_message(&websocket::Message::text(&text));
                             });
                         }
@@ -860,22 +866,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     #[cfg(feature = "cluster")]
                     {
                         if self.is_root {
-                            //split the send/receive channels
-                            match client.split() {
-                                Some((_, mut sender)) => {
-                                    //pass websocket messages to slaves
-                                    self._slaves.iter_mut().for_each(|client| {
-                                        match sender.send_message(&websocket::Message::text(&text))
-                                        {
-                                            Ok(_) => {}
-                                            Err(err) => println!(
-                                                "[ws] error routing a 'spectrum' message: {}",
-                                                err
-                                            ),
-                                        }
-                                    });
-                                }
-                                _ => {}
+                            if self.is_root {
+                                //pass websocket messages to slaves
+                                self._slaves_tx.iter_mut().for_each(|client| {
+                                    let _ = client.send_message(&websocket::Message::text(&text));
+                                });
                             }
                         }
                     }
@@ -1103,7 +1098,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     {
                         if self.is_root {
                             //pass websocket messages to slaves
-                            self._slaves.iter_mut().for_each(|client| {
+                            self._slaves_tx.iter_mut().for_each(|client| {
                                 let _ = client.send_message(&websocket::Message::text(&text));
                             });
                         }
@@ -2860,11 +2855,23 @@ fn websocket_entry(
         id, user_agent
     );
 
+    /*#[cfg(not(feature = "cluster"))]
+    let ws_clients: Vec<websocket::client::sync::Client<std::net::TcpStream>> = Vec::new();*/
+
     #[cfg(not(feature = "cluster"))]
-    let ws_clients: Vec<websocket::client::sync::Client<std::net::TcpStream>> = Vec::new();
+    let ws_clients_rx: Vec<websocket::receiver::Reader<std::net::TcpStream>> = Vec::new();
+
+    #[cfg(not(feature = "cluster"))]
+    let ws_clients_tx: Vec<websocket::sender::Writer<std::net::TcpStream>> = Vec::new();
+
+    /*#[cfg(feature = "cluster")]
+    let mut ws_clients: Vec<websocket::client::sync::Client<std::net::TcpStream>> = Vec::new();*/
 
     #[cfg(feature = "cluster")]
-    let mut ws_clients: Vec<websocket::client::sync::Client<std::net::TcpStream>> = Vec::new();
+    let mut ws_clients_rx: Vec<websocket::receiver::Reader<std::net::TcpStream>> = Vec::new();
+
+    #[cfg(feature = "cluster")]
+    let mut ws_clients_tx: Vec<websocket::sender::Writer<std::net::TcpStream>> = Vec::new();
 
     #[cfg(feature = "cluster")]
     {
@@ -2886,7 +2893,13 @@ fn websocket_entry(
                         let mut client = builder.clone().add_protocol("rust-websocket");
                         let conn = client.connect_insecure();
                         match conn {
-                            Ok(stream) => ws_clients.push(stream),
+                            Ok(stream) => {
+                                let (mut receiver, mut sender) = stream.split().unwrap();
+                                ws_clients_rx.push(receiver);
+                                ws_clients_tx.push(sender);
+                                //ws_clients.push(stream);
+                                //split the receiving/transmitting ends
+                            }
                             Err(err) => println!("[ws] connection error: {}", err),
                         }
                     }
@@ -2897,7 +2910,14 @@ fn websocket_entry(
     }
 
     result(ws::start(
-        UserSession::new(state.addr.clone(), &id, is_root, ws_clients),
+        UserSession::new(
+            state.addr.clone(),
+            &id,
+            is_root,
+            //ws_clients,
+            ws_clients_rx,
+            ws_clients_tx,
+        ),
         &req,
         stream,
     ))
