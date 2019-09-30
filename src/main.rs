@@ -1103,23 +1103,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     //pass the response "as is" to the root
                                     #[cfg(feature = "cluster")]
                                     {
-                                        if !self.is_root {
-                                            /*let spectrum = fits::ZMQ_MSG::Spectrum {
-                                                _spectrum: Vec::new(),
-                                                _count: 0,
-                                            };*/
-
-                                            match serialize(&spectrum) {
-                                                Ok(bin) => {
-                                                    println!("binary length: {}", bin.len());
-                                                    //println!("{}", bin);
-                                                    ctx.binary(bin);
-                                                }
-                                                Err(err) => println!(
+                                        match serialize(&spectrum) {
+                                            Ok(bin) => {
+                                                println!("binary length: {}", bin.len());
+                                                //println!("{}", bin);
+                                                ctx.binary(bin);
+                                            }
+                                            Err(err) => println!(
                                                 "error serializing a Socket spectrum response: {}",
                                                 err
                                             ),
-                                            }
                                         }
                                     }
                                 }
