@@ -1288,7 +1288,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
 
                         //poll for messages with a timeout (TO DO:set the tmeout)
-                        match my_server.recv() {
+                        match my_server.try_recv() {
                             Ok(msg) => {
                                 println!("nanomsg-next received msg len: {} bytes.", msg.len());
                                 let res: Result<ZMQ_MSG, _> = deserialize(&msg);
@@ -1366,7 +1366,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     _ => {}
                                 };
                             }
-                            _ => {}
+                            Err(err) => {
+                                println!("nanomsg-next: {}", err);
+                            }
                         };
                     }
                 }
