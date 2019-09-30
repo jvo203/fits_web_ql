@@ -964,7 +964,7 @@ impl FITS {
                         loop {
                             match my_server.try_recv() {
                                 Ok(msg) => {
-                                    println!("nanomsg received msg len: {} bytes.", msg.len());
+                                    println!("nanomsg-next received msg len: {} bytes.", msg.len());
                                     let res: Result<ZMQ_MSG, _> = deserialize(&msg);
                                     match res {
                                         Ok(msg) => {
@@ -1276,17 +1276,17 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         {
                             break;
                         } else {
-                            /*println!(
+                            println!(
                                 "spectrum_count: {}, plane_count: {}",
                                 spectrum_count.load(Ordering::SeqCst),
                                 plane_count.load(Ordering::SeqCst)
-                            );*/
+                            );
                         }
 
                         //poll for messages with a timeout (TO DO:set the tmeout)
-                        match my_server.recv() {
+                        match my_server.try_recv() {
                             Ok(msg) => {
-                                println!("nanomsg received msg len: {} bytes.", msg.len());
+                                println!("nanomsg-next received msg len: {} bytes.", msg.len());
                                 let res: Result<ZMQ_MSG, _> = deserialize(&msg);
                                 match res {
                                     Ok(msg) => {
