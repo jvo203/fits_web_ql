@@ -1005,26 +1005,32 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             Some(spectrum) => {
                                 let stop = precise_time::precise_time_ns();
                                 let elapsed = (stop - start) / 1000000;
-                                //send a binary response message (serialize a structure to a binary stream)
-                                if self.is_root {
-                                    let ws_spectrum = WsSpectrum {
-                                        ts: timestamp as f32,
-                                        seq_id: seq_id as u32,
-                                        msg_type: 0,
-                                        elapsed: elapsed as f32,
-                                        spectrum: spectrum,
-                                    };
 
-                                    match serialize(&ws_spectrum) {
-                                        Ok(bin) => {
-                                            println!("binary length: {}", bin.len());
-                                            //println!("{}", bin);
-                                            ctx.binary(bin);
-                                        }
-                                        Err(err) => println!(
+                                if self.is_root {
+                                    match spectrum {
+                                        fits::ZMQ_MSG::Spectrum { _spectrum, _count } => {
+                                            //send a binary response message (serialize a structure to a binary stream)
+                                            let ws_spectrum = WsSpectrum {
+                                                ts: timestamp as f32,
+                                                seq_id: seq_id as u32,
+                                                msg_type: 0,
+                                                elapsed: elapsed as f32,
+                                                spectrum: _spectrum,
+                                            };
+
+                                            match serialize(&ws_spectrum) {
+                                                Ok(bin) => {
+                                                    println!("binary length: {}", bin.len());
+                                                    //println!("{}", bin);
+                                                    ctx.binary(bin);
+                                                }
+                                                Err(err) => println!(
                                             "error serializing a WebSocket spectrum response: {}",
                                             err
                                         ),
+                                            }
+                                        }
+                                        _ => {}
                                     }
                                 }
                             }

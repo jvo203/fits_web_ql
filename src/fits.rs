@@ -66,9 +66,8 @@ pub struct ZFPMaskedArray {
     pub rate: f64,
 }
 
-#[cfg(feature = "cluster")]
 #[derive(Serialize, Deserialize, Debug)]
-enum ZMQ_MSG {
+pub enum ZMQ_MSG {
     SpectrumRange {
         _start: usize,
         _end: usize,
@@ -6490,7 +6489,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame_end: f64,
         ref_freq: f64,
         pool: &Option<rayon::ThreadPool>,
-    ) -> Option<Vec<f32>> {
+    ) -> Option<ZMQ_MSG> {
         if self.depth <= 1 {
             return None;
         }
@@ -6640,7 +6639,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     (stop_watch - start_watch) / 1000000
                 );
 
-                //return the spectrum
+                let spectrum = ZMQ_MSG::Spectrum {
+                    _spectrum: spectrum,
+                    _count: frame_count.load(Ordering::SeqCst),
+                };
+
+                //return the spectrum structure
                 Some(spectrum)
             }
             None => {
