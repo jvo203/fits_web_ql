@@ -1442,7 +1442,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             }*/
 
                             match client.send(&bin) {
-                                Ok(_) => {}
+                                Ok(_) => {
+                                    println!("ZMQ_MSG::PixelsMask::msg:{:?}", msg);
+                                }
                                 Err(msg) => {
                                     println!("nanomsg-next could not send a message: {:?}", msg)
                                 }
