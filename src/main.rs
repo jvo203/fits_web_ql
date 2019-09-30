@@ -3022,7 +3022,7 @@ fn fitswebql_entry(
                     let addr = format!("tcp://0.0.0.0:{}", port);
                     println!("nanomsg-next server address: {}", addr);
 
-                    let socket = nng::Socket::new(nng::Protocol::Rep0);
+                    let socket = nng::Socket::new(nng::Protocol::Pair0);
                     match socket {
                         Ok(socket) => {
                             let endpoint = socket.listen(&addr);
@@ -3082,7 +3082,7 @@ fn fitswebql_entry(
                         let addr = format!("tcp://{}:{}", root, port);
                         println!("nanomsg-next client --> {}", addr);
 
-                        let socket = nng::Socket::new(nng::Protocol::Req0);
+                        let socket = nng::Socket::new(nng::Protocol::Pair0);
                         match socket {
                             Ok(socket) => {
                                 let endpoint = socket.dial(&addr);
