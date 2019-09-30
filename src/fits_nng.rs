@@ -398,8 +398,8 @@ pub struct FITS {
     pub is_dummy: bool,
     pub _is_slave: bool,
     pub status_code: u16,
-    pub zmq_server: Option<libzmq::Server>,
-    pub zmq_client: Option<libzmq::Client>,
+    pub nn_server: Option<nng::Socket>,
+    pub nn_client: Option<nng::Socket>,
 }
 
 #[derive(Serialize, Debug)]
@@ -416,8 +416,8 @@ impl FITS {
         id: &String,
         flux: &String,
         is_slave: bool,
-        zmq_server: Option<libzmq::Server>,
-        zmq_client: Option<libzmq::Client>,
+        nn_server: Option<nng::Socket>,
+        nn_client: Option<nng::Socket>,
     ) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
             Ok(_) => String::from(""),
@@ -520,8 +520,8 @@ impl FITS {
             is_dummy: true,
             _is_slave: is_slave,
             status_code: 404,
-            zmq_server: zmq_server,
-            zmq_client: zmq_client,
+            nn_server: nn_server,
+            nn_client: nn_client,
         };
 
         fits
@@ -957,14 +957,15 @@ impl FITS {
                 }
 
                 //periodically poll for incoming messages from the cluster
-                match &self.zmq_server {
+                match &self.nn_server {
                     Some(my_server) => {
+                        //my_server.set_nonblocking(true);
                         let mut nothing_to_report = false;
                         loop {
-                            match my_server.try_recv_msg() {
+                            match my_server.try_recv() {
                                 Ok(msg) => {
-                                    println!("ØMQ received msg len: {} bytes.", msg.len());
-                                    let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
+                                    println!("nanomsg-next received msg len: {} bytes.", msg.len());
+                                    let res: Result<ZMQ_MSG, _> = deserialize(&msg);
                                     match res {
                                         Ok(msg) => {
                                             //println!("ØMQ received msg: {:?}", msg);
@@ -1009,6 +1010,10 @@ impl FITS {
                                                     _count,
                                                 } => {
                                                     plane_count.fetch_add(_count, Ordering::SeqCst);
+                                                    println!(
+                                                        "plane_count: {}",
+                                                        plane_count.load(Ordering::SeqCst)
+                                                    );
 
                                                     self.dmin = self.dmin.min(_dmin);
                                                     self.dmax = self.dmax.max(_dmax);
@@ -1161,8 +1166,8 @@ impl FITS {
                                                     //end of parallel data processing
 
                                                     plane_count
-                                                            .fetch_add(1, Ordering::SeqCst)
-                                                            as i32;
+                                                            .fetch_add(1, Ordering::SeqCst);
+                                                    println!("plane_count: {}", plane_count.load(Ordering::SeqCst));
 
                                                     let previous_count = spectrum_count
                                                         .fetch_add(1, Ordering::SeqCst)
@@ -1222,7 +1227,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             #[cfg(feature = "cluster")]
             {
                 //push the spectrum updates to the root node
-                match &self.zmq_client {
+                match &self.nn_client {
                     Some(client) => {
                         let mean_spectrum: Vec<f32> = thread_mean_spectrum[start..end]
                             .iter()
@@ -1243,10 +1248,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         match serialize(&msg) {
                             Ok(bin) => {
-                                match client.send(bin) {
+                                match client.send(&bin) {
                                     Ok(_) => {}
                                     Err(msg) => {
-                                        println!("ØMQ could not send a message: {:?}", msg)
+                                        println!("nanomsg-next could not send a message: {:?}", msg)
                                     }
                                 };
                             }
@@ -1267,37 +1272,26 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         #[cfg(feature = "cluster")]
         {
             //handle any remaining messages from the cluster
-            match &self.zmq_server {
+            match &self.nn_server {
                 Some(my_server) => {
-                    {
-                        //set a socket timeout
-                        let timeout = libzmq::Period::Finite(std::time::Duration::from_secs(60));
-                        match my_server.set_recv_timeout(timeout) {
-                            Ok(_) => {}
-                            Err(err) => {
-                                println!("could not change the ØMQ recv socket timeout: {}", err)
-                            }
-                        };
-                    }
-
                     loop {
                         if spectrum_count.load(Ordering::SeqCst) as usize == self.depth
                             && plane_count.load(Ordering::SeqCst) as usize == self.depth
                         {
                             break;
                         } else {
-                            /*println!(
+                            println!(
                                 "spectrum_count: {}, plane_count: {}",
                                 spectrum_count.load(Ordering::SeqCst),
                                 plane_count.load(Ordering::SeqCst)
-                            );*/
+                            );
                         }
 
-                        //poll for messages with a timeout
-                        match my_server.try_recv_msg() {
+                        //poll for messages with a timeout (TO DO:set the tmeout)
+                        match my_server.recv() {
                             Ok(msg) => {
-                                println!("ØMQ received msg len: {} bytes.", msg.len());
-                                let res: Result<ZMQ_MSG, _> = deserialize(&msg.as_bytes());
+                                println!("nanomsg-next received msg len: {} bytes.", msg.len());
+                                let res: Result<ZMQ_MSG, _> = deserialize(&msg);
                                 match res {
                                     Ok(msg) => {
                                         //println!("ØMQ received msg: {:?}", msg);
@@ -1341,8 +1335,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                                 _mask,
                                                 _count,
                                             } => {
-                                                plane_count.fetch_add(_count, Ordering::SeqCst)
-                                                    as i32;
+                                                plane_count.fetch_add(_count, Ordering::SeqCst);
+                                                println!(
+                                                    "plane_count: {}",
+                                                    plane_count.load(Ordering::SeqCst)
+                                                );
 
                                                 self.dmin = self.dmin.min(_dmin);
                                                 self.dmax = self.dmax.max(_dmax);
@@ -1369,7 +1366,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     _ => {}
                                 };
                             }
-                            _ => {}
+                            Err(err) => {
+                                println!("nanomsg-next: {}", err);
+                            }
                         };
                     }
                 }
@@ -1423,7 +1422,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         #[cfg(feature = "cluster")]
         {
             //push the Pixels, Mask and dmin/dmax to the root node
-            match &self.zmq_client {
+            match &self.nn_client {
                 Some(client) => {
                     let msg = ZMQ_MSG::PixelsMask {
                         _dmin: self.dmin,
@@ -1435,9 +1434,22 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     match serialize(&msg) {
                         Ok(bin) => {
-                            match client.send(bin) {
-                                Ok(_) => {}
-                                Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
+                            /*match nng::message.try_from(bin) {
+                                Ok(msg) => {
+                                    println!("nanomsg-next: created a new message");
+                                }
+                                Err(err) => {
+                                    println!("nanomsg-next: error creating a new message: {}", err)
+                                }
+                            }*/
+
+                            match client.send(&bin) {
+                                Ok(_) => {
+                                    //println!("ZMQ_MSG::PixelsMask::msg:{:?}", msg);
+                                }
+                                Err(msg) => {
+                                    println!("nanomsg-next could not send a message: {:?}", msg)
+                                }
                             };
                         }
                         Err(err) => {
@@ -1601,10 +1613,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
         is_slave: bool,
-        zmq_server: Option<libzmq::Server>,
-        zmq_client: Option<libzmq::Client>,
+        nn_server: Option<nng::Socket>,
+        nn_client: Option<nng::Socket>,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux, is_slave, zmq_server, zmq_client);
+        let mut fits = FITS::new(id, flux, is_slave, nn_server, nn_client);
         fits.is_dummy = false;
 
         //load data from filepath
@@ -6639,6 +6651,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     frame_count.load(Ordering::SeqCst),
                     (stop_watch - start_watch) / 1000000
                 );
+
+                #[cfg(feature = "cluster")]
+                {}
 
                 //return the spectrum
                 Some(spectrum)

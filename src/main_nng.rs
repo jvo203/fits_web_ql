@@ -72,12 +72,6 @@ use log::info;
 use time as precise_time;
 //use rav1e::*;
 
-#[cfg(feature = "cluster")]
-use libzmq::{prelude::*, *};
-
-#[cfg(feature = "cluster")]
-use std::convert::TryInto;
-
 #[cfg(feature = "jvo")]
 use postgres::{Connection, TlsMode};
 
@@ -2972,17 +2966,17 @@ fn fitswebql_entry(
 
     let va_count = dataset_id.len();
 
-    let zmq_port: Vec<Option<u16>> = match query.get("zmq_port") {
+    let nn_port: Vec<Option<u16>> = match query.get("nn_port") {
         Some(port) => match port.parse::<u16>() {
             Ok(x) => vec![Some(x)],
             Err(_) => vec![None],
         },
         _ => {
-            //iterate through all datasets looking for zmq_portX
+            //iterate through all datasets looking for nn_portX
             (0..va_count)
                 .into_iter()
                 .map(|i| {
-                    let pattern = format!("zmq_port{}", (i + 1));
+                    let pattern = format!("nn_port{}", (i + 1));
                     match query.get(&pattern) {
                         Some(port) => match port.parse::<u16>() {
                             Ok(x) => Some(x),
@@ -2995,12 +2989,12 @@ fn fitswebql_entry(
         }
     };
 
-    if zmq_port.len() > 0 {
-        println!("ØMQ ports: {:?}", zmq_port);
+    if nn_port.len() > 0 {
+        println!("nanomsg ports: {:?}", nn_port);
     };
 
-    let mut zmq_server: Vec<Option<libzmq::Server>> = vec![None; va_count];
-    let mut zmq_client: Vec<Option<libzmq::Client>> = vec![None; va_count];
+    let mut nn_server: Vec<Option<nng::Socket>> = vec![None; va_count];
+    let mut nn_client: Vec<Option<nng::Socket>> = vec![None; va_count];
 
     #[cfg(feature = "cluster")]
     {
@@ -3021,40 +3015,26 @@ fn fitswebql_entry(
 
         //broadcast the URL to all nodes
         if !nodes.is_empty() && is_root {
-            let mut zmq_port: Vec<libzmq::addr::Port> =
-                vec![libzmq::addr::Port::Unspecified; va_count];
+            let mut nn_port: Vec<Option<u16>> = vec![None; va_count];
 
             for i in 0..va_count {
-                let addr: Option<TcpAddr> = match "0.0.0.0:*".try_into() {
-                    Ok(x) => Some(x),
-                    Err(err) => {
-                        println!("ØMQ error: {}", err);
-                        None
-                    }
-                };
+                if let Some(port) = get_available_port() {
+                    let addr = format!("tcp://0.0.0.0:{}", port);
+                    println!("nanomsg-next server address: {}", addr);
 
-                if let Some(x) = addr {
-                    println!("ØMQ address: {:?}", x);
-                    match ServerBuilder::new().bind(x).build() {
-                        Ok(server) => {
-                            // Retrieve the addr that was assigned.
-                            match server.last_endpoint() {
-                                Ok(bound) => {
-                                    println!("ØMQ endpoint: {:?}", bound);
-                                    match bound {
-                                        libzmq::addr::Endpoint::Tcp(host) => {
-                                            let socket = host.host();
-                                            let port = socket.port();
-                                            zmq_port[i] = port;
-                                        }
-                                        _ => {}
-                                    };
+                    let socket = nng::Socket::new(nng::Protocol::Pair0);
+                    match socket {
+                        Ok(socket) => {
+                            let endpoint = socket.listen(&addr);
+                            match endpoint {
+                                Ok(_) => {
+                                    nn_server[i] = Some(socket);
+                                    nn_port[i] = Some(port);
                                 }
-                                _ => {}
-                            };
-                            zmq_server[i] = Some(server);
+                                Err(err) => println!("nanomsg-next listen error: {}", err),
+                            }
                         }
-                        Err(err) => println!("ØMQ error: {}", err),
+                        Err(err) => println!("nanomsg-next protocol error: {}", err),
                     };
                 };
             }
@@ -3065,15 +3045,15 @@ fn fitswebql_entry(
                 let mut url = format!("http://{}:{}{}&slave", ip, server_port.read(), uri);
 
                 if va_count == 1 {
-                    if let libzmq::addr::Port::Specified(port) = zmq_port[0] {
-                        url = format!("{}&zmq_port={}", url, port);
+                    if let Some(port) = nn_port[0] {
+                        url = format!("{}&nn_port={}", url, port);
                     };
                 };
 
                 if va_count > 1 {
                     for i in 0..va_count {
-                        if let libzmq::addr::Port::Specified(port) = zmq_port[i] {
-                            url = format!("{}&zmq_port{}={}", url, (i + 1), port);
+                        if let Some(port) = nn_port[i] {
+                            url = format!("{}&nn_port{}={}", url, (i + 1), port);
                         };
                     }
                 };
@@ -3091,63 +3071,29 @@ fn fitswebql_entry(
                         println!("{} removed", thread_ip);
                     }
                 });
-
-                /*let client = Client::default();
-                let _ = client
-                    .get(url) // <- Create request builder
-                    .header("User-Agent", "fits_web_ql")
-                    .send() // <- Send http request
-                    .map_err(|err| println!("request error: {}", err))
-                    .and_then(|response| {
-                        // <- server http response
-                        println!("Response: {:?}", response);
-                        Ok(())
-                    })
-                    .wait();*/
-
-                /*let _ = Client::new()
-                .get(&url)
-                .send()
-                .and_then(|mut res| {
-                    println!("{}", res.status());
-
-                    let body = mem::replace(res.body_mut(), Decoder::empty());
-                    body.concat2()
-                    //println!("HTTP response: {:#?}", res);
-                })
-                .map_err(|err| println!("request error: {}", err))
-                .map(|body| {
-                    let mut body = Cursor::new(body);
-                    let _ = io::copy(&mut body, &mut io::stdout()).map_err(|err| {
-                        println!("stdout error: {}", err);
-                    });
-                })
-                .wait();*/
             });
         };
 
         if !is_root {
             for i in 0..va_count {
-                //launch ØMQ clients
-                if let Some(port) = zmq_port[i] {
+                //launch nanomsg-next clients
+                if let Some(port) = nn_port[i] {
                     if let Some(root) = &*root_node.read() {
-                        let addr = format!("{}:{}", root, port);
-                        println!("ØMQ client --> {}", addr);
+                        let addr = format!("tcp://{}:{}", root, port);
+                        println!("nanomsg-next client --> {}", addr);
 
-                        let addr: Option<TcpAddr> = match addr.try_into() {
-                            Ok(x) => Some(x),
-                            Err(err) => {
-                                println!("ØMQ error: {}", err);
-                                None
+                        let socket = nng::Socket::new(nng::Protocol::Pair0);
+                        match socket {
+                            Ok(socket) => {
+                                let endpoint = socket.dial(&addr);
+                                match endpoint {
+                                    Ok(_) => {
+                                        nn_client[i] = Some(socket);
+                                    }
+                                    Err(err) => println!("nanomsg-next dial error: {}", err),
+                                }
                             }
-                        };
-
-                        if let Some(x) = addr {
-                            println!("ØMQ root address: {:?}", x);
-                            match ClientBuilder::new().connect(x).build() {
-                                Ok(client) => zmq_client[i] = Some(client),
-                                Err(err) => println!("ØMQ error: {}", err),
-                            };
+                            Err(err) => println!("nanomsg-next protocol error: {}", err),
                         };
                     };
                 };
@@ -3227,8 +3173,8 @@ fn fitswebql_entry(
         &flux,
         &server,
         !is_root,
-        zmq_server,
-        zmq_client,
+        nn_server,
+        nn_client,
     )));
 
     //local (Personal Edition)
@@ -3244,8 +3190,8 @@ fn fitswebql_entry(
         &flux,
         &server,
         false,
-        zmq_server,
-        zmq_client,
+        nn_server,
+        nn_client,
     )));
 }
 
@@ -4260,8 +4206,8 @@ fn internal_fits(
     flux: &str,
     server: &Addr<server::SessionServer>,
     is_slave: bool,
-    zmq_server: Vec<Option<libzmq::Server>>,
-    zmq_client: Vec<Option<libzmq::Client>>,
+    nn_server: Vec<Option<nng::Socket>>,
+    nn_client: Vec<Option<nng::Socket>>,
 ) -> HttpResponse {
     //get fits location
 
@@ -4293,8 +4239,8 @@ fn internal_fits(
             let my_ext = ext.to_string();
             let my_server = server.clone();
             let my_flux = flux.to_string();
-            let my_zmq_server = zmq_server[i].clone();
-            let my_zmq_client = zmq_client[i].clone();
+            let my_nn_server = nn_server[i].clone();
+            let my_nn_client = nn_client[i].clone();
 
             DATASETS.write().insert(
                 my_data_id.clone(),
@@ -4335,8 +4281,8 @@ fn internal_fits(
                     filepath.as_path(),
                     &my_server,
                     is_slave,
-                    my_zmq_server,
-                    my_zmq_client,
+                    my_nn_server,
+                    my_nn_client,
                 ); //from_path or from_path_mmap
 
                 let fits = Arc::new(RwLock::new(Box::new(fits)));
@@ -4652,6 +4598,19 @@ macro_rules! ipp_assert {
     ($result:expr) => {
         assert!(unsafe { $result } == ipp_sys::ippStsNoErr as i32);
     };
+}
+
+#[cfg(feature = "cluster")]
+fn get_available_port() -> Option<u16> {
+    (8000..9000).find(|port| port_is_available(*port))
+}
+
+#[cfg(feature = "cluster")]
+fn port_is_available(port: u16) -> bool {
+    match std::net::TcpListener::bind(("127.0.0.1", port)) {
+        Ok(_) => true,
+        Err(_) => false,
+    }
 }
 
 fn main() {

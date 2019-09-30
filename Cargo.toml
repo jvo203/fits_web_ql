@@ -78,7 +78,7 @@ flate2 = "*"
 ispc = "*"
 machine-ip = "*"
 dns-lookup = "*"
-nng = "*"
+libzmq = "*"
 websocket = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
