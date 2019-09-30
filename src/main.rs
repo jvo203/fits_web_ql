@@ -29,7 +29,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
-use bincode::serialize;
+use bincode::{deserialize, serialize};
 use chrono::Local;
 use std::collections::BTreeMap;
 use std::ffi::CString;
@@ -1008,6 +1008,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 let elapsed = (stop - start) / 1000000;
 
                                 if self.is_root {
+                                    let mut accum: Vec<f32> = Vec::new();
+
                                     #[cfg(feature = "cluster")]
                                     {
                                         //receive websocket messages from slaves
@@ -1017,8 +1019,35 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 println!("msg: {:?}", msg);
 
                                                 if let websocket::message::OwnedMessage::Binary(data) = msg {
-                                                    println!("received a binary message, breaking the loop");
-                                                    break;
+                                                    let res: Result<fits::ZMQ_MSG, _> = deserialize(&data);
+                                                    match res {
+                                                        Ok(msg) => {
+                                                            match msg {
+                                                                fits::ZMQ_MSG::Spectrum { _spectrum, _count } => {
+                                                                    println!("received a binary message, breaking the loop");
+
+                                                                    if accum.len() == 0 {
+                                                                        accum = _spectrum.clone();
+                                                                    } else {
+                                                                        let length = accum.len();
+                                                                        //accumulate all the spectra
+                                                                        if _spectrum.len() == accum.len() {
+                                                                            unsafe {
+                                                                                spmd::add_spectrum(
+                                                                                accum.as_ptr() as *mut f32,
+                                                                                _spectrum.as_ptr() as *mut f32,
+                                                                                length as u32,
+                                                                                );
+                                                                            }
+                                                                        }
+                                                                    };
+                                                                    break;
+                                                                },
+                                                                _ => {},
+                                                            }
+                                                        },
+                                                        _ => {},
+                                                    }
                                                 }
                                             }
 
@@ -1029,6 +1058,21 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     match spectrum {
                                         fits::ZMQ_MSG::Spectrum { _spectrum, _count } => {
                                             //collate _spectrum, add-up the _count until == _spectrum.len()
+                                            if accum.len() == 0 {
+                                                accum = _spectrum.clone();
+                                            } else {
+                                                let length = accum.len();
+                                                //accumulate all the spectra
+                                                if _spectrum.len() == accum.len() {
+                                                    unsafe {
+                                                        spmd::add_spectrum(
+                                                            accum.as_ptr() as *mut f32,
+                                                            _spectrum.as_ptr() as *mut f32,
+                                                            length as u32,
+                                                        );
+                                                    }
+                                                }
+                                            };
 
                                             //send a binary response message (serialize a structure to a binary stream)
                                             let ws_spectrum = WsSpectrum {
@@ -1036,7 +1080,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 seq_id: seq_id as u32,
                                                 msg_type: 0,
                                                 elapsed: elapsed as f32,
-                                                spectrum: _spectrum,
+                                                spectrum: accum,
                                             };
 
                                             match serialize(&ws_spectrum) {
