@@ -1012,8 +1012,17 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     {
                                         //receive websocket messages from slaves
                                         self._slaves_rx.iter_mut().for_each(|client| {
-                                            let msg = client.recv_message().unwrap();
-                                            println!("msg: {:?}", msg);
+                                            loop {
+                                                let msg = client.recv_message().unwrap();
+                                                println!("msg: {:?}", msg);
+
+                                                if let websocket::message::OwnedMessage::Binary(data) = msg {
+                                                    println!("received a binary message, breaking the loop");
+                                                    break;
+                                                }
+                                            }
+
+                                            //loop until there is a ZMQ_MSG::Spectrum binary message
                                         });
                                     }
 
