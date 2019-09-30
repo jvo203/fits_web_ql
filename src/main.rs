@@ -1016,7 +1016,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         self._slaves_rx.iter_mut().for_each(|client| {
                                             loop {
                                                 let msg = client.recv_message().unwrap();
-                                                println!("msg: {:?}", msg);
+                                                println!("msg len: {}", msg.len());
 
                                                 if let websocket::message::OwnedMessage::Binary(data) = msg {
                                                     let res: Result<fits::ZMQ_MSG, _> = deserialize(&data);
