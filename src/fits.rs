@@ -1010,6 +1010,10 @@ impl FITS {
                                                     _count,
                                                 } => {
                                                     plane_count.fetch_add(_count, Ordering::SeqCst);
+                                                    println!(
+                                                        "plane_count: {}",
+                                                        plane_count.load(Ordering::SeqCst)
+                                                    );
 
                                                     self.dmin = self.dmin.min(_dmin);
                                                     self.dmax = self.dmax.max(_dmax);
@@ -1162,8 +1166,8 @@ impl FITS {
                                                     //end of parallel data processing
 
                                                     plane_count
-                                                            .fetch_add(1, Ordering::SeqCst)
-                                                            as i32;
+                                                            .fetch_add(1, Ordering::SeqCst);
+                                                    println!("plane_count: {}", plane_count.load(Ordering::SeqCst));
 
                                                     let previous_count = spectrum_count
                                                         .fetch_add(1, Ordering::SeqCst)
@@ -1284,7 +1288,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
 
                         //poll for messages with a timeout (TO DO:set the tmeout)
-                        match my_server.try_recv() {
+                        match my_server.recv() {
                             Ok(msg) => {
                                 println!("nanomsg-next received msg len: {} bytes.", msg.len());
                                 let res: Result<ZMQ_MSG, _> = deserialize(&msg);
@@ -1331,8 +1335,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                                 _mask,
                                                 _count,
                                             } => {
-                                                plane_count.fetch_add(_count, Ordering::SeqCst)
-                                                    as i32;
+                                                plane_count.fetch_add(_count, Ordering::SeqCst);
+                                                println!(
+                                                    "plane_count: {}",
+                                                    plane_count.load(Ordering::SeqCst)
+                                                );
 
                                                 self.dmin = self.dmin.min(_dmin);
                                                 self.dmax = self.dmax.max(_dmax);
