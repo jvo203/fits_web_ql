@@ -299,6 +299,7 @@ pub enum Intensity {
     Integrated,
 }
 
+#[derive(Debug)]
 pub struct FITS {
     created: std::time::Instant,
     pub dataset_id: String,
@@ -1282,8 +1283,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             );*/
                         }
 
-                        //poll for messages with a timeout
-                        match my_server.try_recv() {
+                        //poll for messages with a timeout (TO DO:set the tmeout)
+                        match my_server.recv() {
                             Ok(msg) => {
                                 println!("nanomsg received msg len: {} bytes.", msg.len());
                                 let res: Result<ZMQ_MSG, _> = deserialize(&msg);
@@ -1743,7 +1744,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             DATASETS.write().insert(id.clone(), fits.clone());
         }
 
-        println!("{}/#hdu = {}", id, no_hdu);
+        println!("{}/#hdu = {}, {:?}", id, no_hdu, fits);
 
         fits.header = match String::from_utf8(header) {
             Ok(x) => x,
@@ -2144,7 +2145,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     DATASETS.write().insert(id.clone(), fits.clone());
                                 }
 
-                                println!("{}/#hdu = {}", id, no_hdu);
+                                println!("{}/#hdu = {}, {:?}", id, no_hdu, fits);
 
                                 fits.header = match String::from_utf8(header.clone()) {
                                     Ok(x) => x,
