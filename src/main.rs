@@ -860,15 +860,23 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                     #[cfg(feature = "cluster")]
                     {
                         if self.is_root {
-                            //pass websocket messages to slaves
-                            self._slaves.iter_mut().for_each(|client| {
-                                match client.send_message(&websocket::Message::text(&text)) {
-                                    Ok(_) => {}
-                                    Err(err) => {
-                                        println!("[ws] error routing a 'spectrum' message: {}", err)
-                                    }
+                            //split the send/receive channels
+                            match client.split() {
+                                Some((_, mut sender)) => {
+                                    //pass websocket messages to slaves
+                                    self._slaves.iter_mut().for_each(|client| {
+                                        match sender.send_message(&websocket::Message::text(&text))
+                                        {
+                                            Ok(_) => {}
+                                            Err(err) => println!(
+                                                "[ws] error routing a 'spectrum' message: {}",
+                                                err
+                                            ),
+                                        }
+                                    });
                                 }
-                            });
+                                _ => {}
+                            }
                         }
                     }
 
@@ -1009,6 +1017,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 if self.is_root {
                                     match spectrum {
                                         fits::ZMQ_MSG::Spectrum { _spectrum, _count } => {
+                                            //collate _spectrum, add-up the _count until == _spectrum.len()
+
                                             //send a binary response message (serialize a structure to a binary stream)
                                             let ws_spectrum = WsSpectrum {
                                                 ts: timestamp as f32,
@@ -1031,6 +1041,22 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                             }
                                         }
                                         _ => {}
+                                    }
+                                } else {
+                                    //pass the response "as is" to the root
+                                    #[cfg(feature = "cluster")]
+                                    {
+                                        match serialize(&spectrum) {
+                                            Ok(bin) => {
+                                                println!("binary length: {}", bin.len());
+                                                //println!("{}", bin);
+                                                ctx.binary(bin);
+                                            }
+                                            Err(err) => println!(
+                                                "error serializing a Socket spectrum response: {}",
+                                                err
+                                            ),
+                                        }
                                     }
                                 }
                             }
