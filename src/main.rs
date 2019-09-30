@@ -384,6 +384,10 @@ impl Handler<server::WsMessage> for UserSession {
     type Result = ();
 
     fn handle(&mut self, msg: server::WsMessage, ctx: &mut Self::Context) {
+        if !self.is_root {
+            return;
+        }
+
         let sending = {
             if msg.running < msg.total {
                 if std::time::Instant::now().duration_since(self.progress_timestamp)
@@ -442,7 +446,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                 }
 
                 if (&text).contains("[heartbeat]") {
-                    ctx.text(&text);
+                    if self.is_root {
+                        ctx.text(&text);
+                    }
 
                     #[cfg(feature = "cluster")]
                     {
@@ -2958,15 +2964,15 @@ fn websocket_entry(
 
                 match websocket::client::ClientBuilder::new(&url) {
                     Ok(builder) => {
-                        let mut client = builder.clone().add_protocol("rust-websocket");
+                        let mut client = builder.clone();
                         let conn = client.connect_insecure();
                         match conn {
                             Ok(stream) => {
+                                //split the receiving/transmitting ends
                                 let (receiver, sender) = stream.split().unwrap();
                                 ws_clients_rx.push(receiver);
                                 ws_clients_tx.push(sender);
                                 //ws_clients.push(stream);
-                                //split the receiving/transmitting ends
                             }
                             Err(err) => println!("[ws] connection error: {}", err),
                         }
