@@ -2912,9 +2912,15 @@ fn websocket_entry(
 
     let id: Vec<String> = dataset_id.split(';').map(|s| s.to_string()).collect();
 
+    let mode = if is_root {
+        String::from("master")
+    } else {
+        String::from("slave")
+    };
+
     println!(
-        "new websocket request for {:?}, user agent: {:?}",
-        id, user_agent
+        "new {} websocket request for {:?}, user agent: {:?}",
+        mode, id, user_agent
     );
 
     /*#[cfg(not(feature = "cluster"))]
