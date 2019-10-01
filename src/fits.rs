@@ -5178,7 +5178,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let y: Vec<u8> = match self.data_to_luminance(frame, flux, pool) {
             Some(y) => y,
-            None => vec![0; (width * height) as usize],
+            //None => vec![0; (width * height) as usize],
+            None => return None,
         };
 
         //invert and downscale
