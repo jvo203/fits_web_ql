@@ -2146,7 +2146,12 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 None => {
                                     if !self.is_root {
                                         ctx.text("NULL");
-                                    };
+                                    } else {
+                                        #[cfg(feature = "cluster")]
+                                        {
+                                            //receive a raw y frame from a slave node, x265-encode it
+                                        }
+                                    }
                                 }
                             }
 
