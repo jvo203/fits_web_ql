@@ -2034,113 +2034,51 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 &self.pool,
                             ) {
                                 Some(mut y) => {
-                                    unsafe {
-                                        (*self.pic).stride[0] = self.width as i32;
-                                        (*self.pic).planes[0] =
-                                            y.as_mut_ptr() as *mut std::os::raw::c_void;
+                                    if self.is_root {
+                                        unsafe {
+                                            (*self.pic).stride[0] = self.width as i32;
+                                            (*self.pic).planes[0] =
+                                                y.as_mut_ptr() as *mut std::os::raw::c_void;
 
-                                        //adaptive bitrate
-                                        (*self.param).rc.bitrate = target_bitrate;
-                                    }
-
-                                    let ret =
-                                        unsafe { x265_encoder_reconfig(self.enc, self.param) };
-
-                                    if ret < 0 {
-                                        println!("x265: error changing the bitrate");
-                                    }
-
-                                    let mut nal_count: u32 = 0;
-                                    let mut p_nal: *mut x265_nal = ptr::null_mut();
-
-                                    //encode
-                                    let ret = unsafe {
-                                        x265_encoder_encode(
-                                            self.enc,
-                                            &mut p_nal,
-                                            &mut nal_count,
-                                            self.pic,
-                                            ptr::null_mut(),
-                                        )
-                                    };
-
-                                    let stop = precise_time::precise_time_ns();
-
-                                    println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (stop-start)/1000000, 1000000000/(stop-start), ret, nal_count);
-
-                                    //y falls out of scope
-                                    unsafe {
-                                        (*self.pic).stride[0] = 0 as i32;
-                                        (*self.pic).planes[0] = ptr::null_mut();
-                                    }
-
-                                    let elapsed = (stop - start) / 1000000;
-
-                                    //process all NAL units one by one
-                                    if nal_count > 0 {
-                                        let nal_units = unsafe {
-                                            std::slice::from_raw_parts(p_nal, nal_count as usize)
-                                        };
-
-                                        for unit in nal_units {
-                                            println!(
-                                                "NAL unit type: {}, size: {}",
-                                                unit.type_, unit.sizeBytes
-                                            );
-
-                                            let payload = unsafe {
-                                                std::slice::from_raw_parts(
-                                                    unit.payload,
-                                                    unit.sizeBytes as usize,
-                                                )
-                                            };
-
-                                            let ws_frame = WsFrame {
-                                                ts: timestamp as f32,
-                                                seq_id: seq_id as u32,
-                                                msg_type: 5, //an hevc video frame
-                                                //length: video_frame.len() as u32,
-                                                elapsed: elapsed as f32,
-                                                frame: payload.to_vec(),
-                                            };
-
-                                            match serialize(&ws_frame) {
-                                                Ok(bin) => {
-                                                    println!("WsFrame binary length: {}", bin.len());
-                                                    //println!("{}", bin);
-                                                    ctx.binary(bin);
-                                                },
-                                                Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
-                                            }
-
-                                            /*match self.hevc {
-                                                Ok(ref mut file) => {
-                                                    let _ = file.write_all(payload);
-                                                }
-                                                Err(_) => {}
-                                            }*/
+                                            //adaptive bitrate
+                                            (*self.param).rc.bitrate = target_bitrate;
                                         }
-                                    }
 
-                                    /*if keyframe {
-                                    //flush the encoder to signal the end
-                                    loop {
+                                        let ret =
+                                            unsafe { x265_encoder_reconfig(self.enc, self.param) };
+
+                                        if ret < 0 {
+                                            println!("x265: error changing the bitrate");
+                                        }
+
+                                        let mut nal_count: u32 = 0;
+                                        let mut p_nal: *mut x265_nal = ptr::null_mut();
+
+                                        //encode
                                         let ret = unsafe {
                                             x265_encoder_encode(
                                                 self.enc,
                                                 &mut p_nal,
                                                 &mut nal_count,
-                                                ptr::null_mut(),
+                                                self.pic,
                                                 ptr::null_mut(),
                                             )
                                         };
 
-                                        if ret > 0 {
-                                            println!(
-                                                "flushing the encoder, residual nal_count = {}",
-                                                nal_count
-                                            );
+                                        let stop = precise_time::precise_time_ns();
 
+                                        println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (stop-start)/1000000, 1000000000/(stop-start), ret, nal_count);
+
+                                        //y falls out of scope
+                                        unsafe {
+                                            (*self.pic).stride[0] = 0 as i32;
+                                            (*self.pic).planes[0] = ptr::null_mut();
+                                        }
+
+                                        let elapsed = (stop - start) / 1000000;
+
+                                        //process all NAL units one by one
+                                        if nal_count > 0 {
                                             let nal_units = unsafe {
                                                 std::slice::from_raw_parts(
                                                     p_nal,
@@ -2172,9 +2110,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
 
                                                 match serialize(&ws_frame) {
                                                     Ok(bin) => {
-                                                    println!("WsFrame binary length: {}", bin.len());
-                                                    //println!("{}", bin);
-                                                    ctx.binary(bin);
+                                                        println!("WsFrame binary length: {}", bin.len());
+                                                        //println!("{}", bin);
+                                                        ctx.binary(bin);
                                                     },
                                                     Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
                                                 }
@@ -2185,12 +2123,25 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     }
                                                     Err(_) => {}
                                                 }*/
-                                    }
+                                            }
+                                        }
                                     } else {
-                                    break;
+                                        #[cfg(feature = "cluster")]
+                                        {
+                                            //cluster serialize y and send it over to the master node
+                                            match serialize(&y) {
+                                                Ok(bin) => {
+                                                    println!("[ws] y binary length: {}", bin.len());
+                                                    //println!("{}", bin);
+                                                    ctx.binary(bin);
+                                                }
+                                                Err(err) => println!(
+                                                    "error serializing a WebSocket y response: {}",
+                                                    err
+                                                ),
+                                            }
+                                        }
                                     }
-                                    }
-                                    }*/
                                 }
                                 None => {
                                     if !self.is_root {
