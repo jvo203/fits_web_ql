@@ -4175,7 +4175,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         _pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_u8[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4189,7 +4193,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match flux.as_ref() {
+        let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -4284,7 +4288,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 })
                 .collect(),
-        }
+        };
+
+        Some(res)
     }
 
     fn data_to_luminance_i16(
@@ -4292,7 +4298,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         _pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_i16[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4306,7 +4316,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match flux.as_ref() {
+        let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -4401,7 +4411,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 })
                 .collect(),
-        }
+        };
+
+        Some(res)
     }
 
     fn data_to_luminance_i32(
@@ -4409,7 +4421,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         _pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_i32[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4423,7 +4439,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match flux.as_ref() {
+        let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -4518,7 +4534,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 })
                 .collect(),
-        }
+        };
+
+        Some(res)
     }
 
     fn data_to_luminance_f16(
@@ -4526,7 +4544,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_f16[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4791,7 +4813,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         };
 
-        y
+        Some(y)
     }
 
     fn data_to_luminance_f64(
@@ -4799,7 +4821,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         _pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_f64[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4813,7 +4839,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match flux.as_ref() {
+        let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -4908,7 +4934,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 })
                 .collect(),
-        }
+        };
+
+        Some(res)
     }
 
     fn data_to_luminance(
@@ -4918,11 +4946,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         pool: &Option<rayon::ThreadPool>,
     ) -> Option<Vec<u8>> {
         match self.bitpix {
-            8 => Some(self.data_to_luminance_u8(frame, flux, pool)),
-            16 => Some(self.data_to_luminance_i16(frame, flux, pool)),
-            32 => Some(self.data_to_luminance_i32(frame, flux, pool)),
-            -32 => Some(self.data_to_luminance_f16(frame, flux, pool)),
-            -64 => Some(self.data_to_luminance_f64(frame, flux, pool)),
+            8 => self.data_to_luminance_u8(frame, flux, pool),
+            16 => self.data_to_luminance_i16(frame, flux, pool),
+            32 => self.data_to_luminance_i32(frame, flux, pool),
+            -32 => self.data_to_luminance_f16(frame, flux, pool),
+            -64 => self.data_to_luminance_f64(frame, flux, pool),
             _ => {
                 println!("unsupported bitpix: {}", self.bitpix);
                 None
