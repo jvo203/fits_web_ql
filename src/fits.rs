@@ -5177,8 +5177,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let start = precise_time::precise_time_ns();
 
         let y: Vec<u8> = match self.data_to_luminance(frame, flux, pool) {
-            Some(y) => y,
-            //None => vec![0; (width * height) as usize],
+            Some(y) => y,            
             None => return None,
         };
 
