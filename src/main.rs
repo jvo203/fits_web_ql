@@ -2162,7 +2162,21 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }
                                 None => {
                                     if !self.is_root {
-                                        ctx.text("NULL");
+                                        //ctx.text("NULL");
+
+                                        let y: Vec<u8> = Vec::new();                                        
+
+                                        match serialize(&y) {
+                                            Ok(bin) => {
+                                                println!("[ws] y binary length: {}", bin.len());
+                                                //println!("{}", bin);
+                                                ctx.binary(bin);
+                                            }
+                                            Err(err) => println!(
+                                                "error serializing a WebSocket y response: {}",
+                                                err
+                                            ),
+                                        }
                                     } else {
                                         #[cfg(feature = "cluster")]
                                         {
@@ -2177,9 +2191,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                         println!("msg: {}", data);
 
                                                         //if it contains NULL break the loop
-                                                        if data.contains("NULL") {
+                                                        /*if data.contains("NULL") {
                                                             break;
-                                                        }
+                                                        }*/
                                                     }
 
                                                     if let websocket::message::OwnedMessage::Binary(data) = msg {
