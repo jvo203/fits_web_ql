@@ -2128,7 +2128,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 loop {
                                                     let msg = client.recv_message().unwrap();
 
-                                                    if let websocket::message::OwnedMessage::Text(
+                                                    /*if let websocket::message::OwnedMessage::Text(
                                                         data,
                                                     ) = &msg
                                                     {
@@ -2138,6 +2138,21 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                         if data.contains("NULL") {
                                                             break;
                                                         }
+                                                    }*/
+
+                                                    if let websocket::message::OwnedMessage::Binary(data) = msg {
+                                                        let res: Result<Vec<u8>, _> = deserialize(&data);
+                                                            match res {
+                                                                Ok(y) => {
+                                                                    println!("received a valid y frame length: {}", _y.len());
+
+                                                                    if y.len() == 0 {
+                                                                        //break the loop
+                                                                        break;
+                                                                    }
+                                                                },
+                                                                _ => {},
+                                                            }
                                                     }
                                                 }
                                             });
@@ -2164,7 +2179,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     if !self.is_root {
                                         //ctx.text("NULL");
 
-                                        let y: Vec<u8> = Vec::new();                                        
+                                        let y: Vec<u8> = Vec::new();
 
                                         match serialize(&y) {
                                             Ok(bin) => {
