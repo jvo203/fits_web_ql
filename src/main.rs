@@ -2125,6 +2125,28 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 }*/
                                             }
                                         }
+
+                                        //receive "NULL" messages from other nodes
+                                        #[cfg(feature = "cluster")]
+                                        {
+                                            self._slaves_rx.iter_mut().for_each(|client| {
+                                                loop {
+                                                    let msg = client.recv_message().unwrap();
+
+                                                    if let websocket::message::OwnedMessage::Text(
+                                                        data,
+                                                    ) = &msg
+                                                    {
+                                                        println!("msg: {}", data);
+
+                                                        //if it contains NULL break the loop
+                                                        if data.contains("NULL") {
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        }
                                     } else {
                                         #[cfg(feature = "cluster")]
                                         {
@@ -2151,29 +2173,30 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         {
                                             //receive a raw y frame from slaves, x265-encode it (only one slave will return a valid frame)
                                             self._slaves_rx.iter_mut().for_each(|client| {
-                                            loop {
-                                                let msg = client.recv_message().unwrap();
-                                                if let websocket::message::OwnedMessage::Text(data) = &msg {
-                                                    println!("msg: {}", data);
+                                                loop {
+                                                    let msg = client.recv_message().unwrap();
 
-                                                    //if it contains NULL break the loop
-                                                    if data.contains("NULL") {
-                                                        break;
-                                                    }
-                                                }
+                                                    if let websocket::message::OwnedMessage::Text(data) = &msg {
+                                                        println!("msg: {}", data);
 
-                                                if let websocket::message::OwnedMessage::Binary(data) = msg {
-                                                    let res: Result<Vec<u8>, _> = deserialize(&data);
-                                                    match res {
-                                                        Ok(mut y) => {
-                                                            println!("received a valid y frame length: {}", y.len());
+                                                        //if it contains NULL break the loop
+                                                        if data.contains("NULL") {
                                                             break;
-                                                        },
-                                                        _ => {},
+                                                        }
+                                                    }
+
+                                                    if let websocket::message::OwnedMessage::Binary(data) = msg {
+                                                        let res: Result<Vec<u8>, _> = deserialize(&data);
+                                                            match res {
+                                                                Ok(mut y) => {
+                                                                    println!("received a valid y frame length: {}", y.len());
+                                                                    break;
+                                                                },
+                                                                _ => {},
+                                                            }
                                                     }
                                                 }
-                                            }
-                                        });
+                                            });
                                         }
                                     }
                                 }
