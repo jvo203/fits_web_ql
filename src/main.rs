@@ -724,7 +724,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                             "alpha" : alpha_frame,
                         });
 
-                        ctx.text(resolution.to_string());
+                        if self.is_root {
+                            ctx.text(resolution.to_string());
+                        }
 
                         //HEVC config
                         unsafe {
@@ -2184,8 +2186,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                         let res: Result<Vec<u8>, _> = deserialize(&data);
                                                             match res {
                                                                 Ok(_y) => {
-                                                                    println!("received a valid y frame length: {}", y.len());                                                                    
-                                                                    y = _y.clone();
+                                                                    println!("received a valid y frame length: {}", y.len());
+
+                                                                    if _y.len() > 0 {
+                                                                        y = _y.clone();
+                                                                    }
 
                                                                     //break the loop
                                                                     break;
