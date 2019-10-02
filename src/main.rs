@@ -2143,10 +2143,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     if let websocket::message::OwnedMessage::Binary(data) = msg {
                                                         let res: Result<Vec<u8>, _> = deserialize(&data);
                                                             match res {
-                                                                Ok(y) => {
+                                                                Ok(_y) => {
                                                                     println!("received a valid y frame length: {}", _y.len());
 
-                                                                    if y.len() == 0 {
+                                                                    if _y.len() == 0 {
                                                                         //break the loop
                                                                         break;
                                                                     }
