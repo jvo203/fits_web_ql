@@ -85,6 +85,9 @@ pub enum ZMQ_MSG {
         _spectrum: Vec<f32>,
         _count: isize,
     },
+    VideoFrame {
+        _y: Vec<u8>,
+    },
 }
 
 #[cfg(feature = "opencl")]

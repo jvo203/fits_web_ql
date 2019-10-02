@@ -2141,14 +2141,19 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                     }*/
 
                                                     if let websocket::message::OwnedMessage::Binary(data) = msg {
-                                                        let res: Result<Vec<u8>, _> = deserialize(&data);
+                                                        let res: Result<fits::ZMQ_MSG, _> = deserialize(&data);
                                                             match res {
-                                                                Ok(_y) => {
-                                                                    println!("received a valid y frame length: {}", _y.len());
+                                                                Ok(msg) => {
+                                                                    match msg {
+                                                                        fits::ZMQ_MSG::VideoFrame {_y} => {
+                                                                            println!("received a valid y frame length: {}", _y.len());
 
-                                                                    if _y.len() == 0 {
-                                                                        //break the loop
-                                                                        break;
+                                                                            if _y.len() == 0 {
+                                                                                //break the loop
+                                                                                break;
+                                                                            }
+                                                                        },
+                                                                        _=> {},
                                                                     }
                                                                 },
                                                                 _ => {},
@@ -2161,14 +2166,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                         #[cfg(feature = "cluster")]
                                         {
                                             //cluster serialize y and send it over to the master node
-                                            match serialize(&y) {
+                                            let frame = fits::ZMQ_MSG::VideoFrame { _y: y.clone() };
+
+                                            match serialize(&frame) {
                                                 Ok(bin) => {
-                                                    println!("[ws] y binary length: {}", bin.len());
+                                                    println!("[ws] ZMQ_MSG::VideoFrame binary length: {}", bin.len());
                                                     //println!("{}", bin);
                                                     ctx.binary(bin);
                                                 }
                                                 Err(err) => println!(
-                                                    "error serializing a WebSocket y response: {}",
+                                                    "error serializing  ZMQ_MSG::VideoFrame: {}",
                                                     err
                                                 ),
                                             }
@@ -2177,18 +2184,19 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                 }
                                 None => {
                                     if !self.is_root {
-                                        //ctx.text("NULL");
+                                        let frame = fits::ZMQ_MSG::VideoFrame { _y: Vec::new() };
 
-                                        let y: Vec<u8> = Vec::new();
-
-                                        match serialize(&y) {
+                                        match serialize(&frame) {
                                             Ok(bin) => {
-                                                println!("[ws] y binary length: {}", bin.len());
+                                                println!(
+                                                    "[ws] ZMQ_MSG::VideoFrame binary length: {}",
+                                                    bin.len()
+                                                );
                                                 //println!("{}", bin);
                                                 ctx.binary(bin);
                                             }
                                             Err(err) => println!(
-                                                "error serializing a WebSocket y response: {}",
+                                                "error serializing ZMQ_MSG::VideoFrame: {}",
                                                 err
                                             ),
                                         }
@@ -2202,27 +2210,23 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                                 loop {
                                                     let msg = client.recv_message().unwrap();
 
-                                                    if let websocket::message::OwnedMessage::Text(data) = &msg {
-                                                        println!("msg: {}", data);
-
-                                                        //if it contains NULL break the loop
-                                                        /*if data.contains("NULL") {
-                                                            break;
-                                                        }*/
-                                                    }
-
                                                     if let websocket::message::OwnedMessage::Binary(data) = msg {
-                                                        let res: Result<Vec<u8>, _> = deserialize(&data);
+                                                        let res: Result<fits::ZMQ_MSG, _> = deserialize(&data);
                                                             match res {
-                                                                Ok(_y) => {
-                                                                    println!("received a valid y frame length: {}", _y.len());
+                                                                Ok(msg) => {
+                                                                    match msg {
+                                                                        fits::ZMQ_MSG::VideoFrame {_y} => {
+                                                                            println!("received a valid y frame length: {}", _y.len());
 
-                                                                    if _y.len() > 0 {
-                                                                        y = _y.clone();
+                                                                            if _y.len() > 0 {
+                                                                                y = _y.clone();
+                                                                            }
+
+                                                                            //break the loop
+                                                                            break;
+                                                                        },
+                                                                        _ => {},
                                                                     }
-
-                                                                    //break the loop
-                                                                    break;
                                                                 },
                                                                 _ => {},
                                                             }
