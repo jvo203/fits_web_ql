@@ -2149,7 +2149,31 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
                                     } else {
                                         #[cfg(feature = "cluster")]
                                         {
-                                            //receive a raw y frame from a slave node, x265-encode it
+                                            //receive a raw y frame from slaves, x265-encode it (only one slave will return a valid frame)
+                                            self._slaves_rx.iter_mut().for_each(|client| {
+                                            loop {
+                                                let msg = client.recv_message().unwrap();
+                                                if let websocket::message::OwnedMessage::Text(data) = &msg {
+                                                    println!("msg: {}", data);
+
+                                                    //if it contains NULL break the loop
+                                                    if data.contains("NULL") {
+                                                        break;
+                                                    }
+                                                }
+
+                                                if let websocket::message::OwnedMessage::Binary(data) = msg {
+                                                    let res: Result<Vec<u8>, _> = deserialize(&data);
+                                                    match res {
+                                                        Ok(mut y) => {
+                                                            println!("received a valid y frame length: {}", y.len());
+                                                            break;
+                                                        },
+                                                        _ => {},
+                                                    }
+                                                }
+                                            }
+                                        });
                                         }
                                     }
                                 }
@@ -2543,7 +2567,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2019-10-01.0";
+static VERSION_STRING: &'static str = "SV2019-10-02.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
