@@ -68,7 +68,7 @@ macOS:
 
 brew install ispc
 
-other platforms:S
+other platforms:
 
 https://ispc.github.io
 
