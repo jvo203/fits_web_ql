@@ -3782,12 +3782,16 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         );
     }
 
-    fn data_to_luminance_u8(
+fn data_to_luminance_u8(
         &self,
         frame: usize,
         flux: &String,
         _pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_u8[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -3801,7 +3805,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match flux.as_ref() {
+        let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -3896,7 +3900,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 })
                 .collect(),
-        }
+        };
+
+        Some(res)
     }
 
     fn data_to_luminance_i16(
@@ -3904,7 +3910,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         _pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_i16[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -3918,7 +3928,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match flux.as_ref() {
+        let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -4013,7 +4023,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 })
                 .collect(),
-        }
+        };
+
+        Some(res)
     }
 
     fn data_to_luminance_i32(
@@ -4021,7 +4033,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         _pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_i32[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4035,7 +4051,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match flux.as_ref() {
+        let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -4130,7 +4146,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 })
                 .collect(),
-        }
+        };
+
+        Some(res)
     }
 
     fn data_to_luminance_f16(
@@ -4138,7 +4156,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_f16[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4403,7 +4425,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         };
 
-        y
+        Some(y)
     }
 
     fn data_to_luminance_f64(
@@ -4411,7 +4433,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame: usize,
         flux: &String,
         _pool: &Option<rayon::ThreadPool>,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
+        if self.data_f64[frame].len() == 0 {
+            return None;
+        };
+
         //calculate white, black, sensitivity from the data_histogram
         let u = 7.5_f32;
         //let v = 15.0_f32 ;
@@ -4425,7 +4451,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
-        match flux.as_ref() {
+        let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
 
@@ -4520,7 +4546,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 })
                 .collect(),
-        }
+        };
+
+        Some(res)
     }
 
     fn data_to_luminance(
@@ -4530,11 +4558,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         pool: &Option<rayon::ThreadPool>,
     ) -> Option<Vec<u8>> {
         match self.bitpix {
-            8 => Some(self.data_to_luminance_u8(frame, flux, pool)),
-            16 => Some(self.data_to_luminance_i16(frame, flux, pool)),
-            32 => Some(self.data_to_luminance_i32(frame, flux, pool)),
-            -32 => Some(self.data_to_luminance_f16(frame, flux, pool)),
-            -64 => Some(self.data_to_luminance_f64(frame, flux, pool)),
+            8 => self.data_to_luminance_u8(frame, flux, pool),
+            16 => self.data_to_luminance_i16(frame, flux, pool),
+            32 => self.data_to_luminance_i32(frame, flux, pool),
+            -32 => self.data_to_luminance_f16(frame, flux, pool),
+            -64 => self.data_to_luminance_f64(frame, flux, pool),
             _ => {
                 println!("unsupported bitpix: {}", self.bitpix);
                 None
@@ -6253,6 +6281,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 let ptr = vec.as_ptr() as *mut i16;
                 let len = vec.len();
 
+                if len > 0 {
                 unsafe {
                     let raw = slice::from_raw_parts_mut(ptr, len);
 
@@ -6275,6 +6304,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     );
 
                     spectrum
+                }
+                } else {
+                    0.0
                 }
             }
             _ => {
@@ -6307,7 +6339,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         match self.bitpix {
             8 => {
                 let vec = &self.data_u8[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6324,10 +6356,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         };
                     }
                 }
+                }
             }
             16 => {
                 let vec = &self.data_i16[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6344,10 +6377,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         };
                     }
                 }
+                }
             }
             32 => {
                 let vec = &self.data_i32[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6364,10 +6398,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         };
                     }
                 }
+                }
             }
             -32 => {
                 let vec = &self.data_f16[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6386,10 +6421,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         };
                     }
                 }
+                }
             }
             -64 => {
                 let vec = &self.data_f64[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6407,6 +6443,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             };
                         };
                     }
+                }
                 }
             }
             _ => println!("unsupported bitpix: {}", self.bitpix),
@@ -6441,6 +6478,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 let ptr = vec.as_ptr() as *mut i16;
                 let len = vec.len();
 
+                if len > 0 {
                 unsafe {
                     let raw = slice::from_raw_parts_mut(ptr, len);
 
@@ -6460,6 +6498,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     );
 
                     spectrum
+                }
+                } else {
+                    0.0
                 }
             }
             _ => {
@@ -6489,7 +6530,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         match self.bitpix {
             8 => {
                 let vec = &self.data_u8[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6502,10 +6543,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         };
                     }
                 }
+                }
             }
             16 => {
                 let vec = &self.data_i16[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6518,10 +6560,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         };
                     }
                 }
+                }
             }
             32 => {
                 let vec = &self.data_i32[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6534,10 +6577,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         };
                     }
                 }
+                }
             }
             -32 => {
                 let vec = &self.data_f16[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6552,10 +6596,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         };
                     }
                 }
+                }
             }
             -64 => {
                 let vec = &self.data_f64[frame];
-
+                if vec.len() > 0 {
                 for y in y1..y2 {
                     let offset = y * self.width as usize;
                     for x in x1..x2 {
@@ -6569,6 +6614,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             };
                         };
                     }
+                }
                 }
             }
             _ => println!("unsupported bitpix: {}", self.bitpix),
