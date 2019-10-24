@@ -3782,7 +3782,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         );
     }
 
-fn data_to_luminance_u8(
+    fn data_to_luminance_u8(
         &self,
         frame: usize,
         flux: &String,
@@ -5709,9 +5709,11 @@ fn data_to_luminance_u8(
 
         //a workaround around a bug in libvpx triggered when h > w
         let ret = if w > h {
-            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) } //I420 or I444
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) }
+        //I420 or I444
         } else {
-            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, h, w, align) } //I420 or I444
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, h, w, align) }
+            //I420 or I444
         };
 
         if ret.is_null() {
@@ -6282,29 +6284,29 @@ fn data_to_luminance_u8(
                 let len = vec.len();
 
                 if len > 0 {
-                unsafe {
-                    let raw = slice::from_raw_parts_mut(ptr, len);
+                    unsafe {
+                        let raw = slice::from_raw_parts_mut(ptr, len);
 
-                    let spectrum = spmd::calculate_radial_spectrumF16(
-                        raw.as_mut_ptr(),
-                        self.bzero,
-                        self.bscale,
-                        self.datamin,
-                        self.datamax,
-                        self.width as u32,
-                        x1 as i32,
-                        x2 as i32,
-                        y1 as i32,
-                        y2 as i32,
-                        cx as i32,
-                        cy as i32,
-                        r2 as i32,
-                        mean,
-                        cdelt3,
-                    );
+                        let spectrum = spmd::calculate_radial_spectrumF16(
+                            raw.as_mut_ptr(),
+                            self.bzero,
+                            self.bscale,
+                            self.datamin,
+                            self.datamax,
+                            self.width as u32,
+                            x1 as i32,
+                            x2 as i32,
+                            y1 as i32,
+                            y2 as i32,
+                            cx as i32,
+                            cy as i32,
+                            r2 as i32,
+                            mean,
+                            cdelt3,
+                        );
 
-                    spectrum
-                }
+                        spectrum
+                    }
                 } else {
                     0.0
                 }
@@ -6340,110 +6342,110 @@ fn data_to_luminance_u8(
             8 => {
                 let vec = &self.data_u8[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let int8 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let int8 = vec[offset + x];
 
-                        let tmp = self.bzero + self.bscale * (int8 as f32);
-                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                            let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
+                            let tmp = self.bzero + self.bscale * (int8 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
 
-                            if dist2 <= r2 {
-                                sum += tmp;
-                                count += 1;
+                                if dist2 <= r2 {
+                                    sum += tmp;
+                                    count += 1;
+                                };
                             };
-                        };
+                        }
                     }
-                }
                 }
             }
             16 => {
                 let vec = &self.data_i16[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let int16 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let int16 = vec[offset + x];
 
-                        let tmp = self.bzero + self.bscale * (int16 as f32);
-                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                            let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
+                            let tmp = self.bzero + self.bscale * (int16 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
 
-                            if dist2 <= r2 {
-                                sum += tmp;
-                                count += 1;
+                                if dist2 <= r2 {
+                                    sum += tmp;
+                                    count += 1;
+                                };
                             };
-                        };
+                        }
                     }
-                }
                 }
             }
             32 => {
                 let vec = &self.data_i32[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let int32 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let int32 = vec[offset + x];
 
-                        let tmp = self.bzero + self.bscale * (int32 as f32);
-                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                            let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
+                            let tmp = self.bzero + self.bscale * (int32 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
 
-                            if dist2 <= r2 {
-                                sum += tmp;
-                                count += 1;
+                                if dist2 <= r2 {
+                                    sum += tmp;
+                                    count += 1;
+                                };
                             };
-                        };
+                        }
                     }
-                }
                 }
             }
             -32 => {
                 let vec = &self.data_f16[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let float16 = vec[offset + x];
-                        //for float16 in &vec[(offset+x1)..(offset+x2)] {//there is no x
-                        if float16.is_finite() {
-                            let tmp = self.bzero + self.bscale * float16.to_f32();
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let float16 = vec[offset + x];
+                            //for float16 in &vec[(offset+x1)..(offset+x2)] {//there is no x
+                            if float16.is_finite() {
+                                let tmp = self.bzero + self.bscale * float16.to_f32();
+                                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                    let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
 
-                                if dist2 <= r2 {
-                                    sum += tmp;
-                                    count += 1;
+                                    if dist2 <= r2 {
+                                        sum += tmp;
+                                        count += 1;
+                                    };
                                 };
                             };
-                        };
+                        }
                     }
-                }
                 }
             }
             -64 => {
                 let vec = &self.data_f64[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let float64 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let float64 = vec[offset + x];
 
-                        if float64.is_finite() {
-                            let tmp = self.bzero + self.bscale * (float64 as f32);
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
+                            if float64.is_finite() {
+                                let tmp = self.bzero + self.bscale * (float64 as f32);
+                                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                    let dist2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
 
-                                if dist2 <= r2 {
-                                    sum += tmp;
-                                    count += 1;
+                                    if dist2 <= r2 {
+                                        sum += tmp;
+                                        count += 1;
+                                    };
                                 };
                             };
-                        };
+                        }
                     }
-                }
                 }
             }
             _ => println!("unsupported bitpix: {}", self.bitpix),
@@ -6479,26 +6481,26 @@ fn data_to_luminance_u8(
                 let len = vec.len();
 
                 if len > 0 {
-                unsafe {
-                    let raw = slice::from_raw_parts_mut(ptr, len);
+                    unsafe {
+                        let raw = slice::from_raw_parts_mut(ptr, len);
 
-                    let spectrum = spmd::calculate_square_spectrumF16(
-                        raw.as_mut_ptr(),
-                        self.bzero,
-                        self.bscale,
-                        self.datamin,
-                        self.datamax,
-                        self.width as u32,
-                        x1 as i32,
-                        x2 as i32,
-                        y1 as i32,
-                        y2 as i32,
-                        mean,
-                        cdelt3,
-                    );
+                        let spectrum = spmd::calculate_square_spectrumF16(
+                            raw.as_mut_ptr(),
+                            self.bzero,
+                            self.bscale,
+                            self.datamin,
+                            self.datamax,
+                            self.width as u32,
+                            x1 as i32,
+                            x2 as i32,
+                            y1 as i32,
+                            y2 as i32,
+                            mean,
+                            cdelt3,
+                        );
 
-                    spectrum
-                }
+                        spectrum
+                    }
                 } else {
                     0.0
                 }
@@ -6531,90 +6533,90 @@ fn data_to_luminance_u8(
             8 => {
                 let vec = &self.data_u8[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let int8 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let int8 = vec[offset + x];
 
-                        let tmp = self.bzero + self.bscale * (int8 as f32);
-                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                            sum += tmp;
-                            count += 1;
-                        };
+                            let tmp = self.bzero + self.bscale * (int8 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                sum += tmp;
+                                count += 1;
+                            };
+                        }
                     }
-                }
                 }
             }
             16 => {
                 let vec = &self.data_i16[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let int16 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let int16 = vec[offset + x];
 
-                        let tmp = self.bzero + self.bscale * (int16 as f32);
-                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                            sum += tmp;
-                            count += 1;
-                        };
+                            let tmp = self.bzero + self.bscale * (int16 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                sum += tmp;
+                                count += 1;
+                            };
+                        }
                     }
-                }
                 }
             }
             32 => {
                 let vec = &self.data_i32[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let int32 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let int32 = vec[offset + x];
 
-                        let tmp = self.bzero + self.bscale * (int32 as f32);
-                        if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                            sum += tmp;
-                            count += 1;
-                        };
+                            let tmp = self.bzero + self.bscale * (int32 as f32);
+                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                sum += tmp;
+                                count += 1;
+                            };
+                        }
                     }
-                }
                 }
             }
             -32 => {
                 let vec = &self.data_f16[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let float16 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let float16 = vec[offset + x];
 
-                        if float16.is_finite() {
-                            let tmp = self.bzero + self.bscale * float16.to_f32();
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                sum += tmp;
-                                count += 1;
+                            if float16.is_finite() {
+                                let tmp = self.bzero + self.bscale * float16.to_f32();
+                                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                    sum += tmp;
+                                    count += 1;
+                                };
                             };
-                        };
+                        }
                     }
-                }
                 }
             }
             -64 => {
                 let vec = &self.data_f64[frame];
                 if vec.len() > 0 {
-                for y in y1..y2 {
-                    let offset = y * self.width as usize;
-                    for x in x1..x2 {
-                        let float64 = vec[offset + x];
+                    for y in y1..y2 {
+                        let offset = y * self.width as usize;
+                        for x in x1..x2 {
+                            let float64 = vec[offset + x];
 
-                        if float64.is_finite() {
-                            let tmp = self.bzero + self.bscale * (float64 as f32);
-                            if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
-                                sum += tmp;
-                                count += 1;
+                            if float64.is_finite() {
+                                let tmp = self.bzero + self.bscale * (float64 as f32);
+                                if tmp.is_finite() && tmp >= self.datamin && tmp <= self.datamax {
+                                    sum += tmp;
+                                    count += 1;
+                                };
                             };
-                        };
+                        }
                     }
-                }
                 }
             }
             _ => println!("unsupported bitpix: {}", self.bitpix),
