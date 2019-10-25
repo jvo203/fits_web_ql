@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-04-24.0";
+	return "JS2019-10-25.0";
 }
 
 const wasm_supported = (() => {
@@ -2575,7 +2575,8 @@ function display_scale_info() {
 
 	//N-E compass
 	var L = 3 * emFontSize;//*Math.sign(gridScale[0]) ;
-	var X = 0.02 * width + L + 1 * emFontSize;
+	var X = 0.02 * width + L + 1.5 * emFontSize;
+	var Y = Y - L / 2;
 	if (composite_view)
 		X += img_x + img_width;
 	//var Y = 0.01*width + L + emFontSize;

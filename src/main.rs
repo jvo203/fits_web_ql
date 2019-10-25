@@ -85,7 +85,7 @@ mod server;
 use crate::kalman::KalmanFilter;
 use crate::molecule::Molecule;
 
-const PROGRESS_INTERVAL: u64 = 500; //[ms]
+const PROGRESS_INTERVAL: u64 = 250; //[ms]
 
 #[derive(Serialize, Debug)]
 pub struct WsSpectrum {
@@ -2371,8 +2371,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.1.22";
-static VERSION_STRING: &'static str = "SV2019-10-23.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.1.23";
+static VERSION_STRING: &'static str = "SV2019-10-25.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]

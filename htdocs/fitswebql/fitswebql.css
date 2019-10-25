@@ -169,9 +169,9 @@ img {
     -ms-interpolation-mode: nearest-neighbor;   /* IE8+                           */
 }
 
-/*.progress-bar {
-    transition-duration: 0.1s;
-}*/
+.progress-bar {
+    transition-duration: 0.5s;
+}
 
 .main {
     position: fixed; /* Stay in place */
