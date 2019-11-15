@@ -51,7 +51,7 @@ bytes = "*"
 byteorder = "*"
 uuid = { version = "*", features = ["v3", "v4"] }
 percent-encoding = "*"
-futures = "*"
+futures = "0.3"
 parking_lot = "*"
 rusqlite = "0.17.0"
 rayon = "*"
