@@ -2951,7 +2951,7 @@ fn get_image(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error
             *fits.timestamp.write() = SystemTime::now();
         }
 
-        //println!("[get_image] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
+        //println!("[get_image] obtained read access to {}, is_dummy = {}, has_data = {}", dataset_id, fits.is_dummy, fits.has_data);
 
         if fits.is_dummy {
             return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
