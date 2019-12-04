@@ -29,6 +29,7 @@ use ::actix::*;
 use rayon;
 use rayon::prelude::*;
 
+use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 use flate2::write::GzDecoder as Decompressor;
 
@@ -1258,13 +1259,22 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         };
 
-        let is_compressed = is_gzip_compressed(&mut f);
+        let is_gzip = is_gzip_compressed(&mut f);
+        let is_bzip2 = is_bzip2_compressed(&mut f);
+        let is_compressed = is_bzip2 || is_gzip;
 
         //OK, we have a FITS file with at least one chunk
         println!("{}: reading a FITS file header...", id);
 
         let mut f: Box<dyn Read + Send> = if is_compressed {
-            Box::new(GzDecoder::new(f))
+            if is_gzip {
+                Box::new(GzDecoder::new(f))
+            } else if is_bzip2 {
+                Box::new(BzDecoder::new(f))
+            } else {
+                //this path is dummy, it will never be reached
+                Box::new(f)
+            }
         } else {
             Box::new(f)
         };
@@ -7996,6 +8006,25 @@ fn is_gzip_compressed(f: &mut File) -> bool {
             };
 
             if header[0] == 0x1f && header[1] == 0x8b && header[2] == 0x08 {
+                true
+            } else {
+                false
+            }
+        }
+        Err(_) => false,
+    }
+}
+
+fn is_bzip2_compressed(f: &mut File) -> bool {
+    let mut header = [0; 4];
+    match f.read_exact(&mut header) {
+        Ok(()) => {
+            //reset the file
+            if let Err(err) = f.seek(SeekFrom::Start(0)) {
+                println!("CRITICAL ERROR seeking within the FITS file: {}", err);
+            };
+
+            if header[0] == 0x42 && header[1] == 0x5a && header[2] == 0x68 {
                 true
             } else {
                 false
