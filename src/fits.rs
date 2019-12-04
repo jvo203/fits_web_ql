@@ -30,8 +30,9 @@ use rayon;
 use rayon::prelude::*;
 
 use bzip2::read::BzDecoder;
+use bzip2::write::BzDecoder as BzDecompressor;
 use flate2::read::GzDecoder;
-use flate2::write::GzDecoder as Decompressor;
+use flate2::write::GzDecoder as GzDecompressor;
 
 #[cfg(feature = "ipp")]
 macro_rules! ipp_assert {
@@ -1644,10 +1645,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut cdelt3 = 0.0;
 
         let mut is_compressed = false;
+        let mut is_bzip2 = false;
+        let mut is_gzip = false;
         let mut compression_checked = false;
 
-        let out = Vec::new();
-        let mut decoder = Decompressor::new(out);
+        let mut bz_decoder = BzDecompressor::new(Vec::new());
+        let mut gz_decoder = GzDecompressor::new(Vec::new());
 
         {
             easy.url(url).unwrap();
@@ -1671,19 +1674,37 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     if !is_compressed {
                         buffer.extend_from_slice(data);
                     } else {
-                        match decoder.write_all(&data) {
-                            Ok(_) => {
-                                decoder.flush().unwrap();
-                                let out = decoder.get_mut();
-                                let len = out.len();
-                                if len > 0 {
-                                    buffer.extend_from_slice(out);
-                                    out.drain(0..out.len());
+                        if is_gzip {
+                            match gz_decoder.write_all(&data) {
+                                Ok(_) => {
+                                    gz_decoder.flush().unwrap();
+                                    let out = gz_decoder.get_mut();
+                                    let len = out.len();
+                                    if len > 0 {
+                                        buffer.extend_from_slice(out);
+                                        out.drain(0..out.len());
+                                    }
+                                }
+                                Err(err) => {
+                                    println!("Decompress: {}", err);
+                                    fits.status_code = 500;
                                 }
                             }
-                            Err(err) => {
-                                println!("Decompress: {}", err);
-                                fits.status_code = 500;
+                        } else if is_bzip2 {
+                            match bz_decoder.write_all(&data) {
+                                Ok(_) => {
+                                    bz_decoder.flush().unwrap();
+                                    let out = bz_decoder.get_mut();
+                                    let len = out.len();
+                                    if len > 0 {
+                                        buffer.extend_from_slice(out);
+                                        out.drain(0..out.len());
+                                    }
+                                }
+                                Err(err) => {
+                                    println!("Decompress: {}", err);
+                                    fits.status_code = 500;
+                                }
                             }
                         }
                     }
@@ -1695,15 +1716,40 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         );
                         //test for magick numbers and the deflate compression type
                         if buffer[0] == 0x1f && buffer[1] == 0x8b && buffer[2] == 0x08 {
+                            is_gzip = true;
                             is_compressed = true;
                             println!("found.");
 
                             //decompress the incoming data
-                            match decoder.write_all(&buffer) {
+                            match gz_decoder.write_all(&buffer) {
                                 Ok(_) => {
                                     buffer.drain(0..buffer.len());
-                                    decoder.flush().unwrap();
-                                    let out = decoder.get_mut();
+                                    gz_decoder.flush().unwrap();
+                                    let out = gz_decoder.get_mut();
+                                    let len = out.len();
+                                    if len > 0 {
+                                        buffer.extend_from_slice(out);
+                                        out.drain(0..out.len());
+                                    }
+                                }
+                                Err(err) => {
+                                    println!("Decompress: {}", err);
+                                    fits.status_code = 500;
+                                }
+                            }
+                        } else
+                        //test for magick numbers and the bzip2 compression type
+                        if buffer[0] == 0x42 && buffer[1] == 0x5a && buffer[2] == 0x68 {
+                            is_bzip2 = true;
+                            is_compressed = true;
+                            println!("found.");
+
+                            //decompress the incoming data
+                            match bz_decoder.write_all(&buffer) {
+                                Ok(_) => {
+                                    buffer.drain(0..buffer.len());
+                                    bz_decoder.flush().unwrap();
+                                    let out = bz_decoder.get_mut();
                                     let len = out.len();
                                     if len > 0 {
                                         buffer.extend_from_slice(out);
