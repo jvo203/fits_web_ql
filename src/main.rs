@@ -2372,7 +2372,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.23";
-static VERSION_STRING: &'static str = "SV2019-10-25.0";
+static VERSION_STRING: &'static str = "SV2019-12-04.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2601,7 +2601,7 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
                     ordered_entries.insert(entry.file_name(), dir_entry);
                 }
 
-                //filter by .fits .FITS
+                //filter by .fits .FITS + compression
                 if metadata.is_file() {
                     let path = entry.path();
                     let ext = path.extension().and_then(std::ffi::OsStr::to_str);
@@ -2610,6 +2610,8 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
                         || ext == Some("FITS")
                         || path.to_str().unwrap().ends_with(".fits.gz")
                         || path.to_str().unwrap().ends_with(".FITS.GZ")
+                        || path.to_str().unwrap().ends_with(".fits.bz2")
+                        || path.to_str().unwrap().ends_with(".FITS.BZ2")
                     {
                         let ts = match metadata.modified() {
                             Ok(x) => x,
