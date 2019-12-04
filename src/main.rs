@@ -2610,8 +2610,8 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
                         || ext == Some("FITS")
                         || path.to_str().unwrap().ends_with(".fits.gz")
                         || path.to_str().unwrap().ends_with(".FITS.GZ")
-                        || path.to_str().unwrap().ends_with(".fits.bz2")
-                        || path.to_str().unwrap().ends_with(".FITS.BZ2")
+                        || path.to_str().unwrap().ends_with(".fits.bzip2")
+                        || path.to_str().unwrap().ends_with(".FITS.BZIP2")
                     {
                         let ts = match metadata.modified() {
                             Ok(x) => x,
