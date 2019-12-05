@@ -1650,8 +1650,21 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut is_compressed = false;
         let mut compression_checked = false;
 
-        let mut bz_decoder: RefCell<Option<BzDecompressor<Vec<u8>>>> = RefCell::new(None);
-        let mut gz_decoder: Option<GzDecompressor<Vec<u8>>> = None;
+        type BzStream = BzDecompressor<Vec<u8>>;
+        type GzStream = GzDecompressor<Vec<u8>>;
+
+        enum DecompressionStream {
+            BzStream,
+            GzStream,
+            None,
+        }
+
+        //let mut decoder = GzDecompressor::new(Vec::new());
+        //let mut decoder = DecompressionStream::None;
+
+        let mut bz_decoder: Option<Rc<RefCell<BzStream>>> = None;
+        let mut gz_decoder: Option<Rc<RefCell<GzStream>>> = None;
+        //let mut gz_decoder: Option<GzDecompressor<Vec<u8>>> = None;
 
         {
             easy.url(url).unwrap();
@@ -1675,7 +1688,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     if !is_compressed {
                         buffer.extend_from_slice(data);
                     } else {
-                        match bz_decoder {
+                        /*match bz_decoder {
                             Some(decoder) => match decoder.write_all(&data) {
                                 Ok(_) => {
                                     decoder.flush().unwrap();
@@ -1711,7 +1724,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                             },
                             None => {}
-                        }
+                        }*/
                     }
 
                     if !compression_checked && buffer.len() >= 10 {
@@ -1743,7 +1756,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                             }
 
-                            gz_decoder = Some(decoder);
+                            gz_decoder = Some(Rc::new(RefCell::new(decoder)));
                         } else
                         //test for magick numbers and the bzip2 compression type
                         if buffer[0] == 0x42 && buffer[1] == 0x5a && buffer[2] == 0x68 {
@@ -1769,7 +1782,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                             }
 
-                            bz_decoder = RefCell::new(Some(decoder));
+                            bz_decoder = Some(Rc::new(RefCell::new(decoder)));
                         } else {
                             println!("no compression found.");
                         }
