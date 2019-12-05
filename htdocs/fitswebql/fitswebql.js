@@ -4034,7 +4034,7 @@ function display_dataset_info() {
 			.attr("id", "navigation")
 			.attr("x", (width - nav_size))
 			.attr("y", yoffset)
-			.attr("xlink:href", ROOT_PATH + "navigation.svg")
+			.attr("xlink:href", ROOT_PATH + "navigation-svgrepo-com.svg")
 			//.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/navigation.svg")
 			.attr("width", nav_size)
 			.attr("height", nav_size)
@@ -4056,14 +4056,14 @@ function display_dataset_info() {
 					}
 
 				localStorage.setItem("navigation", navigation);
-				console.log("current mode: " + navigation);
+				console.log("image navigation: " + navigation);
 
 				d3.select("#navigation_title")
 					.text("current mode: " + navigation);
 			})
 			.append("svg:title")
 			.attr("id", "navigation_title")
-			.text("current mode: " + navigation);
+			.text("image navigation: " + navigation);
 	}
 
 	var range = get_axes_range(width, height);
