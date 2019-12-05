@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-10-25.0";
+	return "JS2019-12-05.0";
 }
 
 const wasm_supported = (() => {
@@ -4017,6 +4017,55 @@ function display_dataset_info() {
 		};
 	}
 
+	if (va_count == 1) {
+		//add an image navigation switch
+		var yoffset = 32 * emFontSize;
+
+		if (composite_view)
+			yoffset += 1 * emFontSize;
+
+		if (fitsData.depth > 1) {
+			yoffset += 7 * emFontSize;
+		}
+
+		var nav_size = 5 * emFontSize;
+
+		svg.append("svg:image")
+			.attr("id", "navigation")
+			.attr("x", (width - nav_size))
+			.attr("y", yoffset)
+			.attr("xlink:href", ROOT_PATH + "navigation.svg")
+			//.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/navigation.svg")
+			.attr("width", nav_size)
+			.attr("height", nav_size)
+			.attr("opacity", 0.25)
+			.style('cursor', 'pointer')
+			.on("mouseenter", function () {
+				d3.select(this).style("opacity", 1.0);
+			})
+			.on("mouseleave", function () {
+				d3.select(this).style("opacity", 0.25);
+			})
+			.on("click", function () {
+				//toggle the state
+				if (navigation == "dynamic") {
+					navigation = "static";
+				} else
+					if (navigation == "static") {
+						navigation = "dynamic";
+					}
+
+				localStorage.setItem("navigation", navigation);
+				console.log("current mode: " + navigation);
+
+				d3.select("#navigation_title")
+					.text("current mode: " + navigation);
+			})
+			.append("svg:title")
+			.attr("id", "navigation_title")
+			.text("current mode: " + navigation);
+	}
+
 	var range = get_axes_range(width, height);
 
 	svg.append("text")
@@ -4428,7 +4477,7 @@ function display_scale_range_ui(called_from_menu = false) {
 
     d3.select("#yaxis")
 	.attr("data-toggle", "popover")
-	.attr("data-triggre", "hover")
+	.attr("data-trigger", "hover")
 	.attr("title", "fixed scale")
 	.attr("data-content", "hold 's' and move mouse over the Y-Axis, then use mouse drag/scroll-wheel to adjust the Y-Axis scale");
 
@@ -12427,7 +12476,8 @@ async*/ function mainRenderer() {
 		end_x = 0;
 		end_y = 0;
 
-		coordsFmt = localStorage_read_string("coordsFmt", "HMS");//DMS or HMS
+		coordsFmt = localStorage_read_string("coordsFmt", "HMS");//'DMS' or 'HMS'
+		navigation = localStorage_read_string("navigation", "dynamic");//'dynamic' (classic) or 'static' (new)
 
 		displayCDMS = localStorage_read_boolean("displayCDMS", false);
 		displayJPL = localStorage_read_boolean("displayJPL", false);
