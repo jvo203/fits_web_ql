@@ -748,11 +748,22 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 
 		ctx.drawImage(imageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width, img_height);
 
-		setup_image_selection();
+		if (navigation == "dynamic")
+			setup_image_selection();
+
+		if (navigation == "static") {
+			setup_image_selection_index(1, (width - img_width) / 2, (height - img_height) / 2, img_width, img_height);
+
+			//trigger a tileTimeout
+			if (zoom_dims != null)
+				if (zoom_dims.view != null)
+					tileTimeout(true);
+		}
 
 		has_image = true;
 
-		setup_viewports();
+		if (navigation == "dynamic")
+			setup_viewports();
 
 		try {
 			display_scale_info();
@@ -762,12 +773,13 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 
 		display_legend();
 
-		try {
-			display_cd_gridlines();
-		}
-		catch (err) {
-			display_gridlines();
-		};
+		if (navigation == "dynamic")
+			try {
+				display_cd_gridlines();
+			}
+			catch (err) {
+				display_gridlines();
+			};
 
 		display_beam();
 
@@ -1057,7 +1069,7 @@ function process_viewport_canvas(viewportCanvas, index) {
 
 	viewport_count++;
 
-	if (va_count > 1 && !composite_view) {
+	if ((va_count > 1 && !composite_view) || navigation == "static") {
 		console.log("refresh_viewport for index:", index);
 
 		if (viewport_count == va_count) {
@@ -1069,7 +1081,12 @@ function process_viewport_canvas(viewportCanvas, index) {
 			return;
 
 		//place the viewport onto the image tile
-		var c = document.getElementById('HTMLCanvas' + index);
+		var id;
+		if (va_count == 1)
+			id = 'HTMLCanvas';
+		else
+			id = 'HTMLCanvas' + index;
+		var c = document.getElementById(id);
 		var width = c.width;
 		var height = c.height;
 		var ctx = c.getContext("2d");
@@ -1082,7 +1099,12 @@ function process_viewport_canvas(viewportCanvas, index) {
 
 		let img_width = 0, img_height = 0;
 		try {
-			let elem = d3.select("#image_rectangle" + index);
+			var id;
+			if (va_count == 1)
+				id = "#image_rectangle";
+			else
+				id = "#image_rectangle" + index;
+			let elem = d3.select(id);
 			img_width = elem.attr("width");
 			img_height = elem.attr("height");
 		} catch (err) {
@@ -1246,7 +1268,7 @@ function process_viewport(width, height, w, h, bytes, stride, alpha, index, swap
 		}
 	}
 
-	if (va_count > 1 && !composite_view) {
+	if ((va_count > 1 && !composite_view) || navigation == "static") {
 		console.log("refresh_viewport for index:", index);
 
 		if (viewport_count == va_count) {
@@ -1258,7 +1280,12 @@ function process_viewport(width, height, w, h, bytes, stride, alpha, index, swap
 			return;
 
 		//place the viewport onto the image tile
-		var c = document.getElementById('HTMLCanvas' + index);
+		var id;
+		if (va_count == 1)
+			id = 'HTMLCanvas';
+		else
+			id = 'HTMLCanvas' + index;
+		var c = document.getElementById(id);
 		var width = c.width;
 		var height = c.height;
 		var ctx = c.getContext("2d");
@@ -1271,7 +1298,12 @@ function process_viewport(width, height, w, h, bytes, stride, alpha, index, swap
 
 		let img_width = 0, img_height = 0;
 		try {
-			let elem = d3.select("#image_rectangle" + index);
+			var id;
+			if (va_count == 1)
+				id = "#image_rectangle";
+			else
+				id = "#image_rectangle" + index;
+			let elem = d3.select(id);
 			img_width = elem.attr("width");
 			img_height = elem.attr("height");
 		} catch (err) {
@@ -2641,6 +2673,9 @@ function display_gridlines() {
 	if (va_count > 1 && !composite_view)
 		return;
 
+	if (navigation == "static")
+		return;
+
 	let fitsData = fitsContainer[va_count - 1];
 
 	if (fitsData == null)
@@ -2901,6 +2936,9 @@ function display_gridlines() {
 
 function display_cd_gridlines() {
 	if (va_count > 1 && !composite_view)
+		return;
+
+	if (navigation == "static")
 		return;
 
 	let fitsData = fitsContainer[va_count - 1];
@@ -7886,13 +7924,21 @@ function display_composite_legend() {
 }
 
 function setup_image_selection_index(index, topx, topy, img_width, img_height) {
-	//delete previous instances
+	//delete previous instances	
 	try {
 		d3.select("#region").remove();
 		d3.select("#zoom").remove();
 		d3.select("#image_rectangle" + index).remove();
 	}
 	catch (e) { };
+
+	if (va_count == 1)
+		try {
+			d3.select("#region").remove();
+			d3.select("#zoom").remove();
+			d3.select("#image_rectangle").remove();
+		}
+		catch (e) { };
 
 	var zoom = d3.zoom()
 		.scaleExtent([1, 40])
@@ -7959,9 +8005,16 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 
 	var svg = d3.select("#FrontSVG");
 
+	var id;
+
+	if (va_count == 1)
+		id = "image_rectangle";
+	else
+		id = "image_rectangle" + index;
+
 	//svg image rectangle for zooming-in
 	var rect = svg.append("rect")
-		.attr("id", "image_rectangle" + index)
+		.attr("id", id)
 		.attr("class", "image_rectangle")
 		.attr("x", topx)
 		.attr("y", topy)
@@ -9440,7 +9493,14 @@ function refresh_tiles(index) {
 
 	let imageCanvas = imageContainer[index - 1].imageCanvas;
 
-	var c = document.getElementById('HTMLCanvas' + index);
+	var id;
+
+	if (va_count == 1)
+		id = 'HTMLCanvas';
+	else
+		id = 'HTMLCanvas' + index;
+
+	var c = document.getElementById(id);
 	var width = c.width;
 	var height = c.height;
 	var ctx = c.getContext("2d");
@@ -9453,7 +9513,12 @@ function refresh_tiles(index) {
 
 	let img_width = 0, img_height = 0;
 	try {
-		let elem = d3.select("#image_rectangle" + index);
+		var id;
+		if (va_count == 1)
+			id = "#image_rectangle";
+		else
+			id = "#image_rectangle" + index;
+		let elem = d3.select(id);
 		img_width = elem.attr("width");
 		img_height = elem.attr("height");
 	} catch (err) {
@@ -9552,7 +9617,12 @@ function tiles_zoom() {
 
 		//keep zoom scale in sync across all images
 		try {
-			var elem = d3.select("#image_rectangle" + i);
+			var id;
+			if (va_count == 1)
+				id = "#image_rectangle";
+			else
+				"#image_rectangle" + i;
+			var elem = d3.select(id);
 			elem.node().__zoom.k = zoom_scale;
 		} catch (e) { };
 	}
@@ -9716,7 +9786,12 @@ function tileTimeout(force = false) {
 
 		let view_width = 0, view_height = 0;
 		try {
-			let elem = d3.select("#image_rectangle" + (index + 1));
+			var id;
+			if (va_count == 1)
+				id = "#image_rectangle";
+			else
+				id = "#image_rectangle" + (index + 1);
+			let elem = d3.select(id);
 			view_width = elem.attr("width");
 			view_height = elem.attr("height");
 		} catch (err) {
