@@ -7,7 +7,6 @@ use parking_lot::RwLock;
 use positioned_io::ReadAt;
 use regex::Regex;
 use std;
-use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::ffi::CString;
 use std::fs::File;
@@ -1653,18 +1652,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         type BzStream = BzDecompressor<Vec<u8>>;
         type GzStream = GzDecompressor<Vec<u8>>;
 
-        enum DecompressionStream {
-            BzStream,
-            GzStream,
-            None,
-        }
-
-        //let mut decoder = GzDecompressor::new(Vec::new());
-        //let mut decoder = DecompressionStream::None;
-
         let mut bz_decoder: Option<Rc<RefCell<BzStream>>> = None;
         let mut gz_decoder: Option<Rc<RefCell<GzStream>>> = None;
-        //let mut gz_decoder: Option<GzDecompressor<Vec<u8>>> = None;
 
         {
             easy.url(url).unwrap();
@@ -1688,43 +1677,49 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     if !is_compressed {
                         buffer.extend_from_slice(data);
                     } else {
-                        /*match bz_decoder {
-                            Some(decoder) => match decoder.write_all(&data) {
-                                Ok(_) => {
-                                    decoder.flush().unwrap();
-                                    let out = decoder.get_mut();
-                                    let len = out.len();
-                                    if len > 0 {
-                                        buffer.extend_from_slice(out);
-                                        out.drain(0..out.len());
+                        match &bz_decoder {
+                            Some(decoder) => {
+                                let mut decoder = decoder.borrow_mut();
+                                match decoder.write_all(&data) {
+                                    Ok(_) => {
+                                        decoder.flush().unwrap();
+                                        let out = decoder.get_mut();
+                                        let len = out.len();
+                                        if len > 0 {
+                                            buffer.extend_from_slice(out);
+                                            out.drain(0..out.len());
+                                        }
+                                    }
+                                    Err(err) => {
+                                        println!("Decompress: {}", err);
+                                        fits.status_code = 500;
                                     }
                                 }
-                                Err(err) => {
-                                    println!("Decompress: {}", err);
-                                    fits.status_code = 500;
-                                }
-                            },
+                            }
                             None => {}
                         }
 
-                        match gz_decoder {
-                            Some(decoder) => match decoder.write_all(&data) {
-                                Ok(_) => {
-                                    decoder.flush().unwrap();
-                                    let out = decoder.get_mut();
-                                    let len = out.len();
-                                    if len > 0 {
-                                        buffer.extend_from_slice(out);
-                                        out.drain(0..out.len());
+                        match &gz_decoder {
+                            Some(decoder) => {
+                                let mut decoder = decoder.borrow_mut();
+                                match decoder.write_all(&data) {
+                                    Ok(_) => {
+                                        decoder.flush().unwrap();
+                                        let out = decoder.get_mut();
+                                        let len = out.len();
+                                        if len > 0 {
+                                            buffer.extend_from_slice(out);
+                                            out.drain(0..out.len());
+                                        }
+                                    }
+                                    Err(err) => {
+                                        println!("Decompress: {}", err);
+                                        fits.status_code = 500;
                                     }
                                 }
-                                Err(err) => {
-                                    println!("Decompress: {}", err);
-                                    fits.status_code = 500;
-                                }
-                            },
+                            }
                             None => {}
-                        }*/
+                        }
                     }
 
                     if !compression_checked && buffer.len() >= 10 {
