@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-12-06.1";
+	return "JS2019-12-06.2";
 }
 
 const wasm_supported = (() => {
@@ -9340,9 +9340,18 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
 			}, 500);
 		}
 
+		if (xmlhttp.readyState == 4 && xmlhttp.status == 404) {
+			spectrum_count++;
+
+			if (spectrum_count == va_count) {
+				document.getElementById('welcome').style.display = "none";
+				console.log('hiding the loading progress, style =', document.getElementById('welcome').style.display);
+			}
+		}
+
 		if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-			document.getElementById('welcome').style.display = "none";
-			console.log('hiding the loading progress, style =', document.getElementById('welcome').style.display);
+			//document.getElementById('welcome').style.display = "none";
+			//console.log('hiding the loading progress, style =', document.getElementById('welcome').style.display);
 
 			//console.log(xmlhttp.responseText) ;
 
@@ -9461,6 +9470,11 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
 					if (composite_view)
 						display_rgb_legend();
 				}
+			}
+
+			if (spectrum_count == va_count) {
+				document.getElementById('welcome').style.display = "none";
+				console.log('hiding the loading progress, style =', document.getElementById('welcome').style.display);
 			}
 
 			//setup_image_selection() ;
