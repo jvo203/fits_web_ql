@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-12-05.0";
+	return "JS2019-12-06.0";
 }
 
 const wasm_supported = (() => {
@@ -773,13 +773,12 @@ function process_image(width, height, w, h, bytes, stride, alpha, index) {
 
 		display_legend();
 
-		if (navigation == "dynamic")
-			try {
-				display_cd_gridlines();
-			}
-			catch (err) {
-				display_gridlines();
-			};
+		try {
+			display_cd_gridlines();
+		}
+		catch (err) {
+			display_gridlines();
+		};
 
 		display_beam();
 
@@ -3595,6 +3594,7 @@ function display_dataset_info() {
 	var svg = d3.select("#FrontSVG");
 	var width = parseFloat(svg.attr("width"));
 	var height = parseFloat(svg.attr("height"));
+	var maxoffset = 0;
 
 	xradec = new Array(null, null);
 
@@ -3649,9 +3649,10 @@ function display_dataset_info() {
 	    line = ' (' + line + ')' ;
     }*/
 
+	maxoffset = 4.5 * emFontSize;
 	group.append("text")
 		.attr("x", width)
-		.attr("y", 4.5 * emFontSize)//7*
+		.attr("y", maxoffset)//7*
 		.attr("font-family", "Helvetica")//Arial
 		.attr("font-weight", "normal")
 		.attr("font-size", "2.5em")
@@ -3676,9 +3677,10 @@ function display_dataset_info() {
 		dateobs = dateobs.replace(/T/g, " ") + ' ' + fitsData.TIMESYS;
 	}
 
+	maxoffset = 6.5 * emFontSize;
 	group.append("text")
 		.attr("x", width)
-		.attr("y", 6.5 * emFontSize)//6.5 6.0
+		.attr("y", maxoffset)//6.5 6.0
 		.attr("font-family", "Helvetica")
 		.attr("font-size", "1.3em")//1.75
 		.attr("text-anchor", "end")
@@ -3703,10 +3705,11 @@ function display_dataset_info() {
 	if (fitsData.CTYPE1.indexOf("ELON") > -1)
 		raText = 'λ: ' + RadiansPrintDMS(xradec[0]);
 
+	maxoffset = 8.5 * emFontSize;
 	group.append("text")
 		.attr("id", "ra")
 		.attr("x", width)
-		.attr("y", 8.5 * emFontSize)//8.5 7.5
+		.attr("y", maxoffset)//8.5 7.5
 		.attr("font-family", "Inconsolata")
 		//.attr("font-style", "italic")
 		.attr("font-size", "1.5em")
@@ -3727,10 +3730,11 @@ function display_dataset_info() {
 	if (fitsData.CTYPE2.indexOf("ELAT") > -1)
 		decText = 'β: ' + RadiansPrintDMS(xradec[1]);
 
+	maxoffset = 10 * emFontSize;
 	group.append("text")
 		.attr("id", "dec")
 		.attr("x", width)
-		.attr("y", 10 * emFontSize)//10 8.75
+		.attr("y", maxoffset)//10 8.75
 		.attr("font-family", "Inconsolata")
 		//.attr("font-style", "italic")
 		.attr("font-size", "1.5em")
@@ -3740,10 +3744,11 @@ function display_dataset_info() {
 		.append("svg:title")
 		.text(fitsData.CTYPE2.trim());
 
+	maxoffset = 11.5 * emFontSize;
 	group.append("text")
 		.attr("id", "pixel")
 		.attr("x", width)
-		.attr("y", 11.5 * emFontSize)//11.5 10
+		.attr("y", maxoffset)//11.5 10
 		.attr("font-family", "Inconsolata")
 		//.attr("font-style", "italic")
 		.attr("font-size", "1.5em")
@@ -3811,13 +3816,14 @@ function display_dataset_info() {
 		else
 			bandStr = '<span style="float:left; font-weight:bold">REF FRQ</span><br><input type="number" id="frequencyInput" min="0" step="0.1" style="width: 6em; color: black; background-color: lightgray; font-size: 1.0em" value="' + (RESTFRQ / 1.0e9).toPrecision(7) + '" disabled> GHz';
 
+		maxoffset = 12.5 * emFontSize;
 		group.append("g")
 			.attr("id", "foreignBandG")
 			.style("opacity", 0.25)
 			.append("foreignObject")
 			.attr("id", "foreignBand")
 			.attr("x", (width - 20 * emFontSize))
-			.attr("y", 12.5 * emFontSize)//12.5
+			.attr("y", maxoffset)//12.5
 			.attr("width", 20 * emFontSize)
 			.attr("height", 7 * emFontSize)
 			.on("mouseenter", function () {
@@ -3862,6 +3868,7 @@ function display_dataset_info() {
 		if (composite_view)
 			yoffset += 1 * emFontSize;
 
+		maxoffset = yoffset;
 		group.append("g")
 			.attr("id", "foreignVelG")
 			.style("opacity", 0.25)
@@ -3940,6 +3947,7 @@ function display_dataset_info() {
 
 		var videoStr = '<span id="videoPlay" class="glyphicon glyphicon-play" style="display:inline-block; cursor: pointer"></span><span id="videoPause" class="glyphicon glyphicon-pause" style="display:none; cursor: pointer"></span>&nbsp; <span id="videoStop" class="glyphicon glyphicon-stop" style="cursor: pointer"></span>&nbsp; <span id="videoForward" class="glyphicon glyphicon-forward" style="cursor: pointer"></span>&nbsp; <span id="videoFastForward" class="glyphicon glyphicon-fast-forward" style="cursor: pointer"></span>';
 
+		maxoffset = yoffset;
 		group.append("g")
 			.attr("id", "videoControlG")
 			.style("opacity", 0.25)
@@ -4057,7 +4065,7 @@ function display_dataset_info() {
 
 	if (va_count == 1) {
 		//add an image navigation switch
-		var yoffset = 32 * emFontSize;
+		var yoffset = maxoffset;
 
 		if (composite_view)
 			yoffset += 1 * emFontSize;
@@ -4068,11 +4076,19 @@ function display_dataset_info() {
 
 		var nav_size = 5 * emFontSize;
 
+		var resource = "";
+
+		if (navigation == "dynamic")
+			resource = "navigation.svg";
+
+		if (navigation == "static")
+			resource = "navigation-svgrepo-com.svg"
+
 		svg.append("svg:image")
 			.attr("id", "navigation")
 			.attr("x", (width - nav_size))
 			.attr("y", yoffset)
-			.attr("xlink:href", ROOT_PATH + "navigation-svgrepo-com.svg")
+			.attr("xlink:href", ROOT_PATH + resource)//navigation-svgrepo-com.svg or navigation.svg
 			//.attr("xlink:href", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/navigation.svg")
 			.attr("width", nav_size)
 			.attr("height", nav_size)
@@ -4098,6 +4114,8 @@ function display_dataset_info() {
 
 				d3.select("#navigation_title")
 					.text("current mode: " + navigation);
+
+				location.reload(false);
 			})
 			.append("svg:title")
 			.attr("id", "navigation_title")
