@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-12-06.0";
+	return "JS2019-12-06.1";
 }
 
 const wasm_supported = (() => {
@@ -4063,8 +4063,8 @@ function display_dataset_info() {
 		};
 	}
 
-	if (va_count == 1) {
-		//add an image navigation switch
+	//add an image navigation switch
+	/*if (va_count == 1) {		
 		var yoffset = maxoffset;
 
 		if (composite_view)
@@ -4120,7 +4120,7 @@ function display_dataset_info() {
 			.append("svg:title")
 			.attr("id", "navigation_title")
 			.text("image navigation: " + navigation);
-	}
+	}*/
 
 	var range = get_axes_range(width, height);
 
@@ -12575,7 +12575,8 @@ async*/ function mainRenderer() {
 
 		coordsFmt = localStorage_read_string("coordsFmt", "HMS");//'DMS' or 'HMS'
 
-		navigation = localStorage_read_string("navigation", "dynamic");//'dynamic' (classic) or 'static' (new)
+		//navigation = localStorage_read_string("navigation", "dynamic");//'dynamic' (classic) or 'static' (new)
+		navigation = "dynamic";
 		if (navigation == "static")
 			zoom_scale = 1;
 
