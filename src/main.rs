@@ -3034,7 +3034,7 @@ fn get_spectrum(
             *fits.timestamp.write() = SystemTime::now();
         }
 
-        println!("[get_spectrum] obtained read access to {}, is_dummy = {}, has_data = {}", dataset_id, fits.is_dummy, fits.has_data);
+        //println!("[get_spectrum] obtained read access to {}, is_dummy = {}, has_data = {}", dataset_id, fits.is_dummy, fits.has_data);
 
         if fits.is_dummy {
             return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
