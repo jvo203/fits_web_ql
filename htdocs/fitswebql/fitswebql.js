@@ -4079,10 +4079,10 @@ function display_dataset_info() {
 		var resource = "";
 
 		if (navigation == "dynamic")
-			resource = "navigation.svg";
+			resource = "cursor.svg";
 
 		if (navigation == "static")
-			resource = "navigation-svgrepo-com.svg"
+			resource = "move.svg"
 
 		svg.append("svg:image")
 			.attr("id", "navigation")
@@ -4581,8 +4581,10 @@ function change_zoom_shape() {
 	zoom_shape = document.getElementById('zoom_shape').value;
 	localStorage.setItem("zoom_shape", zoom_shape);
 
-	setup_image_selection();
-	setup_viewports();
+	if (navigation == "dynamic") {
+		setup_image_selection();
+		setup_viewports();
+	}
 }
 
 function change_intensity_mode() {
@@ -4717,8 +4719,10 @@ function change_colourmap(index, recursive) {
 
 		ctx.drawImage(newImageCanvas, image_bounding_dims.x1, image_bounding_dims.y1, image_bounding_dims.width, image_bounding_dims.height, (width - img_width) / 2, (height - img_height) / 2, img_width, img_height);
 
-		setup_image_selection();
-		setup_viewports();
+		if (navigation == "dynamic") {
+			setup_image_selection();
+			setup_viewports();
+		}
 		display_legend();
 	}
 	else
@@ -12570,7 +12574,10 @@ async*/ function mainRenderer() {
 		end_y = 0;
 
 		coordsFmt = localStorage_read_string("coordsFmt", "HMS");//'DMS' or 'HMS'
+
 		navigation = localStorage_read_string("navigation", "dynamic");//'dynamic' (classic) or 'static' (new)
+		if (navigation == "static")
+			zoom_scale = 1;
 
 		displayCDMS = localStorage_read_boolean("displayCDMS", false);
 		displayJPL = localStorage_read_boolean("displayJPL", false);
