@@ -2372,7 +2372,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.1.25";
-static VERSION_STRING: &'static str = "SV2019-12-05.0";
+static VERSION_STRING: &'static str = "SV2020-01-07.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -2568,74 +2568,82 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
 
     let mut ordered_entries = BTreeMap::new();
 
-    for entry in path.read_dir().expect("read_dir call failed") {
-        if let Ok(entry) = entry {
-            let file_name_buf = entry.file_name();
-            let file_name = file_name_buf.to_str().unwrap();
+    match path.read_dir() {
+        Ok(entries) => {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let file_name_buf = entry.file_name();
+                    let file_name = file_name_buf.to_str().unwrap();
 
-            if file_name.starts_with(".") {
-                continue;
-            }
+                    if file_name.starts_with(".") {
+                        continue;
+                    }
 
-            if let Ok(metadata) = entry.metadata() {
-                //println!("{:?}:{:?} filesize: {}", entry.path(), metadata, metadata.len());
+                    if let Ok(metadata) = entry.metadata() {
+                        //println!("{:?}:{:?} filesize: {}", entry.path(), metadata, metadata.len());
 
-                if metadata.is_dir() {
-                    let ts = match metadata.modified() {
-                        Ok(x) => x,
-                        Err(_) => std::time::UNIX_EPOCH,
-                    };
+                        if metadata.is_dir() {
+                            let ts = match metadata.modified() {
+                                Ok(x) => x,
+                                Err(_) => std::time::UNIX_EPOCH,
+                            };
 
-                    let std_duration = ts.duration_since(std::time::UNIX_EPOCH).unwrap();
-                    let chrono_duration = ::chrono::Duration::from_std(std_duration).unwrap();
-                    let unix = chrono::NaiveDateTime::from_timestamp(0, 0);
-                    let naive = unix + chrono_duration;
+                            let std_duration = ts.duration_since(std::time::UNIX_EPOCH).unwrap();
+                            let chrono_duration =
+                                ::chrono::Duration::from_std(std_duration).unwrap();
+                            let unix = chrono::NaiveDateTime::from_timestamp(0, 0);
+                            let naive = unix + chrono_duration;
 
-                    let dir_entry = json!({
-                        "type" : "dir",
-                        "name" : format!("{}", entry.file_name().into_string().unwrap()),
-                        "last_modified" : format!("{}", naive.format("%c"))
-                    });
+                            let dir_entry = json!({
+                                "type" : "dir",
+                                "name" : format!("{}", entry.file_name().into_string().unwrap()),
+                                "last_modified" : format!("{}", naive.format("%c"))
+                            });
 
-                    println!("{}", dir_entry.to_string());
-                    ordered_entries.insert(entry.file_name(), dir_entry);
-                }
+                            println!("{}", dir_entry.to_string());
+                            ordered_entries.insert(entry.file_name(), dir_entry);
+                        }
 
-                //filter by .fits .FITS + compression
-                if metadata.is_file() {
-                    let path = entry.path();
-                    let ext = path.extension().and_then(std::ffi::OsStr::to_str);
+                        //filter by .fits .FITS + compression
+                        if metadata.is_file() {
+                            let path = entry.path();
+                            let ext = path.extension().and_then(std::ffi::OsStr::to_str);
 
-                    if ext == Some("fits")
-                        || ext == Some("FITS")
-                        || path.to_str().unwrap().ends_with(".fits.gz")
-                        || path.to_str().unwrap().ends_with(".FITS.GZ")
-                        || path.to_str().unwrap().ends_with(".fits.bz2")
-                        || path.to_str().unwrap().ends_with(".FITS.BZ2")
-                    {
-                        let ts = match metadata.modified() {
-                            Ok(x) => x,
-                            Err(_) => std::time::UNIX_EPOCH,
-                        };
+                            if ext == Some("fits")
+                                || ext == Some("FITS")
+                                || path.to_str().unwrap().ends_with(".fits.gz")
+                                || path.to_str().unwrap().ends_with(".FITS.GZ")
+                                || path.to_str().unwrap().ends_with(".fits.bz2")
+                                || path.to_str().unwrap().ends_with(".FITS.BZ2")
+                            {
+                                let ts = match metadata.modified() {
+                                    Ok(x) => x,
+                                    Err(_) => std::time::UNIX_EPOCH,
+                                };
 
-                        let std_duration = ts.duration_since(std::time::UNIX_EPOCH).unwrap();
-                        let chrono_duration = ::chrono::Duration::from_std(std_duration).unwrap();
-                        let unix = chrono::NaiveDateTime::from_timestamp(0, 0);
-                        let naive = unix + chrono_duration;
+                                let std_duration =
+                                    ts.duration_since(std::time::UNIX_EPOCH).unwrap();
+                                let chrono_duration =
+                                    ::chrono::Duration::from_std(std_duration).unwrap();
+                                let unix = chrono::NaiveDateTime::from_timestamp(0, 0);
+                                let naive = unix + chrono_duration;
 
-                        let file_entry = json!({
-                            "type" : "file",
-                            "name" : format!("{}", entry.file_name().into_string().unwrap()),
-                            "size" : metadata.len(),
-                            "last_modified" : format!("{}", naive.format("%c"))
-                        });
+                                let file_entry = json!({
+                                    "type" : "file",
+                                    "name" : format!("{}", entry.file_name().into_string().unwrap()),
+                                    "size" : metadata.len(),
+                                    "last_modified" : format!("{}", naive.format("%c"))
+                                });
 
-                        println!("{}", file_entry.to_string());
-                        ordered_entries.insert(entry.file_name(), file_entry);
+                                println!("{}", file_entry.to_string());
+                                ordered_entries.insert(entry.file_name(), file_entry);
+                            }
+                        }
                     }
                 }
             }
         }
+        Err(err) => println!("read_dir call failed: {}", err),
     }
 
     //println!("{:?}", ordered_entries);
