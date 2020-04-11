@@ -1,4 +1,3 @@
-use crate::precise_time;
 use atomic;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use half::f16;
@@ -17,6 +16,7 @@ use std::io::{Read, Write};
 use std::slice;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Instant;
 use std::time::SystemTime;
 use std::{mem, ptr};
 
@@ -176,7 +176,7 @@ fn zfp_decompress_float_array2d(
     //precision: u32,
     rate: f64,
 ) -> Result<Vec<f32>, String> {
-    let _start = precise_time::precise_time_ns();
+    let t = Instant::now();
     let mut res = true;
     let mut array: Vec<f32> = vec![0.0; nx * ny];
 
@@ -236,14 +236,13 @@ fn zfp_decompress_float_array2d(
     }
 
     if res {
-        /*let _stop = precise_time::precise_time_ns();
-        let time_s = ((_stop - _start) as f32) / 1000000000.0;
+        /*let time_s = (t.elapsed() as f32) / 1000000000.0;
         let total_size = nx * ny * std::mem::size_of::<f32>();
         let speed = (total_size as f32 / 1024.0 / 1024.0) / time_s;
 
         println!(
             "[zfp_decompress_float_array2d] elapsed time: {} [ms], speed {}MB/s",
-            (_stop - _start) / 1000000,
+            t.elapsed() / 1000000,
             speed
         );*/
 
@@ -551,7 +550,7 @@ impl FITS {
         let total = self.depth;
         let frame_count: AtomicIsize = AtomicIsize::new(0);
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         let num_threads = if is_cache {
             num_cpus::get_physical()
@@ -804,11 +803,9 @@ impl FITS {
             }
         }
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "[read_from_cache_par] elapsed time: {} [ms]",
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
 
         true
@@ -827,7 +824,7 @@ impl FITS {
         let plane_count: AtomicIsize = AtomicIsize::new(0);
         let success: AtomicBool = AtomicBool::new(true);
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         let num_threads = num_cpus::get_physical();
 
@@ -1449,11 +1446,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "[zfp_decompress] elapsed time: {} [ms]",
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
 
         success.load(Ordering::SeqCst)
@@ -1477,7 +1472,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let total = self.depth;
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         let (tx, rx) = mpsc::channel();
 
@@ -1585,11 +1580,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return false;
         };
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "[read_from_cache] elapsed time: {} [ms]",
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
 
         return true;
@@ -1925,7 +1918,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             //let mut ord_pixels = fits.pixels.clone();
             //println!("unordered pixels: {:?}", ord_pixels);
 
-            let start = precise_time::precise_time_ns();
+            let t = Instant::now();
             //ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
             ord_pixels.par_sort_unstable_by(|a, b| {
                 if a.is_finite() && b.is_finite() {
@@ -1942,11 +1935,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 }
             });
-            let stop = precise_time::precise_time_ns();
 
             println!(
                 "[pixels] parallel sorting time: {} [ms]",
-                (stop - start) / 1000000
+                t.elapsed() / 1000000
             );
 
             fits.make_image_histogram(&ord_pixels);
@@ -2229,7 +2221,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //let mut ord_pixels = fits.pixels.clone();
                 //println!("unordered pixels: {:?}", ord_pixels);
 
-                let start = precise_time::precise_time_ns();
+                let t = Instant::now();
                 //ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
                 ord_pixels.par_sort_unstable_by(|a, b| {
                     if a.is_finite() && b.is_finite() {
@@ -2246,11 +2238,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     }
                 });
-                let stop = precise_time::precise_time_ns();
 
                 println!(
                     "[pixels] parallel sorting time: {} [ms]",
-                    (stop - start) / 1000000
+                    t.elapsed() / 1000000
                 );
 
                 fits.make_image_histogram(&ord_pixels);
@@ -3225,7 +3216,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         start: usize,
         end: usize,
     ) -> Option<(Vec<f32>, Vec<u8>, Vec<f32>, Vec<f32>)> {
-        let start_watch = precise_time::precise_time_ns();
+        let start_watch = Instant::now();
 
         let num_threads = num_cpus::get_physical();
 
@@ -3431,11 +3422,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
-        let stop_watch = precise_time::precise_time_ns();
-
         println!(
             "[make_image_spectrum] elapsed time: {} [ms]",
-            (stop_watch - start_watch) / 1000000
+            start_watch.elapsed() / 1000000
         );
 
         //println!("mean spectrum: {:?}", mean_spectrum);
@@ -3506,7 +3495,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         };
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         //parallel histogram of all data
         //actually serial so as not to affect other threads, smooth real-time spectrum calculation etc?
@@ -3768,12 +3757,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             *data_mad_n
         );
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "all-data histogram adaptive step {}, elapsed time {} [ms]",
             data_step,
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
     }
 
@@ -3814,7 +3801,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut mad_p: f32 = 0.0;
         let mut count_p: i32 = 0;
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         //reset the length
         len = self.pixels.len();
@@ -3837,8 +3824,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
             }
         }
-
-        let stop = precise_time::precise_time_ns();
 
         mad = if count > 0 { mad / (count as f32) } else { 0.0 };
 
@@ -3874,7 +3859,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             };
         };
 
-        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
+        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, t.elapsed()/1000);
 
         //the histogram part
         let dx = (pmax - pmin) / (NBINS as f32);
@@ -3886,7 +3871,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut bin = pmin + dx;
         let mut index = 0;
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         for x in ord_pixels {
             while x >= &bin {
@@ -3899,11 +3884,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "histogram creation elapsed time {} [μs]",
-            (stop - start) / 1000
+            t.elapsed() / 1000
         );
 
         Some((
@@ -4026,7 +4009,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut mad_p: f32 = 0.0;
         let mut count_p: i32 = 0;
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         //reset the length
         len = self.pixels.len();
@@ -4049,8 +4032,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
             }
         }
-
-        let stop = precise_time::precise_time_ns();
 
         mad = if count > 0 { mad / (count as f32) } else { 0.0 };
 
@@ -4087,7 +4068,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 };
         };
 
-        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (stop-start)/1000);
+        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, t.elapsed()/1000);
 
         self.pmin = pmin;
         self.pmax = pmax;
@@ -4111,7 +4092,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut bin = pmin + dx;
         let mut index = 0;
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         for x in ord_pixels {
             while x >= &bin {
@@ -4124,11 +4105,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "histogram creation elapsed time {} [μs]",
-            (stop - start) / 1000
+            t.elapsed() / 1000
         );
     }
 
@@ -4152,7 +4131,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             slot[i] = (cdf[i] as f64) / (total as f64);
         }
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         self.flux = match logistic_regression_classifier(&slot) {
             0 => String::from("legacy"),
@@ -4163,11 +4142,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             _ => String::from("legacy"),
         };
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "histogram classifier elapsed time {} [μs]",
-            (stop - start) / 1000
+            t.elapsed() / 1000
         );
     }
 
@@ -5175,7 +5152,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     ) -> Option<Vec<u8>> {
         println!("frame index = {}", frame);
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         let y: Vec<u8> = match self.data_to_luminance(frame, flux, pool) {
             Some(y) => y,
@@ -5186,11 +5163,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut dst = vec![0; (width * height) as usize];
         self.resize_and_invert(&y, &mut dst, width, height, libyuv_FilterMode_kFilterBox);
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "Y video plane preparation time: {} [ms]",
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
 
         Some(dst)
@@ -5216,7 +5191,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!("frame index = {}", frame);
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         //let w = self.width as u32 ;
         //let h = self.height as u32 ;
@@ -5267,11 +5242,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //unsafe { vpx_img_flip(&mut raw) };
         //no need to use libvpx to invert the image, libyuv does it for us
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "VP9 video frame preparation time: {} [ms]",
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
 
         Some(raw)
@@ -5610,7 +5583,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         unsafe { x265_picture_init(param, pic) };
 
         //HEVC-encode a still viewport
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         unsafe {
             (*pic).stride[0] = dimx as i32;
@@ -5624,9 +5597,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let ret =
             unsafe { x265_encoder_encode(enc, &mut p_nal, &mut nal_count, pic, ptr::null_mut()) };
 
-        let stop = precise_time::precise_time_ns();
-
-        println!("x265 hevc viewport encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (stop-start)/1000000, 1000000000/(stop-start), ret, nal_count);
+        println!("x265 hevc viewport encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", t.elapsed()/1000000, 1000000000/t.elapsed(), ret, nal_count);
 
         //y falls out of scope
         unsafe {
@@ -5704,7 +5675,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     }
 
     fn make_vpx_viewport(&self, dimx: u32, dimy: u32, y: &Vec<u8>) -> Option<Vec<Vec<u8>>> {
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         let mut image_frame: Vec<u8> = Vec::new();
 
@@ -5852,11 +5823,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return None;
         }
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "VP9 image frame encode time: {} [ms]",
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
 
         unsafe { vpx_img_free(&mut raw) };
@@ -5873,7 +5842,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         initial_sensitivity: f32,
     ) -> Option<f32> {
         println!("auto-adjusting brightness");
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         if !initial_sensitivity.is_finite() {
             return None;
@@ -5928,12 +5897,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //an approximate solution
         sensitivity = (a + b) / 2.0;
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "final sensitivity: {}, elapsed time: {} [ms]",
             sensitivity,
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
 
         Some(sensitivity)
@@ -6010,7 +5977,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return;
         }
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         let mut image_frame: Vec<u8> = Vec::new();
 
@@ -6113,7 +6080,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         println!("{:#?}", raw);
 
         let mut y: Vec<u8> = {
-            let start = precise_time::precise_time_ns();
+            let t = Instant::now();
 
             let y: Vec<u8> = self.pixels_to_luminance(
                 &self.pixels,
@@ -6131,33 +6098,29 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 &None,
             );
 
-            let stop = precise_time::precise_time_ns();
-
             println!(
                 "VP9 image frame pixels to luminance time: {} [ms]",
-                (stop - start) / 1000000
+                t.elapsed() / 1000000
             );
 
             y
         };
 
         {
-            let start = precise_time::precise_time_ns();
+            let t = Instant::now();
 
             let mut dst = vec![0; (w as usize) * (h as usize)];
             self.resize_and_invert(&y, &mut dst, w, h, libyuv_FilterMode_kFilterBox);
             y = dst;
 
-            let stop = precise_time::precise_time_ns();
-
             println!(
                 "VP9 image frame inverting/downscaling time: {} [ms]",
-                (stop - start) / 1000000
+                t.elapsed() / 1000000
             );
         }
 
         let alpha_frame = {
-            let start = precise_time::precise_time_ns();
+            let t = Instant::now();
 
             //invert/downscale the mask (alpha channel) without interpolation
             let mut alpha = vec![0; (w as usize) * (h as usize)];
@@ -6166,13 +6129,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             let compressed_alpha = lz4_compress::compress(&alpha);
 
-            let stop = precise_time::precise_time_ns();
-
             println!(
                 "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
                 alpha.len(),
                 compressed_alpha.len(),
-                (stop - start) / 1000000
+                t.elapsed() / 1000000
             );
 
             compressed_alpha
@@ -6322,11 +6283,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return;
         }
 
-        let stop = precise_time::precise_time_ns();
-
         println!(
             "VP9 image frame encode time: {} [ms]",
-            (stop - start) / 1000000
+            t.elapsed() / 1000000
         );
 
         unsafe { vpx_img_free(&mut raw) };
@@ -6549,7 +6508,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     _ => false,
                 };
 
-                let start_watch = precise_time::precise_time_ns();
+                let start_watch = Instant::now();
                 let frame_count: AtomicIsize = AtomicIsize::new(0);
 
                 let spectrum: Vec<f32> = match beam {
@@ -6664,14 +6623,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     },
                 };
 
-                let stop_watch = precise_time::precise_time_ns();
-
                 //println!("{:?}", spectrum);
                 println!(
                     "spectrum length = {}, valid: {}, elapsed time: {} [ms]",
                     spectrum.len(),
                     frame_count.load(Ordering::SeqCst),
-                    (stop_watch - start_watch) / 1000000
+                    start_watch.elapsed() / 1000000
                 );
 
                 let spectrum = ZMQ_MSG::Spectrum {
