@@ -1247,9 +1247,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             Ok(bin) => {
                                 match client.send(bin) {
                                     Ok(_) => {}
-                                    Err(msg) => {
-                                        println!("ØMQ could not send a message: {:?}", msg)
-                                    }
+                                    Err(msg) => println!("ØMQ could not send a message: {:?}", msg),
                                 };
                             }
                             Err(err) => {
@@ -6100,9 +6098,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //a workaround around a bug in libvpx triggered when h > w
         let ret = if w > h {
-            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) } //I420 or I444
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, w, h, align) }
+        //I420 or I444
         } else {
-            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, h, w, align) } //I420 or I444
+            unsafe { vpx_img_alloc(&mut raw, vpx_img_fmt::VPX_IMG_FMT_I420, h, w, align) }
+            //I420 or I444
         };
 
         if ret.is_null() {
@@ -6582,7 +6582,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                             );
 
                                         if _is_valid {
-                                            frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
+                                            frame_count.fetch_add(1, Ordering::Relaxed);
+                                            //SeqCst
                                         };
 
                                         _spectrum
@@ -6606,7 +6607,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     );
 
                                     if _is_valid {
-                                        frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
+                                        frame_count.fetch_add(1, Ordering::Relaxed);
+                                        //SeqCst
                                     };
 
                                     _spectrum
@@ -6630,7 +6632,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     );
 
                                     if _is_valid {
-                                        frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
+                                        frame_count.fetch_add(1, Ordering::Relaxed);
+                                        //SeqCst
                                     };
 
                                     _spectrum
@@ -6651,7 +6654,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 );
 
                                 if _is_valid {
-                                    frame_count.fetch_add(1, Ordering::Relaxed); //SeqCst
+                                    frame_count.fetch_add(1, Ordering::Relaxed);
+                                    //SeqCst
                                 };
 
                                 _spectrum
