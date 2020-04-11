@@ -42,6 +42,7 @@ use std::thread;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
 
+use actix::prelude::Stream;
 use actix::*;
 use actix_files as fs;
 //use actix_web::client::Client;
@@ -61,8 +62,9 @@ use tar::{Builder, Header};
 use uuid::Uuid;
 
 use bytes::Bytes;
+use futures::future::ok;
 use futures::future::result;
-use futures::{Async, Future, Poll, Stream};
+use futures::stream::once;
 use std::sync::mpsc;
 
 use rayon::prelude::*;
