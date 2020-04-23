@@ -61,12 +61,14 @@ use tar::{Builder, Header};
 use uuid::Uuid;
 
 use bytes::Bytes;
-use futures::prelude::*;
-use futures::StreamExt;
-use futures::task::Poll;
 use futures::future::ok;
 use futures::future::result;
+use futures::prelude::*;
 use futures::stream::once;
+use futures::stream::poll_fn;
+use futures::task::Poll;
+use futures::StreamExt;
+
 use std::sync::mpsc;
 
 use rayon::prelude::*;
