@@ -41,6 +41,7 @@ pub struct Connect {
 
 /// Session is disconnected
 #[derive(Message)]
+#[rtype(String)]
 pub struct Disconnect {
     pub dataset_id: String,
     pub id: Uuid,
@@ -48,12 +49,14 @@ pub struct Disconnect {
 
 //remove a dataset
 #[derive(Message)]
+#[rtype(String)]
 pub struct Remove {
     pub dataset_id: String,
 }
 
 /// broadcast a message to a dataset
 #[derive(Message)]
+#[rtype(String)]
 pub struct WsMessage {
     /// a WebSocket text message
     pub notification: String,
