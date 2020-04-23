@@ -145,8 +145,7 @@ impl Default for SessionServer {
                                 std::thread::spawn(move || {
                                     #[cfg(target_os = "linux")]
                                     {
-                                        let thread_id = thread_native_id();
-                                        match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
+                                        match set_current_thread_priority(ThreadPriority::Min) {
                                             Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
                                             Err(err) => println!("error changing the thread priority: {:?}", err),
                                         }
@@ -286,8 +285,7 @@ impl Handler<Disconnect> for SessionServer {
                                         std::thread::spawn(move || {
                                             #[cfg(target_os = "linux")]
                                             {
-                                                let thread_id = thread_native_id();
-                                                match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
+                                                match set_current_thread_priority(ThreadPriority::Min) {
                                                     Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
                                                     Err(err) => println!("error changing the thread priority: {:?}", err),
                                                 }
