@@ -425,7 +425,7 @@ impl Handler<server::WsMessage> for UserSession {
 }
 
 // Handler for ws::Message messages
-impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
+impl StreamHandler<ws::Message/*, ws::ProtocolError*/> for UserSession {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
         //println!("WEBSOCKET MESSAGE: {:?}", msg);
 
@@ -3803,9 +3803,8 @@ impl MoleculeStream {
 
 impl Stream for MoleculeStream {
     type Item = Bytes;
-    type Error = actix_web::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(molecule) => {
                 //println!("{:?}", molecule);
@@ -3992,9 +3991,8 @@ impl FITSDataStream {
 
 impl Stream for FITSDataStream {
     type Item = Bytes;
-    type Error = actix_web::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(v) => {
                 //print!("partial FITS chunk length: {}", v.len());
