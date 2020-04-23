@@ -47,7 +47,7 @@ use actix_files as fs;
 //use actix_web::client::Client;
 use actix_web::dev::HttpResponseBuilder;
 use actix_web::http::{header::HeaderValue, ContentEncoding, StatusCode};
-use actix_web::middleware::{BodyEncoding, Compress, Logger};
+use actix_web::middleware::{Compress, Logger};
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
@@ -62,7 +62,7 @@ use uuid::Uuid;
 
 use bytes::Bytes;
 use futures::future::ok;
-use futures::future::result;
+use actix::fut::result;
 use futures::prelude::*;
 use futures::stream::once;
 use futures::stream::poll_fn;
