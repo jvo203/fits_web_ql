@@ -4910,6 +4910,7 @@ macro_rules! ipp_assert {
     };
 }
 
+#[actix_rt::main]
 fn main() {
     #[cfg(feature = "ipp")]
     {
