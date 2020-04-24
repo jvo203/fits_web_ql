@@ -60,9 +60,9 @@ use std::net::UdpSocket;
 use tar::{Builder, Header};
 use uuid::Uuid;
 
+use actix::fut::result;
 use bytes::Bytes;
 use futures::future::ok;
-use actix::fut::result;
 use futures::prelude::*;
 use futures::stream::once;
 use futures::stream::poll_fn;

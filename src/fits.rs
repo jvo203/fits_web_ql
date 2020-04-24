@@ -805,7 +805,7 @@ impl FITS {
 
         println!(
             "[read_from_cache_par] elapsed time: {} [ms]",
-            t.elapsed() / 1000000
+            (t.elapsed() / 1000000).as_millis()
         );
 
         true
@@ -1448,7 +1448,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "[zfp_decompress] elapsed time: {} [ms]",
-            t.elapsed() / 1000000
+            (t.elapsed() / 1000000).as_millis()
         );
 
         success.load(Ordering::SeqCst)
@@ -1582,7 +1582,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "[read_from_cache] elapsed time: {} [ms]",
-            t.elapsed() / 1000000
+            (t.elapsed() / 1000000).as_millis()
         );
 
         return true;
@@ -1938,7 +1938,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             println!(
                 "[pixels] parallel sorting time: {} [ms]",
-                t.elapsed() / 1000000
+                (t.elapsed() / 1000000).as_millis()
             );
 
             fits.make_image_histogram(&ord_pixels);
@@ -2241,7 +2241,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                 println!(
                     "[pixels] parallel sorting time: {} [ms]",
-                    t.elapsed() / 1000000
+                    (t.elapsed() / 1000000).as_millis()
                 );
 
                 fits.make_image_histogram(&ord_pixels);
@@ -3424,7 +3424,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "[make_image_spectrum] elapsed time: {} [ms]",
-            start_watch.elapsed() / 1000000
+            (start_watch.elapsed() / 1000000).as_millis()
         );
 
         //println!("mean spectrum: {:?}", mean_spectrum);
@@ -3760,7 +3760,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         println!(
             "all-data histogram adaptive step {}, elapsed time {} [ms]",
             data_step,
-            t.elapsed() / 1000000
+            (t.elapsed() / 1000000).as_millis()
         );
     }
 
@@ -3859,7 +3859,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             };
         };
 
-        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, t.elapsed()/1000);
+        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (t.elapsed()/1000).as_millis());
 
         //the histogram part
         let dx = (pmax - pmin) / (NBINS as f32);
@@ -3886,7 +3886,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "histogram creation elapsed time {} [μs]",
-            t.elapsed() / 1000
+            (t.elapsed() / 1000).as_millis()
         );
 
         Some((
@@ -4068,7 +4068,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 };
         };
 
-        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, t.elapsed()/1000);
+        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {} [μs]", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, (t.elapsed()/1000).as_millis());
 
         self.pmin = pmin;
         self.pmax = pmax;
@@ -4107,7 +4107,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "histogram creation elapsed time {} [μs]",
-            t.elapsed() / 1000
+            (t.elapsed() / 1000).as_millis()
         );
     }
 
@@ -4144,7 +4144,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "histogram classifier elapsed time {} [μs]",
-            t.elapsed() / 1000
+            (t.elapsed() / 1000).as_millis()
         );
     }
 
@@ -5165,7 +5165,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "Y video plane preparation time: {} [ms]",
-            t.elapsed() / 1000000
+            (t.elapsed() / 1000000).as_millis()
         );
 
         Some(dst)
@@ -5597,7 +5597,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let ret =
             unsafe { x265_encoder_encode(enc, &mut p_nal, &mut nal_count, pic, ptr::null_mut()) };
 
-        println!("x265 hevc viewport encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", t.elapsed()/1000000, 1000000000/t.elapsed(), ret, nal_count);
+        println!("x265 hevc viewport encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (t.elapsed()/1000000).as_millis(), 1000000000/t.elapsed().as_nanos(), ret, nal_count);
 
         //y falls out of scope
         unsafe {
@@ -5825,7 +5825,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "VP9 image frame encode time: {} [ms]",
-            t.elapsed() / 1000000
+            (t.elapsed() / 1000000).as_millis()
         );
 
         unsafe { vpx_img_free(&mut raw) };
@@ -5900,7 +5900,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         println!(
             "final sensitivity: {}, elapsed time: {} [ms]",
             sensitivity,
-            t.elapsed() / 1000000
+            (t.elapsed() / 1000000).as_millis()
         );
 
         Some(sensitivity)
@@ -6100,7 +6100,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             println!(
                 "VP9 image frame pixels to luminance time: {} [ms]",
-                t.elapsed() / 1000000
+                (t.elapsed() / 1000000).as_millis()
             );
 
             y
@@ -6115,7 +6115,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             println!(
                 "VP9 image frame inverting/downscaling time: {} [ms]",
-                t.elapsed() / 1000000
+                (t.elapsed() / 1000000).as_millis()
             );
         }
 
@@ -6133,7 +6133,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
                 alpha.len(),
                 compressed_alpha.len(),
-                t.elapsed() / 1000000
+                (t.elapsed() / 1000000).as_millis()
             );
 
             compressed_alpha
@@ -6285,7 +6285,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!(
             "VP9 image frame encode time: {} [ms]",
-            t.elapsed() / 1000000
+            (t.elapsed() / 1000000).as_millis()
         );
 
         unsafe { vpx_img_free(&mut raw) };
@@ -6628,7 +6628,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     "spectrum length = {}, valid: {}, elapsed time: {} [ms]",
                     spectrum.len(),
                     frame_count.load(Ordering::SeqCst),
-                    start_watch.elapsed() / 1000000
+                    (start_watch.elapsed() / 1000000).as_millis()
                 );
 
                 let spectrum = ZMQ_MSG::Spectrum {
