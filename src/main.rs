@@ -45,6 +45,7 @@ use std::{env, mem, ptr};
 use actix::*;
 use actix_files as fs;
 //use actix_web::client::Client;
+use actix_web::dev::BodyEncoding;
 use actix_web::dev::HttpResponseBuilder;
 use actix_web::http::{header::HeaderValue, ContentEncoding, StatusCode};
 use actix_web::middleware::{Compress, Logger};
@@ -715,7 +716,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                             let compressed_alpha = lz4_compress::compress(&alpha);
 
-                            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]", alpha.len(), compressed_alpha.len(), t.elapsed()/1000000);
+                            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]", alpha.len(), compressed_alpha.len(), (t.elapsed()/1000000).as_millis());
 
                             compressed_alpha
                         };
@@ -1666,7 +1667,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                                     println!(
                                         "VP9 image frame inverting/downscaling time: {} [ms]",
-                                        t.elapsed() / 1000000
+                                        (t.elapsed() / 1000000).as_millis()
                                     );
                                 }
 
@@ -1690,7 +1691,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                 "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
                 alpha.len(),
                 compressed_alpha.len(),
-                t.elapsed() / 1000000
+                (t.elapsed() / 1000000).as_millis()
             );
 
                                     compressed_alpha
@@ -2066,7 +2067,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             )
                                         };
 
-                                        println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", t.elapsed()/1000000, 1000000000/t.elapsed(), ret, nal_count);
+                                        println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (t.elapsed()/1000000).as_millis(), 1000000000/t.elapsed().as_nanos(), ret, nal_count);
 
                                         //y falls out of scope
                                         unsafe {
@@ -2540,7 +2541,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     )
                                 };
 
-                                println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", t.elapsed()/1000000, 1000000000/t.elapsed(), ret, nal_count);
+                                println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (t.elapsed()/1000000).as_millis(), 1000000000/t.elapsed().as_nanos(), ret, nal_count);
 
                                 //yuv planes fall out of scope
                                 for i in 0..3 {
