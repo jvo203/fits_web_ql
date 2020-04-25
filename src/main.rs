@@ -3723,70 +3723,68 @@ fn get_image(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error
     }))
 }
 
-fn get_spectrum(
-    query: web::Query<HashMap<String, String>>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let dataset_id = match query.get("datasetId") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"
+                ));
         }
     };
 
     //println!("[get_spectrum] http request for {}", dataset_id);
 
-    result(Ok({
-        let datasets = DATASETS.read();
+    let datasets = DATASETS.read();
 
-        let fits = match datasets.get(dataset_id) {
-            Some(x) => x,
-            None => {
-                return result(Ok(HttpResponse::NotFound()
-                    .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))));
-            }
-        };
+    let fits = match datasets.get(dataset_id) {
+        Some(x) => x,
+        None => {
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
+        }
+    };
 
-        //println!("[get_spectrum] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
+    //println!("[get_spectrum] obtained read access to <DATASETS>, trying to get read access to {}", dataset_id);
 
-        let fits = match fits.try_read()/*_for(time::Duration::from_millis(LONG_POLL_TIMEOUT))*/ {
+    let fits = match fits.try_read()/*_for(time::Duration::from_millis(LONG_POLL_TIMEOUT))*/ {
             Some(x) => x,
             None => {
                 //println!("[get_spectrum]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
-                return result(Ok(HttpResponse::Accepted()
+                return HttpResponse::Accepted()
                     .content_type("text/html")
-                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id))));
+                    .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id));
             }
         };
 
-        {
-            *fits.timestamp.write() = SystemTime::now();
-        }
+    {
+        *fits.timestamp.write() = SystemTime::now();
+    }
 
-        //println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
+    //println!("[get_spectrum] obtained read access to {}, has_data = {}", dataset_id, fits.has_data);
 
-        if fits.is_dummy {
-            return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
-                format!(
-                    "<p><b>RwLock timeout</b>: {} not available yet</p>",
-                    dataset_id
-                ),
-            )));
-        }
+    if fits.is_dummy {
+        return HttpResponse::Accepted()
+            .content_type("text/html")
+            .body(format!(
+                "<p><b>RwLock timeout</b>: {} not available yet</p>",
+                dataset_id
+            ));
+    }
 
-        if fits.has_data {
-            HttpResponse::Ok()
-                .content_type("application/json")
-                .body(format!("{}", fits.to_json()))
-        } else {
-            HttpResponse::NotFound()
-                .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
-        }
-    }))
+    if fits.has_data {
+        HttpResponse::Ok()
+            .content_type("application/json")
+            .body(format!("{}", fits.to_json()))
+    } else {
+        HttpResponse::NotFound()
+            .content_type("text/html")
+            .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
+    }
 }
 
 struct MoleculeStream {
@@ -5175,7 +5173,7 @@ async fn main() {
                 .service(web::resource("/{path}/websocket/{mode}/{id}").to_async(websocket_entry))
                 .service(web::resource("/get_directory").route(web::get().to(directory_handler)))
                 .service(web::resource("/{path}/get_image").route(web::get().to_async(get_image)))
-                .service(web::resource("/{path}/get_spectrum").route(web::get().to_async(get_spectrum)))
+                .route("/{path}/get_spectrum", web::get().to(get_spectrum))
                 .service(web::resource("/{path}/get_molecules").route(web::get().to_async(get_molecules)))
                 .route("/{path}/get_fits", web::get().to(get_fits))
                 .route("/queue/{id}/{depth}/{num_threads}", web::get().to(queue_handler))
