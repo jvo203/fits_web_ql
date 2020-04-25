@@ -1093,7 +1093,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 ts: timestamp as f32,
                                                 seq_id: seq_id as u32,
                                                 msg_type: 0,
-                                                elapsed: elapsed as f32,
+                                                elapsed: elapsed.as_millis() as f32,
                                                 spectrum: accum,
                                             };
 
@@ -2104,7 +2104,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                     seq_id: seq_id as u32,
                                                     msg_type: 5, //an hevc video frame
                                                     //length: video_frame.len() as u32,
-                                                    elapsed: elapsed as f32,
+                                                    elapsed: elapsed.as_millis() as f32,
                                                     frame: payload.to_vec(),
                                                 };
 
@@ -2302,7 +2302,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                             seq_id: seq_id as u32,
                                                             msg_type: 5, //an hevc video frame
                                                             //length: video_frame.len() as u32,
-                                                            elapsed: elapsed as f32,
+                                                            elapsed: elapsed.as_millis() as f32,
                                                             frame: payload.to_vec(),
                                                         };
 
@@ -2577,7 +2577,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             seq_id: seq_id as u32,
                                             msg_type: 5, //an hevc video frame
                                             //length: video_frame.len() as u32,
-                                            elapsed: elapsed as f32,
+                                            elapsed: elapsed.as_millis() as f32,
                                             frame: payload.to_vec(),
                                         };
 
