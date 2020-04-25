@@ -427,7 +427,7 @@ impl Handler<server::WsMessage> for UserSession {
 
 // Handler for ws::Message messages
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
-    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
+    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         //println!("WEBSOCKET MESSAGE: {:?}", msg);
 
         match msg {
