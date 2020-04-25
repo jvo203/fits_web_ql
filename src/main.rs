@@ -2706,7 +2706,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
-static VERSION_STRING: &'static str = "SV2020-04-24.0";
+static VERSION_STRING: &'static str = "SV2020-04-25.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -3512,7 +3512,7 @@ async fn fitswebql_entry(
 }
 
 #[cfg(feature = "cluster")]
-fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
+async fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
     let dataset_id: String = match req.match_info().get("id") {
         Some(x) => x.to_string(),
         None => return result(Err(actix_http::error::ErrorBadRequest("queue_handler/id"))),
@@ -3581,10 +3581,10 @@ fn queue_handler(req: HttpRequest) -> impl Future<Item = HttpResponse, Error = E
 }
 
 #[cfg(not(feature = "cluster"))]
-fn queue_handler(_req: HttpRequest) -> impl Future<Item = HttpResponse, Error = Error> {
-    result(Ok(HttpResponse::Ok()
+async fn queue_handler(_req: HttpRequest) -> HttpResponse {
+    HttpResponse::Ok()
         .content_type("text/plain")
-        .body("null null")))
+        .body("null null")
 }
 
 #[cfg(feature = "cluster")]
@@ -5178,7 +5178,7 @@ async fn main() {
                 .service(web::resource("/{path}/get_spectrum").route(web::get().to_async(get_spectrum)))
                 .service(web::resource("/{path}/get_molecules").route(web::get().to_async(get_molecules)))
                 .route("/{path}/get_fits", web::get().to(get_fits))
-                .service(web::resource("/queue/{id}/{depth}/{num_threads}").route(web::get().to_async(queue_handler)))
+                .route("/queue/{id}/{depth}/{num_threads}", web::get().to(queue_handler))
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
         })
         .workers(num_workers)
