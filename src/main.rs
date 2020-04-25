@@ -3017,7 +3017,7 @@ async fn websocket_entry(
     req: HttpRequest,
     stream: web::Payload,
     state: web::Data<WsSessionState>,
-) -> impl Result<HttpResponse, Error> {
+) -> Result<HttpResponse, Error> {
     //check if it is a slave node
     let is_root = match req.match_info().get("mode") {
         Some(mode) => {
@@ -3653,7 +3653,10 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
     let filepath = std::path::Path::new(&filename);
 
     if filepath.exists() {
-        return result(fs::NamedFile::open(filepath).unwrap().respond_to(&req));
+        return fs::NamedFile::open(filepath)
+            .unwrap()
+            .respond_to(&req)
+            .await;
     };
 
     let datasets = DATASETS.read();
@@ -3661,9 +3664,9 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
     let fits = match datasets.get(dataset_id) {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound()
+            return Ok(HttpResponse::NotFound()
                 .content_type("text/html")
-                .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))));
+                .body(format!("<p><b>Critical Error</b>: dataset not found</p>")));
         }
     };
 
@@ -3701,7 +3704,10 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
         let filepath = std::path::Path::new(&filename);
 
         if filepath.exists() {
-            return result(fs::NamedFile::open(filepath).unwrap().respond_to(&req));
+            return fs::NamedFile::open(filepath)
+                .unwrap()
+                .respond_to(&req)
+                .await;
         } else {
             return Ok(HttpResponse::NotFound()
                 .content_type("text/html")
