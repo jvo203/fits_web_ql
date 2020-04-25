@@ -128,9 +128,13 @@ fn get_packets(mut ctx: vpx_codec_ctx_t) -> Option<Vec<u8>> {
 
                     println!("frame length: {} bytes", f.sz);
 
-                    let mut image_frame: Vec<u8> = Vec::with_capacity(f.sz);
-                    ptr::copy_nonoverlapping(mem::transmute(f.buf), image_frame.as_mut_ptr(), f.sz);
-                    image_frame.set_len(f.sz);
+                    let mut image_frame: Vec<u8> = Vec::with_capacity(f.sz as usize);
+                    ptr::copy_nonoverlapping(
+                        mem::transmute(f.buf),
+                        image_frame.as_mut_ptr(),
+                        f.sz as usize,
+                    );
+                    image_frame.set_len(f.sz as usize);
 
                     return Some(image_frame);
                 };
@@ -211,7 +215,8 @@ fn zfp_decompress_float_array2d(
 
     let bufsize = buffer.len();
     /* associate bit stream with a compressed buffer */
-    let stream = unsafe { stream_open(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize) };
+    let stream =
+        unsafe { stream_open(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize as u64) };
     unsafe {
         zfp_stream_set_bit_stream(zfp, stream);
         zfp_stream_rewind(zfp);
@@ -7804,7 +7809,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                 /* allocate buffer for compressed data */
                 let bufsize = unsafe { zfp_stream_maximum_size(zfp, field) };
-                let mut buffer: Vec<u8> = vec![0; bufsize];
+                let mut buffer: Vec<u8> = vec![0; bufsize as usize];
 
                 /* associate bit stream with allocated buffer */
                 let stream =
@@ -7837,7 +7842,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //upon success continue with the process, compress the mask
                 if res {
                     let zfp_frame = ZFPMaskedArray {
-                        array: buffer[0..zfpsize].to_vec(),
+                        array: buffer[0..zfpsize as usize].to_vec(),
                         mask: lz4_compress::compress(&mask),
                         frame_min: frame_min,
                         frame_max: frame_max,
