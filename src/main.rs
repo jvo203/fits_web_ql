@@ -3793,7 +3793,7 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
     }
 }
 
-struct MoleculeStream {
+/*struct MoleculeStream {
     rx: mpsc::Receiver<Molecule>,
     first: bool,
     end_transmission: bool,
@@ -3983,9 +3983,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
                 .body(format!("{{\"molecules\" : []}}")),
         }
     }
-}
+}*/
 
-struct FITSDataStream {
+/*struct FITSDataStream {
     rx: mpsc::Receiver<Vec<u8>>,
 }
 
@@ -4360,7 +4360,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                 ))
         }
     }
-}
+}*/
 
 #[cfg(feature = "jvo")]
 fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path::PathBuf> {
@@ -5178,8 +5178,8 @@ async fn main() {
                 .service(web::resource("/get_directory").route(web::get().to(directory_handler)))
                 .route("/{path}/get_image", web::get().to(get_image))
                 .route("/{path}/get_spectrum", web::get().to(get_spectrum))
-                .route("/{path}/get_molecules", web::get().to(get_molecules))
-                .route("/{path}/get_fits", web::get().to(get_fits))
+                //.route("/{path}/get_molecules", web::get().to(get_molecules))
+                //.route("/{path}/get_fits", web::get().to(get_fits))
                 .route("/queue/{id}/{depth}/{num_threads}", web::get().to(queue_handler))
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
         })
