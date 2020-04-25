@@ -4936,8 +4936,7 @@ macro_rules! ipp_assert {
     };
 }
 
-#[actix_rt::main]
-async fn main() {
+fn main() {
     #[cfg(feature = "ipp")]
     {
         ipp_assert!(ipp_sys::ippInit());

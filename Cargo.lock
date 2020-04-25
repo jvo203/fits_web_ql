@@ -1093,7 +1093,6 @@ dependencies = [
  "actix",
  "actix-files",
  "actix-http",
- "actix-rt",
  "actix-web",
  "actix-web-actors",
  "atomic",
