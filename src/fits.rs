@@ -1980,7 +1980,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let mut cachefile = match File::create(&tmp) {
             Err(ref e) => {
-                println!("Could not create {} ({})!", tmp, e.description());
+                println!("Could not create {} ({})!", tmp, e);
                 fits.status_code = 500;
                 return fits;
             }
