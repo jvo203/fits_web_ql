@@ -428,6 +428,14 @@ impl Handler<server::WsMessage> for UserSession {
 // Handler for ws::Message messages
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
+        let msg = match msg {
+            Err(_) => {
+                ctx.stop();
+                return;
+            }
+            Ok(msg) => msg,
+        };
+
         //println!("WEBSOCKET MESSAGE: {:?}", msg);
 
         match msg {
