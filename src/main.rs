@@ -3013,11 +3013,11 @@ async fn directory_handler(
     }
 }
 
-fn websocket_entry(
+async fn websocket_entry(
     req: HttpRequest,
     stream: web::Payload,
     state: web::Data<WsSessionState>,
-) -> impl Future<Item = HttpResponse, Error = Error> /*Result<HttpResponse>*/ {
+) -> impl Result<HttpResponse, Error> {
     //check if it is a slave node
     let is_root = match req.match_info().get("mode") {
         Some(mode) => {
@@ -3032,7 +3032,7 @@ fn websocket_entry(
 
     let dataset_id_orig: String = match req.match_info().get("id") {
         Some(x) => x.to_string(),
-        None => return result(Err(actix_http::error::ErrorBadRequest("websocket_entry"))),
+        None => return Err(actix_http::error::ErrorBadRequest("websocket_entry")),
     };
 
     //dataset_id needs to be URI-decoded
@@ -3116,7 +3116,7 @@ fn websocket_entry(
         }
     }
 
-    result(ws::start(
+    ws::start(
         UserSession::new(
             state.addr.clone(),
             &id,
@@ -3127,7 +3127,7 @@ fn websocket_entry(
         ),
         &req,
         stream,
-    ))
+    )
 }
 
 async fn fitswebql_entry(
@@ -3847,17 +3847,15 @@ impl Stream for MoleculeStream {
     }
 }
 
-fn get_molecules(
-    query: web::Query<HashMap<String, String>>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let dataset_id = match query.get("datasetId") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!(
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
                     "<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"
-                ),
-            )));
+                ));
         }
     };
 
@@ -3865,11 +3863,11 @@ fn get_molecules(
     let freq_start = match query.get("freq_start") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!(
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
                     "<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"
-                ),
-            )));
+                ));
         }
     };
 
@@ -3882,9 +3880,11 @@ fn get_molecules(
     let freq_end = match query.get("freq_end") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"
+                ));
         }
     };
 
@@ -3898,87 +3898,85 @@ fn get_molecules(
         dataset_id, freq_start, freq_end
     );
 
-    result(Ok({
-        if freq_start == 0.0 || freq_end == 0.0 {
-            let datasets = DATASETS.read();
+    if freq_start == 0.0 || freq_end == 0.0 {
+        let datasets = DATASETS.read();
 
-            let fits = match datasets.get(dataset_id) {
-                Some(x) => x,
-                None => {
-                    return result(Ok(HttpResponse::NotFound()
-                        .content_type("text/html")
-                        .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))));
-                }
-            };
+        let fits = match datasets.get(dataset_id) {
+            Some(x) => x,
+            None => {
+                return HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
+            }
+        };
 
-            let fits = match fits.try_read() {
-                Some(x) => x,
-                None => {
-                    return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
-                        format!(
-                            "<p><b>RwLock timeout</b>: {} not available yet</p>",
-                            dataset_id
-                        ),
-                    )));
-                }
-            };
+        let fits = match fits.try_read() {
+            Some(x) => x,
+            None => {
+                return HttpResponse::Accepted()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>RwLock timeout</b>: {} not available yet</p>",
+                        dataset_id
+                    ));
+            }
+        };
 
-            if !fits.has_header {
-                if fits.is_dummy {
-                    HttpResponse::Accepted()
-                        .content_type("text/html")
-                        .body(format!(
-                            "<p><b>spectral lines for {} not available yet</p>",
-                            dataset_id
-                        ))
-                } else {
-                    HttpResponse::NotFound()
-                        .content_type("text/html")
-                        .body(format!(
-                            "<p><b>Critical Error</b>: spectral lines not found</p>"
-                        ))
-                }
+        if !fits.has_header {
+            if fits.is_dummy {
+                HttpResponse::Accepted()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>spectral lines for {} not available yet</p>",
+                        dataset_id
+                    ))
             } else {
-                if fits.is_optical {
-                    HttpResponse::NotFound()
-                        .content_type("text/html")
-                        .body(format!(
-                            "<p><b>Critical Error</b>: spectral lines not found</p>"
-                        ))
-                } else {
-                    let (freq_start, freq_end) = fits.get_frequency_range();
-
-                    //stream molecules from sqlite
-                    match stream_molecules(freq_start, freq_end) {
-                        Some(rx) => {
-                            let molecules_stream = MoleculeStream::new(rx);
-
-                            HttpResponse::Ok()
-                                .content_type("application/json")
-                                .streaming(molecules_stream)
-                        }
-                        None => HttpResponse::Ok()
-                            .content_type("application/json")
-                            .body(format!("{{\"molecules\" : []}}")),
-                    }
-                }
+                HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>Critical Error</b>: spectral lines not found</p>"
+                    ))
             }
         } else {
-            //stream molecules from sqlite without waiting for a FITS header
-            match stream_molecules(freq_start, freq_end) {
-                Some(rx) => {
-                    let molecules_stream = MoleculeStream::new(rx);
+            if fits.is_optical {
+                HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>Critical Error</b>: spectral lines not found</p>"
+                    ))
+            } else {
+                let (freq_start, freq_end) = fits.get_frequency_range();
 
-                    HttpResponse::Ok()
+                //stream molecules from sqlite
+                match stream_molecules(freq_start, freq_end) {
+                    Some(rx) => {
+                        let molecules_stream = MoleculeStream::new(rx);
+
+                        HttpResponse::Ok()
+                            .content_type("application/json")
+                            .streaming(molecules_stream)
+                    }
+                    None => HttpResponse::Ok()
                         .content_type("application/json")
-                        .streaming(molecules_stream)
+                        .body(format!("{{\"molecules\" : []}}")),
                 }
-                None => HttpResponse::Ok()
-                    .content_type("application/json")
-                    .body(format!("{{\"molecules\" : []}}")),
             }
         }
-    }))
+    } else {
+        //stream molecules from sqlite without waiting for a FITS header
+        match stream_molecules(freq_start, freq_end) {
+            Some(rx) => {
+                let molecules_stream = MoleculeStream::new(rx);
+
+                HttpResponse::Ok()
+                    .content_type("application/json")
+                    .streaming(molecules_stream)
+            }
+            None => HttpResponse::Ok()
+                .content_type("application/json")
+                .body(format!("{{\"molecules\" : []}}")),
+        }
+    }
 }
 
 struct FITSDataStream {
@@ -5170,18 +5168,18 @@ async fn main() {
                 )
                 .wrap(Compress::default())
                 .route("/{path}/FITSWebQL.html", web::get().to(fitswebql_entry))
-                .service(web::resource("/{path}/websocket/{mode}/{id}").to_async(websocket_entry))
+                .service(web::resource("/{path}/websocket/{mode}/{id}").to(websocket_entry))
                 .service(web::resource("/get_directory").route(web::get().to(directory_handler)))
                 .service(web::resource("/{path}/get_image").route(web::get().to_async(get_image)))
                 .route("/{path}/get_spectrum", web::get().to(get_spectrum))
-                .service(web::resource("/{path}/get_molecules").route(web::get().to_async(get_molecules)))
+                .route("/{path}/get_molecules", web::get().to(get_molecules))
                 .route("/{path}/get_fits", web::get().to(get_fits))
                 .route("/queue/{id}/{depth}/{num_threads}", web::get().to(queue_handler))
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
         })
         .workers(num_workers)
         .bind(&format!("{}:{}", server_address, server_port.read())).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port.read()))
-        .run(); //start();
+        .run();
 
     println!(
         "detected number of logical CPU cores: {}, physical: {}",
