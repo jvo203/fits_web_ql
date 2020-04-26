@@ -3870,7 +3870,7 @@ dependencies = [
 [[package]]
 name = "zfp-sys"
 version = "0.1.5"
-source = "git+https://github.com/jvo203/zfp-sys.git#015f4e61e099ae918e3fc2a0fd831abb672abac2"
+source = "git+https://github.com/jvo203/zfp-sys.git#b7f20957ad8d02cef78b004d64b2f02adf925eba"
 dependencies = [
  "bindgen 0.53.1",
  "cmake",
