@@ -3801,7 +3801,7 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
     }
 }
 
-/*struct MoleculeStream {
+struct MoleculeStream {
     rx: mpsc::Receiver<Molecule>,
     first: bool,
     end_transmission: bool,
@@ -3820,7 +3820,7 @@ impl MoleculeStream {
 impl Stream for MoleculeStream {
     type Item = Bytes;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut futures::task::Context<'_>) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(molecule) => {
                 //println!("{:?}", molecule);
@@ -3829,31 +3829,31 @@ impl Stream for MoleculeStream {
                     self.first = false;
 
                     //the first molecule
-                    Ok(Async::Ready(Some(Bytes::from(format!(
+                    Poll::Ready(Some(Bytes::from(format!(
                         "{{\"molecules\" : [{}",
                         molecule.to_json().to_string()
-                    )))))
+                    ))))
                 } else {
                     //subsequent molecules
-                    Ok(Async::Ready(Some(Bytes::from(format!(
+                    Poll::Ready(Some(Bytes::from(format!(
                         ",{}",
                         molecule.to_json().to_string()
-                    )))))
+                    ))))
                 }
             }
             Err(err) => {
                 if self.end_transmission {
                     println!("MoleculeStream: {}, terminating transmission", err);
-                    Ok(Async::Ready(None))
+                    Poll::Ready(None)
                 } else {
                     self.end_transmission = true;
 
                     if self.first {
                         //no molecules received; send an empty JSON array
-                        Ok(Async::Ready(Some(Bytes::from("{\"molecules\" : []}"))))
+                        Poll::Ready(Some(Bytes::from("{\"molecules\" : []}")))
                     } else {
                         //end a JSON array
-                        Ok(Async::Ready(Some(Bytes::from("]}"))))
+                        Poll::Ready(Some(Bytes::from("]}")))
                     }
                 }
             }
@@ -3964,11 +3964,11 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
                 //stream molecules from sqlite
                 match stream_molecules(freq_start, freq_end) {
                     Some(rx) => {
-                        let molecules_stream = MoleculeStream::new(rx);
+                        let molecules_stream = MoleculeStream::new(rx);                        
 
                         HttpResponse::Ok()
                             .content_type("application/json")
-                            .streaming(molecules_stream)
+                            .streaming(molecules_stream.map(|x| Ok(x) as Result<Bytes, ()>))
                     }
                     None => HttpResponse::Ok()
                         .content_type("application/json")
@@ -3980,18 +3980,18 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
         //stream molecules from sqlite without waiting for a FITS header
         match stream_molecules(freq_start, freq_end) {
             Some(rx) => {
-                let molecules_stream = MoleculeStream::new(rx);
+                let molecules_stream = MoleculeStream::new(rx);                
 
                 HttpResponse::Ok()
                     .content_type("application/json")
-                    .streaming(molecules_stream)
+                    .streaming(molecules_stream.map(|x| Ok(x) as Result<Bytes, ()>))
             }
             None => HttpResponse::Ok()
                 .content_type("application/json")
                 .body(format!("{{\"molecules\" : []}}")),
         }
     }
-}*/
+}
 
 /*struct FITSDataStream {
     rx: mpsc::Receiver<Vec<u8>>,
@@ -5185,7 +5185,7 @@ fn main() {
                 .service(web::resource("/get_directory").route(web::get().to(directory_handler)))
                 .route("/{path}/get_image", web::get().to(get_image))
                 .route("/{path}/get_spectrum", web::get().to(get_spectrum))
-                //.route("/{path}/get_molecules", web::get().to(get_molecules))
+                .route("/{path}/get_molecules", web::get().to(get_molecules))
                 //.route("/{path}/get_fits", web::get().to(get_fits))
                 .route("/queue/{id}/{depth}/{num_threads}", web::get().to(queue_handler))
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
