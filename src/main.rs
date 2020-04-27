@@ -724,7 +724,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                             let compressed_alpha = lz4_compress::compress(&alpha);
 
-                            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]", alpha.len(), compressed_alpha.len(), (t.elapsed()/1000000).as_millis());
+                            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}", alpha.len(), compressed_alpha.len(), t.elapsed());
 
                             compressed_alpha
                         };
@@ -1025,8 +1025,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             &self.pool,
                         ) {
                             Some(spectrum) => {
-                                let elapsed = t.elapsed() / 1000000;
-
                                 if self.is_root {
                                     let mut accum: Vec<f32> = Vec::new();
 
@@ -1101,7 +1099,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 ts: timestamp as f32,
                                                 seq_id: seq_id as u32,
                                                 msg_type: 0,
-                                                elapsed: elapsed.as_millis() as f32,
+                                                elapsed: t.elapsed().as_millis() as f32,
                                                 spectrum: accum,
                                             };
 
@@ -1674,8 +1672,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     y = dst;
 
                                     println!(
-                                        "VP9 image frame inverting/downscaling time: {} [ms]",
-                                        (t.elapsed() / 1000000).as_millis()
+                                        "VP9 image frame inverting/downscaling time: {:?}",
+                                        t.elapsed()
                                     );
                                 }
 
@@ -1696,10 +1694,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     let compressed_alpha = lz4_compress::compress(&alpha);
 
                                     println!(
-                "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
+                "alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}",
                 alpha.len(),
                 compressed_alpha.len(),
-                (t.elapsed() / 1000000).as_millis()
+                t.elapsed()
             );
 
                                     compressed_alpha
@@ -2075,15 +2073,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             )
                                         };
 
-                                        println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (t.elapsed()/1000000).as_millis(), 1000000000/t.elapsed().as_nanos(), ret, nal_count);
+                                        println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", t.elapsed(), 1000000000/t.elapsed().as_nanos(), ret, nal_count);
 
                                         //y falls out of scope
                                         unsafe {
                                             (*self.pic).stride[0] = 0 as i32;
                                             (*self.pic).planes[0] = ptr::null_mut();
                                         }
-
-                                        let elapsed = t.elapsed() / 1000000;
 
                                         //process all NAL units one by one
                                         if nal_count > 0 {
@@ -2112,7 +2108,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                     seq_id: seq_id as u32,
                                                     msg_type: 5, //an hevc video frame
                                                     //length: video_frame.len() as u32,
-                                                    elapsed: elapsed.as_millis() as f32,
+                                                    elapsed: t.elapsed().as_millis() as f32,
                                                     frame: payload.to_vec(),
                                                 };
 
@@ -2273,15 +2269,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                     )
                                                 };
 
-                                                println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", t.elapsed()/1000000, 1000000000/t.elapsed(), ret, nal_count);
+                                                println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", t.elapsed(), 1000000000/t.elapsed().as_nanos(), ret, nal_count);
 
                                                 //y falls out of scope
                                                 unsafe {
                                                     (*self.pic).stride[0] = 0 as i32;
                                                     (*self.pic).planes[0] = ptr::null_mut();
                                                 }
-
-                                                let elapsed = t.elapsed() / 1000000;
 
                                                 //process all NAL units one by one
                                                 if nal_count > 0 {
@@ -2310,7 +2304,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                             seq_id: seq_id as u32,
                                                             msg_type: 5, //an hevc video frame
                                                             //length: video_frame.len() as u32,
-                                                            elapsed: elapsed.as_millis() as f32,
+                                                            elapsed: t.elapsed().as_millis() as f32,
                                                             frame: payload.to_vec(),
                                                         };
 
@@ -2397,7 +2391,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         }
                                     }
 
-                                    println!("VP9 video frame prepare/encode time: {} [ms], speed {} frames per second, frame length: {} bytes", t.elapsed()/1000000, 1000000000/t.elapsed(), video_frame.len());
+                                    println!("VP9 video frame prepare/encode time: {:?}, speed {} frames per second, frame length: {} bytes", t.elapsed(), 1000000000/t.elapsed().as_nanos(), video_frame.len());
 
                                     if !video_frame.is_empty() {
                                         //println!("VP9 video frame length: {} bytes", video_frame.len());
@@ -2549,7 +2543,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     )
                                 };
 
-                                println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (t.elapsed()/1000000).as_millis(), 1000000000/t.elapsed().as_nanos(), ret, nal_count);
+                                println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", t.elapsed(), 1000000000/t.elapsed().as_nanos(), ret, nal_count);
 
                                 //yuv planes fall out of scope
                                 for i in 0..3 {
@@ -2558,8 +2552,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         (*self.pic).planes[i] = ptr::null_mut();
                                     }
                                 }
-
-                                let elapsed = t.elapsed() / 1000000;
 
                                 //process all NAL units one by one
                                 if nal_count > 0 {
@@ -2585,7 +2577,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             seq_id: seq_id as u32,
                                             msg_type: 5, //an hevc video frame
                                             //length: video_frame.len() as u32,
-                                            elapsed: elapsed.as_millis() as f32,
+                                            elapsed: t.elapsed().as_millis() as f32,
                                             frame: payload.to_vec(),
                                         };
 
@@ -3820,7 +3812,10 @@ impl MoleculeStream {
 impl Stream for MoleculeStream {
     type Item = Bytes;
 
-    fn poll_next(mut self: std::pin::Pin<&mut Self>, _cx: &mut futures::task::Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        _cx: &mut futures::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(molecule) => {
                 //println!("{:?}", molecule);
@@ -3964,7 +3959,7 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
                 //stream molecules from sqlite
                 match stream_molecules(freq_start, freq_end) {
                     Some(rx) => {
-                        let molecules_stream = MoleculeStream::new(rx);                        
+                        let molecules_stream = MoleculeStream::new(rx);
 
                         HttpResponse::Ok()
                             .content_type("application/json")
@@ -3980,7 +3975,7 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
         //stream molecules from sqlite without waiting for a FITS header
         match stream_molecules(freq_start, freq_end) {
             Some(rx) => {
-                let molecules_stream = MoleculeStream::new(rx);                
+                let molecules_stream = MoleculeStream::new(rx);
 
                 HttpResponse::Ok()
                     .content_type("application/json")
@@ -4006,7 +4001,10 @@ impl FITSDataStream {
 impl Stream for FITSDataStream {
     type Item = Bytes;
 
-    fn poll_next(self: std::pin::Pin<&mut Self>, _cx: &mut futures::task::Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut futures::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(v) => {
                 //print!("partial FITS chunk length: {}", v.len());
