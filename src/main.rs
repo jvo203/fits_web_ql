@@ -3820,7 +3820,7 @@ impl MoleculeStream {
 impl Stream for MoleculeStream {
     type Item = Bytes;
 
-    fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut futures::task::Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: std::pin::Pin<&mut Self>, _cx: &mut futures::task::Context<'_>) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(molecule) => {
                 //println!("{:?}", molecule);
@@ -3993,7 +3993,7 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
     }
 }
 
-/*struct FITSDataStream {
+struct FITSDataStream {
     rx: mpsc::Receiver<Vec<u8>>,
 }
 
@@ -4006,16 +4006,16 @@ impl FITSDataStream {
 impl Stream for FITSDataStream {
     type Item = Bytes;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: std::pin::Pin<&mut Self>, _cx: &mut futures::task::Context<'_>) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(v) => {
                 //print!("partial FITS chunk length: {}", v.len());
-                Ok(Async::Ready(Some(Bytes::from(v))))
+                Poll::Ready(Some(Bytes::from(v)))
             }
             Err(err) => {
                 println!("FITSDataStream: {}, terminating transmission", err);
 
-                Ok(Async::Ready(None))
+                Poll::Ready(None)
             }
         }
     }
@@ -4348,7 +4348,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                         .header("Content-Disposition", disposition_filename)
                         .header("Content-Transfer-Encoding", "binary")
                         .header("Accept-Ranges", "bytes")
-                        .streaming(fits_stream);
+                        .streaming(fits_stream.map(|x| Ok(x) as Result<Bytes, ()>));
                 }
                 None => {
                     return HttpResponse::NotFound()
@@ -4368,7 +4368,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                 ))
         }
     }
-}*/
+}
 
 #[cfg(feature = "jvo")]
 fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path::PathBuf> {
@@ -5186,7 +5186,7 @@ fn main() {
                 .route("/{path}/get_image", web::get().to(get_image))
                 .route("/{path}/get_spectrum", web::get().to(get_spectrum))
                 .route("/{path}/get_molecules", web::get().to(get_molecules))
-                //.route("/{path}/get_fits", web::get().to(get_fits))
+                .route("/{path}/get_fits", web::get().to(get_fits))
                 .route("/queue/{id}/{depth}/{num_threads}", web::get().to(queue_handler))
                 .service(fs::Files::new("/", "htdocs").index_file(index_file))
         })
