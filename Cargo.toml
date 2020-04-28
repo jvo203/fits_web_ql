@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.1.25"
+version = "4.2.0"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2018"
 
@@ -77,7 +77,8 @@ bzip2 = "*"
 ispc = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
-zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
+#zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
+zfp-sys = {version = "*", optional = true, git = "https://github.com/jvo203/zfp-sys.git"}
 ipp-sys = { version = "*", features=["2019"], optional = true }
 
 #rulinalg = "*"
