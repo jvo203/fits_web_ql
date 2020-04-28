@@ -3,7 +3,7 @@ A re-write of the C/C++ FITSWebQL in Rust. The previous C/C++ version can still 
 
 http://jvo.nao.ac.jp/~chris/fitswebql.html
 
-The Rust version is now in a maintenance mode. A new C/C++ cluster version --- scaling to over 1TB-large files --- is also in development: https://github.com/jvo203/FITSWebQL
+The Rust version is now in a maintenance mode. A new C/C++ cluster edition - scaling to over 1TB-large files - is also in development: https://github.com/jvo203/FITSWebQL
 
 ![Alt text](fits_web_ql.jpeg?raw=true "FITSWebQLv4")
 
