@@ -2682,11 +2682,11 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
         ))
 }
 
-fn directory_handler(
+async fn directory_handler(
     state: web::Data<WsSessionState>,
     query: web::Query<HashMap<String, String>>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
-    result(Ok(match query.get("dir") {
+) -> HttpResponse {
+    match query.get("dir") {
         Some(x) => get_directory(std::path::PathBuf::from(x)),
         None => {
             let home_dir = &state.home_dir;
@@ -2694,7 +2694,7 @@ fn directory_handler(
             //default location
             get_home_directory(home_dir)
         }
-    }))
+    }
 }
 
 fn websocket_entry(
