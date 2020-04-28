@@ -2697,14 +2697,14 @@ async fn directory_handler(
     }
 }
 
-fn websocket_entry(
+async fn websocket_entry(
     req: HttpRequest,
     stream: web::Payload,
     state: web::Data<WsSessionState>,
-) -> impl Future<Item = HttpResponse, Error = Error> /*Result<HttpResponse>*/ {
+) -> Result<HttpResponse, Error> {
     let dataset_id_orig: String = match req.match_info().get("id") {
         Some(x) => x.to_string(),
-        None => return result(Err(actix_http::error::ErrorBadRequest("websocket_entry"))),
+        None => return Err(actix_http::error::ErrorBadRequest("websocket_entry")),
     };
 
     //dataset_id needs to be URI-decoded
@@ -2728,11 +2728,7 @@ fn websocket_entry(
         id, user_agent
     );
 
-    result(ws::start(
-        UserSession::new(state.addr.clone(), &id),
-        &req,
-        stream,
-    ))
+    ws::start(UserSession::new(state.addr.clone(), &id), &req, stream)
 }
 
 fn fitswebql_entry(
