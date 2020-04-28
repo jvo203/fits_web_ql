@@ -387,8 +387,16 @@ impl Handler<server::WsMessage> for UserSession {
 }
 
 // Handler for ws::Message messages
-impl StreamHandler<ws::Message, ws::ProtocolError> for UserSession {
-    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
+    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
+        let msg = match msg {
+            Err(_) => {
+                ctx.stop();
+                return;
+            }
+            Ok(msg) => msg,
+        };
+
         //println!("WEBSOCKET MESSAGE: {:?}", msg);
 
         match msg {
@@ -2371,8 +2379,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.1.25";
-static VERSION_STRING: &'static str = "SV2020-01-07.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.2.0";
+static VERSION_STRING: &'static str = "SV2020-04-28.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
@@ -4312,7 +4320,7 @@ fn main() {
         })
         .workers(num_workers)
         .bind(&format!("{}:{}", server_address, server_port)).expect(&format!("Cannot bind to {}:{}, try setting a different HTTP port via a command-line option '--port XXXX'", server_address, server_port))        
-        .start();
+        .run();
 
     println!(
         "detected number of logical CPU cores: {}, physical: {}",
