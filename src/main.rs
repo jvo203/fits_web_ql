@@ -68,7 +68,7 @@ use time as precise_time;
 //use rav1e::*;
 
 #[cfg(feature = "jvo")]
-use postgres::{Connection, TlsMode};
+use postgres::{Client, NoTls};
 
 use vpx_sys::*;
 
@@ -3659,8 +3659,8 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
 
     println!("PostgreSQL connection URL: {}", connection_url);
 
-    match Connection::connect(connection_url, TlsMode::None) {
-        Ok(conn) => {
+    match Client::connect(&connection_url, NoTls) {
+        Ok(client) => {
             println!("connected to PostgreSQL");
 
             //data_id: if db is alma append _00_00_00
@@ -3671,7 +3671,7 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
 
             let sql = format!("SELECT path FROM {} WHERE data_id = '{}';", table, data_id);
             println!("SQL: {}", sql);
-            let res = conn.query(&sql, &[]);
+            let res = client.query(&sql, &[]);
 
             match res {
                 Ok(rows) => {
