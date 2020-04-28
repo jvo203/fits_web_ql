@@ -159,7 +159,7 @@ fn zfp_decompress_float_array2d(
     //precision: u32,
     rate: f64,
 ) -> Result<Vec<f32>, String> {
-    let _start = precise_time::precise_time_ns();
+    let _t = Instant::now();
     let mut res = true;
     let mut array: Vec<f32> = vec![0.0; nx * ny];
 
@@ -221,13 +221,13 @@ fn zfp_decompress_float_array2d(
 
     if res {
         /*let _stop = precise_time::precise_time_ns();
-        let time_s = ((_stop - _start) as f32) / 1000000000.0;
+        let time_s = (_t.elapsed().as_nanos() as f32) / 1000000000.0;
         let total_size = nx * ny * std::mem::size_of::<f32>();
         let speed = (total_size as f32 / 1024.0 / 1024.0) / time_s;
 
         println!(
-            "[zfp_decompress_float_array2d] elapsed time: {} [ms], speed {}MB/s",
-            (_stop - _start) / 1000000,
+            "[zfp_decompress_float_array2d] elapsed time: {:?}, speed {}MB/s",
+            _t.elapsed(),
             speed
         );*/
 
@@ -523,7 +523,7 @@ impl FITS {
         let total = self.depth;
         let frame_count: AtomicIsize = AtomicIsize::new(0);
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         let num_threads = if is_cache {
             num_cpus::get_physical()
@@ -776,12 +776,7 @@ impl FITS {
             }
         }
 
-        let stop = precise_time::precise_time_ns();
-
-        println!(
-            "[read_from_cache_par] elapsed time: {} [ms]",
-            (stop - start) / 1000000
-        );
+        println!("[read_from_cache_par] elapsed time: {:?}", t.elapsed());
 
         true
     }
@@ -798,7 +793,7 @@ impl FITS {
         let frame_count: AtomicIsize = AtomicIsize::new(0);
         let success: AtomicBool = AtomicBool::new(true);
 
-        let start = precise_time::precise_time_ns();
+        let t = Instant::now();
 
         let num_threads = num_cpus::get_physical();
 
@@ -1072,12 +1067,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             }
         }
 
-        let stop = precise_time::precise_time_ns();
-
-        println!(
-            "[zfp_decompress] elapsed time: {} [ms]",
-            (stop - start) / 1000000
-        );
+        println!("[zfp_decompress] elapsed time: {:?}", t.elapsed());
 
         success.load(Ordering::SeqCst)
     }
