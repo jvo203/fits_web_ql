@@ -3283,26 +3283,26 @@ impl FITSDataStream {
 
 impl Stream for FITSDataStream {
     type Item = Bytes;
-    type Error = actix_web::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut futures::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(v) => {
                 //print!("partial FITS chunk length: {}", v.len());
-                Ok(Async::Ready(Some(Bytes::from(v))))
+                Poll::Ready(Some(Bytes::from(v)))
             }
             Err(err) => {
                 println!("FITSDataStream: {}, terminating transmission", err);
 
-                Ok(Async::Ready(None))
+                Poll::Ready(None)
             }
         }
     }
 }
 
-fn get_fits(
-    query: web::Query<HashMap<String, String>>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     /*#[cfg(not(feature = "jvo"))]
     let dataset = "filename";
 
@@ -3333,12 +3333,12 @@ fn get_fits(
 
             //the last resort
             if v.is_empty() {
-                return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                    format!(
+                return HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!(
                         "<p><b>Critical Error</b>: get_fits/{} parameter not found</p>",
                         dataset
-                    ),
-                )));
+                    ));
             };
 
             v
@@ -3349,9 +3349,11 @@ fn get_fits(
     let x1 = match query.get("x1") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_fits/x1 parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_fits/x1 parameter not found</p>"
+                ));
         }
     };
 
@@ -3364,9 +3366,11 @@ fn get_fits(
     let x2 = match query.get("x2") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_fits/x2 parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_fits/x2 parameter not found</p>"
+                ));
         }
     };
 
@@ -3379,9 +3383,11 @@ fn get_fits(
     let y1 = match query.get("y1") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_fits/y1 parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_fits/y1 parameter not found</p>"
+                ));
         }
     };
 
@@ -3394,9 +3400,11 @@ fn get_fits(
     let y2 = match query.get("y2") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_fits/y2 parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_fits/y2 parameter not found</p>"
+                ));
         }
     };
 
@@ -3409,9 +3417,11 @@ fn get_fits(
     let frame_start = match query.get("frame_start") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_fits/frame_start parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_fits/frame_start parameter not found</p>"
+                ));
         }
     };
 
@@ -3424,9 +3434,11 @@ fn get_fits(
     let frame_end = match query.get("frame_end") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_fits/frame_end parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_fits/frame_end parameter not found</p>"
+                ));
         }
     };
 
@@ -3439,9 +3451,11 @@ fn get_fits(
     let ref_freq = match query.get("ref_freq") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_fits/ref_freq parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_fits/ref_freq parameter not found</p>"
+                ));
         }
     };
 
@@ -3467,9 +3481,9 @@ fn get_fits(
             let fits = match datasets.get(entry) {
                 Some(x) => x,
                 None => {
-                    return result(Ok(HttpResponse::NotFound()
+                    return HttpResponse::NotFound()
                         .content_type("text/html")
-                        .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))));
+                        .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
                 }
             };
 
@@ -3478,12 +3492,12 @@ fn get_fits(
                 None => {
                     println!("[get_fits] error getting {} from DATASETS; aborting", entry);
 
-                    return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                        format!(
+                    return HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!(
                             "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
                             entry
-                        ),
-                    )));
+                        ));
                 }
             };
 
@@ -3500,12 +3514,12 @@ fn get_fits(
                         {
                             println!("Critical Error: get_fits/tar/set_path error: {}", err);
 
-                            return result(Ok(HttpResponse::NotFound()
-                                .content_type("text/html")
-                                .body(format!(
+                            return HttpResponse::NotFound().content_type("text/html").body(
+                                format!(
                                     "<p><b>Critical Error</b>: get_fits/tar/set_path error: {}</p>",
                                     err
-                                ))));
+                                ),
+                            );
                         }
 
                         header.set_mode(420);
@@ -3520,12 +3534,12 @@ fn get_fits(
 
                         if let Err(err) = ar.append(&header, region.as_slice()) {
                             println!("Critical Error: get_fits/tar/append error: {}", err);
-                            return result(Ok(HttpResponse::NotFound()
-                                .content_type("text/html")
-                                .body(format!(
+                            return HttpResponse::NotFound().content_type("text/html").body(
+                                format!(
                                     "<p><b>Critical Error</b>: get_fits/tar/append error: {}</p>",
                                     err
-                                ))));
+                                ),
+                            );
                         }
                     }
                     None => println!(
@@ -3544,7 +3558,7 @@ fn get_fits(
                     timestamp.format("%Y-%m-%d_%H:%M:%S")
                 );
 
-                result(Ok(HttpResponse::Ok()
+                HttpResponse::Ok()
                     .header("Cache-Control", "no-cache, no-store, must-revalidate")
                     .header("Pragma", "no-cache")
                     .header("Expires", "0")
@@ -3553,14 +3567,14 @@ fn get_fits(
                     .header("Content-Disposition", disposition_filename)
                     .header("Content-Transfer-Encoding", "binary")
                     .header("Accept-Ranges", "bytes")
-                    .body(tarball)))
+                    .body(tarball)
             }
-            Err(err) => result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!(
+            Err(err) => HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
                     "<p><b>Critical Error</b>: get_fits tarball creation error: {}</p>",
                     err
-                ),
-            ))),
+                )),
         }
     } else {
         //only one dataset, no need to use tarball, stream the data instead
@@ -3571,9 +3585,9 @@ fn get_fits(
         let fits = match datasets.get(entry) {
             Some(x) => x,
             None => {
-                return result(Ok(HttpResponse::NotFound()
+                return HttpResponse::NotFound()
                     .content_type("text/html")
-                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))));
+                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
             }
         };
 
@@ -3582,12 +3596,12 @@ fn get_fits(
             None => {
                 println!("[get_fits] error getting {} from DATASETS; aborting", entry);
 
-                return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                    format!(
+                return HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!(
                         "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
                         entry
-                    ),
-                )));
+                    ));
             }
         };
 
@@ -3606,7 +3620,7 @@ fn get_fits(
                         entry.replace("/", "_")
                     );
 
-                    return result(Ok(HttpResponse::Ok()
+                    return HttpResponse::Ok()
                         .header("Cache-Control", "no-cache, no-store, must-revalidate")
                         .header("Pragma", "no-cache")
                         .header("Expires", "0")
@@ -3615,24 +3629,24 @@ fn get_fits(
                         .header("Content-Disposition", disposition_filename)
                         .header("Content-Transfer-Encoding", "binary")
                         .header("Accept-Ranges", "bytes")
-                        .streaming(fits_stream)));
+                        .streaming(fits_stream.map(|x| Ok(x) as Result<Bytes, ()>));
                 }
                 None => {
-                    return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                        format!(
+                    return HttpResponse::NotFound()
+                        .content_type("text/html")
+                        .body(format!(
                             "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
                             entry
-                        ),
-                    )));
+                        ));
                 }
             }
         } else {
-            result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!(
+            HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
                     "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
                     entry
-                ),
-            )))
+                ))
         }
     }
 }
