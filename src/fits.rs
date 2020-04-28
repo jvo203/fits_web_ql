@@ -76,7 +76,6 @@ use ocl::ProQue;
 use rand::distributions::{Distribution, StandardNormal, Uniform};
 
 use curl::easy::Easy;
-use std::error::Error;
 
 use num;
 use num_integer::Integer;
