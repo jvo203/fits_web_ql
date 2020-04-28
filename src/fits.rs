@@ -18,6 +18,7 @@ use std::rc::Rc;
 use std::slice;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Instant;
 use std::time::SystemTime;
 use std::{mem, ptr};
 
@@ -286,7 +287,7 @@ pub enum Intensity {
 
 #[derive(Debug)]
 pub struct FITS {
-    created: std::time::Instant,
+    created: Instant,
     pub dataset_id: String,
     data_id: String,
     filesize: u64,
@@ -401,7 +402,7 @@ impl FITS {
         };
 
         let fits = FITS {
-            created: std::time::Instant::now(),
+            created: Instant::now(),
             dataset_id: id.clone(),
             data_id: format!("{}_00_00_00", id),
             filesize: 0,
@@ -1980,7 +1981,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             notification: String::from(notification),
             total: total,
             running: running,
-            elapsed: std::time::Instant::now().duration_since(self.created),
+            elapsed: Instant::now().duration_since(self.created),
             dataset_id: self.dataset_id.clone(),
         });
     }
