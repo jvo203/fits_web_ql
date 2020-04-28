@@ -54,9 +54,11 @@ use percent_encoding::percent_decode;
 use tar::{Builder, Header};
 use uuid::Uuid;
 
+use actix::fut::result;
 use bytes::Bytes;
-use futures::future::result;
-use futures::{Async, Future, Poll, Stream};
+use futures::future::ok;
+use futures::prelude::*;
+use futures::StreamExt;
 use std::sync::mpsc;
 
 use rayon::prelude::*;
@@ -3092,9 +3094,11 @@ impl MoleculeStream {
 
 impl Stream for MoleculeStream {
     type Item = Bytes;
-    type Error = actix_web::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        _cx: &mut futures::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
         match self.rx.recv() {
             Ok(molecule) => {
                 //println!("{:?}", molecule);
@@ -3103,31 +3107,31 @@ impl Stream for MoleculeStream {
                     self.first = false;
 
                     //the first molecule
-                    Ok(Async::Ready(Some(Bytes::from(format!(
+                    Poll::Ready(Some(Bytes::from(format!(
                         "{{\"molecules\" : [{}",
                         molecule.to_json().to_string()
-                    )))))
+                    ))))
                 } else {
                     //subsequent molecules
-                    Ok(Async::Ready(Some(Bytes::from(format!(
+                    Poll::Ready(Some(Bytes::from(format!(
                         ",{}",
                         molecule.to_json().to_string()
-                    )))))
+                    ))))
                 }
             }
             Err(err) => {
                 if self.end_transmission {
                     println!("MoleculeStream: {}, terminating transmission", err);
-                    Ok(Async::Ready(None))
+                    Poll::Ready(None)
                 } else {
                     self.end_transmission = true;
 
                     if self.first {
                         //no molecules received; send an empty JSON array
-                        Ok(Async::Ready(Some(Bytes::from("{\"molecules\" : []}"))))
+                        Poll::Ready(Some(Bytes::from("{\"molecules\" : []}")))
                     } else {
                         //end a JSON array
-                        Ok(Async::Ready(Some(Bytes::from("]}"))))
+                        Poll::Ready(Some(Bytes::from("]}")))
                     }
                 }
             }
@@ -3135,17 +3139,15 @@ impl Stream for MoleculeStream {
     }
 }
 
-fn get_molecules(
-    query: web::Query<HashMap<String, String>>,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let dataset_id = match query.get("datasetId") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!(
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
                     "<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"
-                ),
-            )));
+                ));
         }
     };
 
@@ -3153,11 +3155,11 @@ fn get_molecules(
     let freq_start = match query.get("freq_start") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!(
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
                     "<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"
-                ),
-            )));
+                ));
         }
     };
 
@@ -3170,9 +3172,11 @@ fn get_molecules(
     let freq_end = match query.get("freq_end") {
         Some(x) => x,
         None => {
-            return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                format!("<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"),
-            )));
+            return HttpResponse::NotFound()
+                .content_type("text/html")
+                .body(format!(
+                    "<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"
+                ));
         }
     };
 
@@ -3186,87 +3190,85 @@ fn get_molecules(
         dataset_id, freq_start, freq_end
     );
 
-    result(Ok({
-        if freq_start == 0.0 || freq_end == 0.0 {
-            let datasets = DATASETS.read();
+    if freq_start == 0.0 || freq_end == 0.0 {
+        let datasets = DATASETS.read();
 
-            let fits = match datasets.get(dataset_id) {
-                Some(x) => x,
-                None => {
-                    return result(Ok(HttpResponse::NotFound()
-                        .content_type("text/html")
-                        .body(format!("<p><b>Critical Error</b>: dataset not found</p>"))));
-                }
-            };
+        let fits = match datasets.get(dataset_id) {
+            Some(x) => x,
+            None => {
+                return HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
+            }
+        };
 
-            let fits = match fits.try_read() {
-                Some(x) => x,
-                None => {
-                    return result(Ok(HttpResponse::Accepted().content_type("text/html").body(
-                        format!(
-                            "<p><b>RwLock timeout</b>: {} not available yet</p>",
-                            dataset_id
-                        ),
-                    )));
-                }
-            };
+        let fits = match fits.try_read() {
+            Some(x) => x,
+            None => {
+                return HttpResponse::Accepted()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>RwLock timeout</b>: {} not available yet</p>",
+                        dataset_id
+                    ));
+            }
+        };
 
-            if !fits.has_header {
-                if fits.is_dummy {
-                    HttpResponse::Accepted()
-                        .content_type("text/html")
-                        .body(format!(
-                            "<p><b>spectral lines for {} not available yet</p>",
-                            dataset_id
-                        ))
-                } else {
-                    HttpResponse::NotFound()
-                        .content_type("text/html")
-                        .body(format!(
-                            "<p><b>Critical Error</b>: spectral lines not found</p>"
-                        ))
-                }
+        if !fits.has_header {
+            if fits.is_dummy {
+                HttpResponse::Accepted()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>spectral lines for {} not available yet</p>",
+                        dataset_id
+                    ))
             } else {
-                if fits.is_optical {
-                    HttpResponse::NotFound()
-                        .content_type("text/html")
-                        .body(format!(
-                            "<p><b>Critical Error</b>: spectral lines not found</p>"
-                        ))
-                } else {
-                    let (freq_start, freq_end) = fits.get_frequency_range();
-
-                    //stream molecules from sqlite
-                    match stream_molecules(freq_start, freq_end) {
-                        Some(rx) => {
-                            let molecules_stream = MoleculeStream::new(rx);
-
-                            HttpResponse::Ok()
-                                .content_type("application/json")
-                                .streaming(molecules_stream)
-                        }
-                        None => HttpResponse::Ok()
-                            .content_type("application/json")
-                            .body(format!("{{\"molecules\" : []}}")),
-                    }
-                }
+                HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>Critical Error</b>: spectral lines not found</p>"
+                    ))
             }
         } else {
-            //stream molecules from sqlite without waiting for a FITS header
-            match stream_molecules(freq_start, freq_end) {
-                Some(rx) => {
-                    let molecules_stream = MoleculeStream::new(rx);
+            if fits.is_optical {
+                HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>Critical Error</b>: spectral lines not found</p>"
+                    ))
+            } else {
+                let (freq_start, freq_end) = fits.get_frequency_range();
 
-                    HttpResponse::Ok()
+                //stream molecules from sqlite
+                match stream_molecules(freq_start, freq_end) {
+                    Some(rx) => {
+                        let molecules_stream = MoleculeStream::new(rx);
+
+                        HttpResponse::Ok()
+                            .content_type("application/json")
+                            .streaming(molecules_stream.map(|x| Ok(x) as Result<Bytes, ()>))
+                    }
+                    None => HttpResponse::Ok()
                         .content_type("application/json")
-                        .streaming(molecules_stream)
+                        .body(format!("{{\"molecules\" : []}}")),
                 }
-                None => HttpResponse::Ok()
-                    .content_type("application/json")
-                    .body(format!("{{\"molecules\" : []}}")),
             }
         }
-    }))
+    } else {
+        //stream molecules from sqlite without waiting for a FITS header
+        match stream_molecules(freq_start, freq_end) {
+            Some(rx) => {
+                let molecules_stream = MoleculeStream::new(rx);
+
+                HttpResponse::Ok()
+                    .content_type("application/json")
+                    .streaming(molecules_stream.map(|x| Ok(x) as Result<Bytes, ()>))
+            }
+            None => HttpResponse::Ok()
+                .content_type("application/json")
+                .body(format!("{{\"molecules\" : []}}")),
+        }
+    }
 }
 
 struct FITSDataStream {
