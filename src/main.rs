@@ -2731,19 +2731,19 @@ async fn websocket_entry(
     ws::start(UserSession::new(state.addr.clone(), &id), &req, stream)
 }
 
-fn fitswebql_entry(
+async fn fitswebql_entry(
     state: web::Data<WsSessionState>,
     req: HttpRequest,
-) -> impl Future<Item = HttpResponse, Error = Error> {
+) -> Result<HttpResponse, Error> {
     let fitswebql_path: String = match req.match_info().get("path") {
         Some(x) => x.to_string(),
-        None => return result(Err(actix_http::error::ErrorBadRequest("fitswebql_entry"))),
+        None => return Err(actix_http::error::ErrorBadRequest("fitswebql_entry")),
     };
 
     let server = &state.addr;
-    let query = match web::Query::<HashMap<String, String>>::extract(&req) {
+    let query = match web::Query::<HashMap<String, String>>::extract(&req).await {
         Ok(x) => x,
-        Err(_) => return result(Err(actix_http::error::ErrorBadRequest("fitswebql_entry"))),
+        Err(_) => return Err(actix_http::error::ErrorBadRequest("fitswebql_entry")),
     };
 
     #[cfg(feature = "jvo")]
@@ -2781,12 +2781,12 @@ fn fitswebql_entry(
         Some(x) => {
             let dataset_id = Uuid::new_v3(&Uuid::NAMESPACE_URL, x.as_bytes());
             println!("external URL: {}, uuid: {}", x, dataset_id);
-            return result(Ok(external_fits(
+            return Ok(external_fits(
                 &fitswebql_path,
                 x,
                 &dataset_id.to_string(),
                 &server,
-            )));
+            ));
         }
         None => {}
     };
@@ -2815,9 +2815,12 @@ fn fitswebql_entry(
 
             //the last resort
             if v.is_empty() {
-                return result(Ok(HttpResponse::NotFound().content_type("text/html").body(
-                    format!("<p><b>Critical Error</b>: no {} available</p>", dataset),
-                )));
+                return Ok(HttpResponse::NotFound()
+                    .content_type("text/html")
+                    .body(format!(
+                        "<p><b>Critical Error</b>: no {} available</p>",
+                        dataset
+                    )));
             };
 
             v
@@ -2885,7 +2888,7 @@ fn fitswebql_entry(
 
     //server version
     #[cfg(feature = "jvo")]
-    return result(Ok(internal_fits(
+    return Ok(internal_fits(
         &fitswebql_path,
         &db,
         &table,
@@ -2895,11 +2898,11 @@ fn fitswebql_entry(
         composite,
         &flux,
         &server,
-    )));
+    ));
 
     //local (Personal Edition)
     #[cfg(not(feature = "jvo"))]
-    return result(Ok(internal_fits(
+    return Ok(internal_fits(
         &fitswebql_path,
         "",
         "",
@@ -2909,7 +2912,7 @@ fn fitswebql_entry(
         composite,
         &flux,
         &server,
-    )));
+    ));
 }
 
 async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
@@ -3284,7 +3287,7 @@ impl FITSDataStream {
 impl Stream for FITSDataStream {
     type Item = Bytes;
 
-    fn poll(
+    fn poll_next(
         self: std::pin::Pin<&mut Self>,
         _cx: &mut futures::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
