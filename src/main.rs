@@ -3660,7 +3660,7 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
     println!("PostgreSQL connection URL: {}", connection_url);
 
     match Client::connect(&connection_url, NoTls) {
-        Ok(client) => {
+        Ok(mut client) => {
             println!("connected to PostgreSQL");
 
             //data_id: if db is alma append _00_00_00
@@ -3671,7 +3671,7 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
 
             let sql = format!("SELECT path FROM {} WHERE data_id = '{}';", table, data_id);
             println!("SQL: {}", sql);
-            let res = client.query(&sql, &[]);
+            let res = client.query(sql.as_str(), &[]);
 
             match res {
                 Ok(rows) => {
