@@ -58,6 +58,7 @@ use actix::fut::result;
 use bytes::Bytes;
 use futures::future::ok;
 use futures::prelude::*;
+use futures::task::Poll;
 use futures::StreamExt;
 use std::sync::mpsc;
 
