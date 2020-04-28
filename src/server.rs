@@ -38,6 +38,7 @@ pub struct Connect {
 
 /// Session is disconnected
 #[derive(Message)]
+#[rtype(result = "()")]
 pub struct Disconnect {
     pub dataset_id: String,
     pub id: Uuid,
@@ -45,12 +46,14 @@ pub struct Disconnect {
 
 //remove a dataset
 #[derive(Message)]
+#[rtype(result = "()")]
 pub struct Remove {
     pub dataset_id: String,
 }
 
 /// broadcast a message to a dataset
 #[derive(Message)]
+#[rtype(result = "()")]
 pub struct WsMessage {
     /// a WebSocket text message
     pub notification: String,
@@ -138,9 +141,8 @@ impl Default for SessionServer {
                             Some(value) => {
                                 std::thread::spawn(move || {
                                     #[cfg(target_os = "linux")]
-                                    {
-                                        let thread_id = thread_native_id();
-                                        match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
+                                    {                                        
+                                        match set_current_thread_priority(ThreadPriority::Min) {
                                             Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
                                             Err(err) => println!("error changing the thread priority: {:?}", err),
                                         }
@@ -276,9 +278,8 @@ impl Handler<Disconnect> for SessionServer {
                                     Some(value) => {
                                         std::thread::spawn(move || {
                                             #[cfg(target_os = "linux")]
-                                            {
-                                                let thread_id = thread_native_id();
-                                                match set_thread_priority(thread_id, ThreadPriority::Min, ThreadSchedulePolicy::Normal(NormalThreadSchedulePolicy::Normal)) {
+                                            {                                                
+                                                match set_current_thread_priority(ThreadPriority::Min) {
                                                     Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
                                                     Err(err) => println!("error changing the thread priority: {:?}", err),
                                                 }
