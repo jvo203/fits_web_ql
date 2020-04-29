@@ -2930,7 +2930,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "zfp-sys"
 version = "0.1.6"
-source = "git+https://github.com/jvo203/zfp-sys.git#d6cb58227b3d8e82904b21a66603c211203cba96"
+source = "git+https://github.com/jvo203/zfp-sys.git#009fd09cbbc3269c08c8682db779d03f78c7c6b1"
 dependencies = [
  "bindgen 0.53.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmake 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
