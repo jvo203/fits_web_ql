@@ -1090,7 +1090,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let total = self.depth;
 
-        let start = precise_time::precise_time_ns();
+        let watch = Instant::now();
 
         let (tx, rx) = mpsc::channel();
 
@@ -1196,13 +1196,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 frame, total
             );
             return false;
-        };
-
-        let stop = precise_time::precise_time_ns();
+        };        
 
         println!(
-            "[read_from_cache] elapsed time: {} [ms]",
-            (stop - start) / 1000000
+            "[read_from_cache] elapsed time: {:?}",
+            watch.elapsed()
         );
 
         return true;
@@ -1543,8 +1541,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             //sort the pixels in parallel using rayon
             //let mut ord_pixels = fits.pixels.clone();
             //println!("unordered pixels: {:?}", ord_pixels);
+            
+            let watch = Instant::now();
 
-            let start = precise_time::precise_time_ns();
             //ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
             ord_pixels.par_sort_unstable_by(|a, b| {
                 if a.is_finite() && b.is_finite() {
@@ -1560,12 +1559,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     }
                 }
-            });
-            let stop = precise_time::precise_time_ns();
+            });            
 
             println!(
-                "[pixels] parallel sorting time: {} [ms]",
-                (stop - start) / 1000000
+                "[pixels] parallel sorting time: {:?}",
+                watch.elapsed()
             );
 
             fits.make_image_histogram(&ord_pixels);
@@ -1907,7 +1905,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 //let mut ord_pixels = fits.pixels.clone();
                 //println!("unordered pixels: {:?}", ord_pixels);
 
-                let start = precise_time::precise_time_ns();
+                let watch = Instant::now();
+
                 //ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
                 ord_pixels.par_sort_unstable_by(|a, b| {
                     if a.is_finite() && b.is_finite() {
@@ -1923,12 +1922,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             }
                         }
                     }
-                });
-                let stop = precise_time::precise_time_ns();
+                });                
 
                 println!(
-                    "[pixels] parallel sorting time: {} [ms]",
-                    (stop - start) / 1000000
+                    "[pixels] parallel sorting time: {:?}",
+                    watch.elapsed()
                 );
 
                 fits.make_image_histogram(&ord_pixels);
@@ -2904,7 +2902,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         start: usize,
         end: usize,
     ) -> Option<(Vec<f32>, Vec<u8>, Vec<f32>, Vec<f32>)> {
-        let start_watch = precise_time::precise_time_ns();
+        let watch = Instant::now();
 
         let num_threads = num_cpus::get_physical();
 
@@ -3108,13 +3106,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     total_size as u32,
                 );
             }
-        }
-
-        let stop_watch = precise_time::precise_time_ns();
+        }        
 
         println!(
-            "[make_image_spectrum] elapsed time: {} [ms]",
-            (stop_watch - start_watch) / 1000000
+            "[make_image_spectrum] elapsed time: {:?}",
+            watch.elapsed()
         );
 
         //println!("mean spectrum: {:?}", mean_spectrum);
