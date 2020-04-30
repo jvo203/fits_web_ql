@@ -4208,8 +4208,8 @@ fn main() {
 
         let ipp_version = unsafe { *ipp_sys::ippGetLibVersion() };
         println!(
-            "Using Intel IPP {}.{}.{}.{}",
-            ipp_version.major, ipp_version.minor, ipp_version.majorBuild, ipp_version.build
+            "Using Intel IPP {}.{}.{}",
+            ipp_version.major, ipp_version.minor, ipp_version.majorBuild
         );
     }
 
