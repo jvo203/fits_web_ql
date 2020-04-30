@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2019-12-06.3";
+	return "JS2020-04-30.0";
 }
 
 const wasm_supported = (() => {
@@ -12691,8 +12691,8 @@ async*/ function mainRenderer() {
 
 		var rect = document.getElementById('mainDiv').getBoundingClientRect();
 
-		//set the default font-size (1em)
-		emFontSize = Math.max(12, 0.011 * 0.5 * (rect.width + rect.height));
+		//set the default font-size (1em)		
+		emFontSize = Math.max(12, 0.011 * (0.2 * rect.width + 0.8 * rect.height));
 		emStrokeWidth = Math.max(1, 0.1 * emFontSize);
 		document.body.style.fontSize = emFontSize + "px";
 		console.log("emFontSize : ", emFontSize.toFixed(2), "emStrokeWidth : ", emStrokeWidth.toFixed(2));
