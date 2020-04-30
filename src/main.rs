@@ -653,7 +653,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 libyuv_FilterMode_kFilterNone,
                             );
 
-                            let compressed_alpha = lz4_compress::compress(&alpha);                            
+                            let compressed_alpha = lz4_compress::compress(&alpha);
 
                             println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}", alpha.len(), compressed_alpha.len(), watch.elapsed());
 
@@ -933,7 +933,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             ref_freq,
                             &self.pool,
                         ) {
-                            Some(spectrum) => {                                
+                            Some(spectrum) => {
                                 //send a binary response message (serialize a structure to a binary stream)
                                 let ws_spectrum = WsSpectrum {
                                     ts: timestamp as f32,
@@ -1479,7 +1479,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         h,
                                         libyuv_FilterMode_kFilterBox,
                                     );
-                                    y = dst;                                    
+                                    y = dst;
 
                                     println!(
                                         "VP9 image frame inverting/downscaling time: {:?}",
@@ -1501,7 +1501,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         libyuv_FilterMode_kFilterNone,
                                     );
 
-                                    let compressed_alpha = lz4_compress::compress(&alpha);                                    
+                                    let compressed_alpha = lz4_compress::compress(&alpha);
 
                                     println!(
                 "alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}",
@@ -1870,7 +1870,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             self.pic,
                                             ptr::null_mut(),
                                         )
-                                    };                                    
+                                    };
 
                                     println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
 
@@ -1878,7 +1878,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     unsafe {
                                         (*self.pic).stride[0] = 0 as i32;
                                         (*self.pic).planes[0] = ptr::null_mut();
-                                    }                                    
+                                    }
 
                                     //process all NAL units one by one
                                     if nal_count > 0 {
@@ -2064,7 +2064,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 println!("codec error: {:?}", err);
                                             }
                                         }
-                                    }                                    
+                                    }
 
                                     println!("VP9 video frame prepare/encode time: {:?}, speed {} frames per second, frame length: {} bytes", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), video_frame.len());
 
@@ -2216,7 +2216,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         self.pic,
                                         ptr::null_mut(),
                                     )
-                                };                                
+                                };
 
                                 println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
 
@@ -2226,7 +2226,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         (*self.pic).stride[i] = 0 as i32;
                                         (*self.pic).planes[i] = ptr::null_mut();
                                     }
-                                }                                
+                                }
 
                                 //process all NAL units one by one
                                 if nal_count > 0 {

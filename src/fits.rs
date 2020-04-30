@@ -1194,12 +1194,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 frame, total
             );
             return false;
-        };        
+        };
 
-        println!(
-            "[read_from_cache] elapsed time: {:?}",
-            watch.elapsed()
-        );
+        println!("[read_from_cache] elapsed time: {:?}", watch.elapsed());
 
         return true;
     }
@@ -1539,7 +1536,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             //sort the pixels in parallel using rayon
             //let mut ord_pixels = fits.pixels.clone();
             //println!("unordered pixels: {:?}", ord_pixels);
-            
+
             let watch = Instant::now();
 
             //ord_pixels.par_sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(Equal));
@@ -1557,12 +1554,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     }
                 }
-            });            
+            });
 
-            println!(
-                "[pixels] parallel sorting time: {:?}",
-                watch.elapsed()
-            );
+            println!("[pixels] parallel sorting time: {:?}", watch.elapsed());
 
             fits.make_image_histogram(&ord_pixels);
 
@@ -1920,12 +1914,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             }
                         }
                     }
-                });                
+                });
 
-                println!(
-                    "[pixels] parallel sorting time: {:?}",
-                    watch.elapsed()
-                );
+                println!("[pixels] parallel sorting time: {:?}", watch.elapsed());
 
                 fits.make_image_histogram(&ord_pixels);
 
@@ -3104,12 +3095,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     total_size as u32,
                 );
             }
-        }        
+        }
 
-        println!(
-            "[make_image_spectrum] elapsed time: {:?}",
-            watch.elapsed()
-        );
+        println!("[make_image_spectrum] elapsed time: {:?}", watch.elapsed());
 
         //println!("mean spectrum: {:?}", mean_spectrum);
         //println!("integrated spectrum: {:?}", integrated_spectrum);
@@ -3439,7 +3427,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             pos,
             *data_mad_p,
             *data_mad_n
-        );        
+        );
 
         println!(
             "all-data histogram adaptive step {}, elapsed time {:?}",
@@ -3507,7 +3495,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     count_n += 1;
                 }
             }
-        }        
+        }
 
         mad = if count > 0 { mad / (count as f32) } else { 0.0 };
 
@@ -3566,12 +3554,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             if x >= &pmin && x <= &pmax && index < NBINS {
                 hist[index] = hist[index] + 1;
             }
-        }        
+        }
 
-        println!(
-            "histogram creation elapsed time {:?}",
-            watch.elapsed()
-        );
+        println!("histogram creation elapsed time {:?}", watch.elapsed());
 
         Some((
             hist,
@@ -3713,7 +3698,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     count_n += 1;
                 }
             }
-        }        
+        }
 
         mad = if count > 0 { mad / (count as f32) } else { 0.0 };
 
@@ -3785,12 +3770,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             if x >= &pmin && x <= &pmax && index < NBINS {
                 self.hist[index] = self.hist[index] + 1;
             }
-        }        
+        }
 
-        println!(
-            "histogram creation elapsed time {:?}",
-            watch.elapsed()
-        );
+        println!("histogram creation elapsed time {:?}", watch.elapsed());
     }
 
     fn histogram_classifier(&mut self) {
@@ -3822,12 +3804,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             3 => String::from("ratio"),
             4 => String::from("square"),
             _ => String::from("legacy"),
-        };        
+        };
 
-        println!(
-            "histogram classifier elapsed time {:?}",
-            watch.elapsed()
-        );
+        println!("histogram classifier elapsed time {:?}", watch.elapsed());
     }
 
     fn data_to_luminance_u8(
@@ -4843,12 +4822,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //invert and downscale
         let mut dst = vec![0; (width * height) as usize];
-        self.resize_and_invert(&y, &mut dst, width, height, libyuv_FilterMode_kFilterBox);        
+        self.resize_and_invert(&y, &mut dst, width, height, libyuv_FilterMode_kFilterBox);
 
-        println!(
-            "Y video plane preparation time: {:?}",
-            watch.elapsed()
-        );
+        println!("Y video plane preparation time: {:?}", watch.elapsed());
 
         Some(dst)
     }
@@ -4922,12 +4898,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //flip the FITS image vertically
         //unsafe { vpx_img_flip(&mut raw) };
-        //no need to use libvpx to invert the image, libyuv does it for us        
+        //no need to use libvpx to invert the image, libyuv does it for us
 
-        println!(
-            "VP9 video frame preparation time: {:?}",
-            watch.elapsed()
-        );
+        println!("VP9 video frame preparation time: {:?}", watch.elapsed());
 
         Some(raw)
     }
@@ -5277,7 +5250,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //encode
         let ret =
-            unsafe { x265_encoder_encode(enc, &mut p_nal, &mut nal_count, pic, ptr::null_mut()) };        
+            unsafe { x265_encoder_encode(enc, &mut p_nal, &mut nal_count, pic, ptr::null_mut()) };
 
         println!("x265 hevc viewport encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
 
@@ -5503,12 +5476,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             unsafe { vpx_codec_destroy(&mut ctx) };
 
             return None;
-        }        
+        }
 
-        println!(
-            "VP9 image frame encode time: {:?}",
-            watch.elapsed()
-        );
+        println!("VP9 image frame encode time: {:?}", watch.elapsed());
 
         unsafe { vpx_img_free(&mut raw) };
         unsafe { vpx_codec_destroy(&mut ctx) };
@@ -5577,7 +5547,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
 
         //an approximate solution
-        sensitivity = (a + b) / 2.0;        
+        sensitivity = (a + b) / 2.0;
 
         println!(
             "final sensitivity: {}, elapsed time: {:?}",
@@ -5778,7 +5748,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 self.ratio_sensitivity,
                 &self.flux,
                 &None,
-            );            
+            );
 
             println!(
                 "VP9 image frame pixels to luminance time: {:?}",
@@ -5793,7 +5763,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             let mut dst = vec![0; (w as usize) * (h as usize)];
             self.resize_and_invert(&y, &mut dst, w, h, libyuv_FilterMode_kFilterBox);
-            y = dst;            
+            y = dst;
 
             println!(
                 "VP9 image frame inverting/downscaling time: {:?}",
@@ -5809,7 +5779,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             self.resize_and_invert(&self.mask, &mut alpha, w, h, libyuv_FilterMode_kFilterNone);
 
-            let compressed_alpha = lz4_compress::compress(&alpha);            
+            let compressed_alpha = lz4_compress::compress(&alpha);
 
             println!(
                 "alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}",
@@ -5963,12 +5933,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             unsafe { vpx_codec_destroy(&mut ctx) };
 
             return;
-        }        
+        }
 
-        println!(
-            "VP9 image frame encode time: {:?}",
-            watch.elapsed()
-        );
+        println!("VP9 image frame encode time: {:?}", watch.elapsed());
 
         unsafe { vpx_img_free(&mut raw) };
         unsafe { vpx_codec_destroy(&mut ctx) };
@@ -6273,7 +6240,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                             })
                             .collect(),
                     },
-                };                
+                };
 
                 //println!("{:?}", spectrum);
                 println!(
