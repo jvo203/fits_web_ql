@@ -37,6 +37,7 @@ use std::fs::File;
 use std::io::Write;
 use std::sync::Arc;
 use std::thread;
+use std::time::Instant;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
 
@@ -64,7 +65,6 @@ use rayon::prelude::*;
 use std::cmp::Ordering::Equal;
 
 use log::info;
-use time as precise_time;
 //use rav1e::*;
 
 #[cfg(feature = "jvo")]
@@ -640,7 +640,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                         //get the alpha channel
                         let alpha_frame = {
-                            let start = precise_time::precise_time_ns();
+                            let watch = Instant::now();
 
                             //invert/downscale the mask (alpha channel) without interpolation
                             let mut alpha = vec![0; (w * h) as usize];
@@ -653,11 +653,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 libyuv_FilterMode_kFilterNone,
                             );
 
-                            let compressed_alpha = lz4_compress::compress(&alpha);
+                            let compressed_alpha = lz4_compress::compress(&alpha);                            
 
-                            let stop = precise_time::precise_time_ns();
-
-                            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]", alpha.len(), compressed_alpha.len(), (stop-start)/1000000);
+                            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}", alpha.len(), compressed_alpha.len(), watch.elapsed());
 
                             compressed_alpha
                         };
@@ -922,7 +920,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                     }
 
                     if fits.has_data {
-                        let start = precise_time::precise_time_ns();
+                        let watch = Instant::now();
                         match fits.get_spectrum(
                             x1,
                             y1,
@@ -935,15 +933,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             ref_freq,
                             &self.pool,
                         ) {
-                            Some(spectrum) => {
-                                let stop = precise_time::precise_time_ns();
-                                let elapsed = (stop - start) / 1000000;
+                            Some(spectrum) => {                                
                                 //send a binary response message (serialize a structure to a binary stream)
                                 let ws_spectrum = WsSpectrum {
                                     ts: timestamp as f32,
                                     seq_id: seq_id as u32,
                                     msg_type: 0,
-                                    elapsed: elapsed as f32,
+                                    elapsed: watch.elapsed().as_millis() as f32,
                                     spectrum: spectrum,
                                 };
 
@@ -1473,7 +1469,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 );
 
                                 {
-                                    let start = precise_time::precise_time_ns();
+                                    let watch = Instant::now();
 
                                     let mut dst = vec![0; (w as usize) * (h as usize)];
                                     fits.resize_and_invert(
@@ -1483,18 +1479,16 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         h,
                                         libyuv_FilterMode_kFilterBox,
                                     );
-                                    y = dst;
-
-                                    let stop = precise_time::precise_time_ns();
+                                    y = dst;                                    
 
                                     println!(
-                                        "VP9 image frame inverting/downscaling time: {} [ms]",
-                                        (stop - start) / 1000000
+                                        "VP9 image frame inverting/downscaling time: {:?}",
+                                        watch.elapsed()
                                     );
                                 }
 
                                 let alpha_frame = {
-                                    let start = precise_time::precise_time_ns();
+                                    let watch = Instant::now();
 
                                     //invert/downscale the mask (alpha channel) without interpolation
                                     let mut alpha = vec![0; (w as usize) * (h as usize)];
@@ -1507,15 +1501,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         libyuv_FilterMode_kFilterNone,
                                     );
 
-                                    let compressed_alpha = lz4_compress::compress(&alpha);
-
-                                    let stop = precise_time::precise_time_ns();
+                                    let compressed_alpha = lz4_compress::compress(&alpha);                                    
 
                                     println!(
-                "alpha original length {}, lz4-compressed {} bytes, elapsed time {} [ms]",
+                "alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}",
                 alpha.len(),
                 compressed_alpha.len(),
-                (stop - start) / 1000000
+                watch.elapsed()
             );
 
                                     compressed_alpha
@@ -1833,7 +1825,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                             self.last_video_frame = frame_index as i32;
 
-                            let start = precise_time::precise_time_ns();
+                            let watch = Instant::now();
 
                             let flux = match self.user {
                                 Some(ref user) => user.flux.clone(),
@@ -1878,19 +1870,15 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             self.pic,
                                             ptr::null_mut(),
                                         )
-                                    };
+                                    };                                    
 
-                                    let stop = precise_time::precise_time_ns();
-
-                                    println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (stop-start)/1000000, 1000000000/(stop-start), ret, nal_count);
+                                    println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
 
                                     //y falls out of scope
                                     unsafe {
                                         (*self.pic).stride[0] = 0 as i32;
                                         (*self.pic).planes[0] = ptr::null_mut();
-                                    }
-
-                                    let elapsed = (stop - start) / 1000000;
+                                    }                                    
 
                                     //process all NAL units one by one
                                     if nal_count > 0 {
@@ -1916,7 +1904,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 seq_id: seq_id as u32,
                                                 msg_type: 5, //an hevc video frame
                                                 //length: video_frame.len() as u32,
-                                                elapsed: elapsed as f32,
+                                                elapsed: watch.elapsed().as_millis() as f32,
                                                 frame: payload.to_vec(),
                                             };
 
@@ -2025,7 +2013,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     //send a binary response
                                     //print!("{:#?}", image);
 
-                                    //let start = precise_time::precise_time_ns();
+                                    //let watch = Instant::now();
 
                                     //variable rate control
                                     //disabled due to bugs in libvpx, needs to be tested again and again
@@ -2076,11 +2064,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 println!("codec error: {:?}", err);
                                             }
                                         }
-                                    }
+                                    }                                    
 
-                                    let stop = precise_time::precise_time_ns();
-
-                                    println!("VP9 video frame prepare/encode time: {} [ms], speed {} frames per second, frame length: {} bytes", (stop-start)/1000000, 1000000000/(stop-start), video_frame.len());
+                                    println!("VP9 video frame prepare/encode time: {:?}, speed {} frames per second, frame length: {} bytes", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), video_frame.len());
 
                                     if !video_frame.is_empty() {
                                         //println!("VP9 video frame length: {} bytes", video_frame.len());
@@ -2108,7 +2094,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             };
                         }
                     } else {
-                        let start = precise_time::precise_time_ns();
+                        let watch = Instant::now();
                         let width = self.width;
                         let height = self.height;
 
@@ -2230,11 +2216,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         self.pic,
                                         ptr::null_mut(),
                                     )
-                                };
+                                };                                
 
-                                let stop = precise_time::precise_time_ns();
-
-                                println!("x265 hevc video frame prepare/encode time: {} [ms], speed {} frames per second, ret = {}, nal_count = {}", (stop-start)/1000000, 1000000000/(stop-start), ret, nal_count);
+                                println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
 
                                 //yuv planes fall out of scope
                                 for i in 0..3 {
@@ -2242,9 +2226,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         (*self.pic).stride[i] = 0 as i32;
                                         (*self.pic).planes[i] = ptr::null_mut();
                                     }
-                                }
-
-                                let elapsed = (stop - start) / 1000000;
+                                }                                
 
                                 //process all NAL units one by one
                                 if nal_count > 0 {
@@ -2270,7 +2252,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             seq_id: seq_id as u32,
                                             msg_type: 5, //an hevc video frame
                                             //length: video_frame.len() as u32,
-                                            elapsed: elapsed as f32,
+                                            elapsed: watch.elapsed().as_millis() as f32,
                                             frame: payload.to_vec(),
                                         };
 
