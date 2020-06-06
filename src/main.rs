@@ -41,6 +41,8 @@ use std::time::Instant;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
 
+use lttb::{lttb, DataPoint};
+
 use actix::*;
 use actix_files as fs;
 use actix_web::dev::BodyEncoding;
@@ -939,6 +941,23 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             &self.pool,
                         ) {
                             Some(spectrum) => {
+                                // downsample the spectrum when necessary
+                                let dst_len = (dx / 2) as usize;
+
+                                let spectrum = if spectrum.len() > dst_len {
+                                    let mut raw = vec![];
+
+                                    for (i, val) in spectrum.iter().enumerate() {
+                                        raw.push(DataPoint::new(i as f64, *val as f64));
+                                    }
+
+                                    let downsampled = lttb(raw, dst_len);
+
+                                    downsampled.iter().map(|val| val.y as f32).collect()
+                                } else {
+                                    spectrum
+                                };
+
                                 //send a binary response message (serialize a structure to a binary stream)
                                 let ws_spectrum = WsSpectrum {
                                     ts: timestamp as f32,
