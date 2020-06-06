@@ -804,7 +804,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                 if (&text).contains("[spectrum]") {
                     //println!("{}", text.replace("&", " "));
-                    let (x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[spectrum] x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
+                    let (dx, x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[spectrum] dx={} x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
+
+                    let dx = match dx {
+                        Some(x) => x,
+                        _ => 0,
+                    };
 
                     let x1 = match x1 {
                         Some(x) => x,
@@ -884,7 +889,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                         _ => 0.0,
                     };
 
-                    println!("[spectrum] x1:{} y1:{} x2:{} y2:{} image:{} beam:{:?} intensity:{:?} frame_start:{} frame_end:{} ref_freq:{} seq_id:{} timestamp:{}", x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp);
+                    println!("[spectrum] dx:{} x1:{} y1:{} x2:{} y2:{} image:{} beam:{:?} intensity:{:?} frame_start:{} frame_end:{} ref_freq:{} seq_id:{} timestamp:{}", dx, x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp);
 
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
