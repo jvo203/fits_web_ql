@@ -326,6 +326,8 @@ function largestTriangleThreeBuckets(data, threshold) {
 		return data; // Nothing to do
 	}
 
+	console.log("applying 'largestTriangleThreeBuckets'");
+
 	var sampled = [],
 		sampledIndex = 0;
 
