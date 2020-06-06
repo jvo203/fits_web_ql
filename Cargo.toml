@@ -75,6 +75,7 @@ tar = "*"
 flate2 = "*"
 bzip2 = "*"
 ispc = "*"
+lttb = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
 #zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
