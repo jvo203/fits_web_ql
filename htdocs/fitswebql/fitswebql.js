@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-04-30.0";
+	return "JS2020-06-06.0";
 }
 
 const wasm_supported = (() => {
@@ -8941,6 +8941,9 @@ function setup_image_selection() {
 				if (realtime_spectrum && fitsData.depth > 1 && !optical_view) {
 					sent_seq_id++;
 
+					var range = get_axes_range(width, height);
+					var dx = range.xMax - range.xMin;
+
 					for (let index = 0; index < va_count; index++) {
 						var dataId = datasetId;
 						if (va_count > 1)
@@ -8950,7 +8953,7 @@ function setup_image_selection() {
 						console.log("frame_bounds:", frame_bounds) ;*/
 
 						if (wsConn[index].readyState == 1) {
-							let strRequest = 'x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=false&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id;
+							let strRequest = 'dx=' + dx + '&x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=false&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id;
 
 							wsConn[index].send('[spectrum] ' + strRequest + '&timestamp=' + performance.now());
 						}
@@ -9816,6 +9819,9 @@ function tileTimeout(force = false) {
 
 	var request_images = true;
 
+	var range = get_axes_range(width, height);
+	var dx = range.xMax - range.xMin;
+
 	for (let index = 0; index < va_count; index++) {
 		let img_width = image_bounding_dims.width;
 		let img_height = image_bounding_dims.height;
@@ -9863,7 +9869,7 @@ function tileTimeout(force = false) {
 		let x2 = (image_bounding_dims.x1 + image_bounding_dims.width - 1) * fitsData.width / imageCanvas.width;
 		let y2 = (fitsData.height - 1) - (image_bounding_dims.y1 + image_bounding_dims.height - 1) * fitsData.height / imageCanvas.height;
 
-		var strRequest = 'x1=' + clamp(Math.round(x1), 0, fitsData.width - 1) + '&y1=' + clamp(Math.round(y2), 0, fitsData.height - 1) + '&x2=' + clamp(Math.round(x2), 0, fitsData.width - 1) + '&y2=' + clamp(Math.round(y1), 0, fitsData.height - 1) + '&image=' + (image ? 'true' : 'false') + '&beam=' + beam + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id + '&timestamp=' + performance.now();
+		var strRequest = 'dx=' + dx + '&x1=' + clamp(Math.round(x1), 0, fitsData.width - 1) + '&y1=' + clamp(Math.round(y2), 0, fitsData.height - 1) + '&x2=' + clamp(Math.round(x2), 0, fitsData.width - 1) + '&y2=' + clamp(Math.round(y1), 0, fitsData.height - 1) + '&image=' + (image ? 'true' : 'false') + '&beam=' + beam + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id + '&timestamp=' + performance.now();
 
 		console.log(strRequest);
 
@@ -9963,9 +9969,12 @@ function imageTimeout() {
 
 	sent_seq_id++;
 
+	var range = get_axes_range(width, height);
+	var dx = range.xMax - range.xMin;
+
 	for (let index = 0; index < va_count; index++) {
 
-		var strRequest = 'x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=true&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id + '&timestamp=' + performance.now();
+		var strRequest = 'dx=' + dx + '&x1=' + x1 + '&y1=' + y2 + '&x2=' + x2 + '&y2=' + y1 + '&image=true&beam=' + zoom_shape + '&intensity=' + intensity_mode + '&frame_start=' + data_band_lo + '&frame_end=' + data_band_hi + '&ref_freq=' + RESTFRQ + '&seq_id=' + sent_seq_id + '&timestamp=' + performance.now();
 
 		wsConn[index].send('[spectrum] ' + strRequest);
 	}
