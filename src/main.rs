@@ -2381,14 +2381,14 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 //FITS datasets
 lazy_static! {
     static ref DATASETS: Arc<RwLock<HashMap<String, Arc<RwLock<Box<fits::FITS>>>>>> =
-        { Arc::new(RwLock::new(HashMap::new())) };
+        Arc::new(RwLock::new(HashMap::new()));
 }
 
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.2";
-static VERSION_STRING: &'static str = "SV2020-06-06.0";
+static VERSION_STRING: &'static str = "SV2020-06-08.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 
 #[cfg(not(feature = "jvo"))]
