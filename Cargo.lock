@@ -1000,7 +1000,7 @@ dependencies = [
  "time 0.2.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "timer 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "zfp-sys 0.1.6 (git+https://github.com/jvo203/zfp-sys.git)",
+ "zfp-sys 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2974,8 +2974,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "zfp-sys"
-version = "0.1.6"
-source = "git+https://github.com/jvo203/zfp-sys.git#c31f63cc5d3c52714f3fd50e17b6028815396552"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bindgen 0.54.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmake 0.1.44 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3306,4 +3306,4 @@ dependencies = [
 "checksum ws2_32-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d59cefebd0c892fa2dd6de581e937301d8552cb44489cdff035c6187cb63fa5e"
 "checksum xattr 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
 "checksum yansi 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9fc79f4a1e39857fc00c3f662cbf2651c771f00e9c15fe2abc341806bd46bd71"
-"checksum zfp-sys 0.1.6 (git+https://github.com/jvo203/zfp-sys.git)" = "<none>"
+"checksum zfp-sys 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "6718db410b23f7ddf7a216e19a3e77908a12c05f0689d1e3ff2875fe1df8918a"
