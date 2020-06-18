@@ -2388,8 +2388,9 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.2";
-static VERSION_STRING: &'static str = "SV2020-06-08.0";
+static VERSION_STRING: &'static str = "SV2020-06-18.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
+static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
 #[cfg(not(feature = "jvo"))]
 static SERVER_MODE: &'static str = "LOCAL";
@@ -4035,6 +4036,20 @@ fn http_fits_response(
                 hevc_decode_nal_unit: Module.cwrap('hevc_decode_nal_unit', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'string']),               
             };                   
         };
+        </script>\n");
+    }
+
+    //fpzip decoder WebAssembly
+    {        
+        html.push_str(&format!(
+            "<script src=\"fpzip{}.js\"></script>\n",
+            FPZIP_STRING
+        ));
+
+        html.push_str("<script>
+        Module.ready
+            .then( status => console.log( status ))
+            .catch(e => console.error(e))
         </script>\n");
     }
 
