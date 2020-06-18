@@ -4040,17 +4040,23 @@ fn http_fits_response(
     }
 
     //fpzip decoder WebAssembly
-    {        
+    {
         html.push_str(&format!(
-            "<script src=\"fpzip{}.js\"></script>\n",
+            "<script src=\"fpzip.{}.js\"></script>\n",
             FPZIP_STRING
         ));
 
-        html.push_str("<script>
-        Module.ready
+        html.push_str(
+            "<script>
+            FPZIP().then((myFPZIP) => {
+                // this is reached when everything is ready, and you can call methods on myFPZIP
+                console.log('FPZIP WebAssembly has been initialised.');
+              });
+        /*FPZIP.ready
             .then( status => console.log( status ))
-            .catch(e => console.error(e))
-        </script>\n");
+            .catch(e => console.error(e))*/
+        </script>\n",
+        );
     }
 
     //bootstrap

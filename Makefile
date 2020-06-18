@@ -23,3 +23,27 @@ hevc:
 
 vpx:
 	emcc -O3 -s ALLOW_MEMORY_GROWTH=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' -s EXPORTED_FUNCTIONS="['_malloc','_free']" -I/home/chris/ogv.js/build/js/root/include -L/home/chris/ogv.js/build/js/root/lib /home/chris/ogv.js/build/js/root/lib/libvpx.so src/colourmap.c src/vpx_decoder.c -o build/vpx.js
+
+FPZIP_STRING = WASM2020-06-18.0
+
+FPZIP=fpzip
+SRC=$(FPZIP)/src/*.cpp
+INCLUDE=-I./ -I./$(FPZIP)/include -I./$(FPZIP)/src
+LIBRARY=
+CXXFLAGS=-std=c++11 -O3
+LDFLAGS=-lz --llvm-lto 1
+
+EMFLAGS=--bind
+EMFLAGS+=-s ALLOW_MEMORY_GROWTH=1
+EMFLAGS+=-s NO_EXIT_RUNTIME=1
+EMFLAGS+=-s NO_FILESYSTEM=1
+
+FPZIP_FP = FPZIP_FP_FAST
+FPZIP_BLOCK_SIZE = 0x1000
+DEFS += -DFPZIP_BLOCK_SIZE=$(FPZIP_BLOCK_SIZE) -DFPZIP_FP=$(FPZIP_FP) $(FPZIP_CONV)
+EMFLAGS+=-s MODULARIZE=1 -s 'EXPORT_NAME="FPZIP"'
+
+fpunzip:
+	em++ $(EMFLAGS) $(DEFS) $(SRC) src/main.cc -o build/fpzip.$(FPZIP_STRING).js $(INCLUDE) -L$(LIBRARY) $(CXXFLAGS) $(LDFLAGS)
+
+#--post-js module-post.js
