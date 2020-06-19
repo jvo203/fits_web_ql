@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-06-19.0";
+	return "JS2020-06-19.1";
 }
 
 const wasm_supported = (() => {
@@ -1538,9 +1538,9 @@ function open_websocket_connection(datasetId, index) {
 						//var spectrum = new Float32Array(received_msg, 24);//16+8, extra 8 bytes for the length of the vector, added automatically by Rust
 						var frame = new Uint8Array(received_msg, 24);
 
-						FPZIP().then((decompressor) => {
+						try {
+							var vec = fzip_decompressor.FPunzip(frame);
 
-							var vec = decompressor.FPunzip(frame);
 							let len = vec.size();
 
 							//console.log("[ws] computed = " + computed.toFixed(1) + " [ms]" + " length: " + length + " spectrum length:" + spectrum.length + " spectrum: " + spectrum);
@@ -1554,8 +1554,10 @@ function open_websocket_connection(datasetId, index) {
 									spectrum_stack[index - 1].push({ spectrum: spectrum, id: recv_seq_id });
 									console.log("index:", index, "spectrum_stack length:", spectrum_stack[index - 1].length);
 								};
-							}
-						});
+							};
+
+							vec.delete();
+						} catch (e) { };
 
 						return;
 					}
