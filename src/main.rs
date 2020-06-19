@@ -98,7 +98,7 @@ pub struct WsSpectrum {
     pub seq_id: u32,
     pub msg_type: u32,
     pub elapsed: f32,
-    pub spectrum: Vec<f32>,
+    pub spectrum: Vec<u8>,
 }
 
 #[derive(Serialize, Debug)]
@@ -959,8 +959,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     spectrum
                                 };
 
-                                fpzip_compress(&spectrum, image);
-
+                                match fpzip_compress(&spectrum, image) {
+                                    Some(spectrum) => {
                                 //send a binary response message (serialize a structure to a binary stream)
                                 let ws_spectrum = WsSpectrum {
                                     ts: timestamp as f32,
@@ -981,6 +981,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         err
                                     ),
                                 }
+                            },
+                            None => {}
+                            }
                             }
                             None => {}
                         }
