@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-06-06.1";
+	return "JS2020-06-19.0";
 }
 
 const wasm_supported = (() => {
@@ -1535,14 +1535,27 @@ function open_websocket_connection(datasetId, index) {
 
 						var length = dv.getUint32(16, endianness);
 
-						var spectrum = new Float32Array(received_msg, 24);//16+8, extra 8 bytes for the length of the vector, added automatically by Rust
+						//var spectrum = new Float32Array(received_msg, 24);//16+8, extra 8 bytes for the length of the vector, added automatically by Rust
+						var frame = new Uint8Array(received_msg, 24);
 
-						//console.log("[ws] computed = " + computed.toFixed(1) + " [ms]" + " length: " + length + " spectrum length:" + spectrum.length + " spectrum: " + spectrum);
+						FPZIP().then((decompressor) => {
 
-						if (!windowLeft) {
-							spectrum_stack[index - 1].push({ spectrum: spectrum, id: recv_seq_id });
-							console.log("index:", index, "spectrum_stack length:", spectrum_stack[index - 1].length);
-						};
+							var vec = decompressor.FPunzip(frame);
+							let len = vec.size();
+
+							//console.log("[ws] computed = " + computed.toFixed(1) + " [ms]" + " length: " + length + " spectrum length:" + spectrum.length + " spectrum: " + spectrum);
+							if (len > 0) {
+								var spectrum = new Float32Array(len);
+
+								for (let i = 0; i < len; i++)
+									spectrum[i] = vec.get(i);
+
+								if (!windowLeft) {
+									spectrum_stack[index - 1].push({ spectrum: spectrum, id: recv_seq_id });
+									console.log("index:", index, "spectrum_stack length:", spectrum_stack[index - 1].length);
+								};
+							}
+						});
 
 						return;
 					}
