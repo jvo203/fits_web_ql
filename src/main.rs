@@ -2448,16 +2448,17 @@ fn fpzip_compress(src: &Vec<f32>, high_quality: bool) -> Option<Vec<u8>> {
     let stat = unsafe { fpzip_write_header(fpz) };
 
     if stat == 0 {
+        unsafe { fpzip_write_close(fpz) };
         return None;
     };
 
     let outbytes = unsafe { fpzip_write(fpz, src.as_ptr() as *const std::ffi::c_void) };
 
+    unsafe { fpzip_write_close(fpz) };
+
     if outbytes == 0 {
         return None;
     };
-
-    unsafe { fpzip_write_close(fpz) };
 
     println!("[fpzip::compress] {} reduced to {} bytes.", src.len() * std::mem::size_of::<f32>(), outbytes);
 
