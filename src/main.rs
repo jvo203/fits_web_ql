@@ -2394,7 +2394,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.3";
-static VERSION_STRING: &'static str = "SV2020-06-19.0";
+static VERSION_STRING: &'static str = "SV2020-06-19.1";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4101,7 +4101,8 @@ fn http_fits_response(
             "<script>
             FPZIP().then((myFPZIP) => {
                 // this is reached when everything is ready, and you can call methods on myFPZIP
-                console.log('FPZIP WebAssembly has been initialised.');                
+                console.log('FPZIP WebAssembly has been initialised.');
+                fpzip_decompressor = myFPZIP;              
               });
         /*FPZIP.ready
             .then( status => console.log( status ))
