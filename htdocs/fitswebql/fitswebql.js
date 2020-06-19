@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-06-19.1";
+	return "JS2020-06-19.2";
 }
 
 const wasm_supported = (() => {
@@ -1539,7 +1539,7 @@ function open_websocket_connection(datasetId, index) {
 						var frame = new Uint8Array(received_msg, 24);
 
 						try {
-							var vec = fzip_decompressor.FPunzip(frame);
+							var vec = fpzip_decompressor.FPunzip(frame);
 
 							let len = vec.size();
 
