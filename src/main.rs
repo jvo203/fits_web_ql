@@ -42,6 +42,7 @@ use std::time::SystemTime;
 use std::{env, mem, ptr};
 
 use lttb::{lttb, DataPoint};
+use fpzip_sys::*;
 
 use actix::*;
 use actix_files as fs;
@@ -957,6 +958,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 } else {
                                     spectrum
                                 };
+
+                                fpzip_compress(&spectrum, image);
 
                                 //send a binary response message (serialize a structure to a binary stream)
                                 let ws_spectrum = WsSpectrum {
@@ -2388,7 +2391,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.2";
-static VERSION_STRING: &'static str = "SV2020-06-18.0";
+static VERSION_STRING: &'static str = "SV2020-06-19.0";
 static WASM_STRING: &'static str = "WASM2019-02-08.1";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -2416,6 +2419,50 @@ const SERVER_PATH: &'static str = "fitswebql";
 const WEBSOCKET_TIMEOUT: u64 = 60 * 60; //[s]; a websocket inactivity timeout
 
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
+
+fn fpzip_compress(src: &Vec<f32>, high_quality: bool) -> Option<Vec<u8>> {
+    let prec = if high_quality {
+        24
+    } else {
+        16
+    };
+    
+    /* allocate buffer for compressed data */
+    let bufsize = 1024 + src.len() * std::mem::size_of::<f32>();
+    let mut buffer: Vec<u8> = vec![0; bufsize];
+
+    /* compress to memory */
+    let fpz = unsafe {
+        fpzip_write_to_buffer(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize as u64)
+    };
+
+    unsafe {
+        (*fpz).type_ = FPZIP_TYPE_FLOAT as i32;
+        (*fpz).prec = prec;
+        (*fpz).nx = src.len() as i32;
+        (*fpz).ny = 1;
+        (*fpz).nz = 1;
+        (*fpz).nf = 1;
+    }
+
+    let stat = unsafe { fpzip_write_header(fpz) };
+
+    if stat == 0 {
+        return None;
+    };
+
+    let outbytes = unsafe { fpzip_write(fpz, src.as_ptr() as *const std::ffi::c_void) };
+
+    if outbytes == 0 {
+        return None;
+    };
+
+    unsafe { fpzip_write_close(fpz) };
+
+    println!("[fpzip::compress] {} reduced to {} bytes.", src.len() * std::mem::size_of::<f32>(), outbytes);
+
+    return Some(buffer[0..outbytes as usize].to_vec());
+}
 
 fn stream_molecules(freq_start: f64, freq_end: f64) -> Option<mpsc::Receiver<Molecule>> {
     //splatalogue sqlite db integration
@@ -4050,7 +4097,7 @@ fn http_fits_response(
             "<script>
             FPZIP().then((myFPZIP) => {
                 // this is reached when everything is ready, and you can call methods on myFPZIP
-                console.log('FPZIP WebAssembly has been initialised.');
+                console.log('FPZIP WebAssembly has been initialised.');                
               });
         /*FPZIP.ready
             .then( status => console.log( status ))
