@@ -41,8 +41,8 @@ use std::time::Instant;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
 
-use lttb::{lttb, DataPoint};
 use fpzip_sys::*;
+use lttb::{lttb, DataPoint};
 
 use actix::*;
 use actix_files as fs;
@@ -961,29 +961,29 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                                 match fpzip_compress(&spectrum, image) {
                                     Some(spectrum) => {
-                                //send a binary response message (serialize a structure to a binary stream)
-                                let ws_spectrum = WsSpectrum {
-                                    ts: timestamp as f32,
-                                    seq_id: seq_id as u32,
-                                    msg_type: 0,
-                                    elapsed: watch.elapsed().as_millis() as f32,
-                                    spectrum: spectrum,
-                                };
+                                        //send a binary response message (serialize a structure to a binary stream)
+                                        let ws_spectrum = WsSpectrum {
+                                            ts: timestamp as f32,
+                                            seq_id: seq_id as u32,
+                                            msg_type: 0,
+                                            elapsed: watch.elapsed().as_millis() as f32,
+                                            spectrum: spectrum,
+                                        };
 
-                                match serialize(&ws_spectrum) {
-                                    Ok(bin) => {
-                                        println!("binary length: {}", bin.len());
-                                        //println!("{}", bin);
-                                        ctx.binary(bin);
-                                    }
-                                    Err(err) => println!(
+                                        match serialize(&ws_spectrum) {
+                                            Ok(bin) => {
+                                                println!("binary length: {}", bin.len());
+                                                //println!("{}", bin);
+                                                ctx.binary(bin);
+                                            }
+                                            Err(err) => println!(
                                         "error serializing a WebSocket spectrum response: {}",
                                         err
                                     ),
+                                        }
+                                    }
+                                    None => {}
                                 }
-                            },
-                            None => {}
-                            }
                             }
                             None => {}
                         }
@@ -2424,12 +2424,8 @@ const WEBSOCKET_TIMEOUT: u64 = 60 * 60; //[s]; a websocket inactivity timeout
 //const LONG_POLL_TIMEOUT: u64 = 100;//[ms]; keep it short, long intervals will block the actix event loop
 
 fn fpzip_compress(src: &Vec<f32>, high_quality: bool) -> Option<Vec<u8>> {
-    let prec = if high_quality {
-        24
-    } else {
-        16
-    };
-    
+    let prec = if high_quality { 24 } else { 16 };
+
     /* allocate buffer for compressed data */
     let bufsize = 1024 + src.len() * std::mem::size_of::<f32>();
     let mut buffer: Vec<u8> = vec![0; bufsize];
@@ -2463,7 +2459,11 @@ fn fpzip_compress(src: &Vec<f32>, high_quality: bool) -> Option<Vec<u8>> {
         return None;
     };
 
-    println!("[fpzip::compress] {} reduced to {} bytes.", src.len() * std::mem::size_of::<f32>(), outbytes);
+    println!(
+        "[fpzip::compress] {} reduced to {} bytes.",
+        src.len() * std::mem::size_of::<f32>(),
+        outbytes
+    );
 
     return Some(buffer[0..outbytes as usize].to_vec());
 }
