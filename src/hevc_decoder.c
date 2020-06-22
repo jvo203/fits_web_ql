@@ -1,5 +1,7 @@
 #include <emscripten.h>
 
+#define WASM_EXPORT __attribute__((visibility("default")))
+
 #include <libavcodec/hevc_parse.h>
 
 #include <libavutil/common.h>
