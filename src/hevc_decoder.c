@@ -17,7 +17,7 @@ static AVPacket **avpkt = NULL;
 extern AVCodec ff_hevc_decoder;
 //extern AVCodecParser ff_hevc_parser;
 
-static void EMSCRIPTEN_KEEPALIVE hevc_init(int va_count)
+EMSCRIPTEN_KEEPALIVE static void hevc_init(int va_count)
 {
     //the "standard" way
     codec = &ff_hevc_decoder;
@@ -73,7 +73,7 @@ static void EMSCRIPTEN_KEEPALIVE hevc_init(int va_count)
     }
 }
 
-static void EMSCRIPTEN_KEEPALIVE hevc_destroy(int va_count)
+EMSCRIPTEN_KEEPALIVE static void hevc_destroy(int va_count)
 {
     if (avctx != NULL)
     {
@@ -106,7 +106,7 @@ static void EMSCRIPTEN_KEEPALIVE hevc_destroy(int va_count)
     }
 }
 
-static double EMSCRIPTEN_KEEPALIVE hevc_decode_nal_unit(int index, const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap)
+EMSCRIPTEN_KEEPALIVE static double hevc_decode_nal_unit(int index, const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap)
 {
     if (avctx == NULL || avpkt == NULL || avframe == NULL)
         return 0.0;
