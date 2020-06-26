@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-06-19.2";
+	return "JS2020-06-26.0";
 }
 
 const wasm_supported = (() => {
@@ -12361,31 +12361,31 @@ function enable_3d_view() {
 
 		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/Detector.js';
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/Detector.min.js';
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
 
 		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/threex.keyboardstate.js';
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/threex.keyboardstate.min.js';
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
 
 		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/threex.windowresize.js';
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/threex.windowresize.min.js';
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
 
 		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/THREEx.FullScreen.js';
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/THREEx.FullScreen.min.js';
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
 
 		(function () {
 			var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/TrackballControls.js';
+			po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/TrackballControls.min.js';
 			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
 		})();
 
