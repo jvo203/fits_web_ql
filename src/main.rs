@@ -2393,8 +2393,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.2.4";
-static VERSION_STRING: &'static str = "SV2020-06-23.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.2.5";
+static VERSION_STRING: &'static str = "SV2020-06-26.0";
 //static WASM_STRING: &'static str = "WASM2019-02-08.1";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
@@ -3998,29 +3998,29 @@ fn http_fits_response(
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"reconnecting-websocket.js\"></script>\n");
     #[cfg(feature = "cdn")]
-    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/reconnecting-websocket.js\"></script>\n");
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/reconnecting-websocket.min.js\"></script>\n");
 
     html.push_str("<script src=\"//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js\"></script>\n");
 
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"ra_dec_conversion.js\"></script>\n");
     #[cfg(feature = "cdn")]
-    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/ra_dec_conversion.js\"></script>\n");
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/ra_dec_conversion.min.js\"></script>\n");
 
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"sylvester.js\"></script>\n");
     #[cfg(feature = "cdn")]
-    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/sylvester.js\"></script>\n");
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/sylvester.min.js\"></script>\n");
 
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"shortcut.js\"></script>\n");
     #[cfg(feature = "cdn")]
-    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/shortcut.js\"></script>\n");
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/shortcut.min.js\"></script>\n");
 
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"colourmaps.js\"></script>\n");
     #[cfg(feature = "cdn")]
-    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/colourmaps.js\"></script>\n");
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/colourmaps.min.js\"></script>\n");
 
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"lz4.min.js\"></script>\n");
@@ -4041,7 +4041,7 @@ fn http_fits_response(
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"ogv-decoder-video-vp9.js\"></script>\n");
     #[cfg(feature = "cdn")]
-    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/ogv-decoder-video-vp9.js\"></script>\n");
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/ogv-decoder-video-vp9.min.js\"></script>\n");
 
     //custom vpx wasm decoder
     #[cfg(feature = "vp9")]
@@ -4049,7 +4049,7 @@ fn http_fits_response(
         #[cfg(not(feature = "cdn"))]
         html.push_str("<script src=\"vpx.js\"></script>\n");
         #[cfg(feature = "cdn")]
-        html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/vpx.js\"></script>\n");
+        html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/vpx.min.js\"></script>\n");
 
         html.push_str("<script>
         Module.onRuntimeInitialized = async _ => {
@@ -4076,7 +4076,7 @@ fn http_fits_response(
 
         #[cfg(feature = "cdn")]
         html.push_str(&format!(
-            "<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/hevc_{}.js\"></script>\n",
+            "<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/hevc_{}.min.js\"></script>\n",
             WASM_STRING
         ));
 
@@ -4101,7 +4101,7 @@ fn http_fits_response(
 
         #[cfg(feature = "cdn")]
         html.push_str(&format!(
-            "<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/fpzip.{}.js\"></script>\n",
+            "<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/fpzip.{}.min.js\"></script>\n",
             FPZIP_STRING
         ));
 
