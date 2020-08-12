@@ -4296,30 +4296,46 @@ macro_rules! ipp_assert {
 
 #[cfg(feature = "mem")]
 fn get_memory_usage() -> (usize, usize, usize) {
-    // memory statistics using jemalloc        
+    // memory statistics using jemalloc
     let cache_name = "thread.tcache.flush";
     let cache_c_name = CString::new(cache_name).unwrap();
-    unsafe { mallctl(cache_c_name.as_ptr(), ptr::null_mut(), ptr::null_mut(), ptr::null_mut(), 0); }
-    
+    unsafe {
+        mallctl(
+            cache_c_name.as_ptr(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            0,
+        );
+    }
+
     let epoch_name = "epoch";
     let epoch_c_name = CString::new(epoch_name).unwrap();
-    let mut epoch : i64 = 1;
+    let mut epoch: i64 = 1;
     let mut sz = std::mem::size_of_val(&epoch);
 
-    let epoch_mut_ptr : *mut i64 = &mut epoch; 
-    let sz_mut_ptr : *mut usize = &mut sz;         
-    unsafe { mallctl(epoch_c_name.as_ptr(), epoch_mut_ptr as *mut std::ffi::c_void, sz_mut_ptr, epoch_mut_ptr as *mut std::ffi::c_void, sz); }
+    let epoch_mut_ptr: *mut i64 = &mut epoch;
+    let sz_mut_ptr: *mut usize = &mut sz;
+    unsafe {
+        mallctl(
+            epoch_c_name.as_ptr(),
+            epoch_mut_ptr as *mut std::ffi::c_void,
+            sz_mut_ptr,
+            epoch_mut_ptr as *mut std::ffi::c_void,
+            sz,
+        );
+    }
 
     let mut allocated: usize = 0;
     let mut active: usize = 0;
     let mut mapped: usize = 0;
 
-    let allocated_mut_ptr : *mut usize = &mut allocated;
-    let active_mut_ptr : *mut usize = &mut active;
-    let mapped_mut_ptr : *mut usize = &mut mapped;
+    let allocated_mut_ptr: *mut usize = &mut allocated;
+    let active_mut_ptr: *mut usize = &mut active;
+    let mapped_mut_ptr: *mut usize = &mut mapped;
 
     let mut sz = mem::size_of::<usize>();
-    let sz_mut_ptr : *mut usize = &mut sz;         
+    let sz_mut_ptr: *mut usize = &mut sz;
 
     let allocated_name = "stats.allocated";
     let allocated_c_name = CString::new(allocated_name).unwrap();
@@ -4331,12 +4347,30 @@ fn get_memory_usage() -> (usize, usize, usize) {
     let mapped_c_name = CString::new(mapped_name).unwrap();
 
     unsafe {
-        mallctl(allocated_c_name.as_ptr(), allocated_mut_ptr as *mut std::ffi::c_void, sz_mut_ptr,  ptr::null_mut(), 0);
-        mallctl(active_c_name.as_ptr(), active_mut_ptr as *mut std::ffi::c_void, sz_mut_ptr,  ptr::null_mut(), 0);
-        mallctl(mapped_c_name.as_ptr(), mapped_mut_ptr as *mut std::ffi::c_void, sz_mut_ptr,  ptr::null_mut(), 0);
+        mallctl(
+            allocated_c_name.as_ptr(),
+            allocated_mut_ptr as *mut std::ffi::c_void,
+            sz_mut_ptr,
+            ptr::null_mut(),
+            0,
+        );
+        mallctl(
+            active_c_name.as_ptr(),
+            active_mut_ptr as *mut std::ffi::c_void,
+            sz_mut_ptr,
+            ptr::null_mut(),
+            0,
+        );
+        mallctl(
+            mapped_c_name.as_ptr(),
+            mapped_mut_ptr as *mut std::ffi::c_void,
+            sz_mut_ptr,
+            ptr::null_mut(),
+            0,
+        );
     }
 
-    //println!("allocated/active/mapped: {}/{}/{} [MB]", allocated / (1024 * 1024), active / (1024 * 1024), mapped / (1024 * 1024)); 
+    //println!("allocated/active/mapped: {}/{}/{} [MB]", allocated / (1024 * 1024), active / (1024 * 1024), mapped / (1024 * 1024));
 
     (allocated, active, mapped)
 }
@@ -4353,34 +4387,43 @@ fn main() {
 
         match file {
             Ok(mut f) => {
-                let _ = f.write_all(b"\"elapsed time [ms]\",\"stats.allocated\",\"stats.active\",\"stats.mapped\"\n");                
+                let _ = f.write_all(b"\"elapsed time [ms]\",\"stats.allocated\",\"stats.active\",\"stats.mapped\"\n");
                 let _ = f.write_all(format!("0,{},{},{}\n", allocated, active, mapped).as_bytes());
-            },
+            }
             Err(err) => println!("{}", err),
-        } ;
+        };
 
         let offset = SystemTime::now();
 
-        timer.schedule_repeating(chrono::Duration::seconds(1), move || {    
-        let (allocated, active, mapped) = get_memory_usage();
+        timer.schedule_repeating(chrono::Duration::seconds(1), move || {
+            let (allocated, active, mapped) = get_memory_usage();
 
-        let file = OpenOptions::new().append(true).open("memory_usage.csv");        
+            let file = OpenOptions::new().append(true).open("memory_usage.csv");
 
-        match file {
-            Ok(mut f) => {
-                match offset.elapsed() {
-                    Ok(elapsed) => {                        
-                        let _ = f.write_all(format!("{},{},{},{}\n", elapsed.as_millis(), allocated, active, mapped).as_bytes());
-                    }
-                    Err(e) => {
-                        // an error occurred!
-                        println!("Error: {:?}", e);                
-                    }
-                };                
-            },
-            Err(err) => println!("{}", err),
-        } ;
-      })
+            match file {
+                Ok(mut f) => {
+                    match offset.elapsed() {
+                        Ok(elapsed) => {
+                            let _ = f.write_all(
+                                format!(
+                                    "{},{},{},{}\n",
+                                    elapsed.as_millis(),
+                                    allocated,
+                                    active,
+                                    mapped
+                                )
+                                .as_bytes(),
+                            );
+                        }
+                        Err(e) => {
+                            // an error occurred!
+                            println!("Error: {:?}", e);
+                        }
+                    };
+                }
+                Err(err) => println!("{}", err),
+            };
+        })
     };
 
     #[cfg(feature = "ipp")]
