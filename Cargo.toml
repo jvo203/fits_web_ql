@@ -16,6 +16,7 @@ cuda = []
 opencl = ["ocl", "rand"]
 zfp = ["zfp-sys"]
 ipp = ["ipp-sys"]
+mem = ["jemalloc-sys"]
 
 [build-dependencies]
 bindgen = "*"
@@ -31,6 +32,7 @@ thread-priority = "*"
 
 [dependencies]
 jemallocator = "*"
+jemalloc-sys = { version = "*", optional = true }
 actix = "*"
 actix-http = "*"
 actix-web = "*"
