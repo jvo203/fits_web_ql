@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-10-19.1";
+	return "JS2020-10-19.2";
 }
 
 const wasm_supported = (() => {
@@ -12795,11 +12795,16 @@ async*/ function mainRenderer() {
 			.attr('style', 'position: fixed; left: 10px; top: 10px; z-index: 54; cursor: default; mix-blend-mode: none');//difference or lighten or screen //other than none causes problems with an older Firefox v45
 
 		//spectrum
+		var blend = '';
+
+		if (theme == 'bright')
+			blend = 'mix-blend-mode: difference; ';
+
 		d3.select("#mainDiv").append("canvas")
 			.attr("id", "SpectrumCanvas")
 			.attr("width", width)
 			.attr("height", height)
-			.attr('style', 'mix-blend-mode: difference; position: fixed; left: 10px; top: 10px; z-index: 54');
+			.attr('style', blend + 'position: fixed; left: 10px; top: 10px; z-index: 54');
 
 		d3.select("#mainDiv").append("svg")
 			.attr("id", "FrontSVG")
