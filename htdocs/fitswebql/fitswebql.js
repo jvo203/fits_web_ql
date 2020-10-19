@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-06-26.0";
+	return "JS2020-10-19.0";
 }
 
 const wasm_supported = (() => {
@@ -394,7 +394,7 @@ function largestTriangleThreeBuckets(data, threshold) {
 function getShadowStyle() {
 	if (!composite_view) {
 		if (theme == 'bright')
-			return "purple";
+			return "black";// was purple
 		else
 			return "yellow";//was red
 	}
@@ -410,8 +410,13 @@ function getStrokeStyle() {
 	style = "rgba(255,255,255,1.0)";//white
 	//style = "rgba(153, 102, 153, 0.9)" ;//violet
 
-	if (theme == 'bright')
-		style = "rgba(0,0,0,1.0)";//black
+	if (theme == 'bright') {
+		//style = "rgba(0,0,0,1.0)";//black
+		style = "rgba(127,127,127,1.0)";// grey
+
+		if (colourmap == "greyscale")
+			style = "rgba(255,204,0,1.0)";//yellowish ALMAWebQL v2	    
+	}
 
 	if (theme == 'dark') {
 		if (colourmap == "green")
@@ -562,7 +567,7 @@ function plot_spectrum(dataArray) {
 			ctx.setLineDash(linedash[index % linedash.length]);
 		}
 
-		ctx.lineWidth = 0;
+		ctx.lineWidth = 1; // was 0
 		ctx.strokeWidth = emStrokeWidth;
 
 		ctx.stroke();
@@ -2254,8 +2259,8 @@ function display_hourglass() {
 	var height = c.height;
 
 	//hourglass
-    /*var img_width = 200 ;
-    var img_height = 200 ;*/
+	/*var img_width = 200 ;
+	var img_height = 200 ;*/
 
 	//squares
 	var img_width = 128;
@@ -3658,13 +3663,13 @@ function display_dataset_info() {
 
 	var line = '';
 
-    /*if(va_count == 1)
-    {
+	/*if(va_count == 1)
+	{
 	line = fitsData.LINE.trim() ;
 
 	if(line != "")
-	    line = ' (' + line + ')' ;
-    }*/
+		line = ' (' + line + ')' ;
+	}*/
 
 	maxoffset = 4.5 * emFontSize;
 	group.append("text")
@@ -4132,7 +4137,7 @@ function display_dataset_info() {
 				d3.select("#navigation_title")
 					.text("current mode: " + navigation);
 
-				location.reload(false);
+				location.reload();
 			})
 			.append("svg:title")
 			.attr("id", "navigation_title")
@@ -4443,9 +4448,9 @@ function image_refresh(index, refresh_histogram = true) {
 	if (refresh_histogram)
 		enable_autoscale();
 
-    /*displayContours = false ;
-    var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines' ;
-    d3.select("#displayContours").html(htmlStr);*/
+	/*displayContours = false ;
+	var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines' ;
+	d3.select("#displayContours").html(htmlStr);*/
 
 	var flux_elem = d3.select("#flux_path" + index);
 
@@ -4544,19 +4549,19 @@ function display_scale_range_ui(called_from_menu = false) {
 		$('#scalingHelp').modal('show');
 	}
 
-    /*var svg = d3.select("#FrontSVG") ;
-    var width = parseFloat(svg.attr("width"));
-    var height = parseFloat(svg.attr("height"));
+	/*var svg = d3.select("#FrontSVG") ;
+	var width = parseFloat(svg.attr("width"));
+	var height = parseFloat(svg.attr("height"));
 
-    d3.select("#yaxis")
+	d3.select("#yaxis")
 	.attr("data-toggle", "popover")
 	.attr("data-trigger", "hover")
 	.attr("title", "fixed scale")
 	.attr("data-content", "hold 's' and move mouse over the Y-Axis, then use mouse drag/scroll-wheel to adjust the Y-Axis scale");
 
-    $(document).ready(function(){
+	$(document).ready(function(){
 	$('[data-toggle="popover"]').popover();
-    });*/
+	});*/
 
 }
 
@@ -4686,7 +4691,7 @@ function change_ui_theme() {
 
 	localStorage.setItem("colourmap", colourmap);
 
-	location.reload(false);
+	location.reload();
 	//resizeMe() ;
 }
 
@@ -6412,14 +6417,14 @@ function setup_axes() {
 		.tickSizeOuter([3])
 		.ticks(7);
 	/*.tickFormat(function(d) {
-	    //limit the number of decimal digits shown
-	    return parseFloat(d.toPrecision(7)) ;
+		//limit the number of decimal digits shown
+		return parseFloat(d.toPrecision(7)) ;
 	});*/
 	/*.tickFormat(function(d) {var n ;
 				 if(fitsData.CDELT3 > 0)
-				     n = d * (fitsData.depth-1) + 1 ;
+					 n = d * (fitsData.depth-1) + 1 ;
 				 else
-				     n = (1-d) * (fitsData.depth-1) + 1 ;
+					 n = (1-d) * (fitsData.depth-1) + 1 ;
 				 
 				 var freq = fitsData.CRVAL3+fitsData.CDELT3*(n-fitsData.CRPIX3) ;
 				 freq /= 1e9 ;//convert from Hz to GHz
@@ -7515,8 +7520,8 @@ function fits_subregion_end() {
 	end_x = offset[0];
 	end_y = offset[1];
 
-    /*mousedown = false;
-    d3.select("#zoom").attr("opacity", 1.0);*/
+	/*mousedown = false;
+	d3.select("#zoom").attr("opacity", 1.0);*/
 	d3.select("#region").attr("opacity", 0.0);
 
 	if (end_x == begin_x || end_y == begin_y) {
@@ -7529,8 +7534,8 @@ function fits_subregion_end() {
 	else
 		partial_fits_download(d3.select(this).attr("x"), d3.select(this).attr("y"), d3.select(this).attr("width"), d3.select(this).attr("height"));
 
-    /*var onMouseMoveFunc = d3.select(this).on("mousemove");
-    d3.select("#image_rectangle").each( onMouseMoveFunc );*/
+	/*var onMouseMoveFunc = d3.select(this).on("mousemove");
+	d3.select("#image_rectangle").each( onMouseMoveFunc );*/
 }
 
 function get_diagonal_image_position(index, width, height) {
@@ -9098,7 +9103,7 @@ function display_molecules() {
 	if (theme == 'bright')
 		strokeStyle = 'black';
 
-    /*if(colourmap == "rainbow" || colourmap == "hot")
+	/*if(colourmap == "rainbow" || colourmap == "hot")
 	strokeStyle = "white";*/
 
 	//and adjust (reduce) the font size if there are too many molecules to display
@@ -9744,8 +9749,8 @@ function scaled() {
 
 	prev_scale = d3.event.transform.k;
 
-    /*var interval = factor * (tmp_data_max - tmp_data_min) ;
-    var middle = (tmp_data_max + tmp_data_min) / 2 ;*/
+	/*var interval = factor * (tmp_data_max - tmp_data_min) ;
+	var middle = (tmp_data_max + tmp_data_min) / 2 ;*/
 
 	var interval = factor * (user_data_max - user_data_min);
 	var middle = (user_data_max + user_data_min) / 2;
@@ -9962,10 +9967,10 @@ function imageTimeout() {
 	var x2 = Math.round(fitsX + fitsSize);
 	var y2 = Math.round((fitsData.height - 1) - (fitsY + fitsSize));
 
-    /*x1 = Math.round(fitsX - fitsSize) ;
-    x2 = Math.round(x1 + 2*fitsSize) ;
-    y1 = Math.round(fitsY - fitsSize) ;
-    y2 = Math.round(y1 + 2*fitsSize) ;*/
+	/*x1 = Math.round(fitsX - fitsSize) ;
+	x2 = Math.round(x1 + 2*fitsSize) ;
+	y1 = Math.round(fitsY - fitsSize) ;
+	y2 = Math.round(y1 + 2*fitsSize) ;*/
 
 	var dimx = x2 - x1 + 1;
 	var dimy = y1 - y2 + 1;
@@ -10129,15 +10134,15 @@ function updateKalman() {
 	var velX = (cur_xPos - last_x.elements[0]) / dt;
 	var velY = (cur_yPos - last_x.elements[1]) / dt;
 
-    /*var velX = (cur_xPos - last_xPos)/dt;
-    var velY = (cur_yPos - last_yPos)/dt;
-    var accX = (velX - last_velX)/dt;
-    var accY = (velY - last_velY)/dt;
+	/*var velX = (cur_xPos - last_xPos)/dt;
+	var velY = (cur_yPos - last_yPos)/dt;
+	var accX = (velX - last_velX)/dt;
+	var accY = (velY - last_velY)/dt;
 
-    last_xPos = cur_xPos ;
-    last_yPos = cur_yPos ;
-    last_velX = velX ;
-    last_velY = velY ;*/
+	last_xPos = cur_xPos ;
+	last_yPos = cur_yPos ;
+	last_velX = velX ;
+	last_velY = velY ;*/
 
 	var measurement = $V([cur_xPos, cur_yPos, velX, velY]);
 	//var measurement = $V([velX, velY, accX, accY]);
@@ -11071,10 +11076,10 @@ function show_welcome() {
 	var footer = contentDiv.append("div")
 		.attr("class", "modal-footer");
 
-    /*footer.append("button")	
+	/*footer.append("button")	
 	.attr("type", "button")
 	.attr("data-dismiss", "modal")
-    	.attr("class", "button btn-lg pull-right")
+		.attr("class", "button btn-lg pull-right")
 	.attr("align","center")
 	.html('<span class="glyphicon glyphicon-remove"></span> Close') ;*/
 
@@ -11127,7 +11132,7 @@ function setup_help() {
 	bodyDiv.append("p")
 		.html("Reloading a page should fix the problem");
 
-    /*bodyDiv.append("p")
+	/*bodyDiv.append("p")
 	.html("To enable it check <i>Preferences</i>/<i>3D View (experimental)</i> and a \"3D View\" button should appear towards the bottom of the page") ;*/
 
 	bodyDiv.append("p")
@@ -11963,7 +11968,7 @@ function resizeMe() {
 	clearTimeout(idleResize);
 
 	idleResize = setTimeout(function () {
-		location.reload(false);
+		location.reload();
 	}, 250);
 }
 
@@ -12659,6 +12664,10 @@ async*/ function mainRenderer() {
 				.style('background-color', 'white')
 				.style('color', 'black');
 
+			d3.select("html")
+				.style('background-color', 'white')
+				.style('color', 'black');
+
 			try {
 				for (let i = 0; i < document.styleSheets.length; i++) {
 					if (document.styleSheets[i].href != null)
@@ -12789,7 +12798,7 @@ async*/ function mainRenderer() {
 			.attr("id", "SpectrumCanvas")
 			.attr("width", width)
 			.attr("height", height)
-			.attr('style', 'position: fixed; left: 10px; top: 10px; z-index: 54');
+			.attr('style', 'mix-blend-mode: difference; position: fixed; left: 10px; top: 10px; z-index: 54');
 
 		d3.select("#mainDiv").append("svg")
 			.attr("id", "FrontSVG")
