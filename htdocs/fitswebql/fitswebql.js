@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-10-27.0";
+	return "JS2020-10-27.1";
 }
 
 const wasm_supported = (() => {
@@ -9841,6 +9841,10 @@ function tileTimeout(force = false) {
 	sent_seq_id++;
 
 	var request_images = true;
+
+	var svg = d3.select("#FrontSVG");
+	var width = parseFloat(svg.attr("width"));
+	var height = parseFloat(svg.attr("height"));
 
 	var range = get_axes_range(width, height);
 	var dx = range.xMax - range.xMin;
