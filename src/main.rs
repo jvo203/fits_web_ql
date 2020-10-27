@@ -62,12 +62,12 @@ use actix_web::middleware::{Compress, Logger};
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
+use actix_web::web::Bytes;
 
 use percent_encoding::percent_decode;
 use tar::{Builder, Header};
 use uuid::Uuid;
 
-use bytes::Bytes;
 use futures::prelude::*;
 use futures::task::Poll;
 use futures::StreamExt;
@@ -2402,8 +2402,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.2.5";
-static VERSION_STRING: &'static str = "SV2020-08-12.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.2.6";
+static VERSION_STRING: &'static str = "SV2020-10-27.0";
 //static WASM_STRING: &'static str = "WASM2019-02-08.1";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
