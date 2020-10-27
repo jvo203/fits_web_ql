@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-10-19.2";
+	return "JS2020-10-27.0";
 }
 
 const wasm_supported = (() => {
@@ -423,8 +423,8 @@ function getStrokeStyle() {
 			//style = "rgba(255,127,80,0.9)";//orange
 			//style = "rgba(238,130,238,0.9)" ;
 			//style = "rgba(204,204,204,0.9)";//grey
-			//style = "rgba(255,204,0,1.0)";//yellowish ALMAWebQL v2	    
-			style = "rgba(204,204,204,1.0)";//grey
+			style = "rgba(255,204,0,1.0)";//yellowish ALMAWebQL v2	    
+			//style = "rgba(204,204,204,1.0)";//grey
 
 		if (colourmap == "red")
 			style = "rgba(0,191,255,1.0)";//deepskyblue
