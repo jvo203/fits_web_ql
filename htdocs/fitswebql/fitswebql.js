@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2020-10-27.1";
+	return "JS2020-10-27.2";
 }
 
 const wasm_supported = (() => {
@@ -396,10 +396,12 @@ function getShadowStyle() {
 		if (theme == 'bright')
 			return "black";// was purple
 		else
-			return "yellow";//was red
+			//return "yellow";//was red
+			return "rgba(255,204,0,1.0)"; // light amber
 	}
 	else {
-		return "yellow";
+		//return "yellow";
+		return "rgba(255,204,0,1.0)"; // light amber
 	};
 }
 
