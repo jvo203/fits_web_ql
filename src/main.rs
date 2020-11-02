@@ -59,10 +59,10 @@ use actix_web::dev::BodyEncoding;
 use actix_web::dev::HttpResponseBuilder;
 use actix_web::http::{header::HeaderValue, ContentEncoding, StatusCode};
 use actix_web::middleware::{Compress, Logger};
+use actix_web::web::Bytes;
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
-use actix_web::web::Bytes;
 
 use percent_encoding::percent_decode;
 use tar::{Builder, Header};
