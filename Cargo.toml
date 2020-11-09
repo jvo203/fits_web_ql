@@ -24,7 +24,7 @@ metadeps = "*"
 ispc = "*"
 
 [package.metadata.pkg-config]
-x265 = "2.8"
+x265 = "0.0" # was 2.8 but version recognition is broken on macos right now! 
 vpx = "1.7.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
