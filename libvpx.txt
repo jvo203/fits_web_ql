@@ -1,0 +1,16 @@
+new websocket request for ["ALMA01404683"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36"
+thread 'actix-rt:worker:0' panicked at 'attempted to zero-initialize type `vpx_codec_enc_cfg`, which is invalid', /rustc/7eac88abb2e57e752f3302f02be5f3ce3d7adfb4/library/core/src/mem/mod.rs:622:9
+new websocket request for ["ALMA01404683"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36"
+thread 'actix-rt:worker:1' panicked at 'attempted to zero-initialize type `vpx_codec_enc_cfg`, which is invalid', /rustc/7eac88abb2e57e752f3302f02be5f3ce3d7adfb4/library/core/src/mem/mod.rs:622:9
+new websocket request for ["ALMA01404683"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36"
+thread 'actix-rt:worker:2' panicked at 'attempted to zero-initialize type `vpx_codec_enc_cfg`, which is invalid', /rustc/7eac88abb2e57e752f3302f02be5f3ce3d7adfb4/library/core/src/mem/mod.rs:622:9
+new websocket request for ["ALMA01404683"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36"
+thread 'actix-rt:worker:3' panicked at 'attempted to zero-initialize type `vpx_codec_enc_cfg`, which is invalid', /rustc/7eac88abb2e57e752f3302f02be5f3ce3d7adfb4/library/core/src/mem/mod.rs:622:9
+new websocket request for ["ALMA01404683"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36"
+thread 'actix-rt:worker:4' panicked at 'attempted to zero-initialize type `vpx_codec_enc_cfg`, which is invalid', /rustc/7eac88abb2e57e752f3302f02be5f3ce3d7adfb4/library/core/src/mem/mod.rs:622:9
+new websocket request for ["ALMA01404683"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36"
+thread 'actix-rt:worker:5' panicked at 'attempted to zero-initialize type `vpx_codec_enc_cfg`, which is invalid', /rustc/7eac88abb2e57e752f3302f02be5f3ce3d7adfb4/library/core/src/mem/mod.rs:622:9
+new websocket request for ["ALMA01404683"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36"
+thread 'actix-rt:worker:6' panicked at 'attempted to zero-initialize type `vpx_codec_enc_cfg`, which is invalid', /rustc/7eac88abb2e57e752f3302f02be5f3ce3d7adfb4/library/core/src/mem/mod.rs:622:9
+new websocket request for ["ALMA01404683"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.67 Safari/537.36"
+thread 'actix-rt:worker:7' panicked at 'attempted to zero-initialize type `vpx_codec_enc_cfg`, which is invalid', /rustc/7eac88abb2e57e752f3302f02be5f3ce3d7adfb4/library/core/src/mem/mod.rs:622:9
