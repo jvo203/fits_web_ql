@@ -30,3 +30,4 @@ checking memory usage on p13:
 sar -r -f /var/log/sa/sa30
 
 http://py0.vo.nao.ac.jp:8080/portal/alma/archive.do
+
