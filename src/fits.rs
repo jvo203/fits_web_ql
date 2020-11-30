@@ -5380,7 +5380,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             dimy as i32
         };
 
-        let mut cfg = vpx_codec_enc_cfg::default();
+        //let mut cfg = vpx_codec_enc_cfg::default();
+        let mut cfg = vpx_codec_enc_config_init();
         let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut cfg, 0) };
 
         if ret != VPX_CODEC_OK {
@@ -5833,7 +5834,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             img.stride[i] = frame.buf.linesize(i).unwrap() as i32;
         }*/
 
-        let mut cfg = vpx_codec_enc_cfg::default();
+        //let mut cfg = vpx_codec_enc_cfg::default();
+        let mut cfg = vpx_codec_enc_config_init();
         let mut ret = unsafe { vpx_codec_enc_config_default(vpx_codec_vp9_cx(), &mut cfg, 0) };
 
         if ret != VPX_CODEC_OK {
