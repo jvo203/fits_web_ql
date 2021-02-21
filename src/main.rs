@@ -614,17 +614,21 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                         unsafe {
                             //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("fastdecode").unwrap().as_ptr());
 
+                            let tune = CString::new("zerolatency").unwrap();
+
                             if self.dataset_id.len() == 1 || !is_composite {
+                                let preset = CString::new("superfast").unwrap();
                                 x265_param_default_preset(
                                     self.param,
-                                    CString::new("superfast").unwrap().as_ptr(),
-                                    CString::new("zerolatency").unwrap().as_ptr(),
+                                    preset.as_ptr(),
+                                    tune.as_ptr(),
                                 );
                             } else {
+                                let preset = CString::new("ultrafast").unwrap();
                                 x265_param_default_preset(
                                     self.param,
-                                    CString::new("ultrafast").unwrap().as_ptr(),
-                                    CString::new("zerolatency").unwrap().as_ptr(),
+                                    preset.as_ptr(),
+                                    tune.as_ptr(),
                                 );
                             }
 
@@ -2464,7 +2468,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.2.7";
-static VERSION_STRING: &'static str = "SV2020-11-30.0";
+static VERSION_STRING: &'static str = "SV2021-02-21.0";
 //static WASM_STRING: &'static str = "WASM2019-02-08.1";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
