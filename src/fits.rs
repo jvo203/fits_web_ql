@@ -5213,11 +5213,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let tune = CString::new("zerolatency").unwrap();
 
         unsafe {
-            x265_param_default_preset(
-                param,
-                preset.as_ptr(),
-                tune.as_ptr(),
-            );
+            x265_param_default_preset(param, preset.as_ptr(), tune.as_ptr());
 
             (*param).fpsNum = 10;
             (*param).fpsDenom = 1;

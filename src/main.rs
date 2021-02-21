@@ -198,10 +198,7 @@ fn vpx_codec_enc_config_init() -> vpx_codec_enc_cfg_t {
         g_h: 0,
         g_bit_depth: vpx_bit_depth::VPX_BITS_8,
         g_input_bit_depth: 8,
-        g_timebase: vpx_rational {
-            num: 0,
-            den: 0,
-        },
+        g_timebase: vpx_rational { num: 0, den: 0 },
         g_error_resilient: 0,
         g_pass: vpx_enc_pass::VPX_RC_ONE_PASS,
         g_lag_in_frames: 0,
@@ -211,7 +208,7 @@ fn vpx_codec_enc_config_init() -> vpx_codec_enc_cfg_t {
         rc_scaled_height: 0,
         rc_resize_up_thresh: 0,
         rc_resize_down_thresh: 0,
-        rc_end_usage: vpx_rc_mode::VPX_VBR, 
+        rc_end_usage: vpx_rc_mode::VPX_VBR,
         rc_twopass_stats_in: vpx_fixed_buf {
             buf: ptr::null_mut(),
             sz: 0,
