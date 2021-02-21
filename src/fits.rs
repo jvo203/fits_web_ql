@@ -5209,11 +5209,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return None;
         }
 
+        let preset = CString::new("superfast").unwrap();
+        let tune = CString::new("zerolatency").unwrap();
+
         unsafe {
             x265_param_default_preset(
                 param,
-                CString::new("superfast").unwrap().as_ptr(),
-                CString::new("zerolatency").unwrap().as_ptr(),
+                preset.as_ptr(),
+                tune.as_ptr(),
             );
 
             (*param).fpsNum = 10;
