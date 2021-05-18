@@ -1276,7 +1276,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut end: bool = false;
         let mut no_hdu: i32 = 0;
 
-        while !end {
+        /*while !end {
             //read a FITS chunk
             let mut chunk = [0; FITS_CHUNK_LENGTH];
 
@@ -1302,7 +1302,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     return fits;
                 }
             };
-        }
+        }*/
 
         //try again, there may be an image extension
         while fits.naxis == 0 { 
