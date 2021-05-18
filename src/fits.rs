@@ -1305,7 +1305,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
 
         //try again, there may be an image extension
-        if fits.naxis == 0 {
+        while fits.naxis == 0 { 
             header = Vec::new();
             end = false;
 
@@ -2149,8 +2149,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     return Err("non-UTF8 characters found in the FITS header");
                 }
             };
-
-            println!("{}", line);
 
             if line.contains("END       ") {
                 return Ok(true);
