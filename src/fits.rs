@@ -1867,15 +1867,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     };
 
-                    if !fits.has_data {
-                        Ok(data.len())
-                    } else {
-                        //no need for further data, terminate the transfer early
-                        //Ok(0)
-
-                        // compressed files need to be saved in their entirety
-                        Ok(data.len())
-                    }
+                    Ok(data.len())                  
                 })
                 .unwrap();
 
