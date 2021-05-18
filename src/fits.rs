@@ -2150,6 +2150,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 }
             };
 
+            println!("{}", line);
+
             if line.contains("END       ") {
                 return Ok(true);
             }
