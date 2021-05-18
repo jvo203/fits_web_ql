@@ -1273,41 +1273,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         };
 
         let mut header: Vec<u8> = Vec::new();
-        let mut end: bool = false;
         let mut no_hdu: i32 = 0;
 
-        /*while !end {
-            //read a FITS chunk
-            let mut chunk = [0; FITS_CHUNK_LENGTH];
-
-            match f.read_exact(&mut chunk) {
-                Ok(()) => {
-                    no_hdu = no_hdu + 1;
-
-                    //parse a FITS header chunk
-                    match fits.parse_fits_header_chunk(&chunk) {
-                        Ok(x) => end = x,
-                        Err(err) => {
-                            println!("CRITICAL ERROR parsing FITS header: {}", err);
-                            fits.status_code = 415;
-                            return fits;
-                        }
-                    };
-
-                    header.extend_from_slice(&chunk);
-                }
-                Err(err) => {
-                    println!("CRITICAL ERROR reading FITS header: {}", err);
-                    fits.status_code = 500;
-                    return fits;
-                }
-            };
-        }*/
-
-        //try again, there may be an image extension
+        //try many times until the right header has been found
         while fits.naxis == 0 { 
             header = Vec::new();
-            end = false;
+            let mut end: bool = false;
 
             while !end {
                 //read a FITS chunk
