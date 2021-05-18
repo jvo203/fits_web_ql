@@ -1716,7 +1716,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         if buffer[0] == 0x1f && buffer[1] == 0x8b && buffer[2] == 0x08 {
                             let mut decoder = GzDecompressor::new(Vec::new());
                             is_compressed = true;
-                            println!("found.");
+                            println!("gzip found.");
 
                             //decompress the incoming data
                             match decoder.write_all(&buffer) {
@@ -1742,7 +1742,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         if buffer[0] == 0x42 && buffer[1] == 0x5a && buffer[2] == 0x68 {
                             let mut decoder = BzDecompressor::new(Vec::new());
                             is_compressed = true;
-                            println!("found.");
+                            println!("bzip2 found.");
 
                             //decompress the incoming data
                             match decoder.write_all(&buffer) {
