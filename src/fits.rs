@@ -2151,6 +2151,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     self.is_optical = false;
                     self.flux = String::from("logistic");
                 }
+
+                // Tomo-e Gozen
+                if telescope.contains("kiso") {
+                    //enable optical
+                    self.is_optical = true;
+                    self.flux = String::from("ratio");
+                }
             }
 
             if line.contains("ASTRO-F") {
