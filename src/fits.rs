@@ -1254,7 +1254,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let is_bzip2 = is_bzip2_compressed(&mut f);
         let is_compressed = is_bzip2 || is_gzip;
 
-        println!("is_gzip: {}, is_bzip2: {}, is_compressed: {}", is_gzip, is_bzip2, is_compressed);
+        println!(
+            "is_gzip: {}, is_bzip2: {}, is_compressed: {}",
+            is_gzip, is_bzip2, is_compressed
+        );
 
         //OK, we have a FITS file with at least one chunk
         println!("{}: reading a FITS file header...", id);
@@ -1276,7 +1279,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let mut no_hdu: i32 = 0;
 
         //try many times until the right header has been found
-        while fits.naxis == 0 { 
+        while fits.naxis == 0 {
             header = Vec::new();
             let mut end: bool = false;
 
@@ -1838,7 +1841,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
                     };
 
-                    Ok(data.len())                  
+                    Ok(data.len())
                 })
                 .unwrap();
 
