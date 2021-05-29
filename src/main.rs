@@ -611,11 +611,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                         unsafe {
                             //x265_param_default_preset(self.param, CString::new("ultrafast").unwrap().as_ptr(), CString::new("fastdecode").unwrap().as_ptr());
 
-                            let tune = if fits.telescope.contains("kiso") {
+                            let tune = CString::new("zerolatency").unwrap();
+
+                            /*let tune = if fits.telescope.contains("kiso") {
                                 CString::new("grain").unwrap()
                             } else {
                                 CString::new("zerolatency").unwrap()
-                            };
+                            };*/
 
                             if self.dataset_id.len() == 1 || !is_composite {
                                 let preset = CString::new("superfast").unwrap();
