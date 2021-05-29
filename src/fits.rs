@@ -290,7 +290,7 @@ pub struct FITS {
     data_id: String,
     filesize: u64,
     //basic header/votable
-    telescope: String,
+    pub telescope: String,
     obj_name: String,
     obs_date: String,
     timesys: String,
