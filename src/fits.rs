@@ -290,6 +290,7 @@ pub struct FITS {
     data_id: String,
     filesize: u64,
     //basic header/votable
+    telescope: String,
     obj_name: String,
     obs_date: String,
     timesys: String,
@@ -356,7 +357,6 @@ pub struct FITS {
     data_median: RwLock<f32>,
     data_mad_p: RwLock<f32>,
     data_mad_n: RwLock<f32>,
-    data_flux: String,
     pub pmin: f32,
     pub pmax: f32,
     pub lmin: f32,
@@ -404,6 +404,7 @@ impl FITS {
             dataset_id: id.clone(),
             data_id: format!("{}_00_00_00", id),
             filesize: 0,
+            telescope: String::from(""),
             obj_name: obj_name,
             obs_date: String::from(""),
             timesys: String::from(""),
@@ -469,7 +470,6 @@ impl FITS {
             data_median: RwLock::new(0.0),
             data_mad_p: RwLock::new(0.0),
             data_mad_n: RwLock::new(0.0),
-            data_flux: String::from("logistic"),
             pmin: std::f32::MIN,
             pmax: std::f32::MAX,
             lmin: (0.5f32).ln(),
@@ -2134,26 +2134,28 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     _ => String::from(""),
                 };
 
-                println!("telescope: {}", telescope);
+                self.telescope = telescope;
+                
+                println!("telescope: {}", self.telescope);
 
-                if telescope.contains("alma") {
+                if self.telescope.contains("alma") {
                     //disable optical
                     self.is_optical = false;
                 }
 
-                if telescope.contains("vla") || telescope.contains("ska") {
+                if self.telescope.contains("vla") || self.telescope.contains("ska") {
                     //disable optical
                     self.is_optical = false;
                 }
 
-                if telescope.contains("nro45m") {
+                if self.telescope.contains("nro45m") {
                     //disable optical
                     self.is_optical = false;
                     self.flux = String::from("logistic");
                 }
 
                 // Tomo-e Gozen
-                if telescope.contains("kiso") {
+                if self.telescope.contains("kiso") {
                     //enable optical
                     self.is_optical = true;
                     self.flux = String::from("ratio");
