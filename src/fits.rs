@@ -3401,9 +3401,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 let mut data_count_p = data_count_p.write();
                 let mut data_count_n = data_count_n.write();
 
+                *data_mad += mad;
                 *data_mad_p += mad_p;
                 *data_mad_n += mad_n;
 
+                *data_count += count;
                 *data_count_p += count_p;
                 *data_count_n += count_n;
             });
