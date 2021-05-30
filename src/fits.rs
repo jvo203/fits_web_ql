@@ -355,6 +355,7 @@ pub struct FITS {
     dmax: f32,
     data_hist: RwLock<Vec<i64>>,
     data_median: RwLock<f32>,
+    data_mad: RwLock<f32>,
     data_mad_p: RwLock<f32>,
     data_mad_n: RwLock<f32>,
     pub pmin: f32,
@@ -468,6 +469,7 @@ impl FITS {
             dmax: std::f32::MIN, //no mistake here
             data_hist: RwLock::new(Vec::new()),
             data_median: RwLock::new(0.0),
+            data_mad: RwLock::new(0.0),
             data_mad_p: RwLock::new(0.0),
             data_mad_n: RwLock::new(0.0),
             pmin: std::f32::MIN,
@@ -4191,10 +4193,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //let v = 15.0_f32 ;
 
         let median = *self.data_median.read();
-        let black = self
+        let mut black = self
             .dmin
             .max((*self.data_median.read()) - u * (*self.data_mad_n.read()));
-        let white = self
+        let mut white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let mut sensitivity = 1.0 / (white - black);
