@@ -69,7 +69,7 @@ use tar::{Builder, Header};
 use uuid::Uuid;
 
 use futures::prelude::*;
-//use futures::task::Poll;
+use futures::task::Poll;
 use futures::Stream;
 use std::sync::mpsc;
 
