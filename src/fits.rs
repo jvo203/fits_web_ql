@@ -2135,7 +2135,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 };
 
                 self.telescope = telescope;
-                
+
                 println!("telescope: {}", self.telescope);
 
                 if self.telescope.contains("alma") {
@@ -3812,6 +3812,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
+        // adjust the ratio sensitivity
+        if self.is_optical && flux == "ratio" {
+            let factor = self.ratio_sensitivity / self.sensitivity;
+            sensitivity = sensitivity * factor;
+        };
+
         let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
@@ -3934,6 +3940,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
+
+        // adjust the ratio sensitivity
+        if self.is_optical && flux == "ratio" {
+            let factor = self.ratio_sensitivity / self.sensitivity;
+            sensitivity = sensitivity * factor;
+        };
 
         let res = match flux.as_ref() {
             "linear" => {
@@ -4058,6 +4070,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
 
+        // adjust the ratio sensitivity
+        if self.is_optical && flux == "ratio" {
+            let factor = self.ratio_sensitivity / self.sensitivity;
+            sensitivity = sensitivity * factor;
+        };
+
         let res = match flux.as_ref() {
             "linear" => {
                 let slope = 1.0 / (white - black);
@@ -4179,7 +4197,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
-        let sensitivity = 1.0 / (white - black);
+        let mut sensitivity = 1.0 / (white - black);
+
+        // adjust the ratio sensitivity
+        if self.is_optical && flux == "ratio" {
+            let factor = self.ratio_sensitivity / self.sensitivity;
+            sensitivity = sensitivity * factor;
+        };
 
         //interfacing with the Intel SPMD Program Compiler
         let vec = &self.data_f16[frame];
@@ -4457,6 +4481,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let sensitivity = 1.0 / (white - black);
+
+        // adjust the ratio sensitivity
+        if self.is_optical && flux == "ratio" {
+            let factor = self.ratio_sensitivity / self.sensitivity;
+            sensitivity = sensitivity * factor;
+        };
 
         let res = match flux.as_ref() {
             "linear" => {
