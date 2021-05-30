@@ -3113,12 +3113,17 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             datamin: f32,
             datamax: f32,
             median: f32,
+            mad: &mut f32,
             mad_p: &mut f32,
             mad_n: &mut f32,
+            count: &mut i64,
             count_p: &mut i64,
             count_n: &mut i64,
         ) {
             if x.is_finite() && x >= datamin && x <= datamax {
+                *mad = *mad + (x - median).abs();
+                *count = *count + 1;
+
                 if x > median {
                     *mad_p = *mad_p + (x - median);
                     *count_p = *count_p + 1;
@@ -3281,15 +3286,18 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         *self.data_median.write() = median;
 
         //mutex-protected global variables
+        let data_count = RwLock::new(0_i64);
         let data_count_p = RwLock::new(0_i64);
         let data_count_n = RwLock::new(0_i64);
 
         //into_par_iter or into_iter
         pool.install(|| {
             (0..self.depth).into_par_iter().for_each(|frame| {
-                //init local madP, madN
+                //init local mad, madP, madN
+                let mut mad = 0.0_f32;
                 let mut mad_p = 0.0_f32;
                 let mut mad_n = 0.0_f32;
+                let mut count = 0_i64;
                 let mut count_p = 0_i64;
                 let mut count_n = 0_i64;
 
@@ -3303,8 +3311,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 self.datamin,
                                 self.datamax,
                                 median,
+                                &mut mad,
                                 &mut mad_p,
                                 &mut mad_n,
+                                &mut count,
                                 &mut count_p,
                                 &mut count_n,
                             );
@@ -3318,8 +3328,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 self.datamin,
                                 self.datamax,
                                 median,
+                                &mut mad,
                                 &mut mad_p,
                                 &mut mad_n,
+                                &mut count,
                                 &mut count_p,
                                 &mut count_n,
                             );
@@ -3333,8 +3345,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 self.datamin,
                                 self.datamax,
                                 median,
+                                &mut mad,
                                 &mut mad_p,
                                 &mut mad_n,
+                                &mut count,
                                 &mut count_p,
                                 &mut count_n,
                             );
@@ -3349,8 +3363,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 self.datamin,
                                 self.datamax,
                                 median,
+                                &mut mad,
                                 &mut mad_p,
                                 &mut mad_n,
+                                &mut count,
                                 &mut count_p,
                                 &mut count_n,
                             );
@@ -3364,8 +3380,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 self.datamin,
                                 self.datamax,
                                 median,
+                                &mut mad,
                                 &mut mad_p,
                                 &mut mad_n,
+                                &mut count,
                                 &mut count_p,
                                 &mut count_n,
                             );
@@ -3375,9 +3393,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 };
 
                 //update global mad,count
+                let mut data_mad = self.data_mad.write();
                 let mut data_mad_p = self.data_mad_p.write();
                 let mut data_mad_n = self.data_mad_n.write();
 
+                let mut data_count = data_count.write();
                 let mut data_count_p = data_count_p.write();
                 let mut data_count_n = data_count_n.write();
 
@@ -3389,11 +3409,17 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             });
         });
 
+        let mut data_mad = self.data_mad.write();
         let mut data_mad_p = self.data_mad_p.write();
         let mut data_mad_n = self.data_mad_n.write();
 
+        let data_count = data_count.read();
         let data_count_p = data_count_p.read();
         let data_count_n = data_count_n.read();
+
+        if *data_count > 0 {
+            *data_mad /= *data_count as f32;
+        };
 
         if *data_count_p > 0 {
             *data_mad_p /= *data_count_p as f32;
@@ -3404,9 +3430,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         };
 
         println!(
-            "median of an approximate all-data histogram: {} at pos {}, mad_p = {}, mad_n = {}",
+            "median of an approximate all-data histogram: {} at pos {}, mad = {}, mad_p = {}, mad_n = {}",
             *self.data_median.read(),
             pos,
+            *data_mad,
             *data_mad_p,
             *data_mad_n
         );
