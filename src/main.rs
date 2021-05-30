@@ -2565,7 +2565,7 @@ fn stream_molecules(freq_start: f64, freq_end: f64) -> Option<mpsc::Receiver<Mol
                 )) {
                     Ok(mut stmt) => {
                         let molecule_iter = stmt
-                            .query_map(rusqlite::NO_PARAMS, |row| {
+                            .query_map([], |row| {
                                 Ok(Molecule::from_sqlite_row(row))
                             })
                             .unwrap();
@@ -2611,7 +2611,7 @@ fn _fetch_molecules(freq_start: f64, freq_end: f64) -> String {
             )) {
                 Ok(mut stmt) => {
                     let molecule_iter = stmt
-                        .query_map(rusqlite::NO_PARAMS, |row| {
+                        .query_map([], |row| {
                             Ok(Molecule::from_sqlite_row(row))
                         })
                         .unwrap();
