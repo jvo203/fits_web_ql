@@ -3835,18 +3835,30 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //let v = 15.0_f32 ;
 
         let median = *self.data_median.read();
-        let black = self
+        let mut black = self
             .dmin
             .max((*self.data_median.read()) - u * (*self.data_mad_n.read()));
-        let white = self
+        let mut white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let mut sensitivity = 1.0 / (white - black);
+        let mut ratio_sensitivity = sensitivity;
 
-        // adjust the ratio sensitivity
-        if self.is_optical && flux == "ratio" {
+        //SubaruWebQL-style
+        if self.is_optical {
+            let u = 0.5_f32;
+            let v = 15.0_f32;
+            black = self
+                .dmin
+                .max((*self.data_median.read()) - u * (*self.data_mad.read()));
+            white = self
+                .dmax
+                .min((*self.data_median.read()) + u * (*self.data_mad.read()));
+            sensitivity = 1.0 / (v * (*self.data_mad.read()));
+
+            // re-use the auto-brightness factor
             let factor = self.ratio_sensitivity / self.sensitivity;
-            sensitivity = sensitivity * factor;
+            ratio_sensitivity = sensitivity * factor;
         };
 
         let res = match flux.as_ref() {
@@ -3890,7 +3902,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 .map(|(x, m)| {
                     if *m > 0 {
                         let x = self.bzero + self.bscale * (*x as f32);
-                        let pixel = 5.0 * (x - black) * sensitivity;
+                        let pixel = 5.0 * (x - black) * ratio_sensitivity;
 
                         if pixel > 0.0 {
                             (255.0 * pixel / (1.0 + pixel)) as u8
@@ -3964,18 +3976,30 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //let v = 15.0_f32 ;
 
         let median = *self.data_median.read();
-        let black = self
+        let mut black = self
             .dmin
             .max((*self.data_median.read()) - u * (*self.data_mad_n.read()));
-        let white = self
+        let mut white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let mut sensitivity = 1.0 / (white - black);
+        let mut ratio_sensitivity = sensitivity;
 
-        // adjust the ratio sensitivity
-        if self.is_optical && flux == "ratio" {
+        //SubaruWebQL-style
+        if self.is_optical {
+            let u = 0.5_f32;
+            let v = 15.0_f32;
+            black = self
+                .dmin
+                .max((*self.data_median.read()) - u * (*self.data_mad.read()));
+            white = self
+                .dmax
+                .min((*self.data_median.read()) + u * (*self.data_mad.read()));
+            sensitivity = 1.0 / (v * (*self.data_mad.read()));
+
+            // re-use the auto-brightness factor
             let factor = self.ratio_sensitivity / self.sensitivity;
-            sensitivity = sensitivity * factor;
+            ratio_sensitivity = sensitivity * factor;
         };
 
         let res = match flux.as_ref() {
@@ -4019,7 +4043,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 .map(|(x, m)| {
                     if *m > 0 {
                         let x = self.bzero + self.bscale * (*x as f32);
-                        let pixel = 5.0 * (x - black) * sensitivity;
+                        let pixel = 5.0 * (x - black) * ratio_sensitivity;
 
                         if pixel > 0.0 {
                             (255.0 * pixel / (1.0 + pixel)) as u8
@@ -4093,18 +4117,30 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //let v = 15.0_f32 ;
 
         let median = *self.data_median.read();
-        let black = self
+        let mut black = self
             .dmin
             .max((*self.data_median.read()) - u * (*self.data_mad_n.read()));
-        let white = self
+        let mut white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let mut sensitivity = 1.0 / (white - black);
+        let mut ratio_sensitivity = sensitivity;
 
-        // adjust the ratio sensitivity
-        if self.is_optical && flux == "ratio" {
+        //SubaruWebQL-style
+        if self.is_optical {
+            let u = 0.5_f32;
+            let v = 15.0_f32;
+            black = self
+                .dmin
+                .max((*self.data_median.read()) - u * (*self.data_mad.read()));
+            white = self
+                .dmax
+                .min((*self.data_median.read()) + u * (*self.data_mad.read()));
+            sensitivity = 1.0 / (v * (*self.data_mad.read()));
+
+            // re-use the auto-brightness factor
             let factor = self.ratio_sensitivity / self.sensitivity;
-            sensitivity = sensitivity * factor;
+            ratio_sensitivity = sensitivity * factor;
         };
 
         let res = match flux.as_ref() {
@@ -4148,7 +4184,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 .map(|(x, m)| {
                     if *m > 0 {
                         let x = self.bzero + self.bscale * (*x as f32);
-                        let pixel = 5.0 * (x - black) * sensitivity;
+                        let pixel = 5.0 * (x - black) * ratio_sensitivity;
 
                         if pixel > 0.0 {
                             (255.0 * pixel / (1.0 + pixel)) as u8
@@ -4517,18 +4553,30 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         //let v = 15.0_f32 ;
 
         let median = *self.data_median.read();
-        let black = self
+        let mut black = self
             .dmin
             .max((*self.data_median.read()) - u * (*self.data_mad_n.read()));
-        let white = self
+        let mut white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let mut sensitivity = 1.0 / (white - black);
+        let mut ratio_sensitivity = sensitivity;
 
-        // adjust the ratio sensitivity
-        if self.is_optical && flux == "ratio" {
+        //SubaruWebQL-style
+        if self.is_optical {
+            let u = 0.5_f32;
+            let v = 15.0_f32;
+            black = self
+                .dmin
+                .max((*self.data_median.read()) - u * (*self.data_mad.read()));
+            white = self
+                .dmax
+                .min((*self.data_median.read()) + u * (*self.data_mad.read()));
+            sensitivity = 1.0 / (v * (*self.data_mad.read()));
+
+            // re-use the auto-brightness factor
             let factor = self.ratio_sensitivity / self.sensitivity;
-            sensitivity = sensitivity * factor;
+            ratio_sensitivity = sensitivity * factor;
         };
 
         let res = match flux.as_ref() {
@@ -4572,7 +4620,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 .map(|(x, m)| {
                     if *m > 0 {
                         let x = self.bzero + self.bscale * (*x as f32);
-                        let pixel = 5.0 * (x - black) * sensitivity;
+                        let pixel = 5.0 * (x - black) * ratio_sensitivity;
 
                         if pixel > 0.0 {
                             (255.0 * pixel / (1.0 + pixel)) as u8
