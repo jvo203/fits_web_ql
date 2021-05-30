@@ -6,8 +6,8 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1be241f88f3b1e7e9a3fbe3b5a8a0f6915b5a1d7ee0d9a248d3376d01068cc60"
 dependencies = [
- "actix-rt 1.1.1",
- "actix_derive 0.5.0",
+ "actix-rt",
+ "actix_derive",
  "bitflags",
  "bytes 0.5.6",
  "crossbeam-channel 0.4.4",
@@ -23,30 +23,6 @@ dependencies = [
  "tokio-util 0.3.1",
  "trust-dns-proto",
  "trust-dns-resolver",
-]
-
-[[package]]
-name = "actix"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "543c47e7827f8fcc9d1445bd98ba402137bfce80ee2187429de49c52b5131bd3"
-dependencies = [
- "actix-rt 2.2.0",
- "actix_derive 0.6.0",
- "bitflags",
- "bytes 1.0.1",
- "crossbeam-channel 0.5.1",
- "futures-core",
- "futures-sink",
- "futures-task",
- "futures-util",
- "log",
- "once_cell",
- "parking_lot",
- "pin-project-lite 0.2.6",
- "smallvec",
- "tokio 1.6.1",
- "tokio-util 0.6.7",
 ]
 
 [[package]]
@@ -72,7 +48,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "177837a10863f15ba8d3ae3ec12fac1099099529ed20083a27fdfe247381d0dc"
 dependencies = [
  "actix-codec",
- "actix-rt 1.1.1",
+ "actix-rt",
  "actix-service",
  "actix-utils",
  "derive_more",
@@ -112,7 +88,7 @@ checksum = "452299e87817ae5673910e53c243484ca38be3828db819b6011736fc6982e874"
 dependencies = [
  "actix-codec",
  "actix-connect",
- "actix-rt 1.1.1",
+ "actix-rt",
  "actix-service",
  "actix-threadpool",
  "actix-utils",
@@ -190,23 +166,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-rt"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc7d7cd957c9ed92288a7c3c96af81fa5291f65247a76a34dac7b6af74e52ba0"
-dependencies = [
- "futures-core",
- "tokio 1.6.1",
-]
-
-[[package]]
 name = "actix-server"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "45407e6e672ca24784baa667c5d32ef109ccdd8d5e0b5ebb9ef8a67f4dfb708e"
 dependencies = [
  "actix-codec",
- "actix-rt 1.1.1",
+ "actix-rt",
  "actix-service",
  "actix-utils",
  "futures-channel",
@@ -236,7 +202,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47239ca38799ab74ee6a8a94d1ce857014b2ac36f242f70f3f75a66f691e791c"
 dependencies = [
  "actix-macros",
- "actix-rt 1.1.1",
+ "actix-rt",
  "actix-server",
  "actix-service",
  "log",
@@ -277,7 +243,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e9022dec56632d1d7979e59af14f0597a28a830a9c1c7fec8b2327eb9f16b5a"
 dependencies = [
  "actix-codec",
- "actix-rt 1.1.1",
+ "actix-rt",
  "actix-service",
  "bitflags",
  "bytes 0.5.6",
@@ -300,7 +266,7 @@ dependencies = [
  "actix-http",
  "actix-macros",
  "actix-router",
- "actix-rt 1.1.1",
+ "actix-rt",
  "actix-server",
  "actix-service",
  "actix-testing",
@@ -335,7 +301,7 @@ version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f6edf3c2693e2a8c422800c87ee89a6a4eac7dd01109bc172a1093ce1f4f001"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-codec",
  "actix-http",
  "actix-web",
@@ -361,17 +327,6 @@ name = "actix_derive"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b95aceadaf327f18f0df5962fedc1bde2f870566a0b9f65c89508a3b1f79334c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "actix_derive"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d44b8fee1ced9671ba043476deddef739dd0959bf77030b26b738cc591737a7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -478,7 +433,7 @@ checksum = "b381e490e7b0cfc37ebc54079b0413d8093ef43d14a4e4747083f7fa47a9e691"
 dependencies = [
  "actix-codec",
  "actix-http",
- "actix-rt 1.1.1",
+ "actix-rt",
  "actix-service",
  "base64",
  "bytes 0.5.6",
@@ -1122,7 +1077,7 @@ dependencies = [
 name = "fits_web_ql"
 version = "4.2.9"
 dependencies = [
- "actix 0.11.1",
+ "actix",
  "actix-files",
  "actix-http",
  "actix-web",
@@ -3195,11 +3150,7 @@ dependencies = [
  "libc",
  "memchr",
  "mio 0.7.11",
- "once_cell",
- "parking_lot",
  "pin-project-lite 0.2.6",
- "signal-hook-registry",
- "winapi 0.3.9",
 ]
 
 [[package]]
