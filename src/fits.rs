@@ -4198,11 +4198,23 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
         let mut sensitivity = 1.0 / (white - black);
+        let mut ratio_sensitivity = sensitivity;
 
-        // adjust the ratio sensitivity
-        if self.is_optical && flux == "ratio" {
+        //SubaruWebQL-style
+        if self.is_optical {
+            let u = 0.5_f32;
+            let v = 15.0_f32;
+            black = self
+                .dmin
+                .max((*self.data_median.read()) - u * (*self.data_mad.read()));
+            white = self
+                .dmax
+                .min((*self.data_median.read()) + u * (*self.data_mad.read()));
+            sensitivity = 1.0 / (v * (*self.data_mad.read()));
+
+            // re-use the auto-brightness factor
             let factor = self.ratio_sensitivity / self.sensitivity;
-            sensitivity = sensitivity * factor;
+            ratio_sensitivity = sensitivity * factor;
         };
 
         //interfacing with the Intel SPMD Program Compiler
@@ -4294,7 +4306,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 self.bzero,
                                 self.bscale,
                                 black,
-                                sensitivity,
+                                ratio_sensitivity,
                                 y_raw.as_mut_ptr(),
                                 len as u32,
                             );
