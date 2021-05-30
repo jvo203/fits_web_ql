@@ -3810,7 +3810,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
-        let sensitivity = 1.0 / (white - black);
+        let mut sensitivity = 1.0 / (white - black);
 
         // adjust the ratio sensitivity
         if self.is_optical && flux == "ratio" {
@@ -3939,7 +3939,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
-        let sensitivity = 1.0 / (white - black);
+        let mut sensitivity = 1.0 / (white - black);
 
         // adjust the ratio sensitivity
         if self.is_optical && flux == "ratio" {
@@ -4068,7 +4068,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
-        let sensitivity = 1.0 / (white - black);
+        let mut sensitivity = 1.0 / (white - black);
 
         // adjust the ratio sensitivity
         if self.is_optical && flux == "ratio" {
@@ -4480,7 +4480,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let white = self
             .dmax
             .min((*self.data_median.read()) + u * (*self.data_mad_p.read()));
-        let sensitivity = 1.0 / (white - black);
+        let mut sensitivity = 1.0 / (white - black);
 
         // adjust the ratio sensitivity
         if self.is_optical && flux == "ratio" {
