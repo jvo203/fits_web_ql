@@ -2951,6 +2951,117 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 let mut integrated_spectrum = 0.0_f32;
 
                 match self.bitpix {
+                    8 => {
+                        let mut references: [f32; 4] =
+                            [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+
+                        let vec = &self.data_u8[frame];
+                        let vec_ptr = vec.as_ptr() as *mut u8;
+                        let vec_len = vec.len();
+
+                        let mut pixels = thread_pixels[tid].write();
+                        let mask = thread_mask[tid].write();
+                        let mask_ptr = mask.as_ptr() as *mut u8;
+                        let mask_len = mask.len();
+
+                        unsafe {
+                            let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                            spmd::make_image_spectrumU8_minmax(
+                                vec_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                self.ignrval,
+                                self.datamin,
+                                self.datamax,
+                                cdelt3,
+                                pixels.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                vec_len as u32,
+                                references.as_mut_ptr(),
+                            );
+                        }
+
+                        frame_min = references[0];
+                        frame_max = references[1];
+                        mean_spectrum = references[2];
+                        integrated_spectrum = references[3];
+                    }
+                    16 => {
+                        let mut references: [f32; 4] =
+                            [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+
+                        let vec = &self.data_i16[frame];
+                        let vec_ptr = vec.as_ptr() as *mut i16;
+                        let vec_len = vec.len();
+
+                        let mut pixels = thread_pixels[tid].write();
+                        let mask = thread_mask[tid].write();
+                        let mask_ptr = mask.as_ptr() as *mut u8;
+                        let mask_len = mask.len();
+
+                        unsafe {
+                            let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                            spmd::make_image_spectrumI16_minmax(
+                                vec_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                self.ignrval,
+                                self.datamin,
+                                self.datamax,
+                                cdelt3,
+                                pixels.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                vec_len as u32,
+                                references.as_mut_ptr(),
+                            );
+                        }
+
+                        frame_min = references[0];
+                        frame_max = references[1];
+                        mean_spectrum = references[2];
+                        integrated_spectrum = references[3];
+                    }
+                    32 => {
+                        let mut references: [f32; 4] =
+                            [frame_min, frame_max, mean_spectrum, integrated_spectrum];
+
+                        let vec = &self.data_i32[frame];
+                        let vec_ptr = vec.as_ptr() as *mut i32;
+                        let vec_len = vec.len();
+
+                        let mut pixels = thread_pixels[tid].write();
+                        let mask = thread_mask[tid].write();
+                        let mask_ptr = mask.as_ptr() as *mut u8;
+                        let mask_len = mask.len();
+
+                        unsafe {
+                            let vec_raw = slice::from_raw_parts_mut(vec_ptr, vec_len);
+                            let mask_raw = slice::from_raw_parts_mut(mask_ptr, mask_len);
+
+                            spmd::make_image_spectrumI32_minmax(
+                                vec_raw.as_mut_ptr(),
+                                self.bzero,
+                                self.bscale,
+                                self.ignrval,
+                                self.datamin,
+                                self.datamax,
+                                cdelt3,
+                                pixels.as_mut_ptr(),
+                                mask_raw.as_mut_ptr(),
+                                vec_len as u32,
+                                references.as_mut_ptr(),
+                            );
+                        }
+
+                        frame_min = references[0];
+                        frame_max = references[1];
+                        mean_spectrum = references[2];
+                        integrated_spectrum = references[3];
+                    }
                     -32 => {
                         let mut references: [f32; 4] =
                             [frame_min, frame_max, mean_spectrum, integrated_spectrum];
