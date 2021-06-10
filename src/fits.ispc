@@ -1,6 +1,8 @@
+typedef int8 int8_t;
 typedef int16 int16_t;
 typedef int32 int32_t;
 typedef int64 int64_t;
+typedef unsigned int8 uint8_t;
 typedef unsigned int16 uint16_t;
 typedef unsigned int32 uint32_t;
 typedef unsigned int64 uint64_t;
@@ -75,6 +77,168 @@ export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform floa
       partial_count += nan ? 0 : 1 ;
       partial_min = nan ? partial_min : min(partial_min, tmp);
       partial_max = nan ? partial_max : max(partial_max, tmp);*/
+
+      //alternative coherent if
+      cif (!nan)
+      {
+        pixels[j] += tmp ;
+        mask[j] = 255 ;
+        partial_sum += tmp ;
+        partial_count += 1 ;
+        partial_min = min(partial_min, tmp);
+        partial_max = max(partial_max, tmp);
+      }
+    } ;
+
+  uniform float sum = reduce_add(partial_sum) ;
+  uniform int64 count = reduce_add(partial_count) ;
+
+  if(count > 0)
+    {
+      
+      mean = sum / (float) count ;
+      integrated = sum * cdelt3 ;
+    }
+  else
+    {
+      mean = 0.0f ;
+      integrated = 0.0f ;
+    }
+
+  frame_min = reduce_min(partial_min);
+  frame_max = reduce_max(partial_max);
+
+  references[0] = frame_min ;
+  references[1] = frame_max ;
+  references[2] = mean ;
+  references[3] = integrated ;
+} ;
+
+export void make_image_spectrumU8_minmax(uniform uint8_t fitsData[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
+{
+  uniform float frame_min = references[0];
+  uniform float frame_max = references[1];
+  uniform float mean = references[2];
+  uniform float integrated = references[3];
+
+  float partial_sum = 0.0f ;
+  unsigned int64 partial_count = 0 ;
+
+  float partial_min = frame_min ;
+  float partial_max = frame_max ;
+
+  foreach(j=0 ... total_size)
+    {
+      float tmp = bzero + (float)fitsData[j] * bscale ;//uint8 converted to float
+      bool nan = isnan(tmp) || isinf(tmp) || (tmp < datamin) || (tmp > datamax) || (tmp <= ignrval) ;
+
+      //alternative coherent if
+      cif (!nan)
+      {
+        pixels[j] += tmp ;
+        mask[j] = 255 ;
+        partial_sum += tmp ;
+        partial_count += 1 ;
+        partial_min = min(partial_min, tmp);
+        partial_max = max(partial_max, tmp);
+      }
+    } ;
+
+  uniform float sum = reduce_add(partial_sum) ;
+  uniform int64 count = reduce_add(partial_count) ;
+
+  if(count > 0)
+    {
+      
+      mean = sum / (float) count ;
+      integrated = sum * cdelt3 ;
+    }
+  else
+    {
+      mean = 0.0f ;
+      integrated = 0.0f ;
+    }
+
+  frame_min = reduce_min(partial_min);
+  frame_max = reduce_max(partial_max);
+
+  references[0] = frame_min ;
+  references[1] = frame_max ;
+  references[2] = mean ;
+  references[3] = integrated ;
+} ;
+
+export void make_image_spectrumI16_minmax(uniform int16_t fitsData[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
+{
+  uniform float frame_min = references[0];
+  uniform float frame_max = references[1];
+  uniform float mean = references[2];
+  uniform float integrated = references[3];
+
+  float partial_sum = 0.0f ;
+  unsigned int64 partial_count = 0 ;
+
+  float partial_min = frame_min ;
+  float partial_max = frame_max ;
+
+  foreach(j=0 ... total_size)
+    {
+      float tmp = bzero + (float)fitsData[j] * bscale ;//int16 converted to float
+      bool nan = isnan(tmp) || isinf(tmp) || (tmp < datamin) || (tmp > datamax) || (tmp <= ignrval) ;
+
+      //alternative coherent if
+      cif (!nan)
+      {
+        pixels[j] += tmp ;
+        mask[j] = 255 ;
+        partial_sum += tmp ;
+        partial_count += 1 ;
+        partial_min = min(partial_min, tmp);
+        partial_max = max(partial_max, tmp);
+      }
+    } ;
+
+  uniform float sum = reduce_add(partial_sum) ;
+  uniform int64 count = reduce_add(partial_count) ;
+
+  if(count > 0)
+    {
+      
+      mean = sum / (float) count ;
+      integrated = sum * cdelt3 ;
+    }
+  else
+    {
+      mean = 0.0f ;
+      integrated = 0.0f ;
+    }
+
+  frame_min = reduce_min(partial_min);
+  frame_max = reduce_max(partial_max);
+
+  references[0] = frame_min ;
+  references[1] = frame_max ;
+  references[2] = mean ;
+  references[3] = integrated ;
+} ;
+
+export void make_image_spectrumI32_minmax(uniform int32_t fitsData[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
+{
+  uniform float frame_min = references[0];
+  uniform float frame_max = references[1];
+  uniform float mean = references[2];
+  uniform float integrated = references[3];
+
+  float partial_sum = 0.0f ;
+  unsigned int64 partial_count = 0 ;
+
+  float partial_min = frame_min ;
+  float partial_max = frame_max ;
+
+  foreach(j=0 ... total_size)
+    {
+      float tmp = bzero + (float)fitsData[j] * bscale ;//int32 converted to float
+      bool nan = isnan(tmp) || isinf(tmp) || (tmp < datamin) || (tmp > datamax) || (tmp <= ignrval) ;
 
       //alternative coherent if
       cif (!nan)
