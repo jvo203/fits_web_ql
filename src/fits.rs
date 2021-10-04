@@ -807,6 +807,26 @@ impl FITS {
             }
         }
 
+        #[cfg(feature = "raid")]
+        {
+            let mut zfp_exists = true;
+
+            for raid_volume in 0..RAID_COUNT {
+                let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, self.dataset_id.replace("/", "_"));
+                let zfp_dir = std::path::Path::new(&filename);
+
+                let mut zfp_ok = std::path::PathBuf::from(zfp_dir);
+                zfp_ok.push(".ok");
+
+                zfp_exists = zfp_exists && zfp_ok.exists();
+            }
+
+            // cache files do not exist in RAID-0 volumes
+            if !zfp_exists {
+                return false;
+            }
+        }
+
         let total = self.depth;
         let frame_count: AtomicIsize = AtomicIsize::new(0);
         let success: AtomicBool = AtomicBool::new(true);
@@ -870,6 +890,12 @@ impl FITS {
                 .into_par_iter()
                 .map(|frame| {
                     let data_f16: Vec<f16> = vec![f16::from_f32(0.0); self.width * self.height];
+
+                    #[cfg(feature = "raid")]
+                    let raid_volume = frame % RAID_COUNT;
+
+                    #[cfg(feature = "raid")]
+                    let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, id.replace("/", "_"));               
 
                     #[cfg(not(feature = "raid"))]
                     let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
