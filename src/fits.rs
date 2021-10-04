@@ -790,11 +790,20 @@ impl FITS {
     //a parallel multi-threaded read from the zfp-compressed cache
     #[cfg(feature = "zfp")]
     fn zfp_decompress(
-        &mut self,
-        zfp_dir: &std::path::Path,
+        &mut self,        
+        id: &String,
         cdelt3: f32,
         server: &Addr<server::SessionServer>,
     ) -> bool {
+        let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
+        let zfp_dir = std::path::Path::new(&filename);
+        let mut zfp_ok = std::path::PathBuf::from(zfp_dir);
+        zfp_ok.push(".ok");
+
+        if !zfp_ok.exists() {
+            return false;
+        }
+
         let total = self.depth;
         let frame_count: AtomicIsize = AtomicIsize::new(0);
         let success: AtomicBool = AtomicBool::new(true);
@@ -1384,18 +1393,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         #[cfg(feature = "zfp")]
         let read_from_zfp = {
-            let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
-            let zfp_dir = std::path::Path::new(&filename);
-            let mut zfp_ok = std::path::PathBuf::from(zfp_dir);
-            zfp_ok.push(".ok");
 
-            if fits.bitpix == -32 && zfp_ok.exists() {
+            if fits.bitpix == -32 {
                 println!(
                     "{}: reading zfp-compressed half-float f16 data from cache",
                     id
                 );
 
-                fits.zfp_decompress(zfp_dir, cdelt3 as f32, &server)
+                fits.zfp_decompress(id, cdelt3 as f32, &server)
             } else {
                 false
             }
