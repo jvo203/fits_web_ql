@@ -795,13 +795,16 @@ impl FITS {
         cdelt3: f32,
         server: &Addr<server::SessionServer>,
     ) -> bool {
-        let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
-        let zfp_dir = std::path::Path::new(&filename);
-        let mut zfp_ok = std::path::PathBuf::from(zfp_dir);
-        zfp_ok.push(".ok");
+        #[cfg(not(feature = "raid"))]
+        {
+            let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
+            let zfp_dir = std::path::Path::new(&filename);
+            let mut zfp_ok = std::path::PathBuf::from(zfp_dir);
+            zfp_ok.push(".ok");
 
-        if !zfp_ok.exists() {
-            return false;
+            if !zfp_ok.exists() {
+                return false;
+            }
         }
 
         let total = self.depth;
@@ -867,6 +870,11 @@ impl FITS {
                 .into_par_iter()
                 .map(|frame| {
                     let data_f16: Vec<f16> = vec![f16::from_f32(0.0); self.width * self.height];
+
+                    #[cfg(not(feature = "raid"))]
+                    let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
+
+                    let zfp_dir = std::path::Path::new(&filename);
 
                     //zfp-decompress a frame
                     let mut cache_file = std::path::PathBuf::from(zfp_dir);
