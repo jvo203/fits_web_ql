@@ -17,6 +17,7 @@ opencl = ["ocl", "rand"]
 zfp = ["zfp-sys"]
 ipp = ["ipp-sys"]
 mem = ["jemalloc-sys"]
+raid = []
 
 [build-dependencies]
 bindgen = "*"
