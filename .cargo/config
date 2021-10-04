@@ -1,4 +1,3 @@
-#[target.'cfg(any(windows, unix))']
-#rustflags = ["-C", "target-cpu=native", "-C", "llvm-args=-ffast-math", "-C", "opt-level=3", "-C", "debuginfo=2", "-C", "remark=loop-vectorize", "-C", "passes=loop-vectorize"]
-
+[target.'cfg(any(windows, unix))']
+rustflags = ["-C", "target-cpu=native", "-C", "llvm-args=-ffast-math", "-C", "opt-level=3", "-C", "debuginfo=2", "-C", "remark=loop-vectorize", "-C", "passes=loop-vectorize"]
 #"llvm-args=-force-vector-width=16"
