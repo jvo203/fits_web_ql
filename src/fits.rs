@@ -256,6 +256,12 @@ pub static FITSCACHE: &'static str = "/ssd0/chris/fitswebql/FITSCACHE";
 #[cfg(feature = "production")]
 pub static IMAGECACHE: &'static str = "/ssd0/chris/fitswebql/IMAGECACHE";*/
 
+#[cfg(feature = "raid")]
+pub static RAID_PREFIX: &'static str = "/Volumes/SSD";
+
+#[cfg(feature = "raid")]
+pub const RAID_COUNT: usize = 8;
+
 pub const IMAGE_PIXEL_COUNT_LIMIT: u64 = 1280 * 720;
 pub const VIDEO_PIXEL_COUNT_LIMIT: u64 = 720 * 480;
 
@@ -7526,7 +7532,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     }
 
     #[cfg(feature = "zfp")]
-    fn zfp_compress(&self, zfp_dir: &std::path::Path) -> bool {
+    fn zfp_compress(&self) -> bool {
+        #[cfg(not(feature = "raid"))]
+        {
+        let filename = format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
+        let zfp_dir = std::path::Path::new(&filename);
+
         //check if the zfp directory already exists in the FITSCACHE
         if !zfp_dir.exists() {
             match std::fs::create_dir(zfp_dir) {
@@ -7546,6 +7557,42 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         if ok_file.exists() {
             return true;
+        }
+        }
+
+        #[cfg(feature = "raid")]
+        {
+            let mut ok_exists = true;
+
+            // iterate through all RAID-0 volumes checking / creating cache directories
+            for raid_volume in 0..RAID_COUNT {
+                let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, self.dataset_id.replace("/", "_"));
+                let zfp_dir = std::path::Path::new(&filename);
+
+                //check if the zfp directory already exists in the FITSCACHE
+                if !zfp_dir.exists() {
+                    match std::fs::create_dir(zfp_dir) {
+                        Ok(_) => {
+                            println!("{}: created an empty zfp cache directory in a RAID-0 subvolume {}", self.dataset_id, raid_volume);
+                        }
+                        Err(err) => {
+                            println!("error creating a zfp cache directory: {}", err);
+                            return false;
+                        }
+                    }
+                }
+
+                //look for a hidden ok file
+                let mut ok_file = std::path::PathBuf::from(zfp_dir);
+                ok_file.push(".ok");
+
+                ok_exists = ok_exists && ok_file.exists();
+            }
+
+            // cache files already exist in RAID-0 volumes
+            if ok_exists {
+                return true;
+            }
         }
 
         println!(
@@ -7671,6 +7718,17 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         rate: rate,
                     };
 
+                    #[cfg(feature = "raid")]
+                    let raid_volume = frame % RAID_COUNT;
+
+                    #[cfg(feature = "raid")]
+                    let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, self.dataset_id.replace("/", "_"));               
+
+                    #[cfg(not(feature = "raid"))]        
+                    let filename = format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
+                    
+                    let zfp_dir = std::path::Path::new(&filename);
+
                     let mut cache_file = std::path::PathBuf::from(zfp_dir);
                     cache_file.push(format!("{}.bin", frame));
 
@@ -7710,9 +7768,34 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //create a hidden ok file upon success
         if success {
-            match File::create(ok_file) {
-                Ok(_) => {}
-                Err(err) => println!("{}", err),
+            #[cfg(not(feature = "raid"))]        
+            {
+                let filename = format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
+                let zfp_dir = std::path::Path::new(&filename);
+
+                let mut ok_file = std::path::PathBuf::from(zfp_dir);
+                ok_file.push(".ok");
+
+                match File::create(ok_file) {
+                    Ok(_) => {}
+                    Err(err) => println!("{}", err),
+                }
+            }
+
+            #[cfg(feature = "raid")]
+            {
+                for raid_volume in 0..RAID_COUNT {
+                    let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, self.dataset_id.replace("/", "_"));
+                    let zfp_dir = std::path::Path::new(&filename);
+
+                    let mut ok_file = std::path::PathBuf::from(zfp_dir);
+                    ok_file.push(".ok");
+
+                    match File::create(ok_file) {
+                        Ok(_) => {}
+                        Err(err) => println!("{}", err),
+                    }
+                }
             }
         }
 
@@ -8065,12 +8148,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         self.width * self.height * self.depth * ((self.bitpix.abs() / 8) as usize);
 
                     //>1MB
-                    if total_size > 1024 * 1024 {
-                        let filename =
-                            format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
-                        let zfp_dir = std::path::Path::new(&filename);
-
-                        self.zfp_compress(zfp_dir)
+                    if total_size > 1024 * 1024 {                        
+                        self.zfp_compress()
                     } else {
                         false
                     }
