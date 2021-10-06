@@ -64,6 +64,7 @@ use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
 
+#[cfg(feature = "jvo")]
 use flexi_logger::FileSpec;
 
 use percent_encoding::percent_decode;
