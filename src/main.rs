@@ -64,6 +64,8 @@ use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
 
+use flexi_logger::FileSpec;
+
 use percent_encoding::percent_decode;
 use tar::{Builder, Header};
 use uuid::Uuid;
@@ -4514,9 +4516,8 @@ fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info");
 
     #[cfg(feature = "jvo")]
-    flexi_logger::Logger::with_env_or_str("fits_web_ql=info")
-        .log_to_file()
-        .directory(LOG_DIRECTORY)
+    flexi_logger::Logger::try_with_env_or_str("fits_web_ql=info").unwrap()
+        .log_to_file(FileSpec::default().directory(LOG_DIRECTORY))        
         //.format(flexi_logger::opt_format)
         .start()
         .unwrap_or_else(|e| panic!("Logger initialization failed with {}", e));
