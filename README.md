@@ -111,12 +111,6 @@ git clone https://github.com/lemenkov/libyuv
 
 cd libyuv
 
-##########
-the following changes need to be applied manually in order to disable jpeg support
-
-https://xpra.org/trac/browser/xpra/trunk/osx/jhbuild/patches/libyuv-nojpeg.patch?rev=15432
-##########
-
 mkdir -p build
 
 cd build
