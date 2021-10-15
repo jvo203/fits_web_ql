@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.2.11"
+version = "4.2.12"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2018"
 
@@ -26,7 +26,7 @@ ispc = "*"
 
 [package.metadata.pkg-config]
 x265 = "0.0" # was 2.8 but version recognition is broken on macos right now! 
-vpx = "1.8.1"
+vpx = "1.11.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 thread-priority = "*"
