@@ -81,6 +81,14 @@ install clang
 
 macOS: this step can probably be skipped as clang should already be present, if not you should run "xcode-select --install" from the command-line to install the software development environment
 
+on macOS llvm-config is needed too:
+
+brew install llvm
+
+followed by
+
+echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.zshrc
+
 Ubuntu Linux:
 
 sudo apt install clang
@@ -120,7 +128,7 @@ make
 sudo make install
 
 ##
-install Google's libvpx 1.7.0 or higher
+install Google's libvpx 1.11.0 or higher
 
 macOS: "brew install libvpx"
 
