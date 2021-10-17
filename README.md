@@ -122,7 +122,7 @@ make
 sudo make install
 
 ##
-install Google's libvpx 1.11.0 or higher
+install Google's libvpx 1.11.0 or higher; if your libvpx is < 1.11 fits_web_ql version 4.2.11 should be used
 
 macOS: "brew install libvpx"
 
