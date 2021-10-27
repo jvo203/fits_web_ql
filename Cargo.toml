@@ -2,7 +2,7 @@
 name = "fits_web_ql"
 version = "4.2.12"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
-edition = "2018"
+edition = "2021"
 
 [features]
 default = ["hevc"]
