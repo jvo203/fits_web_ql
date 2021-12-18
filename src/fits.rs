@@ -292,8 +292,7 @@ pub enum Intensity {
 #[derive(Debug)]
 pub struct FITS {
     created: Instant,
-    pub dataset_id: String,
-    data_id: String,
+    pub dataset_id: String,    
     filesize: u64,
     //basic header/votable
     pub telescope: String,
@@ -408,8 +407,7 @@ impl FITS {
 
         let fits = FITS {
             created: Instant::now(),
-            dataset_id: id.clone(),
-            data_id: format!("{}_00_00_00", id),
+            dataset_id: id.clone(),            
             filesize: 0,
             telescope: String::from(""),
             obj_name: obj_name,
