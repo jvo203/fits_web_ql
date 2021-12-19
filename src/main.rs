@@ -900,6 +900,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                     }
                 }
 
+                if (&text).contains("\"csv\"") {
+                    println!("{}", text);
+                }
+
                 if (&text).contains("[spectrum]") {
                     //println!("{}", text.replace("&", " "));
                     let (dx, x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[spectrum] dx={} x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
