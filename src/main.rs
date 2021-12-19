@@ -942,9 +942,17 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             println!("parsed the CSV JSON: {}", &msg);
 
                             let msg_type = &msg["type"];
-                            let ra = &msg["ra"];
-                            let dec = &msg["dec"];
 
+                            let ra = match msg["ra"].as_str() {
+                                Some(ra) => String::from(ra),
+                                _ => String::from("N/A"),
+                            };
+
+                            let dec = match msg["dec"].as_str() {
+                                Some(dec) => String::from(dec),
+                                _ => String::from("N/A"),
+                            };
+                        
                             let x1: usize = match msg["x1"].as_i64() {
                                 Some(x) => x as usize,
                                 _ => 0,
