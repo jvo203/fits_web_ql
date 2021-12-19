@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2021-12-19.0";
+	return "JS2021-12-19.1";
 }
 
 const wasm_supported = (() => {
@@ -6443,6 +6443,12 @@ function setup_axes() {
 
 	try {
 		d3.select("#axes").remove();
+	}
+	catch (e) {
+	}
+
+	try {
+		d3.select("#foreignCSV").remove();
 	}
 	catch (e) {
 	}
