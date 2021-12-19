@@ -6388,6 +6388,20 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return None;
         }
 
+        let cx = (x1 + x2) >> 1;
+        let cy = (y1 + y2) >> 1;
+
+        let (start, end) =
+                            match self.get_spectrum_range(frame_start, frame_end, ref_freq) {
+                                Some(frame) => frame,
+                                None => {
+                                    println!("error: an invalid spectrum range");
+                                    return None;
+                                }
+                            };
+
+        println!("first channel: {}, last channel: {}", start, end);
+
         match self.get_spectrum(
             x1,
             y1,
@@ -6402,6 +6416,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         ) {
             Some(spectrum) => {
                 println!("{:?}", spectrum);
+
+                for i in 0 .. spectrum.len() {
+                    let frame = start + i + 1;
+                    println!("channel: {}, intensity: {}", frame, spectrum[i]);
+                }
+
                 Some(String::from("CSV"))
             },
             None => {
