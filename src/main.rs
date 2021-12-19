@@ -4129,6 +4129,10 @@ fn http_fits_response(
     #[cfg(feature = "cdn")]
     html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/marchingsquares-isobands.min.js\"></script>\n");
 
+    // HTML5 FileSaver + Font Awesome
+    html.push_str("<script src=\"https://kit.fontawesome.com/8433b7dde2.js\" crossorigin=\"anonymous\"></script>\n");
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/FileSaver.js\"></script>\n")
+
     //VP9 decoder
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"ogv-decoder-video-vp9.js\"></script>\n");
