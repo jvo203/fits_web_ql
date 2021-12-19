@@ -900,15 +900,72 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                     }
                 }
 
-                if (&text).contains("\"csv\"") {
-                    println!("{}", &text);
+                if (&text).contains("\"csv\"") {                       
+                    //get a read lock to the dataset
+                    let datasets = DATASETS.read();
 
+                    let fits = match datasets.get(&self.dataset_id[0]) {
+                        Some(x) => x,
+                        None => {
+                            let msg = json!({
+                                "type" : "spectrum",
+                                "message" : "unavailable",
+                            });
+
+                            ctx.text(msg.to_string());
+                            return;
+                        }
+                    };
+
+                    let fits = match fits.try_read() {
+                        Some(x) => x,
+                        None => {
+                            let msg = json!({
+                                "type" : "spectrum",
+                                "message" : "unavailable",
+                            });
+
+                            ctx.text(msg.to_string());
+                            return;
+                        }
+                    };
+
+                    {
+                        *fits.timestamp.write() = SystemTime::now();
+                    }
+                    
                     // parse the JSON string                    
                     let res: Result<serde_json::Value, serde_json::Error> = serde_json::from_str(&text);
 
                     match res {
-                        Ok(v) => {
-                            println!("parsed the CSV JSON: {}", v);
+                        Ok(msg) => {
+                            println!("parsed the CSV JSON: {}", &msg);
+
+                            let msg_type = &msg["type"];
+                            let ra = &msg["ra"];
+                            let dec = &msg["dec"];
+
+                            let x1: usize = match msg["x1"].as_i64() {
+                                Some(x) => x as usize,
+                                _ => 0,
+                            };
+
+                            let x2: usize = match msg["x2"].as_i64() {
+                                Some(x) => x as usize,
+                                _ => fits.width - 1,
+                            };                              
+                                                    
+                            let y1: usize = match msg["y1"].as_i64() {
+                                Some(y) => y as usize,
+                                _ => 0,
+                            };
+
+                            let y2: usize = match msg["y2"].as_i64() {
+                                Some(y) => y as usize,
+                                _ => fits.height - 1,
+                            };
+
+                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}", msg_type, ra, dec, x1, x2, y1, y2);
                         },
                         Err(e) => {
                             println!("{}", e);
