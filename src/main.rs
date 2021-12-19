@@ -1013,7 +1013,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 _ => false,
                             };
 
-                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest);
+                            let deltaV: f64 = match msg["deltaV"].as_f64() {
+                                Some(frame) => frame,
+                                _ => 0.0,
+                            };
+
+                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}, deltaV: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest, deltaV);
                         },
                         Err(e) => {
                             println!("{}", e);
