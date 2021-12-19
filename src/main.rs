@@ -965,7 +965,22 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 _ => fits.height - 1,
                             };
 
-                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}", msg_type, ra, dec, x1, x2, y1, y2);
+                            let frame_start: f64 = match msg["frame_start"].as_f64() {
+                                Some(frame) => frame,
+                                _ => 0.0,
+                            };
+
+                            let frame_end: f64 = match msg["frame_end"].as_f64() {
+                                Some(frame) => frame,
+                                _ => 0.0,
+                            };
+
+                            let ref_freq: f64 = match msg["ref_freq"].as_f64() {
+                                Some(frame) => frame,
+                                _ => 0.0,
+                            };
+
+                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq);
                         },
                         Err(e) => {
                             println!("{}", e);
