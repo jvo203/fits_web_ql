@@ -6370,6 +6370,46 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
+
+    pub fn get_csv_spectrum(
+        &self,
+        x1: i32,
+        y1: i32,
+        x2: i32,
+        y2: i32,
+        beam: Beam,
+        intensity: Intensity,
+        frame_start: f64,
+        frame_end: f64,
+        ref_freq: f64,
+        pool: &Option<rayon::ThreadPool>,
+    ) -> Option<String> {
+        if self.depth <= 1 {
+            return None;
+        }
+
+        match self.get_spectrum(
+            x1,
+            y1,
+            x2,
+            y2,
+            beam,
+            intensity,
+            frame_start,
+            frame_end,
+            ref_freq,
+            pool,
+        ) {
+            Some(spectrum) => {
+                println!("{:?}", spectrum);
+                Some(String::from("CSV"))
+            },
+            None => {
+                None
+            }
+        }
+    }
+
     pub fn get_spectrum(
         &self,
         x1: i32,
