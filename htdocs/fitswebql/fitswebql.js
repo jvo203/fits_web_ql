@@ -6414,7 +6414,7 @@ function setup_csv_export() {
 		for (let index = 0; index < va_count; index++) {
 			// a CSV websocket request
 			var request = {
-				type: "spectrum",
+				type: "csv",
 				ra: d3.select("#ra").text().toString(),
 				dec: d3.select("#dec").text().toString(),
 				intensity: intensity_mode,
@@ -10186,7 +10186,7 @@ function imageTimeout() {
 				for (let index = 0; index < va_count; index++) {
 					// a CSV websocket request
 					var request = {
-						type: "spectrum",
+						type: "csv",
 						ra: d3.select("#ra").text().toString(),
 						dec: d3.select("#dec").text().toString(),
 						x1: _x1,
