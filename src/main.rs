@@ -1007,8 +1007,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 },
                                 _ => fits::Intensity::Integrated,
                             };
+                            
+                            let rest = match msg["rest"].as_bool() {
+                                Some(b) => b,
+                                _ => false,
+                            };
 
-                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity);
+                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest);
                         },
                         Err(e) => {
                             println!("{}", e);
