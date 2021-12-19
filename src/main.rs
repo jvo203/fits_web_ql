@@ -988,7 +988,27 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 _ => 0.0,
                             };
 
-                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq);
+                            let beam = match msg["beam"].as_str() {
+                                Some(s) => {
+                                    match s.as_ref() {
+                                        "square" => fits::Beam::Square,
+                                        _ => fits::Beam::Circle,
+                                    }
+                                },
+                                _ => fits::Beam::Square,
+                            };
+
+                            let intensity = match msg["intensity"].as_str() {
+                                Some(s) => {
+                                    match s.as_ref() {
+                                        "mean" => fits::Intensity::Mean,
+                                        _ => fits::Intensity::Integrated,
+                                    }
+                                },
+                                _ => fits::Intensity::Integrated,
+                            };
+
+                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity);
                         },
                         Err(e) => {
                             println!("{}", e);
