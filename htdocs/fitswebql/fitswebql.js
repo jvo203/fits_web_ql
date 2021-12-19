@@ -8315,10 +8315,6 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			for (let i = 0; i < va_count; i++)
 				spectrum_stack[i] = [];
 
-			if (!d3.event.shiftKey) {
-				setup_csv_export();
-			}
-
 			if (xradec != null) {
 				let fitsData = fitsContainer[va_count - 1];
 
@@ -8765,6 +8761,8 @@ function setup_image_selection() {
 
 			if (d3.event.shiftKey)
 				return;
+
+			setup_csv_export();
 
 			if (xradec != null) {
 				let fitsData = fitsContainer[va_count - 1];
