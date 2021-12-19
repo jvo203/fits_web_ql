@@ -1019,6 +1019,27 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             };
 
                             println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}, deltaV: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest, deltaV);
+
+                            if fits.has_data {
+                                let watch = Instant::now();
+                                match fits.get_spectrum(
+                                    x1 as i32,
+                                    y1 as i32,
+                                    x2 as i32,
+                                    y2 as i32,
+                                    beam,
+                                    intensity,
+                                    frame_start,
+                                    frame_end,
+                                    ref_freq,
+                                    &self.pool,
+                                ) {
+                                    Some(spectrum) => {
+                                        println!("{:?}", spectrum);
+                                    },
+                                    None => {}
+                                }
+                            }
                         },
                         Err(e) => {
                             println!("{}", e);
