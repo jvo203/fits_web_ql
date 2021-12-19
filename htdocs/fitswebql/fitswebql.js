@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2021-09-01.0";
+	return "JS2021-12-19.0";
 }
 
 const wasm_supported = (() => {
@@ -6370,6 +6370,69 @@ function composite_data_min_max() {
 	}
 }
 
+function setup_csv_export() {
+	var elem = document.getElementById('exportCSV');
+
+	if (elem == null)
+		return;
+
+	elem.onclick = function () {
+		console.log("export spectrum to CSV.");
+
+		var c = 299792.458;//speed of light [km/s]
+
+		var deltaV = 0.0;
+
+		try {
+			deltaV = document.getElementById('velocityInput').valueAsNumber;//[km/s]
+		}
+		catch (e) {
+			console.log(e);
+			console.log("USER_DELTAV = ", USER_DELTAV);
+		}
+
+		//convert redshift z to V
+		var value = sessionStorage.getItem("redshift");
+
+		if (value == "z") {
+			var tmp = - (1.0 - (1.0 + deltaV) * (1.0 + deltaV)) / (1.0 + (1.0 + deltaV) * (1.0 + deltaV));
+
+			deltaV = tmp * c;
+		};
+
+		var checkbox = document.getElementById('restcheckbox');
+		var rest = false;
+
+		try {
+			rest = checkbox.checked;
+		} catch (e) {
+			console.log(e);
+		}
+
+		display_hourglass();
+
+		for (let index = 0; index < va_count; index++) {
+			// a CSV websocket request
+			var request = {
+				type: "spectrum",
+				ra: d3.select("#ra").text().toString(),
+				dec: d3.select("#dec").text().toString(),
+				intensity: intensity_mode,
+				frame_start: data_band_lo,
+				frame_end: data_band_hi,
+				ref_freq: RESTFRQ,
+				deltaV: 1000.0 * deltaV, // [m/s]
+				rest: rest,
+				seq_id: sent_seq_id,
+				timestamp: performance.now(),
+			};
+
+			if (wsConn[index].readyState == 1)
+				wsConn[index].send(JSON.stringify(request));
+		}
+	};
+}
+
 function setup_axes() {
 	let fitsData = fitsContainer[va_count - 1];
 
@@ -6604,6 +6667,38 @@ function setup_axes() {
 			//.style("stroke-width", emStrokeWidth)
 			.attr("transform", "translate(" + (0.75 * range.xMin - 1) + ",0)")
 			.call(yAxis);
+
+		// Add a CSV export link
+		if (has_velocity_info || has_frequency_info) {
+			var front_svg = d3.select("#FrontSVG");
+			var width = parseFloat(front_svg.attr("width"));
+			var height = parseFloat(front_svg.attr("height"));
+
+			strCSV = '<span id="exportCSV" class="fas fa-file-download" style="display:inline-block; cursor: pointer" title="click to export spectrum to a local file"></span>'
+
+			var colour_style = "csv-dark";
+			if (theme == 'bright')
+				colour_style = "csv-light";
+
+			let x1 = range.xMax + 0.75 * emFontSize;
+			let x2 = (range.xMax + width) / 2.0 - 0.5 * emFontSize;
+
+			front_svg.append("foreignObject")
+				.attr("id", "foreignCSV")
+				.attr("x", Math.min(x1, x2))
+				.attr("y", (height - 2.0 * emFontSize))
+				.attr("width", 2 * emFontSize)
+				.attr("height", 2 * emFontSize)
+				.append("xhtml:div")
+				.attr("id", "csv")
+				.attr("class", colour_style)
+				.attr("pointer-events", "auto")
+				.html(strCSV);
+
+			setup_csv_export();
+
+			d3.select("#csv").moveToFront();
+		};
 	}
 
 	//if(fitsData.CTYPE3 == "FREQ")
@@ -8217,6 +8312,8 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			spectrum_stack = new Array(va_count);
 			for (let i = 0; i < va_count; i++)
 				spectrum_stack[i] = [];
+
+			setup_csv_export();
 
 			if (xradec != null) {
 				let fitsData = fitsContainer[va_count - 1];
@@ -10044,6 +10141,76 @@ function imageTimeout() {
 
 	sent_seq_id++;
 
+	// attach a CSV export handler
+	if (has_velocity_info || has_frequency_info) {
+		_x1 = x1; _x2 = x2; _y1 = y1; _y2 = y2; // global variables
+
+		var elem = document.getElementById('exportCSV');
+
+		if (elem != null) {
+			elem.onclick = function () {
+				console.log("export viewport to CSV.");
+
+				var c = 299792.458;//speed of light [km/s]
+
+				var deltaV = 0.0;
+
+				try {
+					deltaV = document.getElementById('velocityInput').valueAsNumber;//[km/s]
+				}
+				catch (e) {
+					console.log(e);
+					console.log("USER_DELTAV = ", USER_DELTAV);
+				}
+
+				//convert redshift z to V
+				var value = sessionStorage.getItem("redshift");
+
+				if (value == "z") {
+					var tmp = - (1.0 - (1.0 + deltaV) * (1.0 + deltaV)) / (1.0 + (1.0 + deltaV) * (1.0 + deltaV));
+
+					deltaV = tmp * c;
+				};
+
+				var checkbox = document.getElementById('restcheckbox');
+				var rest = false;
+
+				try {
+					rest = checkbox.checked;
+				} catch (e) {
+					console.log(e);
+				}
+
+				display_hourglass();
+
+				for (let index = 0; index < va_count; index++) {
+					// a CSV websocket request
+					var request = {
+						type: "spectrum",
+						ra: d3.select("#ra").text().toString(),
+						dec: d3.select("#dec").text().toString(),
+						x1: _x1,
+						y1: _y1,
+						x2: _x2,
+						y2: _y2,
+						beam: zoom_shape,
+						intensity: intensity_mode,
+						frame_start: data_band_lo,
+						frame_end: data_band_hi,
+						ref_freq: RESTFRQ,
+						deltaV: 1000.0 * deltaV, // [m/s]
+						rest: rest,
+						seq_id: sent_seq_id,
+						timestamp: performance.now(),
+					};
+
+					if (wsConn[index].readyState == 1)
+						wsConn[index].send(JSON.stringify(request));
+				}
+			};
+		}
+	}
+
 	var range = get_axes_range(width, height);
 	var dx = range.xMax - range.xMin;
 
@@ -10430,6 +10597,7 @@ function change_intensity_threshold(refresh) {
 function hide_navigation_bar() {
 	document.getElementById('menu').style.display = "none";
 	d3.select("#menu_activation_area").attr("opacity", 0.1);//was 0.7
+	setup_csv_export();
 }
 
 function display_menu() {
@@ -11175,6 +11343,29 @@ function setup_help() {
 	var bodyDiv = contentDiv.append("div")
 		.attr("id", "modal-body")
 		.attr("class", "modal-body");
+
+	bodyDiv.append("h3")
+		.attr("id", "h3")
+		.text("Spectrum Export");
+
+	bodyDiv.append("p")
+		.html("The current image/viewport spectrum can be exported to a <b>CSV</b> file");
+
+	bodyDiv.append("p")
+		.html("Other formats like <em>JSON</em>, <em>PLAIN TEXT</em> or <em>FITS</em> are under consideration");
+
+	var csv = bodyDiv.append("video")
+		.attr("width", "100%")
+		.attr("controls", "")
+		.attr("preload", "metadata");
+
+	csv.append("source")
+		.attr("src", "https://cdn.jsdelivr.net/gh/jvo203/FITSWEBQLSE/htdocs/fitswebql/spectrum_export.mp4");
+
+	csv.append("p")
+		.html("Your browser does not support the video tag.");
+
+	bodyDiv.append("hr");
 
 	bodyDiv.append("h3")
 		.text("3D View");
