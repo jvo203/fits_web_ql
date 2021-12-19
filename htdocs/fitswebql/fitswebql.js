@@ -6376,6 +6376,8 @@ function setup_csv_export() {
 	if (elem == null)
 		return;
 
+	console.log("setting up CSV spectrum export");
+
 	elem.onclick = function () {
 		console.log("export spectrum to CSV.");
 
@@ -8313,7 +8315,9 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 			for (let i = 0; i < va_count; i++)
 				spectrum_stack[i] = [];
 
-			setup_csv_export();
+			if (!d3.event.shiftKey) {
+				setup_csv_export();
+			}
 
 			if (xradec != null) {
 				let fitsData = fitsContainer[va_count - 1];
@@ -10143,6 +10147,8 @@ function imageTimeout() {
 
 	// attach a CSV export handler
 	if (has_velocity_info || has_frequency_info) {
+		console.log("setting up an idle CSV handler");
+
 		_x1 = x1; _x2 = x2; _y1 = y1; _y2 = y2; // global variables
 
 		var elem = document.getElementById('exportCSV');
