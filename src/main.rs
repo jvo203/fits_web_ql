@@ -901,7 +901,19 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                 }
 
                 if (&text).contains("\"csv\"") {
-                    println!("{}", text);
+                    println!("{}", &text);
+
+                    // parse the JSON string                    
+                    let res: Result<serde_json::Value, serde_json::Error> = serde_json::from_str(&text);
+
+                    match res {
+                        Ok(v) => {
+                            println!("parsed the CSV JSON: {}", v);
+                        },
+                        Err(e) => {
+                            println!("{}", e);
+                        }
+                    }
                 }
 
                 if (&text).contains("[spectrum]") {

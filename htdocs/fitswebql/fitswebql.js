@@ -3768,9 +3768,9 @@ function display_dataset_info() {
 		.attr("font-size", "1.5em")
 		.attr("text-anchor", "end")
 		.attr("stroke", "none")
-		.text(raText)
-		.append("svg:title")
-		.text(fitsData.CTYPE1.trim());
+		.text(raText);
+	/*.append("svg:title")
+	.text(fitsData.CTYPE1.trim());*/
 
 	let decText = 'DEC N/A';
 
@@ -3793,9 +3793,9 @@ function display_dataset_info() {
 		.attr("font-size", "1.5em")
 		.attr("text-anchor", "end")
 		.attr("stroke", "none")
-		.text(decText)
-		.append("svg:title")
-		.text(fitsData.CTYPE2.trim());
+		.text(decText);
+	/*.append("svg:title")
+	.text(fitsData.CTYPE2.trim());*/
 
 	maxoffset = 11.5 * emFontSize;
 	group.append("text")
