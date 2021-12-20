@@ -6370,9 +6370,15 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
+    fn split_wcs(coord:String) -> (String, String) {
+
+        return (String::from(""), String::from(""));
+    }
 
     pub fn get_csv_spectrum(
         &self,
+        ra: String,
+        dec: String,
         x1: i32,
         y1: i32,
         x2: i32,
@@ -6405,14 +6411,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                             };
 
-        let (ra, dec) = self.pix_to_world(cx, cy);
+        let (lng_value, lat_value) = self.pix_to_world(cx, cy);
         let (ra1, dec1) = self.pix_to_world(cx - rx, cy - ry);
         let (ra2, dec2) = self.pix_to_world(cx + rx, cy + ry);
 
         let beam_width = (ra2 - ra1).abs(); // [deg]
         let beam_height = (dec2 - dec1).abs(); // [deg]
 
-        println!("first channel: {}, last channel: {}, ra {} [deg], dec {} [deg], beam width [deg]: {}, beam height [deg]: {}", start, end, ra, dec, beam_width, beam_height);
+        println!("first channel: {}, last channel: {}, ra {} [deg], dec {} [deg], beam width [deg]: {}, beam height [deg]: {}", start, end, lng_value, lat_value, beam_width, beam_height);
 
         let mut intensity_column = format!("intensity [{}", self.beam_unit);
 
