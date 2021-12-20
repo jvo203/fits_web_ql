@@ -6390,8 +6390,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return None;
         }
 
-        let cx = (x1 + x2) >> 1;
-        let cy = (y1 + y2) >> 1;
+        let cx = 1 + (x1 + x2) >> 1;
+        let cy = 1 + (y1 + y2) >> 1;
         
         let rx = (x2 - x1).abs() >> 1;
         let ry = (y2 - y1).abs() >> 1;
@@ -6405,9 +6405,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                             };
 
-        let (ra, dec) = self.pix_to_world(cx + 1, cy + 1);
+        let (ra, dec) = self.pix_to_world(cx, cy);
+        let (ra1, dec1) = self.pix_to_world(cx - rx, cy - ry);
+        let (ra2, dec2) = self.pix_to_world(cx + rx, cy + ry);
 
-        println!("first channel: {}, last channel: {}, ra {} [deg], dec {} [deg]", start, end, ra, dec);
+        let beam_width = (ra2 - ra1).abs(); // [deg]
+        let beam_height = (dec2 - dec1).abs(); // [deg]
+
+        println!("first channel: {}, last channel: {}, ra {} [deg], dec {} [deg], beam width [deg]: {}, beam height [deg]: {}", start, end, ra, dec, beam_width, beam_height);
 
         match self.get_spectrum(
             x1,
@@ -6422,8 +6427,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             pool,
         ) {
             Some(spectrum) => {
-                println!("{:?}", spectrum);
-
                 for i in 0 .. spectrum.len() {
                     let frame = start + i + 1;
 
