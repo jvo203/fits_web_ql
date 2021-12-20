@@ -1013,12 +1013,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 _ => false,
                             };
 
-                            let deltaV: f64 = match msg["deltaV"].as_f64() {
+                            let delta_v: f64 = match msg["deltaV"].as_f64() {
                                 Some(frame) => frame,
                                 _ => 0.0,
                             };
 
-                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}, deltaV: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest, deltaV);
+                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}, Δv: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest, delta_v);
 
                             if fits.has_data {
                                 let watch = Instant::now();
@@ -1032,7 +1032,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     frame_start,
                                     frame_end,
                                     ref_freq,
-                                    deltaV,
+                                    delta_v,
                                     rest,
                                     &self.pool,
                                 ) {

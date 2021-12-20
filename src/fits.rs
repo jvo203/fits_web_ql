@@ -6382,7 +6382,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame_start: f64,
         frame_end: f64,
         ref_freq: f64,
-        deltaV: f64,
+        delta_v: f64,
         rest: bool,
         pool: &Option<rayon::ThreadPool>,
     ) -> Option<String> {
@@ -6422,7 +6422,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                 for i in 0 .. spectrum.len() {
                     let frame = start + i + 1;
 
-                    let (f, v) = self.get_frame2freq_vel(frame, ref_freq, deltaV, rest);
+                    let (f, v) = self.get_frame2freq_vel(frame, ref_freq, delta_v, rest);
 
                     println!("channel: {}, f: {}, v: {}, intensity: {}", frame, f, v, spectrum[i]);
                 }
@@ -6949,7 +6949,32 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    pub fn get_frame2freq_vel(&self, frame:usize, ref_freq:f64, deltaV:f64, rest:bool) -> (f64, f64) {
+    fn Einstein_velocity_addition(v1:f64, v2:f64) -> f64 {        
+        let c = 299792458_f64; //speed of light [m/s]
+
+        return (v1 + v2) / (1.0 + v1 * v2 / c * c);
+    }
+
+    fn Einstein_relative_velocity(f:f64, f0:f64, delta_v:f64) -> f64 {
+        let c = 299792458_f64; //speed of light [m/s]
+
+        let f_ratio = f / f0;
+        let v = (1.0 - f_ratio * f_ratio) / (1.0 + f_ratio * f_ratio) * c;
+
+        return FITS::Einstein_velocity_addition(v, delta_v);
+    }
+
+    fn relativistic_rest_frequency(f:f64, delta_v:f64) -> f64 {
+        let c = 299792458_f64; //speed of light [m/s]
+
+        let beta = delta_v / c ;
+
+        let tmp = ((1.0 + beta) / (1.0 - beta)).sqrt();
+
+        return f * tmp;
+    }
+
+    pub fn get_frame2freq_vel(&self, frame:usize, ref_freq:f64, delta_v:f64, rest:bool) -> (f64, f64) {
 
         return (std::f64::NAN, std::f64::NAN);
     }
