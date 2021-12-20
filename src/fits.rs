@@ -6392,6 +6392,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let cx = (x1 + x2) >> 1;
         let cy = (y1 + y2) >> 1;
+        
+        let rx = (x2 - x1).abs() >> 1;
+        let ry = (y2 - y1).abs() >> 1;
 
         let (start, end) =
                             match self.get_spectrum_range(frame_start, frame_end, ref_freq) {
@@ -6402,7 +6405,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                             };
 
-        println!("first channel: {}, last channel: {}", start, end);
+        let (ra, dec) = self.pix_to_world((cx + 1) as f64, (cy + 1) as f64);
+
+        println!("first channel: {}, last channel: {}, ra {} [deg], dec {} [deg]", start, end, ra, dec);
 
         match self.get_spectrum(
             x1,
