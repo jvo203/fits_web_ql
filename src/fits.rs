@@ -6424,7 +6424,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     let (f, v) = self.get_frame2freq_vel(frame, ref_freq, deltaV, rest);
 
-                    println!("channel: {}, f: {:?}, v: {:?}, intensity: {}", frame, f, v, spectrum[i]);
+                    println!("channel: {}, f: {}, v: {}, intensity: {}", frame, f, v, spectrum[i]);
                 }
 
                 Some(String::from("CSV"))
@@ -6949,9 +6949,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    pub fn get_frame2freq_vel(&self, frame:usize, ref_freq:f64, deltaV:f64, rest:bool) -> (Option<f64>, Option<f64>) {
+    pub fn get_frame2freq_vel(&self, frame:usize, ref_freq:f64, deltaV:f64, rest:bool) -> (f64, f64) {
 
-        return (None, None);
+        return (std::f64::NAN, std::f64::NAN);
     }
 
     pub fn get_spectrum_range(
