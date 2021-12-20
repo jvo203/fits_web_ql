@@ -7030,6 +7030,23 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         return (std::f64::NAN, std::f64::NAN);
     }
 
+    fn pix_to_world(&self, x:f64, y:f64) -> (f64, f64) {
+        
+        let ra = if self.ctype1.contains("RA") || self.ctype1.contains("GLON") || self.ctype1.contains("ELON") {
+            self.crval1 + (x - self.crpix1) * self.cdelt1 // [deg]
+        } else {
+            std::f64::NAN
+        };
+    
+        let dec = if self.ctype2.contains("DEC") || self.ctype2.contains("GLAT") || self.ctype2.contains("ELAT") {
+            self.crval2 + (y - self.crpix2) * self.cdelt2 // [deg]
+        } else {
+            std::f64::NAN
+        };
+
+        return (ra, dec);
+    }
+
     pub fn get_spectrum_range(
         &self,
         frame_start: f64,
