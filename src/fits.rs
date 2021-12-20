@@ -6974,7 +6974,33 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         return f * tmp;
     }
 
-    pub fn get_frame2freq_vel(&self, frame:usize, ref_freq:f64, delta_v:f64, rest:bool) -> (f64, f64) {
+    fn get_frame2freq_vel(&self, frame:usize, ref_freq:f64, delta_v:f64, rest:bool) -> (f64, f64) {
+        let has_velocity = self.has_velocity;
+
+        let has_frequency = if ref_freq > 0.0 {
+            true
+        } else {
+            self.has_frequency
+        };
+
+        if has_velocity && has_frequency {
+            let c = 299792458_f64; //speed of light [m/s]
+            
+            // go from v to f then apply a Δv correction to v
+            let mut v = self.crval3 * self.frame_multiplier
+            + self.cdelt3 * self.frame_multiplier * (frame as f64 - self.crpix3); // [m/s]
+
+            let mut f = ref_freq * ((1.0 - v / c) / (1.0 + v / c)).sqrt(); // [Hz]            
+
+            if rest {
+                f = FITS::relativistic_rest_frequency(f, delta_v);
+            }
+
+            // find the corresponding velocity
+            v = FITS::Einstein_relative_velocity(f, ref_freq, delta_v);
+
+            return (f / 1.0e9, v / 1000.0) // [GHz], [km/s]
+        };
 
         return (std::f64::NAN, std::f64::NAN);
     }
