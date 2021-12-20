@@ -6424,7 +6424,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     let (f, v) = self.get_frame2freq_vel(frame, ref_freq, delta_v, rest);
 
-                    println!("channel: {}, f: {}, v: {}, intensity: {}", frame, f, v, spectrum[i]);
+                    println!("channel: {}, f: {} GHz, v: {} km/s, intensity: {}", frame, f, v, spectrum[i]);
                 }
 
                 Some(String::from("CSV"))
