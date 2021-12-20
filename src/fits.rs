@@ -6985,7 +6985,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         if has_velocity && has_frequency {
             let c = 299792458_f64; //speed of light [m/s]
-            
+
             // go from v to f then apply a Δv correction to v
             let mut v = self.crval3 * self.frame_multiplier
             + self.cdelt3 * self.frame_multiplier * (frame as f64 - self.crpix3); // [m/s]
@@ -6999,9 +6999,34 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             // find the corresponding velocity
             v = FITS::Einstein_relative_velocity(f, ref_freq, delta_v);
 
-            return (f / 1.0e9, v / 1000.0) // [GHz], [km/s]
+            return (f / 1.0e9, v / 1000.0); // [GHz], [km/s]
         };
 
+        let val = self.crval3 * self.frame_multiplier
+            + self.cdelt3 * self.frame_multiplier * (frame as f64 - self.crpix3);
+
+        if has_frequency {
+            let f = if rest {
+                FITS::relativistic_rest_frequency(val, delta_v)
+            } else {
+                val
+            };
+
+            // find the corresponding velocity
+            let v = FITS::Einstein_relative_velocity(f, ref_freq, delta_v);
+
+            return (f / 1.0e9, v / 1000.0); // [GHz], [km/s]
+        };
+
+        if has_velocity {
+            // no frequency info, only velocity
+
+            // what about Δv ???
+
+            return (std::f64::NAN, val / 1000.0); // [km/s]
+        };
+
+        // if we got to this point there is nothing to report ...
         return (std::f64::NAN, std::f64::NAN);
     }
 
