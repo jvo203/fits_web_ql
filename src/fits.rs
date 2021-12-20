@@ -6405,7 +6405,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                 }
                             };
 
-        let (ra, dec) = self.pix_to_world((cx + 1) as f64, (cy + 1) as f64);
+        let (ra, dec) = self.pix_to_world(cx + 1, cy + 1);
 
         println!("first channel: {}, last channel: {}, ra {} [deg], dec {} [deg]", start, end, ra, dec);
 
@@ -7035,16 +7035,16 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         return (std::f64::NAN, std::f64::NAN);
     }
 
-    fn pix_to_world(&self, x:f64, y:f64) -> (f64, f64) {
+    fn pix_to_world(&self, x:i32, y:i32) -> (f64, f64) {
         
         let ra = if self.ctype1.contains("RA") || self.ctype1.contains("GLON") || self.ctype1.contains("ELON") {
-            self.crval1 + (x - self.crpix1) * self.cdelt1 // [deg]
+            self.crval1 + (x as f64 - self.crpix1) * self.cdelt1 // [deg]
         } else {
             std::f64::NAN
         };
     
         let dec = if self.ctype2.contains("DEC") || self.ctype2.contains("GLAT") || self.ctype2.contains("ELAT") {
-            self.crval2 + (y - self.crpix2) * self.cdelt2 // [deg]
+            self.crval2 + (y as f64 - self.crpix2) * self.cdelt2 // [deg]
         } else {
             std::f64::NAN
         };
