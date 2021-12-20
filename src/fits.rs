@@ -6414,6 +6414,31 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         println!("first channel: {}, last channel: {}, ra {} [deg], dec {} [deg], beam width [deg]: {}, beam height [deg]: {}", start, end, ra, dec, beam_width, beam_height);
 
+        let mut intensity_column = format!("intensity [{}", self.beam_unit);
+
+        match intensity {
+            Intensity::Mean => {
+                intensity_column = format!("mean {}", intensity_column);
+            },
+            Intensity::Integrated => {
+                intensity_column = format!("integrated {}", intensity_column);
+
+            if self.has_velocity {
+                intensity_column = format!("{}•km/s", intensity_column);
+            };
+            },
+        };
+
+        intensity_column = format!("{}]", intensity_column);
+
+        let mut frequency_column = format!("frequency [GHz]");
+
+        if rest {
+            frequency_column = format!("rest {}", frequency_column);
+        };
+
+        println!("intensity column: '{}', frequency column: '{}'", intensity_column, frequency_column);
+
         match self.get_spectrum(
             x1,
             y1,
@@ -6432,7 +6457,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     let (f, v) = self.get_frame2freq_vel(frame, ref_freq, delta_v, rest);
 
-                    println!("channel: {}, f: {} GHz, v: {} km/s, intensity: {}", frame, f, v, spectrum[i]);
+                    //println!("channel: {}, f: {} GHz, v: {} km/s, intensity: {}", frame, f, v, spectrum[i]);
                 }
 
                 Some(String::from("CSV"))
