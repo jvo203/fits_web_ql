@@ -6382,6 +6382,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         frame_start: f64,
         frame_end: f64,
         ref_freq: f64,
+        deltaV: f64,
+        rest: bool,
         pool: &Option<rayon::ThreadPool>,
     ) -> Option<String> {
         if self.depth <= 1 {
@@ -6419,7 +6421,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                 for i in 0 .. spectrum.len() {
                     let frame = start + i + 1;
-                    println!("channel: {}, intensity: {}", frame, spectrum[i]);
+
+                    let (f, v) = self.get_frame2freq_vel(frame, ref_freq, deltaV, rest);
+
+                    println!("channel: {}, f: {:?}, v: {:?}, intensity: {}", frame, f, v, spectrum[i]);
                 }
 
                 Some(String::from("CSV"))
@@ -6942,6 +6947,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         } else {
             0.0
         }
+    }
+
+    pub fn get_frame2freq_vel(&self, frame:usize, ref_freq:f64, deltaV:f64, rest:bool) -> (Option<f64>, Option<f64>) {
+
+        return (None, None);
     }
 
     pub fn get_spectrum_range(

@@ -1032,6 +1032,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     frame_start,
                                     frame_end,
                                     ref_freq,
+                                    deltaV,
+                                    rest,
                                     &self.pool,
                                 ) {
                                     Some(csv) => {
