@@ -1022,8 +1022,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                             println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}, Δv: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest, delta_v);
 
-                            if fits.has_data {
-                                let watch = Instant::now();
+                            if fits.has_data {                                
                                 match fits.get_csv_spectrum(
                                     &ra,
                                     &dec,
@@ -1044,7 +1043,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         println!("{}", csv);
                                         let data = csv.as_bytes();
                                         let original_size = data.len();
-                                        println!("#bytes: {}", original_size);
+
+                                        let compressed_csv = lz4_compress::compress(&data);
+                                        let compressed_size = compressed_csv.len();
+
+                                        println!("#bytes: {}; after LZ4 compression: {} bytes", original_size, compressed_size);
                                     },
                                     None => {}
                                 }
