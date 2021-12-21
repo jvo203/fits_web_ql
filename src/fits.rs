@@ -6497,8 +6497,23 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 }
 
-                // Some(String::from("CSV"))
-                None
+                match wtr.into_inner() {
+                    Ok(w) => {
+                        match String::from_utf8(w) {
+                            Ok(csv) => {
+                                Some(csv)
+                            },
+                            Err(err) => {
+                                println!("csv2utf8 conversion error: {}", err);
+                                None
+                            },
+                        }                        
+                    },
+                    Err(err) => {
+                        println!("CSV into_inner() error: {}", err);
+                        None
+                    }
+                }                
             },
             None => {
                 None
