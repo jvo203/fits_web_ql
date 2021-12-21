@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2021-12-19.1";
+	return "JS2021-12-21.0";
 }
 
 const wasm_supported = (() => {
@@ -1508,14 +1508,14 @@ function send_ping() {
 	}
 }
 
-function open_websocket_connection(datasetId, index) {
+function open_websocket_connection(_datasetId, index) {
 	if ("WebSocket" in window) {
 		//alert("WebSocket is supported by your Browser!");
 
 		// Let us open a web socket
 		var loc = window.location, ws_uri;
 
-		ws_uri = WS_SOCKET + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/" + encodeURIComponent(datasetId);
+		ws_uri = WS_SOCKET + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/" + encodeURIComponent(_datasetId);
 
 		//d3.select("#welcome").append("p").text("ws_uri: " + ws_uri) ;
 
@@ -2014,6 +2014,43 @@ function open_websocket_connection(datasetId, index) {
 							if (videoFrame[index - 1] != null)
 								d3.select("#fps").text('video: ' + Math.round(vidFPS) + ' fps, bitrate: ' + Math.round(bitrate) + ' kbps');//, η: ' + eta.toFixed(4) + ' var: ' + variance
 						}
+
+						return;
+					}
+
+					//CSV spectrum
+					if (type == 6) {
+						hide_hourglass();
+
+						var csv_len = dv.getUint32(12, endianness);
+						var csv_frame = new Uint8Array(received_msg, 16);
+
+						// decompress CSV
+						var LZ4 = require('lz4');
+
+						var uncompressed = new Uint8Array(csv_len);
+						uncompressedSize = LZ4.decodeBlock(csv_frame, uncompressed);
+						uncompressed = uncompressed.slice(0, uncompressedSize);
+
+						try {
+							var csv = new TextDecoder().decode(uncompressed);
+
+							// prepend the UTF-8 Byte Order Mark (BOM) 0xEF,0xBB,0xBF
+							var blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "data:text/csv;charset=utf-8" });
+
+							var filename = "";
+
+							if (va_count == 1) {
+								filename = datasetId + ".csv";
+							} else {
+								filename = datasetId[index - 1] + ".csv";
+							};
+
+							saveAs(blob, filename.replace('/', '_'));
+						}
+						catch (err) {
+							console.error(err);
+						};
 
 						return;
 					}
