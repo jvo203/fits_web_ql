@@ -1042,6 +1042,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 ) {
                                     Some(csv) => {
                                         println!("{}", csv);
+                                        let data = csv.as_bytes();
+                                        let original_size = data.len();
+                                        println!("#bytes: {}", original_size);
                                     },
                                     None => {}
                                 }
