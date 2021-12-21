@@ -6491,30 +6491,30 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
-                        if !has_header {
-                            let mut header = vec![];
-                            header.push("channel");
-                            header.push(&frequency_column);
-                            header.push("velocity [km/s]");
-                            header.push(&intensity_column);
-                            header.push(&ra_column);
-                            header.push(&dec_column);
-                            header.push(&lng_column);
-                            header.push(&lat_column);
-                            header.push("beam type");
-                            header.push("beam width [deg]");
-                            header.push("beam height [deg]");
-                            header.push("beam cx [px]");
-                            header.push("beam cy [px]");
-                            header.push("beam width [px]");
-                            header.push("beam height [px]");
-                            header.push("source velocity [km/s]");
+                        if !has_header {                            
+                            let _ = wtr.write_field("'channel'");
+                            let _ = wtr.write_field(&frequency_column);
+                            let _ = wtr.write_field("'velocity [km/s]'");
+                            let _ = wtr.write_field(&intensity_column);
+                            let _ = wtr.write_field(&ra_column);
+                            let _ = wtr.write_field(&dec_column);
+                            let _ = wtr.write_field(&lng_column);
+                            let _ = wtr.write_field(&lat_column);
+                            let _ = wtr.write_field("'beam type'");
+                            let _ = wtr.write_field("'beam width [deg]'");
+                            let _ = wtr.write_field("'beam height [deg]'");
+                            let _ = wtr.write_field("'beam cx [px]'");
+                            let _ = wtr.write_field("'beam cy [px]'");
+                            let _ = wtr.write_field("'beam width [px]'");
+                            let _ = wtr.write_field("'beam height [px]'");
+                            let _ = wtr.write_field("'source velocity [km/s]'");
 
                             if ref_freq > 0.0 {
-                                header.push("reference frequency [GHz]");
-                            }
-;
-                            let _ = wtr.write_record(header);
+                                let _ = wtr.write_field("'reference frequency [GHz]'");
+                            }                            
+
+                            // terminate the record
+                            let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;
                         }
 
