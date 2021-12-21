@@ -2033,6 +2033,7 @@ function open_websocket_connection(_datasetId, index) {
 						uncompressed = uncompressed.slice(0, uncompressedSize);
 
 						try {
+							console.log(uncompressed);
 							var csv = new TextDecoder().decode(uncompressed);
 
 							console.log(csv);

@@ -1055,7 +1055,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 ) {
                                     Some(csv) => {                                        
                                         let data = csv.as_bytes();
-                                        let original_size = data.len();
+                                        let original_size = data.len();                                        
 
                                         let compressed_csv = lz4_compress::compress(&data);
                                         let compressed_size = compressed_csv.len();
