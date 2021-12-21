@@ -1055,7 +1055,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 ) {
                                     Some(csv) => {                                        
                                         let data = csv.as_bytes();
-                                        let original_size = data.len();                                        
+                                        let original_size = data.len();
 
                                         let compressed_csv = lz4_compress::compress(&data);
                                         let compressed_size = compressed_csv.len();
@@ -1072,7 +1072,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                                         match serialize(&ws_csv) {
                                             Ok(bin) => {
-                                                println!("binary length: {}", bin.len());
+                                                println!("WcCSV binary length: {}", bin.len());
                                                 //println!("{}", bin);
                                                 ctx.binary(bin);
                                             }

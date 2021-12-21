@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2021-12-21.0";
+	return "JS2021-12-21.1";
 }
 
 const wasm_supported = (() => {
@@ -2023,7 +2023,7 @@ function open_websocket_connection(_datasetId, index) {
 						hide_hourglass();
 
 						var csv_len = dv.getUint32(12, endianness);
-						var csv_frame = new Uint8Array(received_msg, 16);
+						var csv_frame = new Uint8Array(received_msg, 16 + 8);
 
 						// decompress CSV
 						var LZ4 = require('lz4');
@@ -2033,10 +2033,7 @@ function open_websocket_connection(_datasetId, index) {
 						uncompressed = uncompressed.slice(0, uncompressedSize);
 
 						try {
-							console.log(uncompressed);
 							var csv = new TextDecoder().decode(uncompressed);
-
-							console.log(csv);
 
 							// prepend the UTF-8 Byte Order Mark (BOM) 0xEF,0xBB,0xBF
 							var blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "data:text/csv;charset=utf-8" });
@@ -10240,9 +10237,9 @@ function imageTimeout() {
 						ra: d3.select("#ra").text().toString(),
 						dec: d3.select("#dec").text().toString(),
 						x1: _x1,
-						y1: _y1,
+						y1: _y2, // reversed Y-axis
 						x2: _x2,
-						y2: _y2,
+						y2: _y1, // reversed Y-axis
 						beam: zoom_shape,
 						intensity: intensity_mode,
 						frame_start: data_band_lo,
@@ -11396,7 +11393,7 @@ function setup_help() {
 
 	bodyDiv.append("h3")
 		.attr("id", "h3")
-		.text("Spectrum Export");
+		.text("Spectrum Export (backported from v5)");
 
 	bodyDiv.append("p")
 		.html("The current image/viewport spectrum can be exported to a <b>CSV</b> file");
