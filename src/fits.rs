@@ -6374,10 +6374,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let tmp: Vec<String> = coord.split(':').map(|s| s.to_string()).collect();
 
         if tmp.len() == 2 {
-            let key = tmp[0];
-            let value = tmp[1].replace("\\" => "");
+            let key = &tmp[0];
+            let value = &tmp[1].replace("\\","");
 
-            return (key.trim(), value.trim());
+            return (key.trim().to_string(), value.trim().to_string());
         };
         
         return (String::from("N/A"), String::from("N/A"));
@@ -6385,8 +6385,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
     pub fn get_csv_spectrum(
         &self,
-        ra: String,
-        dec: String,
+        ra: &String,
+        dec: &String,
         x1: i32,
         y1: i32,
         x2: i32,
@@ -6451,7 +6451,15 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             frequency_column = format!("rest {}", frequency_column);
         };
 
-        println!("intensity column: '{}', frequency column: '{}'", intensity_column, frequency_column);
+        let (ra_suffix, ra_value) = FITS::split_wcs(ra);
+        let (dec_suffix, dec_value) = FITS::split_wcs(dec);
+
+        let ra_column = format!("beam ra ({})", ra_suffix);
+        let dec_column = format!("beam dec ({})", dec_suffix);
+
+        println!("intensity column: '{}', frequency column: '{}', ra column: '{}', dec column: '{}'", intensity_column, frequency_column, ra_column, dec_column);
+
+        let mut has_header = false;
 
         match self.get_spectrum(
             x1,
@@ -6472,6 +6480,17 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     let (f, v) = self.get_frame2freq_vel(frame, ref_freq, delta_v, rest);
 
                     //println!("channel: {}, f: {} GHz, v: {} km/s, intensity: {}", frame, f, v, spectrum[i]);
+
+                    if f != std::f64::NAN && v != std::f64::NAN {
+
+                        // write the CSV header
+                        if !has_header {
+
+                            has_header = true;
+                        }
+
+                        // write out CSV values
+                    }
                 }
 
                 Some(String::from("CSV"))

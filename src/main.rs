@@ -1023,8 +1023,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             if fits.has_data {
                                 let watch = Instant::now();
                                 match fits.get_csv_spectrum(
-                                    ra,
-                                    dec,
+                                    &ra,
+                                    &dec,
                                     x1 as i32,
                                     y1 as i32,
                                     x2 as i32,
