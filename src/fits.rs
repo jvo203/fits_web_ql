@@ -25,7 +25,7 @@ use bincode::serialize;
 use lz4_compress;
 use uuid::Uuid;
 
-use csv::Writer;
+use csv::{QuoteStyle, Terminator, WriterBuilder};
 
 use crate::server;
 use crate::UserParams;
@@ -6488,8 +6488,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             pool,
         ) {
             Some(spectrum) => {
-                // create an in-memory CSV writer
-                let mut wtr = Writer::from_writer(vec![]);
+                // create an in-memory CSV writer                
+                let mut wtr = WriterBuilder::new()
+                    .terminator(Terminator::CRLF)
+                    .quote_style(QuoteStyle::Never)
+                    .from_writer(vec![]);
 
                 for i in 0 .. spectrum.len() {
                     let frame = start + i + 1;
@@ -6501,25 +6504,25 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
                         if !has_header {                            
-                            let _ = wtr.write_field("'channel'");
-                            let _ = wtr.write_field(format!("'{}'", frequency_column));
-                            let _ = wtr.write_field("'velocity [km/s]'");
-                            let _ = wtr.write_field(format!("'{}'", intensity_column));
-                            let _ = wtr.write_field(format!("'{}'", ra_column));
-                            let _ = wtr.write_field(format!("'{}'", dec_column));
-                            let _ = wtr.write_field(format!("'{}'", lng_column));
-                            let _ = wtr.write_field(format!("'{}'", lat_column));
-                            let _ = wtr.write_field("'beam type'");
-                            let _ = wtr.write_field("'beam width [deg]'");
-                            let _ = wtr.write_field("'beam height [deg]'");
-                            let _ = wtr.write_field("'beam cx [px]'");
-                            let _ = wtr.write_field("'beam cy [px]'");
-                            let _ = wtr.write_field("'beam width [px]'");
-                            let _ = wtr.write_field("'beam height [px]'");
-                            let _ = wtr.write_field("'source velocity [km/s]'");
+                            let _ = wtr.write_field("\"channel\"");
+                            let _ = wtr.write_field(format!("\"{}\"", frequency_column));
+                            let _ = wtr.write_field("\"velocity [km/s]\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));
+                            let _ = wtr.write_field(format!("\"{}\"", ra_column));
+                            let _ = wtr.write_field(format!("\"{}\"", dec_column));
+                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
+                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
+                            let _ = wtr.write_field("\"beam type\"");
+                            let _ = wtr.write_field("\"beam width [deg]\"");
+                            let _ = wtr.write_field("\"beam height [deg]\"");
+                            let _ = wtr.write_field("\"beam cx [px]\"");
+                            let _ = wtr.write_field("\"beam cy [px]\"");
+                            let _ = wtr.write_field("\"beam width [px]\"");
+                            let _ = wtr.write_field("\"beam height [px]\"");
+                            let _ = wtr.write_field("\"source velocity [km/s]\"");
 
                             if ref_freq > 0.0 {
-                                let _ = wtr.write_field("'reference frequency [GHz]'");
+                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
                             }                            
 
                             // terminate the record
@@ -6548,7 +6551,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
 
                         // terminate the record
-                        let _ = wtr.write_record(None::<&[u8]>);
+                        let _ = wtr.write_record(None::<&[u8]>);                        
                     }
                 }
 
