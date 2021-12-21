@@ -107,6 +107,15 @@ use crate::molecule::Molecule;
 const PROGRESS_INTERVAL: u64 = 250; //[ms]
 
 #[derive(Serialize, Debug)]
+pub struct WsCSV {
+    pub ts: f32,
+    pub seq_id: u32,
+    pub msg_type: u32,
+    pub original_size: u32,
+    pub csv: Vec<u8>,
+}
+
+#[derive(Serialize, Debug)]
 pub struct WsSpectrum {
     pub ts: f32,
     pub seq_id: u32,
@@ -945,6 +954,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                             let msg_type = &msg["type"];
 
+                            let timestamp: f64 = match msg["timestamp"].as_f64() {
+                                Some(ts) => ts,
+                                _ => 0.0,
+                            };
+
                             let ra = match msg["ra"].as_str() {
                                 Some(ra) => String::from(ra),
                                 _ => String::from("N/A"),
@@ -1048,6 +1062,25 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         let compressed_size = compressed_csv.len();
 
                                         println!("#bytes: {}; after LZ4 compression: {} bytes", original_size, compressed_size);
+
+                                        let ws_csv = WsCSV {
+                                            ts: timestamp as f32,
+                                            seq_id: 0,
+                                            msg_type: 6,
+                                            original_size: original_size as u32,
+                                            csv: compressed_csv,
+                                        };
+
+                                        match serialize(&ws_csv) {
+                                            Ok(bin) => {
+                                                println!("binary length: {}", bin.len());
+                                                //println!("{}", bin);
+                                                ctx.binary(bin);
+                                            }
+                                            Err(err) => println!(
+                                        "error serializing a WebSocket CSV spectrum export response: {}",
+                                        err)
+                                        }
                                     },
                                     None => {}
                                 }
