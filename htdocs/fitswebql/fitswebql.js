@@ -2038,7 +2038,7 @@ function open_websocket_connection(_datasetId, index) {
 							// prepend the UTF-8 Byte Order Mark (BOM) 0xEF,0xBB,0xBF
 							var blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "data:text/csv;charset=utf-8" });
 
-							var filename = "";
+							var filename;
 
 							if (va_count == 1) {
 								filename = datasetId + ".csv";
