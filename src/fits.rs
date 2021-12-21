@@ -6370,9 +6370,17 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    fn split_wcs(coord:String) -> (String, String) {
+    fn split_wcs(coord:&String) -> (String, String) {
+        let tmp: Vec<String> = coord.split(':').map(|s| s.to_string()).collect();
 
-        return (String::from(""), String::from(""));
+        if tmp.len() == 2 {
+            let key = tmp[0];
+            let value = tmp[1].replace("\\" => "");
+
+            return (key.trim(), value.trim());
+        };
+        
+        return (String::from("N/A"), String::from("N/A"));
     }
 
     pub fn get_csv_spectrum(
