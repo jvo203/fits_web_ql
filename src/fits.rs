@@ -6559,7 +6559,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
 
                         // terminate the record
-                        let _ = wtr.write_record(None::<&[u8]>);                        
+                        let _ = wtr.write_record(None::<&[u8]>);
+                        
+                        continue;
                     }
                 }
 
