@@ -1053,15 +1053,14 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     rest,
                                     &self.pool,
                                 ) {
-                                    Some(csv) => {
-                                        println!("{}", csv);
+                                    Some(csv) => {                                        
                                         let data = csv.as_bytes();
                                         let original_size = data.len();
 
                                         let compressed_csv = lz4_compress::compress(&data);
                                         let compressed_size = compressed_csv.len();
 
-                                        println!("#bytes: {}; after LZ4 compression: {} bytes", original_size, compressed_size);
+                                        println!("CSV UTF-8 length: {} bytes; after LZ4 compression: {} bytes", original_size, compressed_size);
 
                                         let ws_csv = WsCSV {
                                             ts: timestamp as f32,
