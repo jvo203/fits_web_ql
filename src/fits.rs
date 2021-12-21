@@ -6459,6 +6459,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let ra_column = format!("beam ra ({})", ra_suffix);
         let dec_column = format!("beam dec ({})", dec_suffix);
 
+        let lng_column = "beam wcs.lng [deg]";
+        let lat_column = "beam wcs.lat [deg]";
+
         println!("intensity column: '{}', frequency column: '{}', ra column: '{}', dec column: '{}'", intensity_column, frequency_column, ra_column, dec_column);
 
         let mut has_header = false;
@@ -6489,7 +6492,29 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-                            let _ = wtr.write_record(&["city", "region", "country", "population"]);
+                            let mut header = vec![];
+                            header.push("channel");
+                            header.push(&frequency_column);
+                            header.push("velocity [km/s]");
+                            header.push(&intensity_column);
+                            header.push(&ra_column);
+                            header.push(&dec_column);
+                            header.push(&lng_column);
+                            header.push(&lat_column);
+                            header.push("beam type");
+                            header.push("beam width [deg]");
+                            header.push("beam height [deg]");
+                            header.push("beam cx [px]");
+                            header.push("beam cy [px]");
+                            header.push("beam width [px]");
+                            header.push("beam height [px]");
+                            header.push("source velocity [km/s]");
+
+                            if ref_freq > 0.0 {
+                                header.push("reference frequency [GHz]");
+                            }
+;
+                            let _ = wtr.write_record(header);
                             has_header = true;
                         }
 
