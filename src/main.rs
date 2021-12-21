@@ -20,6 +20,8 @@ use timer;
 #[cfg(feature = "mem")]
 use std::fs::OpenOptions;
 
+extern crate csv;
+
 #[macro_use]
 extern crate ispc;
 

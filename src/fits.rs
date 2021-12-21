@@ -25,6 +25,8 @@ use bincode::serialize;
 use lz4_compress;
 use uuid::Uuid;
 
+use csv::Writer;
+
 use crate::server;
 use crate::UserParams;
 use ::actix::*;
@@ -6474,6 +6476,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             pool,
         ) {
             Some(spectrum) => {
+                // create an in-memory CSV writer
+                let mut wtr = Writer::from_writer(vec![]);
+
                 for i in 0 .. spectrum.len() {
                     let frame = start + i + 1;
 
@@ -6484,7 +6489,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-
+                            let _ = wtr.write_record(&["city", "region", "country", "population"]);
                             has_header = true;
                         }
 
@@ -6492,7 +6497,8 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     }
                 }
 
-                Some(String::from("CSV"))
+                // Some(String::from("CSV"))
+                None
             },
             None => {
                 None
