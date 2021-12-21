@@ -6563,6 +6563,128 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         
                         continue;
                     }
+
+                    if v != std::f64::NAN {
+                        // write the CSV header
+                        if !has_header {                            
+                            let _ = wtr.write_field("\"channel\"");                            
+                            let _ = wtr.write_field("\"velocity [km/s]\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));
+                            let _ = wtr.write_field(format!("\"{}\"", ra_column));
+                            let _ = wtr.write_field(format!("\"{}\"", dec_column));
+                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
+                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
+                            let _ = wtr.write_field("\"beam type\"");
+                            let _ = wtr.write_field("\"beam width [deg]\"");
+                            let _ = wtr.write_field("\"beam height [deg]\"");
+                            let _ = wtr.write_field("\"beam cx [px]\"");
+                            let _ = wtr.write_field("\"beam cy [px]\"");
+                            let _ = wtr.write_field("\"beam width [px]\"");
+                            let _ = wtr.write_field("\"beam height [px]\"");
+                            let _ = wtr.write_field("\"source velocity [km/s]\"");
+
+                            if ref_freq > 0.0 {
+                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
+                            }                            
+
+                            // terminate the record
+                            let _ = wtr.write_record(None::<&[u8]>);
+                            has_header = true;
+                        }
+
+                        // write out CSV values
+                        let _ = wtr.write_field(format!("{}", frame));                        
+                        let _ = wtr.write_field(format!("{}", v));
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));
+                        let _ = wtr.write_field(&ra_value);
+
+                        if dec_value.contains("\"") {
+                            let _ = wtr.write_field(format!("\"{}\"", dec_value));
+                        } else {
+                            let _ = wtr.write_field(&dec_value);
+                        };                        
+                        
+                        let _ = wtr.write_field(format!("{}", lng_value));
+                        let _ = wtr.write_field(format!("{}", lat_value));
+                        let _ = wtr.write_field(&beam_type);
+                        let _ = wtr.write_field(format!("{}", beam_width));
+                        let _ = wtr.write_field(format!("{}", beam_height));
+                        let _ = wtr.write_field(format!("{}", cx));
+                        let _ = wtr.write_field(format!("{}", cy));
+                        let _ = wtr.write_field(format!("{}", dimx));
+                        let _ = wtr.write_field(format!("{}", dimy));
+                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
+
+                        if ref_freq > 0.0 {
+                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
+                        }
+
+                        // terminate the record
+                        let _ = wtr.write_record(None::<&[u8]>);
+
+                        continue;
+                    }
+
+                    if f != std::f64::NAN {
+                        // write the CSV header
+                        if !has_header {                            
+                            let _ = wtr.write_field("\"channel\"");
+                            let _ = wtr.write_field(format!("\"{}\"", frequency_column));                            
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));
+                            let _ = wtr.write_field(format!("\"{}\"", ra_column));
+                            let _ = wtr.write_field(format!("\"{}\"", dec_column));
+                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
+                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
+                            let _ = wtr.write_field("\"beam type\"");
+                            let _ = wtr.write_field("\"beam width [deg]\"");
+                            let _ = wtr.write_field("\"beam height [deg]\"");
+                            let _ = wtr.write_field("\"beam cx [px]\"");
+                            let _ = wtr.write_field("\"beam cy [px]\"");
+                            let _ = wtr.write_field("\"beam width [px]\"");
+                            let _ = wtr.write_field("\"beam height [px]\"");
+                            let _ = wtr.write_field("\"source velocity [km/s]\"");
+
+                            if ref_freq > 0.0 {
+                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
+                            }                            
+
+                            // terminate the record
+                            let _ = wtr.write_record(None::<&[u8]>);
+                            has_header = true;
+                        }
+
+                        // write out CSV values
+                        let _ = wtr.write_field(format!("{}", frame));
+                        let _ = wtr.write_field(format!("{}", f));                        
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));
+                        let _ = wtr.write_field(&ra_value);
+
+                        if dec_value.contains("\"") {
+                            let _ = wtr.write_field(format!("\"{}\"", dec_value));
+                        } else {
+                            let _ = wtr.write_field(&dec_value);
+                        };                        
+                        
+                        let _ = wtr.write_field(format!("{}", lng_value));
+                        let _ = wtr.write_field(format!("{}", lat_value));
+                        let _ = wtr.write_field(&beam_type);
+                        let _ = wtr.write_field(format!("{}", beam_width));
+                        let _ = wtr.write_field(format!("{}", beam_height));
+                        let _ = wtr.write_field(format!("{}", cx));
+                        let _ = wtr.write_field(format!("{}", cy));
+                        let _ = wtr.write_field(format!("{}", dimx));
+                        let _ = wtr.write_field(format!("{}", dimy));
+                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
+
+                        if ref_freq > 0.0 {
+                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
+                        }
+
+                        // terminate the record
+                        let _ = wtr.write_record(None::<&[u8]>);
+                        
+                        continue;
+                    }
                 }
 
                 match wtr.into_inner() {
