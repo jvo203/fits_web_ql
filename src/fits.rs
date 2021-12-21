@@ -6406,6 +6406,10 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             return None;
         }
 
+        // viewport dimensions
+        let dimx = (x2 - x1 + 1).abs();
+        let dimy = (y2 - y1 + 1).abs();
+
         let cx = 1 + (x1 + x2) >> 1;
         let cy = 1 + (y1 + y2) >> 1;
         
@@ -6462,6 +6466,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         let lng_column = "beam wcs.lng [deg]";
         let lat_column = "beam wcs.lat [deg]";
 
+        let beam_type = match beam {
+            Beam::Circle => String::from("circle"),
+            Beam::Square => String::from("square/rect."),            
+        };
+
         println!("intensity column: '{}', frequency column: '{}', ra column: '{}', dec column: '{}'", intensity_column, frequency_column, ra_column, dec_column);
 
         let mut has_header = false;
@@ -6493,13 +6502,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         // write the CSV header
                         if !has_header {                            
                             let _ = wtr.write_field("'channel'");
-                            let _ = wtr.write_field(&frequency_column);
+                            let _ = wtr.write_field(format!("'{}'", frequency_column));
                             let _ = wtr.write_field("'velocity [km/s]'");
-                            let _ = wtr.write_field(&intensity_column);
-                            let _ = wtr.write_field(&ra_column);
-                            let _ = wtr.write_field(&dec_column);
-                            let _ = wtr.write_field(&lng_column);
-                            let _ = wtr.write_field(&lat_column);
+                            let _ = wtr.write_field(format!("'{}'", intensity_column));
+                            let _ = wtr.write_field(format!("'{}'", ra_column));
+                            let _ = wtr.write_field(format!("'{}'", dec_column));
+                            let _ = wtr.write_field(format!("'{}'", lng_column));
+                            let _ = wtr.write_field(format!("'{}'", lat_column));
                             let _ = wtr.write_field("'beam type'");
                             let _ = wtr.write_field("'beam width [deg]'");
                             let _ = wtr.write_field("'beam height [deg]'");
@@ -6519,6 +6528,27 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
 
                         // write out CSV values
+                        let _ = wtr.write_field(format!("{}", frame));
+                        let _ = wtr.write_field(format!("{}", f));
+                        let _ = wtr.write_field(format!("{}", v));
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));
+                        let _ = wtr.write_field(&ra_value);
+                        let _ = wtr.write_field(&dec_value);
+                        let _ = wtr.write_field(format!("{}", lng_value));
+                        let _ = wtr.write_field(format!("{}", lat_value));
+                        let _ = wtr.write_field(&beam_type);
+                        let _ = wtr.write_field(format!("{}", beam_width));
+                        let _ = wtr.write_field(format!("{}", beam_height));
+                        let _ = wtr.write_field(format!("{}", dimx));
+                        let _ = wtr.write_field(format!("{}", dimy));
+                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
+
+                        if ref_freq > 0.0 {
+                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
+                        }
+
+                        // terminate the record
+                        let _ = wtr.write_record(None::<&[u8]>);
                     }
                 }
 
