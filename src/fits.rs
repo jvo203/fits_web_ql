@@ -6482,7 +6482,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     //println!("channel: {}, f: {} GHz, v: {} km/s, intensity: {}", frame, f, v, spectrum[i]);
 
                     if f != std::f64::NAN && v != std::f64::NAN {
-
                         // write the CSV header
                         if !has_header {
 
