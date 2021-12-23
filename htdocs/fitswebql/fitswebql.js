@@ -10642,9 +10642,9 @@ function change_intensity_threshold(refresh) {
 }
 
 function hide_navigation_bar() {
+	console.log("hide_navigation_bar");
 	document.getElementById('menu').style.display = "none";
 	d3.select("#menu_activation_area").attr("opacity", 0.1);//was 0.7
-	setup_csv_export();
 }
 
 function display_menu() {
