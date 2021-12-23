@@ -6537,11 +6537,12 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         let _ = wtr.write_field(format!("{}", spectrum[i]));
                         let _ = wtr.write_field(&ra_value);
 
-                        if dec_value.contains("\"") {
+                        /*if dec_value.contains("\"") {
                             let _ = wtr.write_field(format!("\"{}\"", dec_value));
                         } else {
                             let _ = wtr.write_field(&dec_value);
-                        };                        
+                        };*/
+                        let _ = wtr.write_field(&dec_value);
                         
                         let _ = wtr.write_field(format!("{}", lng_value));
                         let _ = wtr.write_field(format!("{}", lat_value));
