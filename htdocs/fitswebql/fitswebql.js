@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2021-12-23.0";
+	return "JS2021-12-23.1";
 }
 
 const wasm_supported = (() => {
@@ -11303,7 +11303,7 @@ function show_welcome() {
 
 	ul.append("li")
 		.attr("class", "list-group-item list-group-item-success")
-		.html('<h4>CSV spectrum export backported from <a href="https://github.com/jvo203/FITSWEBQLSE"><em>FITSWEBQLSE</em></a></h4>');
+		.html('<h4>CSV spectrum export back-ported from <a href="https://github.com/jvo203/FITSWEBQLSE"><em>FITSWEBQLSE</em></a></h4>');
 
 
 	ul.append("li")
@@ -11398,7 +11398,7 @@ function setup_help() {
 
 	bodyDiv.append("h3")
 		.attr("id", "h3")
-		.text("Spectrum Export (backported from v5)");
+		.text("Spectrum Export (back-ported from v5)");
 
 	bodyDiv.append("p")
 		.html("The current image/viewport spectrum can be exported to a <b>CSV</b> file");
