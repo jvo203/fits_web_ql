@@ -11303,7 +11303,12 @@ function show_welcome() {
 
 	ul.append("li")
 		.attr("class", "list-group-item list-group-item-success")
-		.html('<h4>Server-side code changed from C/C++ to <a  href="https://www.rust-lang.org"><em>Rust</em></a></h4>');
+		.html('<h4>CSV spectrum export backported from <a href="https://github.com/jvo203/FITSWEBQLSE"><em>FITSWEBQLSE</em></a></h4>');
+
+
+	ul.append("li")
+		.attr("class", "list-group-item list-group-item-success")
+		.html('<h4>Server-side code changed from C/C++ to <a href="https://www.rust-lang.org"><em>Rust</em></a></h4>');
 
 	ul.append("li")
 		.attr("class", "list-group-item list-group-item-success")
@@ -11315,7 +11320,7 @@ function show_welcome() {
 
 	ul.append("li")
 		.attr("class", "list-group-item list-group-item-success")
-		.html('<h4><h4><a  href="https://en.wikipedia.org/wiki/WebAssembly"><em>WebAssembly</em></a>-accelerated HTML Video Canvas</h4>');
+		.html('<h4><h4><a href="https://en.wikipedia.org/wiki/WebAssembly"><em>WebAssembly</em></a>-accelerated HTML Video Canvas</h4>');
 
 	let textColour = 'yellow';
 
