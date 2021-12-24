@@ -294,7 +294,7 @@ pub enum Intensity {
 #[derive(Debug)]
 pub struct FITS {
     created: Instant,
-    pub dataset_id: String,    
+    pub dataset_id: String,
     filesize: u64,
     //basic header/votable
     pub telescope: String,
@@ -408,7 +408,7 @@ impl FITS {
 
         let fits = FITS {
             created: Instant::now(),
-            dataset_id: id.clone(),            
+            dataset_id: id.clone(),
             filesize: 0,
             telescope: String::from(""),
             obj_name: obj_name,
@@ -416,7 +416,7 @@ impl FITS {
             timesys: String::from(""),
             specsys: String::from(""),
             beam_unit: String::from(""),
-            beam_type: String::from(""),            
+            beam_type: String::from(""),
             bmaj: 0.0,
             bmin: 0.0,
             bpa: 0.0,
@@ -788,7 +788,7 @@ impl FITS {
     //a parallel multi-threaded read from the zfp-compressed cache
     #[cfg(feature = "zfp")]
     fn zfp_decompress(
-        &mut self,        
+        &mut self,
         id: &String,
         cdelt3: f32,
         server: &Addr<server::SessionServer>,
@@ -810,7 +810,13 @@ impl FITS {
             let mut zfp_exists = true;
 
             for raid_volume in 0..RAID_COUNT {
-                let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, self.dataset_id.replace("/", "_"));
+                let filename = format!(
+                    "{}{}/{}/{}.zfp",
+                    RAID_PREFIX,
+                    raid_volume,
+                    FITSCACHE,
+                    self.dataset_id.replace("/", "_")
+                );
                 let zfp_dir = std::path::Path::new(&filename);
 
                 let mut zfp_ok = std::path::PathBuf::from(zfp_dir);
@@ -882,9 +888,8 @@ impl FITS {
         }
 
         //at first fill-in the self.data_f16 vector in parallel
-        let gather_f16: Vec<_> =
-            pool.install(|| {
-                (0..self.depth)
+        let gather_f16: Vec<_> = pool.install(|| {
+            (0..self.depth)
                 .into_par_iter()
                 .map(|frame| {
                     let data_f16: Vec<f16> = vec![f16::from_f32(0.0); self.width * self.height];
@@ -893,7 +898,13 @@ impl FITS {
                     let raid_volume = frame % RAID_COUNT;
 
                     #[cfg(feature = "raid")]
-                    let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, id.replace("/", "_"));               
+                    let filename = format!(
+                        "{}{}/{}/{}.zfp",
+                        RAID_PREFIX,
+                        raid_volume,
+                        FITSCACHE,
+                        id.replace("/", "_")
+                    );
 
                     #[cfg(not(feature = "raid"))]
                     let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
@@ -910,123 +921,142 @@ impl FITS {
                             let mut buffer = Vec::new();
                             match f.read_to_end(&mut buffer) {
                                 Ok(_) => {
-                            let res: Result<ZFPMaskedArray, _> = deserialize(&mut buffer);
-                            match res {
-                                Ok(zfp_frame) => {
-                                    //decompress a ZFPMaskedArray object
-                                    match zfp_decompress_float_array2d(
-                                        zfp_frame.array,
-                                        self.width,
-                                        self.height,
-                                        //zfp_frame.precision,
-                                        zfp_frame.rate,
-                                    ) {
-                                        Ok(mut array) => {
-                                            match lz4_compress::decompress(&zfp_frame.mask) {
-                                                Ok(mask) => {
-                                                    //parallel data processing
-                                                    let frame_min = zfp_frame.frame_min;
-                                                    let frame_max = zfp_frame.frame_max;
-                                                    let mut mean_spectrum = 0.0_f32;
-                                                    let mut integrated_spectrum = 0.0_f32;
+                                    let res: Result<ZFPMaskedArray, _> = deserialize(&mut buffer);
+                                    match res {
+                                        Ok(zfp_frame) => {
+                                            //decompress a ZFPMaskedArray object
+                                            match zfp_decompress_float_array2d(
+                                                zfp_frame.array,
+                                                self.width,
+                                                self.height,
+                                                //zfp_frame.precision,
+                                                zfp_frame.rate,
+                                            ) {
+                                                Ok(mut array) => {
+                                                    match lz4_compress::decompress(&zfp_frame.mask)
+                                                    {
+                                                        Ok(mask) => {
+                                                            //parallel data processing
+                                                            let frame_min = zfp_frame.frame_min;
+                                                            let frame_max = zfp_frame.frame_max;
+                                                            let mut mean_spectrum = 0.0_f32;
+                                                            let mut integrated_spectrum = 0.0_f32;
 
-                                                    let tid = match pool.current_thread_index() {
-                                                        Some(tid) => tid,
-                                                        None => 0,
-                                                    };
+                                                            let tid =
+                                                                match pool.current_thread_index() {
+                                                                    Some(tid) => tid,
+                                                                    None => 0,
+                                                                };
 
-                                                    /*println!(
-                                                        "tid: {}, frame_min: {}, frame_max: {}, self.width: {}, self.height: {}",
-                                                        tid, frame_min, frame_max, self.width, self.height
-                                                    );
+                                                            /*println!(
+                                                                "tid: {}, frame_min: {}, frame_max: {}, self.width: {}, self.height: {}",
+                                                                tid, frame_min, frame_max, self.width, self.height
+                                                            );
 
-                                                    if frame == self.depth / 2 {
-                                                        println!("array: {:?}", array);
-                                                        //println!("mask: {:?}", mask);
-                                                    }*/
+                                                            if frame == self.depth / 2 {
+                                                                println!("array: {:?}", array);
+                                                                //println!("mask: {:?}", mask);
+                                                            }*/
 
-                                                    //convert the (array,mask) into f16
-                                                    let mut references: [f32; 2] =
-                                                        [mean_spectrum, integrated_spectrum];
+                                                            //convert the (array,mask) into f16
+                                                            let mut references: [f32; 2] = [
+                                                                mean_spectrum,
+                                                                integrated_spectrum,
+                                                            ];
 
-                                                    let vec_ptr = data_f16.as_ptr() as *mut i16;
-                                                    let vec_len = data_f16.len();
+                                                            let vec_ptr =
+                                                                data_f16.as_ptr() as *mut i16;
+                                                            let vec_len = data_f16.len();
 
-                                                    let mut pixels = thread_pixels[tid].write();
-                                                    let dst_mask = thread_mask[tid].write();
-                                                    let src_mask_ptr = mask.as_ptr() as *mut u8;
-                                                    let dst_mask_ptr = dst_mask.as_ptr() as *mut u8;
+                                                            let mut pixels =
+                                                                thread_pixels[tid].write();
+                                                            let dst_mask = thread_mask[tid].write();
+                                                            let src_mask_ptr =
+                                                                mask.as_ptr() as *mut u8;
+                                                            let dst_mask_ptr =
+                                                                dst_mask.as_ptr() as *mut u8;
 
-                                                    unsafe {
-                                                        spmd::make_image_spectrumF32_2_F16(
-                                                            array.as_mut_ptr(),
-                                                            src_mask_ptr,
-                                                            frame_min,
-                                                            frame_max,
-                                                            vec_ptr,
-                                                            self.bzero,
-                                                            self.bscale,
-                                                            cdelt3,
-                                                            pixels.as_mut_ptr(),
-                                                            dst_mask_ptr,
-                                                            vec_len as u32,
-                                                            references.as_mut_ptr(),
-                                                        );
+                                                            unsafe {
+                                                                spmd::make_image_spectrumF32_2_F16(
+                                                                    array.as_mut_ptr(),
+                                                                    src_mask_ptr,
+                                                                    frame_min,
+                                                                    frame_max,
+                                                                    vec_ptr,
+                                                                    self.bzero,
+                                                                    self.bscale,
+                                                                    cdelt3,
+                                                                    pixels.as_mut_ptr(),
+                                                                    dst_mask_ptr,
+                                                                    vec_len as u32,
+                                                                    references.as_mut_ptr(),
+                                                                );
+                                                            }
+
+                                                            mean_spectrum = references[0];
+                                                            integrated_spectrum = references[1];
+
+                                                            thread_mean_spectrum[frame as usize]
+                                                                .store(
+                                                                    mean_spectrum,
+                                                                    Ordering::SeqCst,
+                                                                );
+                                                            thread_integrated_spectrum
+                                                                [frame as usize]
+                                                                .store(
+                                                                    integrated_spectrum,
+                                                                    Ordering::SeqCst,
+                                                                );
+
+                                                            let current_frame_min =
+                                                                thread_frame_min[frame as usize]
+                                                                    .load(Ordering::SeqCst);
+                                                            thread_frame_min[frame as usize].store(
+                                                                frame_min.min(current_frame_min),
+                                                                Ordering::SeqCst,
+                                                            );
+
+                                                            let current_frame_max =
+                                                                thread_frame_max[frame as usize]
+                                                                    .load(Ordering::SeqCst);
+                                                            thread_frame_max[frame as usize].store(
+                                                                frame_max.max(current_frame_max),
+                                                                Ordering::SeqCst,
+                                                            );
+
+                                                            let current_min = thread_min[tid]
+                                                                .load(Ordering::SeqCst);
+                                                            thread_min[tid].store(
+                                                                frame_min.min(current_min),
+                                                                Ordering::SeqCst,
+                                                            );
+
+                                                            let current_max = thread_max[tid]
+                                                                .load(Ordering::SeqCst);
+                                                            thread_max[tid].store(
+                                                                frame_max.max(current_max),
+                                                                Ordering::SeqCst,
+                                                            );
+                                                            //end of parallel data processing
+
+                                                            let previous_frame_count = frame_count
+                                                                .fetch_add(1, Ordering::SeqCst)
+                                                                as i32;
+                                                            let current_frame_count =
+                                                                previous_frame_count + 1;
+                                                            self.send_progress_notification(
+                                                                &server,
+                                                                &"loading FITS".to_owned(),
+                                                                total as i32,
+                                                                current_frame_count,
+                                                            );
+                                                        }
+                                                        Err(err) => {
+                                                            println!("{}", err);
+                                                            success
+                                                                .fetch_and(false, Ordering::SeqCst);
+                                                        }
                                                     }
-
-                                                    mean_spectrum = references[0];
-                                                    integrated_spectrum = references[1];
-
-                                                    thread_mean_spectrum[frame as usize]
-                                                        .store(mean_spectrum, Ordering::SeqCst);
-                                                    thread_integrated_spectrum[frame as usize]
-                                                        .store(
-                                                            integrated_spectrum,
-                                                            Ordering::SeqCst,
-                                                        );
-
-                                                    let current_frame_min = thread_frame_min
-                                                        [frame as usize]
-                                                        .load(Ordering::SeqCst);
-                                                    thread_frame_min[frame as usize].store(
-                                                        frame_min.min(current_frame_min),
-                                                        Ordering::SeqCst,
-                                                    );
-
-                                                    let current_frame_max = thread_frame_max
-                                                        [frame as usize]
-                                                        .load(Ordering::SeqCst);
-                                                    thread_frame_max[frame as usize].store(
-                                                        frame_max.max(current_frame_max),
-                                                        Ordering::SeqCst,
-                                                    );
-
-                                                    let current_min =
-                                                        thread_min[tid].load(Ordering::SeqCst);
-                                                    thread_min[tid].store(
-                                                        frame_min.min(current_min),
-                                                        Ordering::SeqCst,
-                                                    );
-
-                                                    let current_max =
-                                                        thread_max[tid].load(Ordering::SeqCst);
-                                                    thread_max[tid].store(
-                                                        frame_max.max(current_max),
-                                                        Ordering::SeqCst,
-                                                    );
-                                                    //end of parallel data processing
-
-                                                    let previous_frame_count = frame_count
-                                                        .fetch_add(1, Ordering::SeqCst)
-                                                        as i32;
-                                                    let current_frame_count =
-                                                        previous_frame_count + 1;
-                                                    self.send_progress_notification(
-                                                        &server,
-                                                        &"loading FITS".to_owned(),
-                                                        total as i32,
-                                                        current_frame_count,
-                                                    );
                                                 }
                                                 Err(err) => {
                                                     println!("{}", err);
@@ -1035,19 +1065,13 @@ impl FITS {
                                             }
                                         }
                                         Err(err) => {
-                                            println!("{}", err);
+                                            println!("CRITICAL ERROR deserialize: {:?}", err);
                                             success.fetch_and(false, Ordering::SeqCst);
                                         }
                                     }
                                 }
                                 Err(err) => {
-                                    println!("CRITICAL ERROR deserialize: {:?}", err);
-                                    success.fetch_and(false, Ordering::SeqCst);
-                                }
-                            }
-                                },
-                                Err(err) => {
-println!("CRITICAL ERROR cannot read from file: {:?}", err);
+                                    println!("CRITICAL ERROR cannot read from file: {:?}", err);
                                     success.fetch_and(false, Ordering::SeqCst);
                                 }
                             }
@@ -1061,7 +1085,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     data_f16
                 })
                 .collect()
-            });
+        });
 
         self.data_f16 = gather_f16;
 
@@ -1425,7 +1449,6 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         #[cfg(feature = "zfp")]
         let read_from_zfp = {
-
             if fits.bitpix == -32 {
                 println!(
                     "{}: reading zfp-compressed half-float f16 data from cache",
@@ -6372,16 +6395,16 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    fn split_wcs(coord:&String) -> (String, String) {
+    fn split_wcs(coord: &String) -> (String, String) {
         let tmp: Vec<String> = coord.split(':').map(|s| s.to_string()).collect();
 
         if tmp.len() == 2 {
             let key = &tmp[0];
-            let value = &tmp[1].replace("\\","");
+            let value = &tmp[1].replace("\\", "");
 
             return (key.trim().to_string(), value.trim().to_string());
         };
-        
+
         return (String::from("N/A"), String::from("N/A"));
     }
 
@@ -6412,18 +6435,17 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let cx = 1 + (x1 + x2) >> 1;
         let cy = 1 + (y1 + y2) >> 1;
-        
+
         let rx = (x2 - x1).abs() >> 1;
         let ry = (y2 - y1).abs() >> 1;
 
-        let (start, end) =
-                            match self.get_spectrum_range(frame_start, frame_end, ref_freq) {
-                                Some(frame) => frame,
-                                None => {
-                                    println!("error: an invalid spectrum range");
-                                    return None;
-                                }
-                            };
+        let (start, end) = match self.get_spectrum_range(frame_start, frame_end, ref_freq) {
+            Some(frame) => frame,
+            None => {
+                println!("error: an invalid spectrum range");
+                return None;
+            }
+        };
 
         let (lng_value, lat_value) = self.pix_to_world(cx, cy);
         let (ra1, dec1) = self.pix_to_world(cx - rx, cy - ry);
@@ -6439,14 +6461,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         match intensity {
             Intensity::Mean => {
                 intensity_column = format!("mean {}", intensity_column);
-            },
+            }
             Intensity::Integrated => {
                 intensity_column = format!("integrated {}", intensity_column);
 
-            if self.has_velocity {
-                intensity_column = format!("{}•km/s", intensity_column);
-            };
-            },
+                if self.has_velocity {
+                    intensity_column = format!("{}•km/s", intensity_column);
+                };
+            }
         };
 
         intensity_column = format!("{}]", intensity_column);
@@ -6468,10 +6490,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         let beam_type = match beam {
             Beam::Circle => String::from("circle"),
-            Beam::Square => String::from("square/rect."),            
+            Beam::Square => String::from("square/rect."),
         };
 
-        println!("intensity column: '{}', frequency column: '{}', ra column: '{}', dec column: '{}'", intensity_column, frequency_column, ra_column, dec_column);
+        println!(
+            "intensity column: '{}', frequency column: '{}', ra column: '{}', dec column: '{}'",
+            intensity_column, frequency_column, ra_column, dec_column
+        );
 
         let mut has_header = false;
 
@@ -6488,13 +6513,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             pool,
         ) {
             Some(spectrum) => {
-                // create an in-memory CSV writer                
+                // create an in-memory CSV writer
                 let mut wtr = WriterBuilder::new()
                     .terminator(Terminator::CRLF)
                     .quote_style(QuoteStyle::Never)
                     .from_writer(vec![]);
 
-                for i in 0 .. spectrum.len() {
+                for i in 0..spectrum.len() {
                     let frame = start + i + 1;
 
                     let (f, v) = self.get_frame2freq_vel(frame, ref_freq, delta_v, rest);
@@ -6503,7 +6528,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
-                        if !has_header {                            
+                        if !has_header {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field(format!("\"{}\"", frequency_column));
                             let _ = wtr.write_field("\"velocity [km/s]\"");
@@ -6523,7 +6548,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                             if ref_freq > 0.0 {
                                 let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }                            
+                            }
 
                             // terminate the record
                             let _ = wtr.write_record(None::<&[u8]>);
@@ -6554,14 +6579,14 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         // terminate the record
                         let _ = wtr.write_record(None::<&[u8]>);
-                        
+
                         continue;
                     }
 
                     if v != std::f64::NAN {
                         // write the CSV header
-                        if !has_header {                            
-                            let _ = wtr.write_field("\"channel\"");                            
+                        if !has_header {
+                            let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field("\"velocity [km/s]\"");
                             let _ = wtr.write_field(format!("\"{}\"", intensity_column));
                             let _ = wtr.write_field(format!("\"{}\"", ra_column));
@@ -6579,7 +6604,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                             if ref_freq > 0.0 {
                                 let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }                            
+                            }
 
                             // terminate the record
                             let _ = wtr.write_record(None::<&[u8]>);
@@ -6587,11 +6612,11 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         }
 
                         // write out CSV values
-                        let _ = wtr.write_field(format!("{}", frame));                        
+                        let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", v));
                         let _ = wtr.write_field(format!("{}", spectrum[i]));
                         let _ = wtr.write_field(&ra_value);
-                        let _ = wtr.write_field(&dec_value);           
+                        let _ = wtr.write_field(&dec_value);
                         let _ = wtr.write_field(format!("{}", lng_value));
                         let _ = wtr.write_field(format!("{}", lat_value));
                         let _ = wtr.write_field(&beam_type);
@@ -6615,9 +6640,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                     if f != std::f64::NAN {
                         // write the CSV header
-                        if !has_header {                            
+                        if !has_header {
                             let _ = wtr.write_field("\"channel\"");
-                            let _ = wtr.write_field(format!("\"{}\"", frequency_column));                            
+                            let _ = wtr.write_field(format!("\"{}\"", frequency_column));
                             let _ = wtr.write_field(format!("\"{}\"", intensity_column));
                             let _ = wtr.write_field(format!("\"{}\"", ra_column));
                             let _ = wtr.write_field(format!("\"{}\"", dec_column));
@@ -6634,7 +6659,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                             if ref_freq > 0.0 {
                                 let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }                            
+                            }
 
                             // terminate the record
                             let _ = wtr.write_record(None::<&[u8]>);
@@ -6643,7 +6668,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         // write out CSV values
                         let _ = wtr.write_field(format!("{}", frame));
-                        let _ = wtr.write_field(format!("{}", f));                        
+                        let _ = wtr.write_field(format!("{}", f));
                         let _ = wtr.write_field(format!("{}", spectrum[i]));
                         let _ = wtr.write_field(&ra_value);
                         let _ = wtr.write_field(&dec_value);
@@ -6664,32 +6689,26 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
                         // terminate the record
                         let _ = wtr.write_record(None::<&[u8]>);
-                        
+
                         continue;
                     }
                 }
 
                 match wtr.into_inner() {
-                    Ok(w) => {
-                        match String::from_utf8(w) {
-                            Ok(csv) => {
-                                Some(csv)
-                            },
-                            Err(err) => {
-                                println!("csv2utf8 conversion error: {}", err);
-                                None
-                            },
-                        }                        
+                    Ok(w) => match String::from_utf8(w) {
+                        Ok(csv) => Some(csv),
+                        Err(err) => {
+                            println!("csv2utf8 conversion error: {}", err);
+                            None
+                        }
                     },
                     Err(err) => {
                         println!("CSV into_inner() error: {}", err);
                         None
                     }
-                }                
-            },
-            None => {
-                None
+                }
             }
+            None => None,
         }
     }
 
@@ -7207,13 +7226,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         }
     }
 
-    fn Einstein_velocity_addition(v1:f64, v2:f64) -> f64 {        
+    fn Einstein_velocity_addition(v1: f64, v2: f64) -> f64 {
         let c = 299792458_f64; //speed of light [m/s]
 
         return (v1 + v2) / (1.0 + v1 * v2 / c * c);
     }
 
-    fn Einstein_relative_velocity(f:f64, f0:f64, delta_v:f64) -> f64 {
+    fn Einstein_relative_velocity(f: f64, f0: f64, delta_v: f64) -> f64 {
         let c = 299792458_f64; //speed of light [m/s]
 
         let f_ratio = f / f0;
@@ -7222,17 +7241,23 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         return FITS::Einstein_velocity_addition(v, delta_v);
     }
 
-    fn relativistic_rest_frequency(f:f64, delta_v:f64) -> f64 {
+    fn relativistic_rest_frequency(f: f64, delta_v: f64) -> f64 {
         let c = 299792458_f64; //speed of light [m/s]
 
-        let beta = delta_v / c ;
+        let beta = delta_v / c;
 
         let tmp = ((1.0 + beta) / (1.0 - beta)).sqrt();
 
         return f * tmp;
     }
 
-    fn get_frame2freq_vel(&self, frame:usize, ref_freq:f64, delta_v:f64, rest:bool) -> (f64, f64) {
+    fn get_frame2freq_vel(
+        &self,
+        frame: usize,
+        ref_freq: f64,
+        delta_v: f64,
+        rest: bool,
+    ) -> (f64, f64) {
         let has_velocity = self.has_velocity;
 
         let has_frequency = if ref_freq > 0.0 {
@@ -7246,9 +7271,9 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             // go from v to f then apply a Δv correction to v
             let mut v = self.crval3 * self.frame_multiplier
-            + self.cdelt3 * self.frame_multiplier * (frame as f64 - self.crpix3); // [m/s]
+                + self.cdelt3 * self.frame_multiplier * (frame as f64 - self.crpix3); // [m/s]
 
-            let mut f = ref_freq * ((1.0 - v / c) / (1.0 + v / c)).sqrt(); // [Hz]            
+            let mut f = ref_freq * ((1.0 - v / c) / (1.0 + v / c)).sqrt(); // [Hz]
 
             if rest {
                 f = FITS::relativistic_rest_frequency(f, delta_v);
@@ -7288,15 +7313,20 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
         return (std::f64::NAN, std::f64::NAN);
     }
 
-    fn pix_to_world(&self, x:i32, y:i32) -> (f64, f64) {
-        
-        let ra = if self.ctype1.contains("RA") || self.ctype1.contains("GLON") || self.ctype1.contains("ELON") {
+    fn pix_to_world(&self, x: i32, y: i32) -> (f64, f64) {
+        let ra = if self.ctype1.contains("RA")
+            || self.ctype1.contains("GLON")
+            || self.ctype1.contains("ELON")
+        {
             self.crval1 + (x as f64 - self.crpix1) * self.cdelt1 // [deg]
         } else {
             std::f64::NAN
         };
-    
-        let dec = if self.ctype2.contains("DEC") || self.ctype2.contains("GLAT") || self.ctype2.contains("ELAT") {
+
+        let dec = if self.ctype2.contains("DEC")
+            || self.ctype2.contains("GLAT")
+            || self.ctype2.contains("ELAT")
+        {
             self.crval2 + (y as f64 - self.crpix2) * self.cdelt2 // [deg]
         } else {
             std::f64::NAN
@@ -7991,29 +8021,29 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
     fn zfp_compress(&self) -> bool {
         #[cfg(not(feature = "raid"))]
         {
-        let filename = format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
-        let zfp_dir = std::path::Path::new(&filename);
+            let filename = format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
+            let zfp_dir = std::path::Path::new(&filename);
 
-        //check if the zfp directory already exists in the FITSCACHE
-        if !zfp_dir.exists() {
-            match std::fs::create_dir(zfp_dir) {
-                Ok(_) => {
-                    println!("{}: created an empty zfp cache directory", self.dataset_id);
-                }
-                Err(err) => {
-                    println!("error creating a zfp cache directory: {}", err);
-                    return false;
+            //check if the zfp directory already exists in the FITSCACHE
+            if !zfp_dir.exists() {
+                match std::fs::create_dir(zfp_dir) {
+                    Ok(_) => {
+                        println!("{}: created an empty zfp cache directory", self.dataset_id);
+                    }
+                    Err(err) => {
+                        println!("error creating a zfp cache directory: {}", err);
+                        return false;
+                    }
                 }
             }
-        }
 
-        //look for a hidden ok file
-        let mut ok_file = std::path::PathBuf::from(zfp_dir);
-        ok_file.push(".ok");
+            //look for a hidden ok file
+            let mut ok_file = std::path::PathBuf::from(zfp_dir);
+            ok_file.push(".ok");
 
-        if ok_file.exists() {
-            return true;
-        }
+            if ok_file.exists() {
+                return true;
+            }
         }
 
         #[cfg(feature = "raid")]
@@ -8022,14 +8052,23 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
             // iterate through all RAID-0 volumes checking / creating cache directories
             for raid_volume in 0..RAID_COUNT {
-                let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, self.dataset_id.replace("/", "_"));
+                let filename = format!(
+                    "{}{}/{}/{}.zfp",
+                    RAID_PREFIX,
+                    raid_volume,
+                    FITSCACHE,
+                    self.dataset_id.replace("/", "_")
+                );
                 let zfp_dir = std::path::Path::new(&filename);
 
                 //check if the zfp directory already exists in the FITSCACHE
                 if !zfp_dir.exists() {
                     match std::fs::create_dir(zfp_dir) {
                         Ok(_) => {
-                            println!("{}: created an empty zfp cache directory in a RAID-0 subvolume {}", self.dataset_id, raid_volume);
+                            println!(
+                                "{}: created an empty zfp cache directory in a RAID-0 subvolume {}",
+                                self.dataset_id, raid_volume
+                            );
                         }
                         Err(err) => {
                             println!("error creating a zfp cache directory: {}", err);
@@ -8178,11 +8217,18 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                     let raid_volume = frame % RAID_COUNT;
 
                     #[cfg(feature = "raid")]
-                    let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, self.dataset_id.replace("/", "_"));               
+                    let filename = format!(
+                        "{}{}/{}/{}.zfp",
+                        RAID_PREFIX,
+                        raid_volume,
+                        FITSCACHE,
+                        self.dataset_id.replace("/", "_")
+                    );
 
-                    #[cfg(not(feature = "raid"))]        
-                    let filename = format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
-                    
+                    #[cfg(not(feature = "raid"))]
+                    let filename =
+                        format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
+
                     let zfp_dir = std::path::Path::new(&filename);
 
                     let mut cache_file = std::path::PathBuf::from(zfp_dir);
@@ -8224,7 +8270,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
 
         //create a hidden ok file upon success
         if success {
-            #[cfg(not(feature = "raid"))]        
+            #[cfg(not(feature = "raid"))]
             {
                 let filename = format!("{}/{}.zfp", FITSCACHE, self.dataset_id.replace("/", "_"));
                 let zfp_dir = std::path::Path::new(&filename);
@@ -8241,7 +8287,13 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
             #[cfg(feature = "raid")]
             {
                 for raid_volume in 0..RAID_COUNT {
-                    let filename = format!("{}{}/{}/{}.zfp", RAID_PREFIX, raid_volume, FITSCACHE, self.dataset_id.replace("/", "_"));
+                    let filename = format!(
+                        "{}{}/{}/{}.zfp",
+                        RAID_PREFIX,
+                        raid_volume,
+                        FITSCACHE,
+                        self.dataset_id.replace("/", "_")
+                    );
                     let zfp_dir = std::path::Path::new(&filename);
 
                     let mut ok_file = std::path::PathBuf::from(zfp_dir);
@@ -8604,7 +8656,7 @@ println!("CRITICAL ERROR cannot read from file: {:?}", err);
                         self.width * self.height * self.depth * ((self.bitpix.abs() / 8) as usize);
 
                     //>1MB
-                    if total_size > 1024 * 1024 {                        
+                    if total_size > 1024 * 1024 {
                         self.zfp_compress()
                     } else {
                         false

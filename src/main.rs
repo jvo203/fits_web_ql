@@ -911,7 +911,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                     }
                 }
 
-                if (&text).contains("\"csv\"") {                       
+                if (&text).contains("\"csv\"") {
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
 
@@ -944,9 +944,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                     {
                         *fits.timestamp.write() = SystemTime::now();
                     }
-                    
-                    // parse the JSON string                    
-                    let res: Result<serde_json::Value, serde_json::Error> = serde_json::from_str(&text);
+
+                    // parse the JSON string
+                    let res: Result<serde_json::Value, serde_json::Error> =
+                        serde_json::from_str(&text);
 
                     match res {
                         Ok(msg) => {
@@ -968,7 +969,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 Some(dec) => String::from(dec),
                                 _ => String::from("N/A"),
                             };
-                        
+
                             let x1: usize = match msg["x1"].as_i64() {
                                 Some(x) => x as usize,
                                 _ => 0,
@@ -977,8 +978,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             let x2: usize = match msg["x2"].as_i64() {
                                 Some(x) => x as usize,
                                 _ => fits.width - 1,
-                            };                              
-                                                    
+                            };
+
                             let y1: usize = match msg["y1"].as_i64() {
                                 Some(y) => y as usize,
                                 _ => 0,
@@ -1005,25 +1006,21 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                             };
 
                             let beam = match msg["beam"].as_str() {
-                                Some(s) => {
-                                    match s.as_ref() {
-                                        "square" => fits::Beam::Square,
-                                        _ => fits::Beam::Circle,
-                                    }
+                                Some(s) => match s.as_ref() {
+                                    "square" => fits::Beam::Square,
+                                    _ => fits::Beam::Circle,
                                 },
                                 _ => fits::Beam::Square,
                             };
 
                             let intensity = match msg["intensity"].as_str() {
-                                Some(s) => {
-                                    match s.as_ref() {
-                                        "mean" => fits::Intensity::Mean,
-                                        _ => fits::Intensity::Integrated,
-                                    }
+                                Some(s) => match s.as_ref() {
+                                    "mean" => fits::Intensity::Mean,
+                                    _ => fits::Intensity::Integrated,
                                 },
                                 _ => fits::Intensity::Integrated,
                             };
-                            
+
                             let rest = match msg["rest"].as_bool() {
                                 Some(b) => b,
                                 _ => false,
@@ -1036,7 +1033,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                             println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}, Δv: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest, delta_v);
 
-                            if fits.has_data {                                
+                            if fits.has_data {
                                 match fits.get_csv_spectrum(
                                     &ra,
                                     &dec,
@@ -1053,7 +1050,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     rest,
                                     &self.pool,
                                 ) {
-                                    Some(csv) => {                                        
+                                    Some(csv) => {
                                         let data = csv.as_bytes();
                                         let original_size = data.len();
 
@@ -1080,11 +1077,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         "error serializing a WebSocket CSV spectrum export response: {}",
                                         err)
                                         }
-                                    },
+                                    }
                                     None => {}
                                 }
                             }
-                        },
+                        }
                         Err(e) => {
                             println!("{}", e);
                         }
@@ -4732,8 +4729,9 @@ fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info");
 
     #[cfg(feature = "jvo")]
-    flexi_logger::Logger::try_with_env_or_str("fits_web_ql=info").unwrap()
-        .log_to_file(FileSpec::default().directory(LOG_DIRECTORY))        
+    flexi_logger::Logger::try_with_env_or_str("fits_web_ql=info")
+        .unwrap()
+        .log_to_file(FileSpec::default().directory(LOG_DIRECTORY))
         //.format(flexi_logger::opt_format)
         .start()
         .unwrap_or_else(|e| panic!("Logger initialization failed with {}", e));
