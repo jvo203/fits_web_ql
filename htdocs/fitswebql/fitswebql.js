@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2021-12-23.1";
+	return "JS2022-01-04.0";
 }
 
 const wasm_supported = (() => {
@@ -8245,6 +8245,10 @@ function setup_image_selection_index(index, topx, topy, img_width, img_height) {
 	else
 		id = "image_rectangle" + index;
 
+	// a fix for Safari
+	d3.select(document.body)
+		.on('wheel.body', e => { });
+
 	//svg image rectangle for zooming-in
 	var rect = svg.append("rect")
 		.attr("id", id)
@@ -8705,6 +8709,10 @@ function setup_image_selection() {
 
 		}
 	}
+
+	// a fix for Safari
+	d3.select(document.body)
+		.on('wheel.body', e => { });
 
 	//svg image rectangle for zooming-in
 	var rect = svg.append("rect")
