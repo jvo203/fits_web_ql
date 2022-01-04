@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-01-04.0";
+	return "JS2022-01-04.1";
 }
 
 const wasm_supported = (() => {
@@ -13031,6 +13031,7 @@ async*/ function mainRenderer() {
 		var rect = document.getElementById('mainDiv').getBoundingClientRect();
 
 		//set the default font-size (1em)		
+		//emFontSize = Math.max(12, 0.011 * (0.2 * rect.width + 0.8 * rect.height));
 		emFontSize = Math.max(12, 0.011 * (0.2 * rect.width + 0.8 * rect.height));
 		emStrokeWidth = Math.max(1, 0.1 * emFontSize);
 		document.body.style.fontSize = emFontSize + "px";
