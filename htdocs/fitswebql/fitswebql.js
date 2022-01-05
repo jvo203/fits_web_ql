@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-01-05.0";
+	return "JS2022-01-05.2";
 }
 
 const wasm_supported = (() => {
@@ -3012,7 +3012,7 @@ function display_gridlines() {
 	}
 
 	if (va_count == 1 || composite_view) {
-		var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
+		var htmlStr = displayGridlines ? '<span class="fas fa-check-square"></span> lon/lat grid lines' : '<span class="far fa-square"></span> lon/lat grid lines';
 		d3.select("#displayGridlines").html(htmlStr);
 
 		var elem = d3.select("#gridlines");
@@ -3313,7 +3313,7 @@ function display_cd_gridlines() {
 	}
 
 	if (va_count == 1 || composite_view) {
-		var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
+		var htmlStr = displayGridlines ? '<span class="fas fa-check-square"></span> lon/lat grid lines' : '<span class="far fa-square"></span> lon/lat grid lines';
 		d3.select("#displayGridlines").html(htmlStr);
 
 		var elem = d3.select("#gridlines");
@@ -3464,7 +3464,7 @@ function display_beam() {
 		svg.moveToBack();
 
 		displayBeam = true;
-		var htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
+		var htmlStr = displayBeam ? '<span class="fas fa-check-square"></span> telescope beam' : '<span class="far fa-square"></span> telescope beam';
 		d3.select("#displayBeam").html(htmlStr);
 	}
 }
@@ -4035,7 +4035,6 @@ function display_dataset_info() {
 		if (composite_view)
 			yoffset += 1 * emFontSize;
 
-		//var videoStr = '<span id="videoPlay" class="glyphicon glyphicon-play" style="display:inline-block; cursor: pointer"></span><span id="videoPause" class="glyphicon glyphicon-pause" style="display:none; cursor: pointer"></span>&nbsp; <span id="videoStop" class="glyphicon glyphicon-stop" style="cursor: pointer"></span>&nbsp; <span id="videoForward" class="glyphicon glyphicon-forward" style="cursor: pointer"></span>&nbsp; <span id="videoFastForward" class="glyphicon glyphicon-fast-forward" style="cursor: pointer"></span>';
 		var videoStr = '<span id="videoPlay" class="fas fa-play" style="display:inline-block; cursor: pointer"></span><span id="videoPause" class="fas fa-pause" style="display:none; cursor: pointer"></span>&nbsp; <span id="videoStop" class="fas fa-stop" style="cursor: pointer"></span>&nbsp; <span id="videoForward" class="fas fa-forward" style="cursor: pointer"></span>&nbsp; <span id="videoFastForward" class="fas fa-fast-forward" style="cursor: pointer"></span>';
 
 		maxoffset = yoffset;
@@ -4518,7 +4517,7 @@ function image_refresh(index, refresh_histogram = true) {
 		enable_autoscale();
 
 	/*displayContours = false ;
-	var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines' ;
+	var htmlStr = displayContours ? '<span class="fas fa-check-square"></span> contour lines' : '<span class="far fa-square"></span> contour lines' ;
 	d3.select("#displayContours").html(htmlStr);*/
 
 	var flux_elem = d3.select("#flux_path" + index);
@@ -4636,7 +4635,7 @@ function display_scale_range_ui(called_from_menu = false) {
 
 function set_autoscale_range(called_from_menu = false) {
 	autoscale = false;
-	var htmlStr = autoscale ? '<span class="glyphicon glyphicon-check"></span> autoscale y-axis' : '<span class="glyphicon glyphicon-unchecked"></span> autoscale y-axis';
+	var htmlStr = autoscale ? '<span class="fas fa-check-square"></span> autoscale y-axis' : '<span class="far fa-square"></span> autoscale y-axis';
 	d3.select("#autoscale").html(htmlStr);
 
 	user_data_min = tmp_data_min;
@@ -4650,7 +4649,7 @@ function set_autoscale_range(called_from_menu = false) {
 
 function enable_autoscale() {
 	autoscale = true;
-	var htmlStr = autoscale ? '<span class="glyphicon glyphicon-check"></span> autoscale y-axis' : '<span class="glyphicon glyphicon-unchecked"></span> autoscale y-axis';
+	var htmlStr = autoscale ? '<span class="fas fa-check-square"></span> autoscale y-axis' : '<span class="far fa-square"></span> autoscale y-axis';
 	d3.select("#autoscale").html(htmlStr);
 
 	user_data_min = null;
@@ -5588,7 +5587,7 @@ function display_preferences(index) {
 
 	var prefDropdown = d3.select("#prefDropdown");
 
-	var htmlStr = autoscale ? '<span class="glyphicon glyphicon-check"></span> autoscale y-axis' : '<span class="glyphicon glyphicon-unchecked"></span> autoscale y-axis';
+	var htmlStr = autoscale ? '<span class="fas fa-check-square"></span> autoscale y-axis' : '<span class="far fa-square"></span> autoscale y-axis';
 	prefDropdown.append("li")
 		.append("a")
 		.attr("id", "autoscale")
@@ -5612,50 +5611,50 @@ function display_preferences(index) {
 		})
 		.html(htmlStr);
 
-	var htmlStr = displayDownloadConfirmation ? '<span class="glyphicon glyphicon-check"></span> download confirmation' : '<span class="glyphicon glyphicon-unchecked"></span> download confirmation';
+	var htmlStr = displayDownloadConfirmation ? '<span class="fas fa-check-square"></span> download confirmation' : '<span class="far fa-square"></span> download confirmation';
 	prefDropdown.append("li")
 		.append("a")
 		.style('cursor', 'pointer')
 		.on("click", function () {
 			displayDownloadConfirmation = !displayDownloadConfirmation;
 			localStorage_write_boolean("displayDownloadConfirmation", displayDownloadConfirmation);
-			var htmlStr = displayDownloadConfirmation ? '<span class="glyphicon glyphicon-check"></span> download confirmation' : '<span class="glyphicon glyphicon-unchecked"></span> download confirmation';
+			var htmlStr = displayDownloadConfirmation ? '<span class="fas fa-check-square"></span> download confirmation' : '<span class="far fa-square"></span> download confirmation';
 			d3.select(this).html(htmlStr);
 		})
 		.html(htmlStr);
 
-	var htmlStr = displayScalingHelp ? '<span class="glyphicon glyphicon-check"></span> display pop-up help' : '<span class="glyphicon glyphicon-unchecked"></span> display pop-up help';
+	var htmlStr = displayScalingHelp ? '<span class="fas fa-check-square"></span> display pop-up help' : '<span class="far fa-square"></span> display pop-up help';
 	prefDropdown.append("li")
 		.append("a")
 		.style('cursor', 'pointer')
 		.on("click", function () {
 			displayScalingHelp = !displayScalingHelp;
 			localStorage_write_boolean("displayScalingHelp", displayScalingHelp);
-			var htmlStr = displayScalingHelp ? '<span class="glyphicon glyphicon-check"></span> display pop-up help' : '<span class="glyphicon glyphicon-unchecked"></span> display pop-up help';
+			var htmlStr = displayScalingHelp ? '<span class="fas fa-check-square"></span> display pop-up help' : '<span class="far fa-square"></span> display pop-up help';
 			d3.select(this).html(htmlStr);
 		})
 		.html(htmlStr);
 
-	var htmlStr = realtime_spectrum ? '<span class="glyphicon glyphicon-check"></span> realtime spectrum updates' : '<span class="glyphicon glyphicon-unchecked"></span> realtime spectrum updates';
+	var htmlStr = realtime_spectrum ? '<span class="fas fa-check-square"></span> realtime spectrum updates' : '<span class="far fa-square"></span> realtime spectrum updates';
 	prefDropdown.append("li")
 		.append("a")
 		.style('cursor', 'pointer')
 		.on("click", function () {
 			realtime_spectrum = !realtime_spectrum;
 			localStorage_write_boolean("realtime_spectrum", realtime_spectrum);
-			var htmlStr = realtime_spectrum ? '<span class="glyphicon glyphicon-check"></span> realtime spectrum updates' : '<span class="glyphicon glyphicon-unchecked"></span> realtime spectrum updates';
+			var htmlStr = realtime_spectrum ? '<span class="fas fa-check-square"></span> realtime spectrum updates' : '<span class="far fa-square"></span> realtime spectrum updates';
 			d3.select(this).html(htmlStr);
 		})
 		.html(htmlStr);
 
-	var htmlStr = realtime_video ? '<span class="glyphicon glyphicon-check"></span> realtime video updates' : '<span class="glyphicon glyphicon-unchecked"></span> realtime video updates';
+	var htmlStr = realtime_video ? '<span class="fas fa-check-square"></span> realtime video updates' : '<span class="far fa-square"></span> realtime video updates';
 	prefDropdown.append("li")
 		.append("a")
 		.style('cursor', 'pointer')
 		.on("click", function () {
 			realtime_video = !realtime_video;
 			localStorage_write_boolean("realtime_video", realtime_video);
-			var htmlStr = realtime_video ? '<span class="glyphicon glyphicon-check"></span> realtime video updates' : '<span class="glyphicon glyphicon-unchecked"></span> realtime video updates';
+			var htmlStr = realtime_video ? '<span class="fas fa-check-square"></span> realtime video updates' : '<span class="far fa-square"></span> realtime video updates';
 			d3.select(this).html(htmlStr);
 
 			if (realtime_video) {
@@ -10690,7 +10689,7 @@ function display_menu() {
 		.attr("class", "dropdown-toggle")
 		.attr("data-toggle", "dropdown")
 		.style('cursor', 'pointer')
-		.html('FITS <span class="glyphicon glyphicon-folder-open"></span> <span class="caret"></span>');
+		.html('FITS <span class="fas fa-folder-open"></span> <span class="caret"></span>');
 
 	var fitsDropdown = fitsMenu.append("ul")
 		.attr("class", "dropdown-menu");
@@ -10713,7 +10712,7 @@ function display_menu() {
 			.append("a")
 			.attr("id", "FITS")
 			.attr("href", url + datasetId + '_00_00_00')
-			.html('full FITS download <span class="glyphicon glyphicon-save"></span>');
+			.html('full FITS download <span class="fas fa-save"></span>');
 	}
 	else {
 		fitsDropdown.append("li")
@@ -10776,105 +10775,105 @@ function display_menu() {
 
 		var htmlStr;
 
-		htmlStr = displayCDMS ? '<span class="glyphicon glyphicon-check"></span> CDMS' : '<span class="glyphicon glyphicon-unchecked"></span> CDMS';
+		htmlStr = displayCDMS ? '<span class="fas fa-check-square"></span> CDMS' : '<span class="far fa-square"></span> CDMS';
 		splatDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayCDMS = !displayCDMS;
 				localStorage_write_boolean("displayCDMS", displayCDMS);
-				var htmlStr = displayCDMS ? '<span class="glyphicon glyphicon-check"></span> CDMS' : '<span class="glyphicon glyphicon-unchecked"></span> CDMS';
+				var htmlStr = displayCDMS ? '<span class="fas fa-check-square"></span> CDMS' : '<span class="far fa-square"></span> CDMS';
 				d3.select(this).html(htmlStr);
 				display_molecules();
 			})
 			.html(htmlStr);
 
-		htmlStr = displayJPL ? '<span class="glyphicon glyphicon-check"></span> JPL' : '<span class="glyphicon glyphicon-unchecked"></span> JPL';
+		htmlStr = displayJPL ? '<span class="fas fa-check-square"></span> JPL' : '<span class="far fa-square"></span> JPL';
 		splatDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayJPL = !displayJPL;
 				localStorage_write_boolean("displayJPL", displayJPL);
-				var htmlStr = displayJPL ? '<span class="glyphicon glyphicon-check"></span> JPL' : '<span class="glyphicon glyphicon-unchecked"></span> JPL';
+				var htmlStr = displayJPL ? '<span class="fas fa-check-square"></span> JPL' : '<span class="far fa-square"></span> JPL';
 				d3.select(this).html(htmlStr);
 				display_molecules();
 			})
 			.html(htmlStr);
 
-		htmlStr = displayLovas ? '<span class="glyphicon glyphicon-check"></span> Lovas' : '<span class="glyphicon glyphicon-unchecked"></span> Lovas';
+		htmlStr = displayLovas ? '<span class="fas fa-check-square"></span> Lovas' : '<span class="far fa-square"></span> Lovas';
 		splatDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayLovas = !displayLovas;
 				localStorage_write_boolean("displayLovas", displayLovas);
-				var htmlStr = displayLovas ? '<span class="glyphicon glyphicon-check"></span> Lovas' : '<span class="glyphicon glyphicon-unchecked"></span> Lovas';
+				var htmlStr = displayLovas ? '<span class="fas fa-check-square"></span> Lovas' : '<span class="far fa-square"></span> Lovas';
 				d3.select(this).html(htmlStr);
 				display_molecules();
 			})
 			.html(htmlStr);
 
-		htmlStr = displayOSU ? '<span class="glyphicon glyphicon-check"></span> OSU' : '<span class="glyphicon glyphicon-unchecked"></span> OSU';
+		htmlStr = displayOSU ? '<span class="fas fa-check-square"></span> OSU' : '<span class="far fa-square"></span> OSU';
 		splatDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayOSU = !displayOSU;
 				localStorage_write_boolean("displayOSU", displayOSU);
-				var htmlStr = displayOSU ? '<span class="glyphicon glyphicon-check"></span> OSU' : '<span class="glyphicon glyphicon-unchecked"></span> OSU';
+				var htmlStr = displayOSU ? '<span class="fas fa-check-square"></span> OSU' : '<span class="far fa-square"></span> OSU';
 				d3.select(this).html(htmlStr);
 				display_molecules();
 			})
 			.html(htmlStr);
 
-		htmlStr = displayRecomb ? '<span class="glyphicon glyphicon-check"></span> Recomb' : '<span class="glyphicon glyphicon-unchecked"></span> Recomb';
+		htmlStr = displayRecomb ? '<span class="fas fa-check-square"></span> Recomb' : '<span class="far fa-square"></span> Recomb';
 		splatDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayRecomb = !displayRecomb;
 				localStorage_write_boolean("displayRecomb", displayRecomb);
-				var htmlStr = displayRecomb ? '<span class="glyphicon glyphicon-check"></span> Recomb' : '<span class="glyphicon glyphicon-unchecked"></span> Recomb';
+				var htmlStr = displayRecomb ? '<span class="fas fa-check-square"></span> Recomb' : '<span class="far fa-square"></span> Recomb';
 				d3.select(this).html(htmlStr);
 				display_molecules();
 			})
 			.html(htmlStr);
 
-		htmlStr = displaySLAIM ? '<span class="glyphicon glyphicon-check"></span> SLAIM' : '<span class="glyphicon glyphicon-unchecked"></span> SLAIM';
+		htmlStr = displaySLAIM ? '<span class="fas fa-check-square"></span> SLAIM' : '<span class="far fa-square"></span> SLAIM';
 		splatDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displaySLAIM = !displaySLAIM;
 				localStorage_write_boolean("displaySLAIM", displaySLAIM);
-				var htmlStr = displaySLAIM ? '<span class="glyphicon glyphicon-check"></span> SLAIM' : '<span class="glyphicon glyphicon-unchecked"></span> SLAIM';
+				var htmlStr = displaySLAIM ? '<span class="fas fa-check-square"></span> SLAIM' : '<span class="far fa-square"></span> SLAIM';
 				d3.select(this).html(htmlStr);
 				display_molecules();
 			})
 			.html(htmlStr);
 
-		htmlStr = displayTopModel ? '<span class="glyphicon glyphicon-check"></span> TopModel' : '<span class="glyphicon glyphicon-unchecked"></span> TopModel';
+		htmlStr = displayTopModel ? '<span class="fas fa-check-square"></span> TopModel' : '<span class="far fa-square"></span> TopModel';
 		splatDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayTopModel = !displayTopModel;
 				localStorage_write_boolean("displayTopModel", displayTopModel);
-				var htmlStr = displayTopModel ? '<span class="glyphicon glyphicon-check"></span> TopModel' : '<span class="glyphicon glyphicon-unchecked"></span> TopModel';
+				var htmlStr = displayTopModel ? '<span class="fas fa-check-square"></span> TopModel' : '<span class="far fa-square"></span> TopModel';
 				d3.select(this).html(htmlStr);
 				display_molecules();
 			})
 			.html(htmlStr);
 
-		htmlStr = displayToyaMA ? '<span class="glyphicon glyphicon-check"></span> ToyaMA' : '<span class="glyphicon glyphicon-unchecked"></span> ToyaMA';
+		htmlStr = displayToyaMA ? '<span class="fas fa-check-square"></span> ToyaMA' : '<span class="far fa-square"></span> ToyaMA';
 		splatDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayToyaMA = !displayToyaMA;
 				localStorage_write_boolean("displayToyaMA", displayToyaMA);
-				var htmlStr = displayToyaMA ? '<span class="glyphicon glyphicon-check"></span> ToyaMA' : '<span class="glyphicon glyphicon-unchecked"></span> ToyaMA';
+				var htmlStr = displayToyaMA ? '<span class="fas fa-check-square"></span> ToyaMA' : '<span class="far fa-square"></span> ToyaMA';
 				d3.select(this).html(htmlStr);
 				display_molecules();
 			})
@@ -10919,18 +10918,18 @@ function display_menu() {
 			.attr("disabled", "disabled")
 			.style("font-style", "italic")
 			.style('cursor', 'not-allowed')
-			.html('<span class="glyphicon glyphicon-eye-close"></span> WebGL not enabled, disabling 3D surface');
+			.html('<span class="fas fa-eye-slash"></span> WebGL not enabled, disabling 3D surface');
 	}
 
 	if (va_count > 1 && va_count <= 3) {
-		htmlStr = composite_view ? '<span class="glyphicon glyphicon-check"></span> RGB composite mode' : '<span class="glyphicon glyphicon-unchecked"></span> RGB composite mode';
+		htmlStr = composite_view ? '<span class="fas fa-check-square"></span> RGB composite mode' : '<span class="far fa-square"></span> RGB composite mode';
 		viewDropdown.append("li")
 			.append("a")
 			.attr("id", "displayComposite")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				composite_view = !composite_view;
-				var htmlStr = composite_view ? '<span class="glyphicon glyphicon-check"></span> RGB composite mode' : '<span class="glyphicon glyphicon-unchecked"></span> RGB composite mode';
+				var htmlStr = composite_view ? '<span class="fas fa-check-square"></span> RGB composite mode' : '<span class="far fa-square"></span> RGB composite mode';
 				d3.select(this).html(htmlStr);
 
 				var loc = window.location.href.replace("&view=composite", "");
@@ -10958,14 +10957,14 @@ function display_menu() {
 	}
 
 	if (va_count == 1 || composite_view) {
-		htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines';
+		htmlStr = displayContours ? '<span class="fas fa-check-square"></span> contour lines' : '<span class="far fa-square"></span> contour lines';
 		viewDropdown.append("li")
 			.append("a")
 			.attr("id", "displayContours")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayContours = !displayContours;
-				var htmlStr = displayContours ? '<span class="glyphicon glyphicon-check"></span> contour lines' : '<span class="glyphicon glyphicon-unchecked"></span> contour lines';
+				var htmlStr = displayContours ? '<span class="fas fa-check-square"></span> contour lines' : '<span class="far fa-square"></span> contour lines';
 				d3.select(this).html(htmlStr);
 				//var elem = d3.selectAll("#contourPlot");
 
@@ -10993,7 +10992,7 @@ function display_menu() {
 	}
 
 	if (va_count == 1 || composite_view) {
-		htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
+		htmlStr = displayGridlines ? '<span class="fas fa-check-square"></span> lon/lat grid lines' : '<span class="far fa-square"></span> lon/lat grid lines';
 		viewDropdown.append("li")
 			.append("a")
 			.attr("id", "displayGridlines")
@@ -11001,7 +11000,7 @@ function display_menu() {
 			.on("click", function () {
 				displayGridlines = !displayGridlines;
 				localStorage_write_boolean("displayGridlines", displayGridlines);
-				var htmlStr = displayGridlines ? '<span class="glyphicon glyphicon-check"></span> lon/lat grid lines' : '<span class="glyphicon glyphicon-unchecked"></span> lon/lat grid lines';
+				var htmlStr = displayGridlines ? '<span class="fas fa-check-square"></span> lon/lat grid lines' : '<span class="far fa-square"></span> lon/lat grid lines';
 				d3.select(this).html(htmlStr);
 				var elem = d3.select("#gridlines");
 				if (displayGridlines)
@@ -11011,14 +11010,14 @@ function display_menu() {
 			})
 			.html(htmlStr);
 
-		htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
+		htmlStr = displayLegend ? '<span class="fas fa-check-square"></span> image legend' : '<span class="far fa-square"></span> image legend';
 		viewDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayLegend = !displayLegend;
 				localStorage_write_boolean("displayLegend", displayLegend);
-				var htmlStr = displayLegend ? '<span class="glyphicon glyphicon-check"></span> image legend' : '<span class="glyphicon glyphicon-unchecked"></span> image legend';
+				var htmlStr = displayLegend ? '<span class="fas fa-check-square"></span> image legend' : '<span class="far fa-square"></span> image legend';
 				d3.select(this).html(htmlStr);
 
 				if (va_count == 1) {
@@ -11044,14 +11043,14 @@ function display_menu() {
 	}
 
 	if (!optical_view) {
-		htmlStr = displayMolecules ? '<span class="glyphicon glyphicon-check"></span> spectral lines' : '<span class="glyphicon glyphicon-unchecked"></span> spectral lines';
+		htmlStr = displayMolecules ? '<span class="fas fa-check-square"></span> spectral lines' : '<span class="far fa-square"></span> spectral lines';
 		viewDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displayMolecules = !displayMolecules;
 				localStorage_write_boolean("displayMolecules", displayMolecules);
-				var htmlStr = displayMolecules ? '<span class="glyphicon glyphicon-check"></span> spectral lines' : '<span class="glyphicon glyphicon-unchecked"></span> spectral lines';
+				var htmlStr = displayMolecules ? '<span class="fas fa-check-square"></span> spectral lines' : '<span class="far fa-square"></span> spectral lines';
 				d3.select(this).html(htmlStr);
 				var elem = d3.select("#molecules");
 				if (displayMolecules)
@@ -11067,14 +11066,14 @@ function display_menu() {
 			})
 			.html(htmlStr);
 
-		htmlStr = displaySpectrum ? '<span class="glyphicon glyphicon-check"></span> spectrum' : '<span class="glyphicon glyphicon-unchecked"></span> spectrum';
+		htmlStr = displaySpectrum ? '<span class="fas fa-check-square"></span> spectrum' : '<span class="far fa-square"></span> spectrum';
 		viewDropdown.append("li")
 			.append("a")
 			.style('cursor', 'pointer')
 			.on("click", function () {
 				displaySpectrum = !displaySpectrum;
 				localStorage_write_boolean("displaySpectrum", displaySpectrum);
-				var htmlStr = displaySpectrum ? '<span class="glyphicon glyphicon-check"></span> spectrum' : '<span class="glyphicon glyphicon-unchecked"></span> spectrum';
+				var htmlStr = displaySpectrum ? '<span class="fas fa-check-square"></span> spectrum' : '<span class="far fa-square"></span> spectrum';
 				d3.select(this).html(htmlStr);
 				var elem = document.getElementById("SpectrumCanvas");
 				if (displaySpectrum) {
@@ -11091,14 +11090,14 @@ function display_menu() {
 			.html(htmlStr);
 
 		if (va_count == 1 || composite_view) {
-			htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
+			htmlStr = displayBeam ? '<span class="fas fa-check-square"></span> telescope beam' : '<span class="far fa-square"></span> telescope beam';
 			viewDropdown.append("li")
 				.append("a")
 				.attr("id", "displayBeam")
 				.style('cursor', 'pointer')
 				.on("click", function () {
 					displayBeam = !displayBeam;
-					var htmlStr = displayBeam ? '<span class="glyphicon glyphicon-check"></span> telescope beam' : '<span class="glyphicon glyphicon-unchecked"></span> telescope beam';
+					var htmlStr = displayBeam ? '<span class="fas fa-check-square"></span> telescope beam' : '<span class="far fa-square"></span> telescope beam';
 					d3.select(this).html(htmlStr);
 
 					if (displayBeam) {
@@ -11125,7 +11124,7 @@ function display_menu() {
 		.attr("class", "dropdown-toggle")
 		.attr("data-toggle", "dropdown")
 		.style('cursor', 'pointer')
-		.html('<span class="glyphicon glyphicon-question-sign"></span> Help <span class="caret"></span>');
+		.html('<span class="fas fa-question-circle"></span> Help <span class="caret"></span>');
 
 	var helpDropdown = helpMenu.append("ul")
 		.attr("class", "dropdown-menu");
@@ -11134,7 +11133,7 @@ function display_menu() {
 		.append("a")
 		.style('cursor', 'pointer')
 		.on("click", show_help)
-		.html('user guide <span class="glyphicon glyphicon-wrench"></span>');
+		.html('user guide <span class="fas fa-wrench"></span>');
 
 	helpDropdown.append("li")
 		.append("a")
@@ -11363,14 +11362,14 @@ function show_welcome() {
 	.attr("data-dismiss", "modal")
 		.attr("class", "button btn-lg pull-right")
 	.attr("align","center")
-	.html('<span class="glyphicon glyphicon-remove"></span> Close') ;*/
+	.html('<span class="fas fa-times"></span> Close') ;*/
 
 	var href = "mailto:help_desk@jvo.nao.ac.jp?subject=" + votable.getAttribute('data-server-string') + " bug report [" + votable.getAttribute('data-server-version') + "/" + get_js_version() + "]";
 
 	footer.append("p")
 		//.style("color", "#a94442")
 		.attr("align", "left")
-		.html('<label style="cursor: pointer"><input type="checkbox" value="" class="control-label" style="cursor: pointer" id="donotshowcheckbox" onchange="javascript:donotshow();">&nbsp;don\'t show this dialogue again</label>' + '&nbsp;&nbsp;&nbsp;<a style="color:red" href="' + href + '">page loading problems?</a>' + '<button type="submit" class="btn btn-danger btn-default pull-right" data-dismiss="modal"><span class="glyphicon glyphicon-remove"></span> Close</button>');
+		.html('<label style="cursor: pointer"><input type="checkbox" value="" class="control-label" style="cursor: pointer" id="donotshowcheckbox" onchange="javascript:donotshow();">&nbsp;don\'t show this dialogue again</label>' + '&nbsp;&nbsp;&nbsp;<a style="color:red" href="' + href + '">page loading problems?</a>' + '<button type="submit" class="btn btn-danger btn-default pull-right" data-dismiss="modal"><span class="fas fa-times"></span> Close</button>');
 
 	$('#welcomeScreen').modal('show');
 }
@@ -11413,7 +11412,7 @@ function setup_help() {
 		.html("The current image/viewport spectrum can be exported to a <b>CSV</b> file");
 
 	bodyDiv.append("p")
-		.html("Other formats like <em>JSON</em>, <em>PLAIN TEXT</em> or <em>FITS</em> are under consideration");
+		.html("Other formats, i.e. <em>JSON</em>, <em>PLAIN TEXT</em> or <em>FITS</em> are under consideration");
 
 	var csv = bodyDiv.append("video")
 		.attr("width", "100%")
@@ -11472,13 +11471,13 @@ function setup_help() {
 		.html("when disabled the FITS cube video frame will be requested after a 250ms delay since the last movement of the mouse");
 
 	bodyDiv.append("p")
-		.html('<span class="glyphicon glyphicon-play"></span>&nbsp; replay period 10s');
+		.html('<span class="fas fa-play"></span>&nbsp; replay period 10s');
 
 	bodyDiv.append("p")
-		.html('<span class="glyphicon glyphicon-forward"></span>&nbsp; replay period 5s');
+		.html('<span class="fas fa-forward"></span>&nbsp; replay period 5s');
 
 	bodyDiv.append("p")
-		.html('<span class="glyphicon glyphicon-fast-forward"></span>&nbsp; replay period 2.5s');
+		.html('<span class="fas fa-fast-forward"></span>&nbsp; replay period 2.5s');
 
 	bodyDiv.append("hr");
 
