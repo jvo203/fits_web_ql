@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-01-05.2";
+	return "JS2022-01-05.3";
 }
 
 const wasm_supported = (() => {
@@ -11412,7 +11412,7 @@ function setup_help() {
 		.html("The current image/viewport spectrum can be exported to a <b>CSV</b> file");
 
 	bodyDiv.append("p")
-		.html("Other formats, i.e. <em>JSON</em>, <em>PLAIN TEXT</em> or <em>FITS</em> are under consideration");
+		.html("Other formats, e.g., <em>JSON</em>, <em>PLAIN TEXT</em> or <em>FITS</em> are under consideration");
 
 	var csv = bodyDiv.append("video")
 		.attr("width", "100%")
