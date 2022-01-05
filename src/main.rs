@@ -2677,8 +2677,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.3.0";
-static VERSION_STRING: &'static str = "SV2021-12-19.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.3.1";
+static VERSION_STRING: &'static str = "SV2022-01-05.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4406,9 +4406,6 @@ fn http_fits_response(
 
     //bootstrap
     html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1, maximum-scale=1\">\n");
-    /*html.push_str("<link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css\">\n");
-    html.push_str("<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js\"></script>\n");
-    html.push_str("<script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js\"></script>\n");*/
 
     // Bootstrap v3.4.1
     html.push_str
