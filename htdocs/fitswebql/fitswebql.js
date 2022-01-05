@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-01-04.1";
+	return "JS2022-01-05.0";
 }
 
 const wasm_supported = (() => {
@@ -4035,7 +4035,8 @@ function display_dataset_info() {
 		if (composite_view)
 			yoffset += 1 * emFontSize;
 
-		var videoStr = '<span id="videoPlay" class="glyphicon glyphicon-play" style="display:inline-block; cursor: pointer"></span><span id="videoPause" class="glyphicon glyphicon-pause" style="display:none; cursor: pointer"></span>&nbsp; <span id="videoStop" class="glyphicon glyphicon-stop" style="cursor: pointer"></span>&nbsp; <span id="videoForward" class="glyphicon glyphicon-forward" style="cursor: pointer"></span>&nbsp; <span id="videoFastForward" class="glyphicon glyphicon-fast-forward" style="cursor: pointer"></span>';
+		//var videoStr = '<span id="videoPlay" class="glyphicon glyphicon-play" style="display:inline-block; cursor: pointer"></span><span id="videoPause" class="glyphicon glyphicon-pause" style="display:none; cursor: pointer"></span>&nbsp; <span id="videoStop" class="glyphicon glyphicon-stop" style="cursor: pointer"></span>&nbsp; <span id="videoForward" class="glyphicon glyphicon-forward" style="cursor: pointer"></span>&nbsp; <span id="videoFastForward" class="glyphicon glyphicon-fast-forward" style="cursor: pointer"></span>';
+		var videoStr = '<span id="videoPlay" class="fas fa-play" style="display:inline-block; cursor: pointer"></span><span id="videoPause" class="fas fa-pause" style="display:none; cursor: pointer"></span>&nbsp; <span id="videoStop" class="fas fa-stop" style="cursor: pointer"></span>&nbsp; <span id="videoForward" class="fas fa-forward" style="cursor: pointer"></span>&nbsp; <span id="videoFastForward" class="fas fa-fast-forward" style="cursor: pointer"></span>';
 
 		maxoffset = yoffset;
 		group.append("g")
