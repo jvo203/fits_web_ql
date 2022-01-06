@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-01-05.3";
+	return "JS2022-01-06.0";
 }
 
 const wasm_supported = (() => {
@@ -5550,7 +5550,8 @@ function display_preferences(index) {
 		.attr("fill", "green")
 		.attr("stroke", "none")
 		.attr("opacity", 1.0)
-		.text("■");
+		//.text("■");
+		.text("●");
 
 	let fillColour = 'yellow';
 
