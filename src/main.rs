@@ -2678,7 +2678,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.3.1";
-static VERSION_STRING: &'static str = "SV2022-01-05.0";
+static VERSION_STRING: &'static str = "R/SV2022-01-05.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
