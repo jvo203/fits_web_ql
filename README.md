@@ -91,7 +91,7 @@ echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.zshrc
 
 Ubuntu Linux:
 
-sudo apt install clang
+sudo apt install clang llvm
 
 ##
 install nasm and yasm assembler compilers
