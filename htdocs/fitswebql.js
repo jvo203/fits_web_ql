@@ -166,7 +166,7 @@ function show_directory_contents(response) {
 				.attr("onclick", tmp)
 				//.attr("onmouseenter", cmd)
 				.attr('title', group_str)
-				.html("<td><p href=\"" + url + "\"><span class=\"glyphicon glyphicon-open-file\"></span>&nbsp;&nbsp;" + filelist[i].name + "</p></td><td>" + numeral(filelist[i].size).format('0.0 b') + "</td><td>" + filelist[i].last_modified + "</td>"));
+				.html("<td><p href=\"" + url + "\"><span class=\"glyphicon glyphicon-open-file\"></span>&nbsp;&nbsp;" + filelist[i].name + "</p></td><td>" + numeral(filelist[i].size).format('0.0 ib') + "</td><td>" + filelist[i].last_modified + "</td>"));
 		}
 	}
 
