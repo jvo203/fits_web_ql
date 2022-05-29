@@ -1724,9 +1724,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.119"
+version = "0.2.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bf2e165bb3457c8e098ea76f3e3bc9db55f87aa90d52d0e6be741470916aaa4"
+checksum = "349d5a591cd28b49e1d1037471617a32ddcda5731b99419008085f72d5a53836"
 
 [[package]]
 name = "libloading"
@@ -3148,9 +3148,9 @@ dependencies = [
 
 [[package]]
 name = "thread-priority"
-version = "0.7.0"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb4aa39eba9de82bc3c8091a87d147dc60b8648264580a9fc6ed473747825316"
+checksum = "696668a68983ad737e08e11e9afb701e962cab9f07f2a4ff339316b2d5b0870d"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",

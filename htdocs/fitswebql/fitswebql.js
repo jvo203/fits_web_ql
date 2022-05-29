@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-01-07.0";
+	return "JS2022-05-29.0";
 }
 
 const wasm_supported = (() => {
@@ -7278,8 +7278,7 @@ function x_axis_move(offset) {
 		//return ;//commented out by Chris on 2018/08/03
 	};
 
-	console.log("RESTFRQ:", RESTFRQ);
-
+	console.log("RESTFRQ:", RESTFRQ, "freq:", freq);
 
 	var relvel = Einstein_relative_velocity(freq, RESTFRQ);
 
@@ -7299,6 +7298,8 @@ function x_axis_move(offset) {
 		modal.style.right = "2.5%";
 		modal.style.left = null;
 	};
+
+	let mol_freq = freq;
 
 	if (!freqdrag && wasm_supported) {
 		//initially assume 10 frames per second for a video
@@ -7333,7 +7334,7 @@ function x_axis_move(offset) {
 			idleVideo = setTimeout(videoTimeout, 250, freq);
 	};
 
-	zoom_molecules(freq);
+	zoom_molecules(mol_freq);
 }
 
 function zoom_molecules(freq) {
