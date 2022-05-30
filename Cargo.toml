@@ -20,8 +20,8 @@ mem = ["jemalloc-sys"]
 raid = []
 
 [build-dependencies]
-bindgen = "*"
-metadeps = "*"
+bindgen = "0.59.2"
+metadeps = "1.1.2"
 ispc = "1.0.14"
 
 [package.metadata.pkg-config]
