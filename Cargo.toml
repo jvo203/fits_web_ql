@@ -22,7 +22,7 @@ raid = []
 [build-dependencies]
 bindgen = "*"
 metadeps = "*"
-ispc = "1.0.9"
+ispc = "1.0.14"
 
 [package.metadata.pkg-config]
 x265 = "0.0" # was 2.8 but version recognition is broken on macos right now! 
@@ -78,14 +78,14 @@ postgres = "0.19.2"
 tar = "0.4.38"
 flate2 = "1.0.22"
 bzip2 = "0.4.3"
-ispc = "1.0.9"
+ispc = "1.0.14"
 lttb = "0.2.0"
 ocl = {version = "0.19.3", optional = true}
 rand = {version = "0.8.5", optional = true}
 #zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
-zfp-sys = {version = "0.1.7", optional = true}#, git = "https://github.com/jvo203/zfp-sys.git"}
+zfp-sys = {version = "0.1.10", optional = true}#, git = "https://github.com/jvo203/zfp-sys.git"}
 ipp-sys = { version = "0.4.5", features=["2019"], optional = true }
-fpzip-sys = "=0.1.3"
+fpzip-sys = "0.1.5"
 
 #rulinalg = "*"
 #linearkalman = "*"
