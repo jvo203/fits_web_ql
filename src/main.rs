@@ -3896,7 +3896,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                     .append_header(("Pragma", "no-cache"))
                     .append_header(("Expires", "0"))
                     .content_type("application/force-download")
-                    .append_header(("Accept-Encoding", "identity")) // disable compression
+                    .append_header(("Content-Encoding", "identity")) // disable compression
                     .append_header(("Content-Disposition", disposition_filename))
                     .append_header(("Content-Transfer-Encoding", "binary"))
                     .append_header(("Accept-Ranges", "bytes"))
@@ -3958,7 +3958,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                         .append_header(("Pragma", "no-cache"))
                         .append_header(("Expires", "0"))
                         .content_type("application/force-download")
-                        .append_header(("Accept-Encoding", "identity")) // disable compression                        
+                        .append_header(("Content-Encoding", "identity")) // disable compression
                         .append_header(("Content-Disposition", disposition_filename))
                         .append_header(("Content-Transfer-Encoding", "binary"))
                         .append_header(("Accept-Ranges", "bytes"))
@@ -4886,7 +4886,7 @@ async fn main() {
         );
         println!("send SIGINT to shut down, i.e. killall -s SIGINT fits_web_ql");
     }
-    
+
     let _ = task.await;
 
     DATASETS.write().clear();
