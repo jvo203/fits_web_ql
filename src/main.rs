@@ -61,7 +61,7 @@ use actix_web::dev::BodyEncoding;
 use actix_web::dev::HttpResponseBuilder;
 use actix_web::http::{header::HeaderValue, ContentEncoding, StatusCode};
 use actix_web::middleware::{Compress, Logger};
-use actix_web::web::Bytes;
+use actix_web::web::{Bytes, Data};
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
@@ -4673,7 +4673,9 @@ fn main() {
 
         match file {
             Ok(mut f) => {
-                let _ = f.write_all(b"\"elapsed time [s]\",\"stats.allocated\",\"stats.active\",\"stats.mapped\"\n");
+                let _ = f.write_all(
+                    b"\"elapsed time [s]\",\"stats.allocated\",\"stats.active\",\"stats.mapped\"\n",
+                );
                 let _ = f.write_all(format!("0,{},{},{}\n", allocated, active, mapped).as_bytes());
             }
             Err(err) => println!("{}", err),
@@ -4821,13 +4823,13 @@ fn main() {
     HttpServer::new(
         move || {
             // WebSocket sessions state
-            let state = WsSessionState {
+            let state = Data::new(WsSessionState {
                 addr: server.clone(),
                 home_dir: home_dir.clone(),
-            };
+            });
 
             App::new()
-                .data(state)
+                .app_data(state)
                 .wrap(Logger::new("%t %a %{User-Agent}i %r")
                     .exclude("/")
                     .exclude("/fitswebql/get_molecules")
