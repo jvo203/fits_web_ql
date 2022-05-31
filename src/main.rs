@@ -4673,7 +4673,9 @@ fn main() {
 
         match file {
             Ok(mut f) => {
-                let _ = f.write_all(b"\"elapsed time [s]\",\"stats.allocated\",\"stats.active\",\"stats.mapped\"\n");
+                let _ = f.write_all(
+                    b"\"elapsed time [s]\",\"stats.allocated\",\"stats.active\",\"stats.mapped\"\n",
+                );
                 let _ = f.write_all(format!("0,{},{},{}\n", allocated, active, mapped).as_bytes());
             }
             Err(err) => println!("{}", err),
