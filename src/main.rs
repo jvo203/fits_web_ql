@@ -2677,7 +2677,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.4.0";
-static VERSION_STRING: &'static str = "R/SV2022-05-31.0";
+static VERSION_STRING: &'static str = "R/SV2022-06-02.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4446,36 +4446,6 @@ fn http_fits_response(
 
     html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits));
 
-    #[cfg(not(feature = "jvo"))]
-    {
-        html.push_str(
-            "<script>
-        var WS_SOCKET = 'ws://';
-        </script>\n",
-        );
-    }
-
-    #[cfg(feature = "jvo")]
-    {
-        #[cfg(not(feature = "production"))]
-        {
-            html.push_str(
-                "<script>
-        var WS_SOCKET = 'ws://';
-        </script>\n",
-            );
-        }
-
-        #[cfg(feature = "production")]
-        {
-            html.push_str(
-                "<script>
-        var WS_SOCKET = 'wss://';
-        </script>\n",
-            );
-        }
-    }
-
     //the page entry point
     html.push_str(
         "<script>
@@ -4727,8 +4697,7 @@ async fn main() {
         //.breadth_first()//causes stack overflow!!!
         .build_global()
         .unwrap();
-
-    //std::env::set_var("RUST_LOG", "info");
+    
     std::env::set_var("RUST_LOG", "actix_web=info");
 
     #[cfg(feature = "jvo")]
