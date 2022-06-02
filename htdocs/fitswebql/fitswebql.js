@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-06-02.0";
+	return "JS2022-06-02.1";
 }
 
 const wasm_supported = (() => {
@@ -13148,7 +13148,7 @@ async*/ function mainRenderer() {
 			.attr("id", "welcomeGroup");
 
 		group.append("h1")
-			.text("FITSWebQL");
+			.text("FITSWebQL v4");
 
 		group.append("p")
 			.text(votable.getAttribute('data-server-version') + "/" + get_js_version());
