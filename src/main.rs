@@ -55,14 +55,13 @@ use std::{env, mem, ptr};
 use fpzip_sys::*;
 use lttb::{lttb, DataPoint};
 
-use actix::*;
+use actix::prelude::*;
+use actix::{Actor, Addr, Running, StreamHandler};
 use actix_files as fs;
-use actix_web::dev::BodyEncoding;
-use actix_web::dev::HttpResponseBuilder;
-use actix_web::http::{header::HeaderValue, ContentEncoding, StatusCode};
+use actix_web::http::{header::HeaderValue, StatusCode};
 use actix_web::middleware::{Compress, Logger};
 use actix_web::web::{Bytes, Data};
-use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
 
@@ -513,7 +512,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                 }
 
                 if (&text).contains("[heartbeat]") {
-                    ctx.text(&text);
+                    ctx.text(&*text);
                 } else {
                     self.timestamp = std::time::Instant::now();
 
@@ -2677,8 +2676,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.3.1";
-static VERSION_STRING: &'static str = "R/SV2022-01-05.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.4.0";
+static VERSION_STRING: &'static str = "R/SV2022-06-02.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -3041,7 +3040,7 @@ async fn websocket_entry(
 ) -> Result<HttpResponse, Error> {
     let dataset_id_orig: String = match req.match_info().get("id") {
         Some(x) => x.to_string(),
-        None => return Err(actix_http::error::ErrorBadRequest("websocket_entry")),
+        None => return Err(actix_web::error::ErrorBadRequest("websocket_entry")),
     };
 
     //dataset_id needs to be URI-decoded
@@ -3074,13 +3073,13 @@ async fn fitswebql_entry(
 ) -> Result<HttpResponse, Error> {
     let fitswebql_path: String = match req.match_info().get("path") {
         Some(x) => x.to_string(),
-        None => return Err(actix_http::error::ErrorBadRequest("fitswebql_entry")),
+        None => return Err(actix_web::error::ErrorBadRequest("fitswebql_entry")),
     };
 
     let server = &state.addr;
     let query = match web::Query::<HashMap<String, String>>::extract(&req).await {
         Ok(x) => x,
-        Err(_) => return Err(actix_http::error::ErrorBadRequest("fitswebql_entry")),
+        Err(_) => return Err(actix_web::error::ErrorBadRequest("fitswebql_entry")),
     };
 
     #[cfg(feature = "jvo")]
@@ -3255,7 +3254,7 @@ async fn fitswebql_entry(
 async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
     let query = match web::Query::<HashMap<String, String>>::extract(&req).await {
         Ok(x) => x,
-        Err(_) => return Err(actix_http::error::ErrorBadRequest("get_image")),
+        Err(_) => return Err(actix_web::error::ErrorBadRequest("get_image")),
     };
 
     let dataset_id = match query.get("datasetId") {
@@ -3276,10 +3275,7 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
     let filepath = std::path::Path::new(&filename);
 
     if filepath.exists() {
-        return fs::NamedFile::open(filepath)
-            .unwrap()
-            .respond_to(&req)
-            .await;
+        return Ok(fs::NamedFile::open(filepath).unwrap().respond_to(&req));
     };
 
     let datasets = DATASETS.read();
@@ -3327,10 +3323,7 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
         let filepath = std::path::Path::new(&filename);
 
         if filepath.exists() {
-            return fs::NamedFile::open(filepath)
-                .unwrap()
-                .respond_to(&req)
-                .await;
+            return Ok(fs::NamedFile::open(filepath).unwrap().respond_to(&req));
         } else {
             return Ok(HttpResponse::NotFound()
                 .content_type("text/html")
@@ -3586,7 +3579,7 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
 
                         HttpResponse::Ok()
                             .content_type("application/json")
-                            .streaming(molecules_stream.map(|x| Ok(x) as Result<Bytes, ()>))
+                            .streaming(molecules_stream.map(|x| Ok(x) as Result<Bytes, Error>))
                     }
                     None => HttpResponse::Ok()
                         .content_type("application/json")
@@ -3602,7 +3595,7 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
 
                 HttpResponse::Ok()
                     .content_type("application/json")
-                    .streaming(molecules_stream.map(|x| Ok(x) as Result<Bytes, ()>))
+                    .streaming(molecules_stream.map(|x| Ok(x) as Result<Bytes, Error>))
             }
             None => HttpResponse::Ok()
                 .content_type("application/json")
@@ -3899,14 +3892,14 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                 );
 
                 HttpResponse::Ok()
-                    .header("Cache-Control", "no-cache, no-store, must-revalidate")
-                    .header("Pragma", "no-cache")
-                    .header("Expires", "0")
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("application/force-download")
-                    .encoding(ContentEncoding::Identity) // disable compression
-                    .header("Content-Disposition", disposition_filename)
-                    .header("Content-Transfer-Encoding", "binary")
-                    .header("Accept-Ranges", "bytes")
+                    .append_header(("Content-Encoding", "identity")) // disable compression
+                    .append_header(("Content-Disposition", disposition_filename))
+                    .append_header(("Content-Transfer-Encoding", "binary"))
+                    .append_header(("Accept-Ranges", "bytes"))
                     .body(tarball)
             }
             Err(err) => HttpResponse::NotFound()
@@ -3961,15 +3954,15 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                     );
 
                     return HttpResponse::Ok()
-                        .header("Cache-Control", "no-cache, no-store, must-revalidate")
-                        .header("Pragma", "no-cache")
-                        .header("Expires", "0")
+                        .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                        .append_header(("Pragma", "no-cache"))
+                        .append_header(("Expires", "0"))
                         .content_type("application/force-download")
-                        .encoding(ContentEncoding::Identity) // disable compression
-                        .header("Content-Disposition", disposition_filename)
-                        .header("Content-Transfer-Encoding", "binary")
-                        .header("Accept-Ranges", "bytes")
-                        .streaming(fits_stream.map(|x| Ok(x) as Result<Bytes, ()>));
+                        .append_header(("Content-Encoding", "identity")) // disable compression
+                        .append_header(("Content-Disposition", disposition_filename))
+                        .append_header(("Content-Transfer-Encoding", "binary"))
+                        .append_header(("Accept-Ranges", "bytes"))
+                        .streaming(fits_stream.map(|x| Ok(x) as Result<Bytes, Error>));
                 }
                 None => {
                     return HttpResponse::NotFound()
@@ -4453,36 +4446,6 @@ fn http_fits_response(
 
     html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits));
 
-    #[cfg(not(feature = "jvo"))]
-    {
-        html.push_str(
-            "<script>
-        var WS_SOCKET = 'ws://';
-        </script>\n",
-        );
-    }
-
-    #[cfg(feature = "jvo")]
-    {
-        #[cfg(not(feature = "production"))]
-        {
-            html.push_str(
-                "<script>
-        var WS_SOCKET = 'ws://';
-        </script>\n",
-            );
-        }
-
-        #[cfg(feature = "production")]
-        {
-            html.push_str(
-                "<script>
-        var WS_SOCKET = 'wss://';
-        </script>\n",
-            );
-        }
-    }
-
     //the page entry point
     html.push_str(
         "<script>
@@ -4566,9 +4529,9 @@ fn http_fits_response(
     html.push_str("</body></html>\n");
 
     HttpResponse::Ok()
-        .header("Cache-Control", "no-cache, no-store, must-revalidate")
-        .header("Pragma", "no-cache")
-        .header("Expires", "0")
+        .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+        .append_header(("Pragma", "no-cache"))
+        .append_header(("Expires", "0"))
         .content_type("text/html")
         .body(html)
 }
@@ -4661,7 +4624,8 @@ fn get_memory_usage() -> (usize, usize, usize) {
     (allocated, active, mapped)
 }
 
-fn main() {
+#[actix_web::main]
+async fn main() {
     #[cfg(feature = "mem")]
     let timer = timer::Timer::new();
 
@@ -4733,8 +4697,7 @@ fn main() {
         //.breadth_first()//causes stack overflow!!!
         .build_global()
         .unwrap();
-
-    //std::env::set_var("RUST_LOG", "info");
+    
     std::env::set_var("RUST_LOG", "actix_web=info");
 
     #[cfg(feature = "jvo")]
@@ -4810,8 +4773,6 @@ fn main() {
     #[cfg(feature = "jvo")]
     let index_file = "almawebql.html";
 
-    let sys = actix::System::new("fits_web_ql");
-
     let num_workers = (num_cpus::get_physical() / 2).max(1); //half the number of physical (not Hyper-Threading) cores
 
     // Start the WebSocket message server actor in a separate thread
@@ -4820,7 +4781,7 @@ fn main() {
 
     let actix_server_path = server_path.clone();
 
-    HttpServer::new(
+    let task = HttpServer::new(
         move || {
             // WebSocket sessions state
             let state = Data::new(WsSessionState {
@@ -4895,7 +4856,7 @@ fn main() {
         println!("send SIGINT to shut down, i.e. killall -s SIGINT fits_web_ql");
     }
 
-    let _ = sys.run();
+    let _ = task.await;
 
     DATASETS.write().clear();
 
