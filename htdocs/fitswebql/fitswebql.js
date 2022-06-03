@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-01-05.3";
+	return "JS2022-06-04.3";
 }
 
 const wasm_supported = (() => {
@@ -7299,6 +7299,8 @@ function x_axis_move(offset) {
 		modal.style.left = null;
 	};
 
+	let mol_freq = freq;
+
 	if (!freqdrag && wasm_supported) {
 		//initially assume 10 frames per second for a video
 		//later on use a Kalman Filter to predict the next frame position and request it		
@@ -7332,7 +7334,7 @@ function x_axis_move(offset) {
 			idleVideo = setTimeout(videoTimeout, 250, freq);
 	};
 
-	zoom_molecules(freq);
+	zoom_molecules(mol_freq);
 }
 
 function zoom_molecules(freq) {
