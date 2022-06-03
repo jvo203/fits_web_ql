@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-06-02.1";
+	return "JS2022-06-03.0";
 }
 
 const wasm_supported = (() => {
@@ -1514,14 +1514,16 @@ function open_websocket_connection(_datasetId, index) {
 
 		// Let us open a web socket
 		var loc = window.location, ws_uri;
-		var prot = loc.protocol;
+		/*var prot = loc.protocol;
 
 		if (prot !== "https:")
 			ws_prot = "ws://";
 		else
 			ws_prot = "wss://";
 
-		ws_uri = ws_prot + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/" + encodeURIComponent(_datasetId);
+		ws_uri = ws_prot + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/" + encodeURIComponent(_datasetId);*/
+
+		ws_uri = WS_SOCKET + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/" + encodeURIComponent(_datasetId);
 
 		//d3.select("#welcome").append("p").text("ws_uri: " + ws_uri) ;
 
