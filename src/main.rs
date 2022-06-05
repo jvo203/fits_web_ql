@@ -3297,6 +3297,9 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
                 //println!("[get_image]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
                 return Ok(HttpResponse::Accepted()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id)));
             }
@@ -3381,6 +3384,9 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
                 //println!("[get_spectrum]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
                 return HttpResponse::Accepted()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id));
             }
@@ -3394,6 +3400,9 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
 
     if fits.is_dummy {
         return HttpResponse::Accepted()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
             .content_type("text/html")
             .body(format!(
                 "<p><b>RwLock timeout</b>: {} not available yet</p>",
@@ -3542,6 +3551,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
             Some(x) => x,
             None => {
                 return HttpResponse::Accepted()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>RwLock timeout</b>: {} not available yet</p>",
@@ -3553,6 +3565,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
         if !fits.has_header {
             if fits.is_dummy {
                 HttpResponse::Accepted()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>spectral lines for {} not available yet</p>",
