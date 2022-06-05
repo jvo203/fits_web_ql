@@ -3310,6 +3310,9 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
 
     if fits.is_dummy {
         return Ok(HttpResponse::Accepted()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
             .content_type("text/html")
             .body(format!(
                 "<p><b>RwLock timeout</b>: {} not available yet</p>",
@@ -4727,7 +4730,7 @@ async fn main() {
         //.breadth_first()//causes stack overflow!!!
         .build_global()
         .unwrap();
-    
+
     std::env::set_var("RUST_LOG", "actix_web=info");
 
     #[cfg(feature = "jvo")]
