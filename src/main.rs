@@ -2676,8 +2676,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.4.0";
-static VERSION_STRING: &'static str = "R/SV2022-06-02.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.4.1";
+static VERSION_STRING: &'static str = "R/SV2022-06-06.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -2903,6 +2903,9 @@ fn get_home_directory(home_dir: &Option<std::path::PathBuf>) -> HttpResponse {
     match home_dir {
         Some(path_buf) => get_directory(path_buf.to_path_buf()),
         None => HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
             .content_type("text/html")
             .body(format!(
                 "<p><b>Critical Error</b>: home directory not found</p>"
@@ -3010,6 +3013,9 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
     contents.push(']');
 
     HttpResponse::Ok()
+        .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+        .append_header(("Pragma", "no-cache"))
+        .append_header(("Expires", "0"))
         .content_type("application/json")
         .body(format!(
             "{{\"location\": \"{}\", \"contents\": {} }}",
@@ -3152,6 +3158,9 @@ async fn fitswebql_entry(
             //the last resort
             if v.is_empty() {
                 return Ok(HttpResponse::NotFound()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>Critical Error</b>: no {} available</p>",
@@ -3261,6 +3270,9 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
         Some(x) => x,
         None => {
             return Ok(HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_image/datasetId parameter not found</p>"
@@ -3284,6 +3296,9 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
         Some(x) => x,
         None => {
             return Ok(HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!("<p><b>Critical Error</b>: dataset not found</p>")));
         }
@@ -3297,6 +3312,9 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
                 //println!("[get_image]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
                 return Ok(HttpResponse::Accepted()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id)));
             }
@@ -3310,6 +3328,9 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
 
     if fits.is_dummy {
         return Ok(HttpResponse::Accepted()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
             .content_type("text/html")
             .body(format!(
                 "<p><b>RwLock timeout</b>: {} not available yet</p>",
@@ -3326,6 +3347,9 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
             return Ok(fs::NamedFile::open(filepath).unwrap().respond_to(&req));
         } else {
             return Ok(HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!("<p><b>Critical Error</b>: image not found</p>")));
         };
@@ -3333,12 +3357,21 @@ async fn get_image(req: HttpRequest) -> Result<HttpResponse, Error> {
         //custom HTTP error responses
         match fits.status_code {
             415 => Ok(HttpResponseBuilder::new(StatusCode::from_u16(415).unwrap())
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!("UNSUPPORTED MEDIA TYPE"))),
             500 => Ok(HttpResponse::InternalServerError()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!("CRITICAL ERROR"))),
             _ => Ok(HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!("DATA NOT FOUND ON THE REMOTE SITE/SERVER"))),
         }
@@ -3350,6 +3383,9 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_spectrum/datasetId parameter not found</p>"
@@ -3365,6 +3401,9 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
         }
@@ -3378,6 +3417,9 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
                 //println!("[get_spectrum]: RwLock timeout, cannot obtain a read access to {}", dataset_id);
 
                 return HttpResponse::Accepted()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!("<p><b>RwLock timeout</b>: {} not available yet</p>", dataset_id));
             }
@@ -3391,6 +3433,9 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
 
     if fits.is_dummy {
         return HttpResponse::Accepted()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
             .content_type("text/html")
             .body(format!(
                 "<p><b>RwLock timeout</b>: {} not available yet</p>",
@@ -3404,6 +3449,9 @@ async fn get_spectrum(query: web::Query<HashMap<String, String>>) -> HttpRespons
             .body(format!("{}", fits.to_json()))
     } else {
         HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
             .content_type("text/html")
             .body(format!("<p><b>Critical Error</b>: spectrum not found</p>"))
     }
@@ -3477,6 +3525,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_molecules/datasetId parameter not found</p>"
@@ -3489,6 +3540,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_molecules/freq_start parameter not found</p>"
@@ -3506,6 +3560,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_molecules/freq_end parameter not found</p>"
@@ -3530,6 +3587,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
             Some(x) => x,
             None => {
                 return HttpResponse::NotFound()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
             }
@@ -3539,6 +3599,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
             Some(x) => x,
             None => {
                 return HttpResponse::Accepted()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>RwLock timeout</b>: {} not available yet</p>",
@@ -3550,6 +3613,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
         if !fits.has_header {
             if fits.is_dummy {
                 HttpResponse::Accepted()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>spectral lines for {} not available yet</p>",
@@ -3557,6 +3623,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
                     ))
             } else {
                 HttpResponse::NotFound()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>Critical Error</b>: spectral lines not found</p>"
@@ -3565,6 +3634,9 @@ async fn get_molecules(query: web::Query<HashMap<String, String>>) -> HttpRespon
         } else {
             if fits.is_optical {
                 HttpResponse::NotFound()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>Critical Error</b>: spectral lines not found</p>"
@@ -3667,6 +3739,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
             //the last resort
             if v.is_empty() {
                 return HttpResponse::NotFound()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>Critical Error</b>: get_fits/{} parameter not found</p>",
@@ -3683,6 +3758,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits/x1 parameter not found</p>"
@@ -3700,6 +3778,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits/x2 parameter not found</p>"
@@ -3717,6 +3798,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits/y1 parameter not found</p>"
@@ -3734,6 +3818,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits/y2 parameter not found</p>"
@@ -3751,6 +3838,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits/frame_start parameter not found</p>"
@@ -3768,6 +3858,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits/frame_end parameter not found</p>"
@@ -3785,6 +3878,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         Some(x) => x,
         None => {
             return HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits/ref_freq parameter not found</p>"
@@ -3815,6 +3911,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                 Some(x) => x,
                 None => {
                     return HttpResponse::NotFound()
+                        .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                        .append_header(("Pragma", "no-cache"))
+                        .append_header(("Expires", "0"))
                         .content_type("text/html")
                         .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
                 }
@@ -3826,6 +3925,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                     println!("[get_fits] error getting {} from DATASETS; aborting", entry);
 
                     return HttpResponse::NotFound()
+                        .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                        .append_header(("Pragma", "no-cache"))
+                        .append_header(("Expires", "0"))
                         .content_type("text/html")
                         .body(format!(
                             "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
@@ -3847,12 +3949,18 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                         {
                             println!("Critical Error: get_fits/tar/set_path error: {}", err);
 
-                            return HttpResponse::NotFound().content_type("text/html").body(
-                                format!(
+                            return HttpResponse::NotFound()
+                                .append_header((
+                                    "Cache-Control",
+                                    "no-cache, no-store, must-revalidate",
+                                ))
+                                .append_header(("Pragma", "no-cache"))
+                                .append_header(("Expires", "0"))
+                                .content_type("text/html")
+                                .body(format!(
                                     "<p><b>Critical Error</b>: get_fits/tar/set_path error: {}</p>",
                                     err
-                                ),
-                            );
+                                ));
                         }
 
                         header.set_mode(420);
@@ -3867,12 +3975,18 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
 
                         if let Err(err) = ar.append(&header, region.as_slice()) {
                             println!("Critical Error: get_fits/tar/append error: {}", err);
-                            return HttpResponse::NotFound().content_type("text/html").body(
-                                format!(
+                            return HttpResponse::NotFound()
+                                .append_header((
+                                    "Cache-Control",
+                                    "no-cache, no-store, must-revalidate",
+                                ))
+                                .append_header(("Pragma", "no-cache"))
+                                .append_header(("Expires", "0"))
+                                .content_type("text/html")
+                                .body(format!(
                                     "<p><b>Critical Error</b>: get_fits/tar/append error: {}</p>",
                                     err
-                                ),
-                            );
+                                ));
                         }
                     }
                     None => println!(
@@ -3903,6 +4017,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                     .body(tarball)
             }
             Err(err) => HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits tarball creation error: {}</p>",
@@ -3919,6 +4036,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
             Some(x) => x,
             None => {
                 return HttpResponse::NotFound()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!("<p><b>Critical Error</b>: dataset not found</p>"));
             }
@@ -3930,6 +4050,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                 println!("[get_fits] error getting {} from DATASETS; aborting", entry);
 
                 return HttpResponse::NotFound()
+                    .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                    .append_header(("Pragma", "no-cache"))
+                    .append_header(("Expires", "0"))
                     .content_type("text/html")
                     .body(format!(
                         "<p><b>Critical Error</b>: get_fits/{} not found in DATASETS</p>",
@@ -3966,6 +4089,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                 }
                 None => {
                     return HttpResponse::NotFound()
+                        .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                        .append_header(("Pragma", "no-cache"))
+                        .append_header(("Expires", "0"))
                         .content_type("text/html")
                         .body(format!(
                             "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
@@ -3975,6 +4101,9 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
             }
         } else {
             HttpResponse::NotFound()
+                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                .append_header(("Pragma", "no-cache"))
+                .append_header(("Expires", "0"))
                 .content_type("text/html")
                 .body(format!(
                     "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
@@ -4129,13 +4258,6 @@ fn external_fits(
     };
 
     http_fits_response(&fitswebql_path, &vec![dataset_id], false, has_fits)
-
-    /*HttpResponse::NotFound()
-    .content_type("text/html")
-    .body(format!(
-        "<p><b>Critical Error</b>: URL: {}, uuid: {}</p>",
-        url, dataset_id
-    ))*/
 }
 
 fn internal_fits(
@@ -4697,7 +4819,7 @@ async fn main() {
         //.breadth_first()//causes stack overflow!!!
         .build_global()
         .unwrap();
-    
+
     std::env::set_var("RUST_LOG", "actix_web=info");
 
     #[cfg(feature = "jvo")]

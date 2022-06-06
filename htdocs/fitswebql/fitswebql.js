@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-06-02.1";
+	return "JS2022-06-06.0";
 }
 
 const wasm_supported = (() => {
@@ -1513,13 +1513,19 @@ function open_websocket_connection(_datasetId, index) {
 		//alert("WebSocket is supported by your Browser!");
 
 		// Let us open a web socket
-		var loc = window.location, ws_uri;
+		var loc = window.location, ws_prot, ws_uri;
 		var prot = loc.protocol;
 
 		if (prot !== "https:")
 			ws_prot = "ws://";
 		else
 			ws_prot = "wss://";
+
+		// a JVO override (a special exception)
+		if (loc.hostname.indexOf("jvo.") != -1 || loc.hostname.indexOf("jvo-dev.") != -1) {
+			console.log("JVO detected, switching the WebSocket protocol to 'wss'.");
+			ws_prot = "wss://";
+		}
 
 		ws_uri = ws_prot + loc.hostname + ':' + loc.port + ROOT_PATH + "websocket/" + encodeURIComponent(_datasetId);
 
