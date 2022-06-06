@@ -1523,6 +1523,7 @@ function open_websocket_connection(_datasetId, index) {
 
 		// a JVO override (a special exception)
 		if (loc.hostname.indexOf("jvo.") != -1 || loc.hostname.indexOf("jvo-dev.") != -1) {
+			console.log("JVO detected, switching the WebSocket protocol to 'wss'");
 			ws_prot = "wss://";
 		}
 
