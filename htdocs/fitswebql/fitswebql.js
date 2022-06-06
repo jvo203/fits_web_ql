@@ -1513,7 +1513,7 @@ function open_websocket_connection(_datasetId, index) {
 		//alert("WebSocket is supported by your Browser!");
 
 		// Let us open a web socket
-		var loc = window.location, ws_uri;
+		var loc = window.location, ws_prot, ws_uri;
 		var prot = loc.protocol;
 
 		if (prot !== "https:")
