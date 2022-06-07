@@ -413,9 +413,9 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.60.0"
+version = "0.60.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c0310d795615ac3541fa6312cf5b26b520852118e66165fcd23af4d544dc90a"
+checksum = "062dddbc1ba4aca46de6338e2bf87771414c335f7b2f2036e8f3e9befebf88e6"
 dependencies = [
  "bitflags",
  "cexpr",
@@ -1005,7 +1005,7 @@ dependencies = [
  "actix-web-actors",
  "atomic",
  "bincode",
- "bindgen 0.60.0",
+ "bindgen 0.60.1",
  "byteorder 1.4.3",
  "bytes",
  "bzip2",
@@ -1316,9 +1316,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff8670570af52249509a86f5e3e18a08c60b177071826898fde8997cf5f6bfbb"
+checksum = "75f43d41e26995c17e71ee126451dd3941010b0514a81a9d11f3b341debc2399"
 dependencies = [
  "bytes",
  "fnv",
@@ -1530,7 +1530,7 @@ name = "libvpx-native-sys"
 version = "4.0.7"
 source = "git+https://github.com/jvo203/rust-vpx.git#7102135b194e7f715b547625f5ffd159df909674"
 dependencies = [
- "bindgen 0.60.0",
+ "bindgen 0.60.1",
  "pkg-config",
  "semver-parser",
 ]
@@ -2687,9 +2687,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.19.1"
+version = "1.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95eec79ea28c00a365f539f1961e9278fbcaf81c0ff6aaf0e93c181352446948"
+checksum = "c51a52ed6686dd62c320f9b89299e9dfb46f730c7a48e635c19f21d116cb1439"
 dependencies = [
  "bytes",
  "libc",
