@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-06-06.0";
+	return "JS2022-06-18.1";
 }
 
 const wasm_supported = (() => {
@@ -7361,6 +7361,9 @@ function zoom_molecules(freq) {
 	var pos = -1;
 	var minDist = 10 * freq;
 
+	var modal = document.getElementById('molecularlist');
+	var scroller = zenscroll.createScroller(modal);
+
 	var m = document.getElementsByClassName("molecularp");
 
 	for (var i = 0; i < m.length; i++) {
@@ -7387,10 +7390,9 @@ function zoom_molecules(freq) {
 
 		pos = Math.max(0, pos - 5);
 
-		m[pos].scrollIntoView({ block: "start", behavior: "smooth" });
+		// m[pos].scrollIntoView({ block: "start", behavior: "smooth" }); // does not work correctly in Safari
+		scroller.to(m[pos], 500); // 'center' or 'to'
 	};
-
-	var modal = document.getElementById('molecularlist');
 
 	if (m.length > 0 && displayMolecules)
 		modal.style.display = "block";
@@ -9231,7 +9233,20 @@ function setup_image_selection() {
 	zoom.scaleTo(rect, zoom_scale);
 }
 
-function screen_molecule(molecule) {
+function stripHTML(html) {
+	try {
+		return $("<p>" + html + "</p>").text(); // jQuery does the heavy lifting
+	} catch (_) {
+		return html;
+	}
+}
+
+function screen_molecule(molecule, search) {
+	if (search != '') {
+		if (molecule.text.indexOf(search) == -1)
+			return false;
+	}
+
 	var intensity = parseFloat(molecule.cdms);
 
 	if (intensity < displayIntensity)
@@ -9264,6 +9279,21 @@ function screen_molecule(molecule) {
 	return true;
 }
 
+function index_molecules() {
+	if (molecules.length <= 0)
+		return;
+
+	for (var i = 0; i < molecules.length; i++) {
+		var molecule = molecules[i];
+
+		// strip any HTML from the name and species (like <sup>, etc.)
+		let name = stripHTML(molecule.name.toLowerCase()).trim();
+		let species = stripHTML(molecule.species.toLowerCase()).trim();
+
+		molecule.text = name + " " + species;
+	}
+}
+
 function display_molecules() {
 	if (molecules.length <= 0)
 		return;
@@ -9273,6 +9303,9 @@ function display_molecules() {
 
 	var band_lo = data_band_lo;//[Hz]
 	var band_hi = data_band_hi;//[Hz]
+
+	// get the search term (if any)
+	var searchTerm = stripHTML(document.getElementById('searchInput').value.toLowerCase()).trim();
 
 	var checkbox = document.getElementById('restcheckbox');
 
@@ -9296,19 +9329,21 @@ function display_molecules() {
 		.attr("id", "molecules")
 		.attr("opacity", 0.0);
 
-	//count the number of molecules
-	var num = 0;
+	// filter the molecules
+	var mol_list = [];
 	for (var i = 0; i < molecules.length; i++) {
-		molecule = molecules[i];
+		let molecule = molecules[i];
 
-		if (!screen_molecule(molecule))
+		if (!screen_molecule(molecule, searchTerm))
 			continue;
 
-		var f = molecule.frequency * 1e9;
+		let f = molecule.frequency * 1e9;
 
 		if ((f >= band_lo) && (f <= band_hi))
-			num++;
+			mol_list.push(molecule);
 	};
+
+	var num = mol_list.length;
 
 	var fontStyle = Math.round(0.67 * emFontSize) + "px";// Helvetica";
 	var strokeStyle = "#FFCC00";
@@ -9331,16 +9366,9 @@ function display_molecules() {
 	var div_molecules = d3.select("#molecularlist");
 	div_molecules.selectAll("*").remove();
 
-	for (var i = 0; i < molecules.length; i++) {
-		molecule = molecules[i];
-
-		if (!screen_molecule(molecule))
-			continue;
-
-		var f = molecule.frequency * 1e9;
-
-		if ((f < band_lo) || (f > band_hi))
-			continue;
+	for (var i = 0; i < mol_list.length; i++) {
+		let molecule = mol_list[i];
+		let f = molecule.frequency * 1e9;
 
 		var x = range.xMin + dx * (f - band_lo) / (band_hi - band_lo);
 
@@ -9434,6 +9462,7 @@ function fetch_spectral_lines(datasetId, freq_start, freq_end) {
 			var response = JSON.parse(xmlhttp.responseText);
 
 			molecules = response.molecules;
+			index_molecules();
 			console.log("#SPLATALOGUE molecules: ", molecules.length);
 
 			let fitsData = fitsContainer[va_count - 1];
@@ -10786,6 +10815,28 @@ function display_menu() {
 		splatDropdown.append("li")
 			.append("a")
 			.html('<label>intensity cutoff < <span id="intVal">' + displayIntensity.toFixed(1) + '</span> <input id="intensity" class="slider" type="range" min="-10" max="0" step="0.1" value="' + displayIntensity + '" onmousemove="javascript:change_intensity_threshold(false);" onchange="javascript:change_intensity_threshold(true);"/></label>');
+
+		splatDropdown.append("li")
+			.html('<label>&nbsp;search for:&nbsp;<input class="form-control search" type="text" id="searchInput" value="" placeholder="water, H2O, CH3, etc." onmouseenter="javascript:this.focus();"/></label>');
+
+		//add onblur
+		var m = document.getElementById('searchInput');
+		m.onblur = display_molecules;
+		m.onmouseleave = display_molecules;
+		m.onkeyup = function (e) {
+			var event = e || window.event;
+			var charCode = event.which || event.keyCode;
+
+			if (charCode == '13') {
+				// Enter pressed
+				clearTimeout(idleSearch);
+				display_molecules();
+				return false;
+			} else {
+				clearTimeout(idleSearch);
+				idleSearch = setTimeout(display_molecules, 250);
+			}
+		}
 
 		var htmlStr;
 

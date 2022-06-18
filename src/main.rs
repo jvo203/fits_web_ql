@@ -2677,7 +2677,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.4.1";
-static VERSION_STRING: &'static str = "R/SV2022-06-06.0";
+static VERSION_STRING: &'static str = "R/SV2022-06-18.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4568,6 +4568,9 @@ fn http_fits_response(
 
     html.push_str(&format!("data-root-path='/{}/' data-server-version='{}' data-server-string='{}' data-server-mode='{}' data-has-fits='{}'></div>\n", fitswebql_path, VERSION_STRING, SERVER_STRING, SERVER_MODE, has_fits));
 
+    // scrollIntoView with ZenScroll (the original one does not work in Safari)
+    html.push_str("<script src=\"zenscroll-min.js\"></script>\n");
+
     //the page entry point
     html.push_str(
         "<script>
@@ -4582,7 +4585,8 @@ fn http_fits_response(
         var RESTFRQ = 0.0 ;
         var USER_SELFRQ = 0.0 ;
         var USER_DELTAV = 0.0 ;
-        var ROOT_PATH = \"/fitswebql/\" ;        
+        var ROOT_PATH = \"/fitswebql/\" ;
+        var idleSearch = -1;     
         var idleResize = -1;
         window.onresize = resizeMe;
         window.onbeforeunload = function() {            
