@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-06-20.0";
+	return "JS2022-06-20.1";
 }
 
 const wasm_supported = (() => {
@@ -10818,7 +10818,7 @@ function display_menu() {
 
 		splatDropdown.append("li")
 			.append("a")
-			.html('<span><label>&nbsp;search for:&nbsp;<input class="form-control search" type="text" id="searchInput" value="" placeholder="water, H2O, CH3 ..." onmouseenter="javascript:this.focus();"/></label></span>');
+			.html('<label>&nbsp;search for:&nbsp;<input class="form-control search" type="text" id="searchInput" value="" placeholder="water, H2O, CH3 ..." onmouseenter="javascript:this.focus();"/></label>');
 
 		//add onblur
 		var m = document.getElementById('searchInput');
