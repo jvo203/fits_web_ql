@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-06-18.1";
+	return "JS2022-06-20.0";
 }
 
 const wasm_supported = (() => {
@@ -7391,7 +7391,7 @@ function zoom_molecules(freq) {
 		pos = Math.max(0, pos - 5);
 
 		// m[pos].scrollIntoView({ block: "start", behavior: "smooth" }); // does not work correctly in Safari
-		scroller.to(m[pos], 500); // 'center' or 'to'
+		scroller.to(m[pos], 250); // 'center' or 'to'
 	};
 
 	if (m.length > 0 && displayMolecules)
@@ -10817,7 +10817,8 @@ function display_menu() {
 			.html('<label>intensity cutoff < <span id="intVal">' + displayIntensity.toFixed(1) + '</span> <input id="intensity" class="slider" type="range" min="-10" max="0" step="0.1" value="' + displayIntensity + '" onmousemove="javascript:change_intensity_threshold(false);" onchange="javascript:change_intensity_threshold(true);"/></label>');
 
 		splatDropdown.append("li")
-			.html('<label>&nbsp;search for:&nbsp;<input class="form-control search" type="text" id="searchInput" value="" placeholder="water, H2O, CH3, etc." onmouseenter="javascript:this.focus();"/></label>');
+			.append("a")
+			.html('<span><label>&nbsp;search for:&nbsp;<input class="form-control search" type="text" id="searchInput" value="" placeholder="water, H2O, CH3 ..." onmouseenter="javascript:this.focus();"/></label></span>');
 
 		//add onblur
 		var m = document.getElementById('searchInput');

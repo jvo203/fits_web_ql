@@ -570,8 +570,7 @@ label {
 /* INPUT SEARCH TEXT */
 input[type=text].search {
     -webkit-appearance: none;
-    width: 95%;
-    margin: 0em 5%;
+    width: 100%;
 }
 
 /* INPUT RANGE SLIDER */
