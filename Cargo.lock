@@ -1534,7 +1534,7 @@ dependencies = [
 [[package]]
 name = "libvpx-native-sys"
 version = "4.0.8"
-source = "git+https://github.com/jvo203/rust-vpx.git#e7dca2f59eea7a9a4dffb4ad28c3eeea1b39ee22"
+source = "git+https://github.com/jvo203/rust-vpx.git#e9309ad17811571ca9b1c48dfb346f9d4722ba1f"
 dependencies = [
  "bindgen 0.60.1",
  "pkg-config",
