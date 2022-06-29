@@ -1099,10 +1099,10 @@ dependencies = [
 
 [[package]]
 name = "fpzip-sys"
-version = "0.1.5"
-source = "git+https://github.com/jvo203/fpzip-sys.git#ebdfd70a428d10d6537943c9036840e568500afb"
+version = "0.1.6"
+source = "git+https://github.com/jvo203/fpzip-sys.git#c8f15b0fcc6380d27db881105674fe253e0f1298"
 dependencies = [
- "bindgen 0.59.2",
+ "bindgen 0.60.1",
  "cmake",
 ]
 
