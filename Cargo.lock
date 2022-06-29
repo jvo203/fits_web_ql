@@ -1534,7 +1534,7 @@ dependencies = [
 [[package]]
 name = "libvpx-native-sys"
 version = "4.0.8"
-source = "git+https://github.com/jvo203/rust-vpx.git#774e63bdd492fa52a3054a8f1ccf3b53ace0a341"
+source = "git+https://github.com/jvo203/rust-vpx.git#ae2faf906eab22c0df6bbf815e1a68948053ccb0"
 dependencies = [
  "bindgen 0.60.1",
  "pkg-config",
@@ -3001,8 +3001,7 @@ dependencies = [
 [[package]]
 name = "zfp-sys"
 version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a172cda91ccc2c90edf38cdbea928765f11a9bee1da13d66b23de6bd541fa40"
+source = "git+https://github.com/jvo203/zfp-sys.git#6b60d4c720540152226fc8300abdfe9bf5c82fbd"
 dependencies = [
  "bindgen 0.59.2",
  "cmake",
