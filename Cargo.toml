@@ -85,7 +85,7 @@ rand = {version = "*", optional = true}
 #zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
 zfp-sys = {version = "*", optional = true, git = "https://github.com/jvo203/zfp-sys.git"}
 ipp-sys = { version = "*", features=["2019"], optional = true }
-fpzip-sys = "*"
+fpzip-sys = {version = "*", git = "https://github.com/jvo203/fpzip-sys.git"}
 
 #rulinalg = "*"
 #linearkalman = "*"
