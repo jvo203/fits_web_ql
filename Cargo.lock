@@ -3000,10 +3000,10 @@ dependencies = [
 
 [[package]]
 name = "zfp-sys"
-version = "0.1.10"
-source = "git+https://github.com/jvo203/zfp-sys.git#6b60d4c720540152226fc8300abdfe9bf5c82fbd"
+version = "0.1.11"
+source = "git+https://github.com/jvo203/zfp-sys.git#4933b64ab373992c170fcf93c07d674e19629a91"
 dependencies = [
- "bindgen 0.59.2",
+ "bindgen 0.60.1",
  "cmake",
 ]
 
