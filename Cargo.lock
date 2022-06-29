@@ -901,9 +901,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 
 [[package]]
 name = "encoding_rs"
@@ -1403,9 +1403,9 @@ checksum = "78d16a53ae939f595c1b0e0c37616455ba06cff71543a97af6ec8e515aeec3fa"
 
 [[package]]
 name = "ispc"
-version = "1.0.14"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c302340e3772eaddd658e9f6bac275ffa39b443ddc7ea36a2bb6ad3fbf271820"
+checksum = "39204bb555fb7ee2fbabdf5f7c9a517e64282ee72b3ce59e5c817d94632458a6"
 dependencies = [
  "ispc_compile",
  "ispc_rt",
@@ -1413,22 +1413,22 @@ dependencies = [
 
 [[package]]
 name = "ispc_compile"
-version = "1.0.14"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2580d392822b21e602f75f0a362cc54611d752586dbdf7c38a6cdc876d94e161"
+checksum = "a7e42f2ee98493c20d0df978e0c843b39ecd72072d629b79533aa4fbddc45cf6"
 dependencies = [
  "bindgen 0.59.2",
  "gcc",
  "libc",
  "regex",
- "semver 1.0.10",
+ "semver 1.0.11",
 ]
 
 [[package]]
 name = "ispc_rt"
-version = "1.0.7"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b71a57f85a90a65ec7ef6bdb5fe694be8d760deabfe74518398152d279a9aaba"
+checksum = "a742565b79ad4e9147f37fc929af92f875601bf40e829aac667aa1c9a374213e"
 dependencies = [
  "libc",
  "num_cpus",
@@ -2366,7 +2366,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
- "semver 1.0.10",
+ "semver 1.0.11",
 ]
 
 [[package]]
@@ -2414,9 +2414,9 @@ checksum = "d4f410fedcf71af0345d7607d246e7ad15faaadd49d240ee3b24e5dc21a820ac"
 
 [[package]]
 name = "semver"
-version = "1.0.10"
+version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a41d061efea015927ac527063765e73601444cdc344ba855bc7bd44578b25e1c"
+checksum = "3d92beeab217753479be2f74e54187a6aed4c125ff0703a866c3147a02f0c6dd"
 
 [[package]]
 name = "semver-parser"
@@ -2446,9 +2446,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.81"
+version = "1.0.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b7ce2b32a1aed03c558dc61a5cd328f15aff2dbc17daad8fb8af04d2100e15c"
+checksum = "82c2c1fdcd807d1098552c5b9a36e425e42e9fbd7c6a37a8425f390f781f7fa7"
 dependencies = [
  "itoa 1.0.2",
  "ryu",
