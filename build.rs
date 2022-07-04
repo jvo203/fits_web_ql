@@ -19,7 +19,7 @@ fn main() {
 
     let libs = metadeps::probe().unwrap();
     let x265 = libs.get("x265").unwrap();
-
+    
     //link_paths + libx265.so -> get the linkname libx265.so.160, then extract the last number
     let mut path = x265.link_paths[0].clone();
     path.push(PathBuf::from("libx265.so"));
@@ -57,6 +57,8 @@ fn main() {
         .header("wrapper.h")
         .clang_arg("-I")
         .clang_arg("/usr/local/include")
+        .clang_arg("-I")
+        .clang_arg(x265.include_paths[0].as_path().display().to_string())
         .clang_args(["-x", "c++", "-std=c++11"].iter());
     //.enable_cxx_namespaces()
 
@@ -65,7 +67,7 @@ fn main() {
         .generate()
         // Unwrap the Result and panic on failure.
         .expect("Unable to generate bindings");
-
+       
     // Write the bindings to the $OUT_DIR/bindings.rs file.
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
