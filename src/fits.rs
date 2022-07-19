@@ -6562,6 +6562,9 @@ impl FITS {
                 // specsys
                 let _ = stream.write(format!("# spectral reference frame: {}\n", self.specsys).as_bytes());
 
+                // deltaV [km/s]
+                let _ = stream.write(format!("# source velocity [km/s]: {}\n", (delta_v / 1000.0)).as_bytes());
+
                 for i in 0..spectrum.len() {
                     let frame = start + i + 1;
 
@@ -6575,8 +6578,7 @@ impl FITS {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field(format!("\"{}\"", frequency_column));
                             let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                        
-                            let _ = wtr.write_field("\"source velocity [km/s]\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                    
 
                             if ref_freq > 0.0 {
                                 let _ = wtr.write_field("\"reference frequency [GHz]\"");
@@ -6591,8 +6593,7 @@ impl FITS {
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", f));
                         let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                        
-                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                                                
 
                         if ref_freq > 0.0 {
                             let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
@@ -6609,8 +6610,7 @@ impl FITS {
                         if !has_header {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                    
-                            let _ = wtr.write_field("\"source velocity [km/s]\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                                                
 
                             if ref_freq > 0.0 {
                                 let _ = wtr.write_field("\"reference frequency [GHz]\"");
@@ -6624,8 +6624,7 @@ impl FITS {
                         // write out CSV values
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                                                
-                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                                                                        
 
                         if ref_freq > 0.0 {
                             let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
@@ -6642,8 +6641,7 @@ impl FITS {
                         if !has_header {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field(format!("\"{}\"", frequency_column));
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                        
-                            let _ = wtr.write_field("\"source velocity [km/s]\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                    
 
                             if ref_freq > 0.0 {
                                 let _ = wtr.write_field("\"reference frequency [GHz]\"");
@@ -6657,8 +6655,7 @@ impl FITS {
                         // write out CSV values
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", f));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                
-                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                        
 
                         if ref_freq > 0.0 {
                             let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
