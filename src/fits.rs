@@ -12,6 +12,7 @@ use std::fs::File;
 use std::io::Cursor;
 use std::io::Seek;
 use std::io::SeekFrom;
+use std::io::BufWriter;
 use std::io::{Read, Write};
 use std::rc::Rc;
 use std::slice;
@@ -6519,12 +6520,12 @@ impl FITS {
                     .quote_style(QuoteStyle::Never)
                     .from_writer(vec![]);
 
-                // create a '# comment' CSV header with information common to all rows
-                let _ = wtr.write_field(format!("# {}:{}", &ra_column, &ra_value));
-                let _ = wtr.write_record(None::<&[u8]>);
+                // let's roll our own in-memory writer
+                let mut stream = BufWriter::new(Vec::new());
 
-                let _ = wtr.write_field(format!("# {}:{}", &dec_column, &dec_value));
-                let _ = wtr.write_record(None::<&[u8]>);
+                // create a '# comment' CSV header with information common to all rows
+                let _ = stream.write(format!("# {}:{}\n", &ra_column, &ra_value).as_bytes()); 
+                let _ = stream.write(format!("# {}:{}\n", &dec_column, &dec_value).as_bytes());
 
                 for i in 0..spectrum.len() {
                     let frame = start + i + 1;
@@ -6557,7 +6558,7 @@ impl FITS {
 
                             // terminate the record
                             let _ = wtr.write_record(None::<&[u8]>);
-                            has_header = true;
+                            has_header = true;                            
                         }
 
                         // write out CSV values
@@ -6689,7 +6690,10 @@ impl FITS {
                     }
                 }
 
-                match wtr.into_inner() {
+                // flush the CSV stream
+                let _ = stream.flush();
+
+                match stream.into_inner() {
                     Ok(w) => match String::from_utf8(w) {
                         Ok(csv) => Some(csv),
                         Err(err) => {
