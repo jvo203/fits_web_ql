@@ -2956,7 +2956,8 @@ dependencies = [
 [[package]]
 name = "zfp-sys"
 version = "0.1.11"
-source = "git+https://github.com/jvo203/zfp-sys.git#4933b64ab373992c170fcf93c07d674e19629a91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec2ea16a114160f257c207d6ad96d0d2bdafea0fcce5637fbae1af2dd8b36b39"
 dependencies = [
  "bindgen 0.60.1",
  "cmake",
