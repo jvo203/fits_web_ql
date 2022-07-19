@@ -6486,8 +6486,8 @@ impl FITS {
         let ra_column = format!("ra ({})", ra_suffix);
         let dec_column = format!("dec ({})", dec_suffix);
 
-        let lng_column = "beam wcs.lng [deg]";
-        let lat_column = "beam wcs.lat [deg]";
+        let lng_column = "wcs.lng [deg]";
+        let lat_column = "wcs.lat [deg]";
 
         let beam_type = match beam {
             Beam::Circle => String::from("circle"),
@@ -6524,8 +6524,17 @@ impl FITS {
                 let mut stream = BufWriter::new(Vec::new());
 
                 // create a '# comment' CSV header with information common to all rows
-                let _ = stream.write(format!("# {}:{}\n", &ra_column, &ra_value).as_bytes()); 
-                let _ = stream.write(format!("# {}:{}\n", &dec_column, &dec_value).as_bytes());
+
+                // ra/dec
+                let _ = stream.write(format!("# {}: {}\n", ra_column, ra_value).as_bytes()); 
+                let _ = stream.write(format!("# {}: {}\n", dec_column, dec_value).as_bytes());
+
+                // lng / lat [deg]
+                let _ = stream.write(format!("# {}: {}\n", lng_column, lng_value).as_bytes());
+                let _ = stream.write(format!("# {}: {}\n", lat_column, lat_value).as_bytes());
+
+                // beam type
+                let _ = stream.write(format!("# region type: {}\n", beam_type).as_bytes());
 
                 for i in 0..spectrum.len() {
                     let frame = start + i + 1;
@@ -6541,9 +6550,6 @@ impl FITS {
                             let _ = wtr.write_field(format!("\"{}\"", frequency_column));
                             let _ = wtr.write_field("\"velocity [km/s]\"");
                             let _ = wtr.write_field(format!("\"{}\"", intensity_column));                            
-                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
-                            let _ = wtr.write_field("\"beam type\"");
                             let _ = wtr.write_field("\"beam width [deg]\"");
                             let _ = wtr.write_field("\"beam height [deg]\"");
                             let _ = wtr.write_field("\"beam cx [px]\"");
@@ -6565,10 +6571,7 @@ impl FITS {
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", f));
                         let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                        
-                        let _ = wtr.write_field(format!("{}", lng_value));
-                        let _ = wtr.write_field(format!("{}", lat_value));
-                        let _ = wtr.write_field(&beam_type);
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));
                         let _ = wtr.write_field(format!("{}", beam_width));
                         let _ = wtr.write_field(format!("{}", beam_height));
                         let _ = wtr.write_field(format!("{}", cx));
@@ -6592,10 +6595,7 @@ impl FITS {
                         if !has_header {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                            
-                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
-                            let _ = wtr.write_field("\"beam type\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));
                             let _ = wtr.write_field("\"beam width [deg]\"");
                             let _ = wtr.write_field("\"beam height [deg]\"");
                             let _ = wtr.write_field("\"beam cx [px]\"");
@@ -6617,9 +6617,6 @@ impl FITS {
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", v));
                         let _ = wtr.write_field(format!("{}", spectrum[i]));                        
-                        let _ = wtr.write_field(format!("{}", lng_value));
-                        let _ = wtr.write_field(format!("{}", lat_value));
-                        let _ = wtr.write_field(&beam_type);
                         let _ = wtr.write_field(format!("{}", beam_width));
                         let _ = wtr.write_field(format!("{}", beam_height));
                         let _ = wtr.write_field(format!("{}", cx));
@@ -6644,9 +6641,6 @@ impl FITS {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field(format!("\"{}\"", frequency_column));
                             let _ = wtr.write_field(format!("\"{}\"", intensity_column));                            
-                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
-                            let _ = wtr.write_field("\"beam type\"");
                             let _ = wtr.write_field("\"beam width [deg]\"");
                             let _ = wtr.write_field("\"beam height [deg]\"");
                             let _ = wtr.write_field("\"beam cx [px]\"");
@@ -6668,9 +6662,6 @@ impl FITS {
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", f));
                         let _ = wtr.write_field(format!("{}", spectrum[i]));                        
-                        let _ = wtr.write_field(format!("{}", lng_value));
-                        let _ = wtr.write_field(format!("{}", lat_value));
-                        let _ = wtr.write_field(&beam_type);
                         let _ = wtr.write_field(format!("{}", beam_width));
                         let _ = wtr.write_field(format!("{}", beam_height));
                         let _ = wtr.write_field(format!("{}", cx));
