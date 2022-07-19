@@ -6542,11 +6542,20 @@ impl FITS {
 
                 match beam {
                     Beam::Circle => {
+                        // beam diameter [deg]
                         let _ = stream.write(format!("# region diameter [deg]: {}\n", beam_width).as_bytes());
+
+                        // beam diameter [px]
+                        let _ = stream.write(format!("# region diameter [px]: {}\n", dimx).as_bytes());
                     },
                     Beam::Square => {
+                        // beam width / height [deg]
                         let _ = stream.write(format!("# region width [deg]: {}\n", beam_width).as_bytes());
                         let _ = stream.write(format!("# region height [deg]: {}\n", beam_height).as_bytes());
+
+                        // beam width / height [px]
+                        let _ = stream.write(format!("# region width [px]: {}\n", dimx).as_bytes());
+                        let _ = stream.write(format!("# region height [px]: {}\n", dimy).as_bytes());
                     },
                 };
 
@@ -6563,9 +6572,7 @@ impl FITS {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field(format!("\"{}\"", frequency_column));
                             let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                            
-                            let _ = wtr.write_field("\"beam width [px]\"");
-                            let _ = wtr.write_field("\"beam height [px]\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                        
                             let _ = wtr.write_field("\"source velocity [km/s]\"");
 
                             if ref_freq > 0.0 {
@@ -6581,9 +6588,7 @@ impl FITS {
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", f));
                         let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                
-                        let _ = wtr.write_field(format!("{}", dimx));
-                        let _ = wtr.write_field(format!("{}", dimy));
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                        
                         let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
 
                         if ref_freq > 0.0 {
@@ -6601,9 +6606,7 @@ impl FITS {
                         if !has_header {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                        
-                            let _ = wtr.write_field("\"beam width [px]\"");
-                            let _ = wtr.write_field("\"beam height [px]\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                    
                             let _ = wtr.write_field("\"source velocity [km/s]\"");
 
                             if ref_freq > 0.0 {
@@ -6618,9 +6621,7 @@ impl FITS {
                         // write out CSV values
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                        
-                        let _ = wtr.write_field(format!("{}", dimx));
-                        let _ = wtr.write_field(format!("{}", dimy));
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                                                
                         let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
 
                         if ref_freq > 0.0 {
@@ -6638,9 +6639,7 @@ impl FITS {
                         if !has_header {
                             let _ = wtr.write_field("\"channel\"");
                             let _ = wtr.write_field(format!("\"{}\"", frequency_column));
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                            
-                            let _ = wtr.write_field("\"beam width [px]\"");
-                            let _ = wtr.write_field("\"beam height [px]\"");
+                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                        
                             let _ = wtr.write_field("\"source velocity [km/s]\"");
 
                             if ref_freq > 0.0 {
@@ -6655,9 +6654,7 @@ impl FITS {
                         // write out CSV values
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", f));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                        
-                        let _ = wtr.write_field(format!("{}", dimx));
-                        let _ = wtr.write_field(format!("{}", dimy));
+                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                
                         let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
 
                         if ref_freq > 0.0 {
