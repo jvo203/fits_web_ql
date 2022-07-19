@@ -6580,24 +6580,19 @@ impl FITS {
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-                            let _ = wtr.write_field("\"channel\"");
-                            let _ = wtr.write_field(format!("\"{}\"", frequency_column));
-                            let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                    
+                            let _ = stream.write(b"\"channel\",");
+                            let _ = stream.write(format!("\"{}\",", frequency_column).as_bytes());
+                            let _ = stream.write(b"\"velocity [km/s]\",");
+                            let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
-                            // terminate the record
-                            let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;                            
                         }
 
                         // write out CSV values
-                        let _ = wtr.write_field(format!("{}", frame));
-                        let _ = wtr.write_field(format!("{}", f));
-                        let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                                                
-
-                        // terminate the record
-                        let _ = wtr.write_record(None::<&[u8]>);
+                        let _ = stream.write(format!("{},", frame).as_bytes());
+                        let _ = stream.write(format!("{},", f).as_bytes());
+                        let _ = stream.write(format!("{},", v).as_bytes());
+                        let _ = stream.write(format!("{}\n", spectrum[i]).as_bytes());
 
                         continue;
                     }
