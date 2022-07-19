@@ -6559,6 +6559,9 @@ impl FITS {
                     },
                 };
 
+                // specsys
+                let _ = stream.write(format!("# spectral reference frame: {}\n", self.specsys).as_bytes());
+
                 for i in 0..spectrum.len() {
                     let frame = start + i + 1;
 
