@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.4.1"
+version = "4.4.2"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2021"
 
@@ -39,7 +39,6 @@ actix-http = "3.2.1"
 actix-web = "4.1.0"
 actix-web-actors = "4.1.0"
 actix-files = "0.6.1"
-csv = "*"
 http = "*"
 serde_json = "*"
 chrono = "*"
@@ -83,9 +82,9 @@ lttb = "*"
 ocl = {version = "*", optional = true}
 rand = {version = "*", optional = true}
 #zfp-sys = {version = "*", optional = true}#, features = ["cuda"]}
-zfp-sys = {version = "*", optional = true, git = "https://github.com/jvo203/zfp-sys.git"}
+zfp-sys = {version = "*", optional = true}#, git = "https://github.com/jvo203/zfp-sys.git"}
 ipp-sys = { version = "*", features=["2019"], optional = true }
-fpzip-sys = {version = "*", git = "https://github.com/jvo203/fpzip-sys.git"}
+fpzip-sys = {version = "*"}#, git = "https://github.com/jvo203/fpzip-sys.git"}
 
 #rulinalg = "*"
 #linearkalman = "*"

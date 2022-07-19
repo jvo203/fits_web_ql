@@ -12,6 +12,7 @@ use std::fs::File;
 use std::io::Cursor;
 use std::io::Seek;
 use std::io::SeekFrom;
+use std::io::BufWriter;
 use std::io::{Read, Write};
 use std::rc::Rc;
 use std::slice;
@@ -24,8 +25,6 @@ use std::{mem, ptr};
 use bincode::serialize;
 use lz4_compress;
 use uuid::Uuid;
-
-use csv::{QuoteStyle, Terminator, WriterBuilder};
 
 use crate::server;
 use crate::UserParams;
@@ -279,13 +278,13 @@ pub enum Codec {
     VPX,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Beam {
     Circle,
     Square,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Intensity {
     Mean,
     Integrated,
@@ -6473,6 +6472,11 @@ impl FITS {
 
         intensity_column = format!("{}]", intensity_column);
 
+        let beam_type = match beam {
+            Beam::Circle => String::from("circle"),
+            Beam::Square => String::from("square/rect."),
+        };
+
         let mut frequency_column = format!("frequency [GHz]");
 
         if rest {
@@ -6482,16 +6486,11 @@ impl FITS {
         let (ra_suffix, ra_value) = FITS::split_wcs(ra);
         let (dec_suffix, dec_value) = FITS::split_wcs(dec);
 
-        let ra_column = format!("beam ra ({})", ra_suffix);
-        let dec_column = format!("beam dec ({})", dec_suffix);
+        let ra_column = format!("ra ({})", ra_suffix);
+        let dec_column = format!("dec ({})", dec_suffix);
 
-        let lng_column = "beam wcs.lng [deg]";
-        let lat_column = "beam wcs.lat [deg]";
-
-        let beam_type = match beam {
-            Beam::Circle => String::from("circle"),
-            Beam::Square => String::from("square/rect."),
-        };
+        let lng_column = "wcs.lng [deg]";
+        let lat_column = "wcs.lat [deg]";
 
         println!(
             "intensity column: '{}', frequency column: '{}', ra column: '{}', dec column: '{}'",
@@ -6505,7 +6504,7 @@ impl FITS {
             y1,
             x2,
             y2,
-            beam,
+            beam.clone(),
             intensity,
             frame_start,
             frame_end,
@@ -6514,10 +6513,60 @@ impl FITS {
         ) {
             Some(spectrum) => {
                 // create an in-memory CSV writer
-                let mut wtr = WriterBuilder::new()
+                /*let mut wtr = WriterBuilder::new()
                     .terminator(Terminator::CRLF)
                     .quote_style(QuoteStyle::Never)
-                    .from_writer(vec![]);
+                    .from_writer(vec![]);*/
+
+                // let's roll our own in-memory CSV writer
+                let mut stream = BufWriter::new(Vec::new());
+
+                // create a '# comment' CSV header with information common to all rows
+
+                // ra/dec
+                let _ = stream.write(format!("# {}: {}\n", ra_column, ra_value).as_bytes()); 
+                let _ = stream.write(format!("# {}: {}\n", dec_column, dec_value).as_bytes());
+
+                // lng / lat [deg]
+                let _ = stream.write(format!("# {}: {}\n", lng_column, lng_value).as_bytes());
+                let _ = stream.write(format!("# {}: {}\n", lat_column, lat_value).as_bytes());
+
+                // beam type
+                let _ = stream.write(format!("# region type: {}\n", beam_type).as_bytes());
+
+                // beam cx / cy [px]
+                let _ = stream.write(format!("# region centre (x) [px]: {}\n", cx).as_bytes());
+                let _ = stream.write(format!("# region centre (y) [px]: {}\n", cy).as_bytes());
+
+                match beam {
+                    Beam::Circle => {
+                        // beam diameter [deg]
+                        let _ = stream.write(format!("# region diameter [deg]: {}\n", beam_width).as_bytes());
+
+                        // beam diameter [px]
+                        let _ = stream.write(format!("# region diameter [px]: {}\n", dimx).as_bytes());
+                    },
+                    Beam::Square => {
+                        // beam width / height [deg]
+                        let _ = stream.write(format!("# region width [deg]: {}\n", beam_width).as_bytes());
+                        let _ = stream.write(format!("# region height [deg]: {}\n", beam_height).as_bytes());
+
+                        // beam width / height [px]
+                        let _ = stream.write(format!("# region width [px]: {}\n", dimx).as_bytes());
+                        let _ = stream.write(format!("# region height [px]: {}\n", dimy).as_bytes());
+                    },
+                };
+
+                // specsys
+                let _ = stream.write(format!("# spectral reference frame: {}\n", self.specsys).as_bytes());
+
+                // deltaV [km/s]
+                let _ = stream.write(format!("# source velocity [km/s]: {}\n", (delta_v / 1000.0)).as_bytes());
+
+                // ref_freq [GHz]
+                if ref_freq > 0.0 {
+                    let _ = stream.write(format!("# reference frequency [GHz]: {}\n", (ref_freq / 1.0e9)).as_bytes());
+                }
 
                 for i in 0..spectrum.len() {
                     let frame = start + i + 1;
@@ -6529,56 +6578,19 @@ impl FITS {
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-                            let _ = wtr.write_field("\"channel\"");
-                            let _ = wtr.write_field(format!("\"{}\"", frequency_column));
-                            let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));
-                            let _ = wtr.write_field(format!("\"{}\"", ra_column));
-                            let _ = wtr.write_field(format!("\"{}\"", dec_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
-                            let _ = wtr.write_field("\"beam type\"");
-                            let _ = wtr.write_field("\"beam width [deg]\"");
-                            let _ = wtr.write_field("\"beam height [deg]\"");
-                            let _ = wtr.write_field("\"beam cx [px]\"");
-                            let _ = wtr.write_field("\"beam cy [px]\"");
-                            let _ = wtr.write_field("\"beam width [px]\"");
-                            let _ = wtr.write_field("\"beam height [px]\"");
-                            let _ = wtr.write_field("\"source velocity [km/s]\"");
+                            let _ = stream.write(b"\"channel\",");
+                            let _ = stream.write(format!("\"{}\",", frequency_column).as_bytes());
+                            let _ = stream.write(b"\"velocity [km/s]\",");
+                            let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
-                            if ref_freq > 0.0 {
-                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }
-
-                            // terminate the record
-                            let _ = wtr.write_record(None::<&[u8]>);
-                            has_header = true;
+                            has_header = true;                            
                         }
 
                         // write out CSV values
-                        let _ = wtr.write_field(format!("{}", frame));
-                        let _ = wtr.write_field(format!("{}", f));
-                        let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));
-                        let _ = wtr.write_field(&ra_value);
-                        let _ = wtr.write_field(&dec_value);
-                        let _ = wtr.write_field(format!("{}", lng_value));
-                        let _ = wtr.write_field(format!("{}", lat_value));
-                        let _ = wtr.write_field(&beam_type);
-                        let _ = wtr.write_field(format!("{}", beam_width));
-                        let _ = wtr.write_field(format!("{}", beam_height));
-                        let _ = wtr.write_field(format!("{}", cx));
-                        let _ = wtr.write_field(format!("{}", cy));
-                        let _ = wtr.write_field(format!("{}", dimx));
-                        let _ = wtr.write_field(format!("{}", dimy));
-                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
-
-                        if ref_freq > 0.0 {
-                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
-                        }
-
-                        // terminate the record
-                        let _ = wtr.write_record(None::<&[u8]>);
+                        let _ = stream.write(format!("{},", frame).as_bytes());
+                        let _ = stream.write(format!("{},", f).as_bytes());
+                        let _ = stream.write(format!("{},", v).as_bytes());
+                        let _ = stream.write(format!("{}\n", spectrum[i]).as_bytes());
 
                         continue;
                     }
@@ -6586,54 +6598,17 @@ impl FITS {
                     if v != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-                            let _ = wtr.write_field("\"channel\"");
-                            let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));
-                            let _ = wtr.write_field(format!("\"{}\"", ra_column));
-                            let _ = wtr.write_field(format!("\"{}\"", dec_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
-                            let _ = wtr.write_field("\"beam type\"");
-                            let _ = wtr.write_field("\"beam width [deg]\"");
-                            let _ = wtr.write_field("\"beam height [deg]\"");
-                            let _ = wtr.write_field("\"beam cx [px]\"");
-                            let _ = wtr.write_field("\"beam cy [px]\"");
-                            let _ = wtr.write_field("\"beam width [px]\"");
-                            let _ = wtr.write_field("\"beam height [px]\"");
-                            let _ = wtr.write_field("\"source velocity [km/s]\"");
+                            let _ = stream.write(b"\"channel\",");                            
+                            let _ = stream.write(b"\"velocity [km/s]\",");
+                            let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
-                            if ref_freq > 0.0 {
-                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }
-
-                            // terminate the record
-                            let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;
                         }
 
                         // write out CSV values
-                        let _ = wtr.write_field(format!("{}", frame));
-                        let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));
-                        let _ = wtr.write_field(&ra_value);
-                        let _ = wtr.write_field(&dec_value);
-                        let _ = wtr.write_field(format!("{}", lng_value));
-                        let _ = wtr.write_field(format!("{}", lat_value));
-                        let _ = wtr.write_field(&beam_type);
-                        let _ = wtr.write_field(format!("{}", beam_width));
-                        let _ = wtr.write_field(format!("{}", beam_height));
-                        let _ = wtr.write_field(format!("{}", cx));
-                        let _ = wtr.write_field(format!("{}", cy));
-                        let _ = wtr.write_field(format!("{}", dimx));
-                        let _ = wtr.write_field(format!("{}", dimy));
-                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
-
-                        if ref_freq > 0.0 {
-                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
-                        }
-
-                        // terminate the record
-                        let _ = wtr.write_record(None::<&[u8]>);
+                        let _ = stream.write(format!("{},", frame).as_bytes());                        
+                        let _ = stream.write(format!("{},", v).as_bytes());
+                        let _ = stream.write(format!("{}\n", spectrum[i]).as_bytes());
 
                         continue;
                     }
@@ -6641,60 +6616,26 @@ impl FITS {
                     if f != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-                            let _ = wtr.write_field("\"channel\"");
-                            let _ = wtr.write_field(format!("\"{}\"", frequency_column));
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));
-                            let _ = wtr.write_field(format!("\"{}\"", ra_column));
-                            let _ = wtr.write_field(format!("\"{}\"", dec_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lng_column));
-                            let _ = wtr.write_field(format!("\"{}\"", lat_column));
-                            let _ = wtr.write_field("\"beam type\"");
-                            let _ = wtr.write_field("\"beam width [deg]\"");
-                            let _ = wtr.write_field("\"beam height [deg]\"");
-                            let _ = wtr.write_field("\"beam cx [px]\"");
-                            let _ = wtr.write_field("\"beam cy [px]\"");
-                            let _ = wtr.write_field("\"beam width [px]\"");
-                            let _ = wtr.write_field("\"beam height [px]\"");
-                            let _ = wtr.write_field("\"source velocity [km/s]\"");
+                            let _ = stream.write(b"\"channel\",");
+                            let _ = stream.write(format!("\"{}\",", frequency_column).as_bytes());                            
+                            let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
-                            if ref_freq > 0.0 {
-                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }
-
-                            // terminate the record
-                            let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;
                         }
 
                         // write out CSV values
-                        let _ = wtr.write_field(format!("{}", frame));
-                        let _ = wtr.write_field(format!("{}", f));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));
-                        let _ = wtr.write_field(&ra_value);
-                        let _ = wtr.write_field(&dec_value);
-                        let _ = wtr.write_field(format!("{}", lng_value));
-                        let _ = wtr.write_field(format!("{}", lat_value));
-                        let _ = wtr.write_field(&beam_type);
-                        let _ = wtr.write_field(format!("{}", beam_width));
-                        let _ = wtr.write_field(format!("{}", beam_height));
-                        let _ = wtr.write_field(format!("{}", cx));
-                        let _ = wtr.write_field(format!("{}", cy));
-                        let _ = wtr.write_field(format!("{}", dimx));
-                        let _ = wtr.write_field(format!("{}", dimy));
-                        let _ = wtr.write_field(format!("{}", (delta_v / 1000.0)));
-
-                        if ref_freq > 0.0 {
-                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
-                        }
-
-                        // terminate the record
-                        let _ = wtr.write_record(None::<&[u8]>);
+                        let _ = stream.write(format!("{},", frame).as_bytes());
+                        let _ = stream.write(format!("{},", f).as_bytes());                        
+                        let _ = stream.write(format!("{}\n", spectrum[i]).as_bytes());
 
                         continue;
                     }
                 }
 
-                match wtr.into_inner() {
+                // flush the CSV stream
+                let _ = stream.flush();
+
+                match stream.into_inner() {
                     Ok(w) => match String::from_utf8(w) {
                         Ok(csv) => Some(csv),
                         Err(err) => {
