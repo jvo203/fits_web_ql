@@ -6565,6 +6565,11 @@ impl FITS {
                 // deltaV [km/s]
                 let _ = stream.write(format!("# source velocity [km/s]: {}\n", (delta_v / 1000.0)).as_bytes());
 
+                // ref_freq [GHz]
+                if ref_freq > 0.0 {
+                    let _ = stream.write(format!("# reference frequency [GHz]: {}\n", (ref_freq / 1.0e9)).as_bytes());
+                }
+
                 for i in 0..spectrum.len() {
                     let frame = start + i + 1;
 
@@ -6580,10 +6585,6 @@ impl FITS {
                             let _ = wtr.write_field("\"velocity [km/s]\"");
                             let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                    
 
-                            if ref_freq > 0.0 {
-                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }
-
                             // terminate the record
                             let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;                            
@@ -6594,10 +6595,6 @@ impl FITS {
                         let _ = wtr.write_field(format!("{}", f));
                         let _ = wtr.write_field(format!("{}", v));
                         let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                                                
-
-                        if ref_freq > 0.0 {
-                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
-                        }
 
                         // terminate the record
                         let _ = wtr.write_record(None::<&[u8]>);
@@ -6612,10 +6609,6 @@ impl FITS {
                             let _ = wtr.write_field("\"velocity [km/s]\"");
                             let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                                                
 
-                            if ref_freq > 0.0 {
-                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }
-
                             // terminate the record
                             let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;
@@ -6625,10 +6618,6 @@ impl FITS {
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", v));
                         let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                                                                        
-
-                        if ref_freq > 0.0 {
-                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
-                        }
 
                         // terminate the record
                         let _ = wtr.write_record(None::<&[u8]>);
@@ -6643,10 +6632,6 @@ impl FITS {
                             let _ = wtr.write_field(format!("\"{}\"", frequency_column));
                             let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                    
 
-                            if ref_freq > 0.0 {
-                                let _ = wtr.write_field("\"reference frequency [GHz]\"");
-                            }
-
                             // terminate the record
                             let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;
@@ -6656,10 +6641,6 @@ impl FITS {
                         let _ = wtr.write_field(format!("{}", frame));
                         let _ = wtr.write_field(format!("{}", f));
                         let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                        
-
-                        if ref_freq > 0.0 {
-                            let _ = wtr.write_field(format!("{}", (ref_freq / 1.0e9)));
-                        }
 
                         // terminate the record
                         let _ = wtr.write_record(None::<&[u8]>);
