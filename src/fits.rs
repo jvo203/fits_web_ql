@@ -26,8 +26,6 @@ use bincode::serialize;
 use lz4_compress;
 use uuid::Uuid;
 
-use csv::{QuoteStyle, Terminator, WriterBuilder};
-
 use crate::server;
 use crate::UserParams;
 use ::actix::*;
@@ -6515,12 +6513,12 @@ impl FITS {
         ) {
             Some(spectrum) => {
                 // create an in-memory CSV writer
-                let mut wtr = WriterBuilder::new()
+                /*let mut wtr = WriterBuilder::new()
                     .terminator(Terminator::CRLF)
                     .quote_style(QuoteStyle::Never)
-                    .from_writer(vec![]);
+                    .from_writer(vec![]);*/
 
-                // let's roll our own in-memory writer
+                // let's roll our own in-memory CSV writer
                 let mut stream = BufWriter::new(Vec::new());
 
                 // create a '# comment' CSV header with information common to all rows
@@ -6600,22 +6598,17 @@ impl FITS {
                     if v != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-                            let _ = wtr.write_field("\"channel\"");
-                            let _ = wtr.write_field("\"velocity [km/s]\"");
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                                                
+                            let _ = stream.write(b"\"channel\",");                            
+                            let _ = stream.write(b"\"velocity [km/s]\",");
+                            let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
-                            // terminate the record
-                            let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;
                         }
 
                         // write out CSV values
-                        let _ = wtr.write_field(format!("{}", frame));
-                        let _ = wtr.write_field(format!("{}", v));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                                                                        
-
-                        // terminate the record
-                        let _ = wtr.write_record(None::<&[u8]>);
+                        let _ = stream.write(format!("{},", frame).as_bytes());                        
+                        let _ = stream.write(format!("{},", v).as_bytes());
+                        let _ = stream.write(format!("{}\n", spectrum[i]).as_bytes());
 
                         continue;
                     }
@@ -6623,22 +6616,17 @@ impl FITS {
                     if f != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-                            let _ = wtr.write_field("\"channel\"");
-                            let _ = wtr.write_field(format!("\"{}\"", frequency_column));
-                            let _ = wtr.write_field(format!("\"{}\"", intensity_column));                                                                                    
+                            let _ = stream.write(b"\"channel\",");
+                            let _ = stream.write(format!("\"{}\",", frequency_column).as_bytes());                            
+                            let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
-                            // terminate the record
-                            let _ = wtr.write_record(None::<&[u8]>);
                             has_header = true;
                         }
 
                         // write out CSV values
-                        let _ = wtr.write_field(format!("{}", frame));
-                        let _ = wtr.write_field(format!("{}", f));
-                        let _ = wtr.write_field(format!("{}", spectrum[i]));                                                                        
-
-                        // terminate the record
-                        let _ = wtr.write_record(None::<&[u8]>);
+                        let _ = stream.write(format!("{},", frame).as_bytes());
+                        let _ = stream.write(format!("{},", f).as_bytes());                        
+                        let _ = stream.write(format!("{}\n", spectrum[i]).as_bytes());
 
                         continue;
                     }
