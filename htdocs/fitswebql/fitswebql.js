@@ -1,5 +1,5 @@
 function get_js_version() {
-	return "JS2022-06-21.0";
+	return "JS2022-07-19.0";
 }
 
 const wasm_supported = (() => {
@@ -6732,7 +6732,7 @@ function setup_axes() {
 			var width = parseFloat(front_svg.attr("width"));
 			var height = parseFloat(front_svg.attr("height"));
 
-			strCSV = '<span id="exportCSV" class="fas fa-file-download" style="display:inline-block; cursor: pointer" title="click to export spectrum to a local file"></span>'
+			strCSV = '<span id="exportCSV" class="fas fa-file-csv" style="display:inline-block; cursor: pointer" title="click to export spectrum to a local file"></span>'
 
 			var colour_style = "csv-dark";
 			if (theme == 'bright')
