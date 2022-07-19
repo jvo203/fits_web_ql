@@ -1071,7 +1071,8 @@ dependencies = [
 [[package]]
 name = "fpzip-sys"
 version = "0.1.6"
-source = "git+https://github.com/jvo203/fpzip-sys.git#c8f15b0fcc6380d27db881105674fe253e0f1298"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e8563b23524f885807d1cfd503796b48077e9a72f0465a4d43dafdae2076f23"
 dependencies = [
  "bindgen 0.60.1",
  "cmake",
