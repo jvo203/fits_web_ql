@@ -4628,6 +4628,18 @@ fn http_fits_response(
 
     #[cfg(feature = "production")]
     html.push_str(
+        "<!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src='https://www.googletagmanager.com/gtag/js?id=UA-72136224-3'></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+        
+          gtag('config', 'UA-72136224-3');
+        </script>\n"
+    );
+
+    /*html.push_str(
         "<script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
@@ -4636,7 +4648,7 @@ fn http_fits_response(
   ga('create', 'UA-72136224-3', 'auto');
   ga('send', 'pageview');
   </script>\n",
-    );
+    );*/
 
     #[cfg(not(feature = "jvo"))]
     html.push_str(
