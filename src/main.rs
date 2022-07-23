@@ -2675,7 +2675,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.4.2";
-static VERSION_STRING: &'static str = "R/SV2022-07-19.0";
+static VERSION_STRING: &'static str = "R/SV2022-07-23.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4634,21 +4634,20 @@ fn http_fits_response(
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-        
           gtag('config', 'UA-72136224-3');
-        </script>\n"
+        </script>\n",
     );
 
     /*html.push_str(
-        "<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-  ga('create', 'UA-72136224-3', 'auto');
-  ga('send', 'pageview');
-  </script>\n",
-    );*/
+          "<script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    ga('create', 'UA-72136224-3', 'auto');
+    ga('send', 'pageview');
+    </script>\n",
+      );*/
 
     #[cfg(not(feature = "jvo"))]
     html.push_str(
