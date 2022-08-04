@@ -24,7 +24,7 @@ const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity tim
 #[cfg(not(feature = "jvo"))]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 10; //[s]; a dataset inactivity timeout
 
-const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 10; //[s]; a dataset inactivity timeout//was 60 * 60
+const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout; was 60 * 60
 
 const DUMMY_DATASET_TIMEOUT: u64 = 24 * 60 * 60; //[s]; 24 hours, plenty of time for a local jvox download to complete (or fail)
 
@@ -223,6 +223,55 @@ impl Default for SessionServer {
                                                         let imagepath = std::path::Path::new(&imagename);
                                                         let _ = std::fs::remove_file(imagepath);
                                                     });
+                                                }
+                                            }                                            
+                                        }
+                                    },
+                                    Err(err) => {
+                                        println!("SystemTime::duration_since failed: {}", err);                                 
+                                    }
+                                }
+                            },
+                            Err(_) =>{}
+                        }
+                    }
+                } else {
+                    // it might be a ".bin" file, check it out
+                    let file_name_buf = entry.file_name();
+                    let file_name = file_name_buf.to_str().unwrap();
+
+                    if !file_name.ends_with(".bin") {
+                        continue;
+                    }
+
+                    if let Ok(metadata) = entry.metadata() {                        
+                        match metadata.accessed() {
+                            Ok(accessed) => {
+                                let now = SystemTime::now();
+                                let elapsed = now.duration_since(accessed);
+
+                                match elapsed {
+                                    Ok(elapsed) => {
+                                        if elapsed > timeout {                                                                                         
+                                            // get the key from the entry (remove .bin)
+                                            let name = entry.path().with_extension("");
+                                            let key = name.file_name().unwrap().to_str().unwrap().to_string();
+                                            println!("[cache dataset cleanup]: entry: {:?}, key: {:?}, elapsed time: {:?}", entry, key, elapsed);
+
+                                            //check if there are no new active sessions
+                                            match datasets_copy.read().get(&key) {
+                                                Some(_) => {
+                                                    println!("[cache dataset cleanup]: an active session has been found for {}, doing nothing", key);
+                                                },
+                                                None => {
+                                                    println!("[cache dataset cleanup]: no active sessions found, {} will be deleted from the disk cache", key);                                                                    
+                                                        // remove the <entry> DirEntry
+                                                        let _ = std::fs::remove_file(entry.path());
+                                                        
+                                                        // remove the image file too
+                                                        let imagename = format!("{}/{}.img", IMAGECACHE, key);
+                                                        let imagepath = std::path::Path::new(&imagename);
+                                                        let _ = std::fs::remove_file(imagepath);                                                    
                                                 }
                                             }                                            
                                         }
