@@ -14,6 +14,7 @@ use thread_priority::*;
 
 use uuid::Uuid;
 
+use crate::fits::IMAGECACHE;
 use crate::fits::FITSCACHE;
 use crate::DATASETS;
 
@@ -190,11 +191,11 @@ impl Default for SessionServer {
                                         if elapsed > timeout {                                                                                         
                                             // get the key from the entry (remove .zfp)
                                             let name = entry.path().with_extension("");
-                                            let key = name.file_name().unwrap().to_str().unwrap();
+                                            let key = name.file_name().unwrap().to_str().unwrap().to_string();
                                             println!("[cache dataset cleanup]: entry: {:?}, key: {:?}, elapsed time: {:?}", entry, key, elapsed);
 
                                             //check if there are no new active sessions
-                                            match datasets_copy.read().get(key) {
+                                            match datasets_copy.read().get(&key) {
                                                 Some(_) => {
                                                     println!("[cache dataset cleanup]: an active session has been found for {}, doing nothing", key);
                                                 },
@@ -202,7 +203,7 @@ impl Default for SessionServer {
                                                     println!("[cache dataset cleanup]: no active sessions found, {} will be deleted from the disk cache", key);
 
                                                     // first delete the ".ok" file
-                                                    let _ = std::fs::remove_file(ok_file);
+                                                    let _ = std::fs::remove_file(ok_file);                                                    
 
                                                     // then pass the <key> to a directory removal thread
                                                     std::thread::spawn(move || {
@@ -216,6 +217,11 @@ impl Default for SessionServer {
                     
                                                         // remove the <entry> DirEntry
                                                         let _ = std::fs::remove_dir_all(entry.path());
+                                                        
+                                                        // remove the image file too
+                                                        let imagename = format!("{}/{}.img", IMAGECACHE, key);
+                                                        let imagepath = std::path::Path::new(&imagename);
+                                                        let _ = std::fs::remove_file(imagepath);
                                                     });
                                                 }
                                             }                                            
