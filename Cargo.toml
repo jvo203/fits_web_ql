@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.4.2"
+version = "4.4.3"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2021"
 
@@ -38,7 +38,7 @@ actix = "0.13.0"
 actix-http = "3.2.1"
 actix-web = "4.1.0"
 actix-web-actors = "4.1.0"
-actix-files = "0.6.1"
+actix-files = "0.6.2"
 http = "*"
 serde_json = "*"
 chrono = "*"

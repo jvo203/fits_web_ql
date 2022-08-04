@@ -9,10 +9,10 @@ use std;
 use std::cell::RefCell;
 use std::ffi::CString;
 use std::fs::File;
+use std::io::BufWriter;
 use std::io::Cursor;
 use std::io::Seek;
 use std::io::SeekFrom;
-use std::io::BufWriter;
 use std::io::{Read, Write};
 use std::rc::Rc;
 use std::slice;
@@ -6514,9 +6514,9 @@ impl FITS {
             Some(spectrum) => {
                 // create an in-memory CSV writer
                 /*let mut wtr = WriterBuilder::new()
-                    .terminator(Terminator::CRLF)
-                    .quote_style(QuoteStyle::Never)
-                    .from_writer(vec![]);*/
+                .terminator(Terminator::CRLF)
+                .quote_style(QuoteStyle::Never)
+                .from_writer(vec![]);*/
 
                 // let's roll our own in-memory CSV writer
                 let mut stream = BufWriter::new(Vec::new());
@@ -6524,7 +6524,7 @@ impl FITS {
                 // create a '# comment' CSV header with information common to all rows
 
                 // ra/dec
-                let _ = stream.write(format!("# {}: {}\n", ra_column, ra_value).as_bytes()); 
+                let _ = stream.write(format!("# {}: {}\n", ra_column, ra_value).as_bytes());
                 let _ = stream.write(format!("# {}: {}\n", dec_column, dec_value).as_bytes());
 
                 // lng / lat [deg]
@@ -6541,31 +6541,41 @@ impl FITS {
                 match beam {
                     Beam::Circle => {
                         // beam diameter [deg]
-                        let _ = stream.write(format!("# region diameter [deg]: {}\n", beam_width).as_bytes());
+                        let _ = stream
+                            .write(format!("# region diameter [deg]: {}\n", beam_width).as_bytes());
 
                         // beam diameter [px]
-                        let _ = stream.write(format!("# region diameter [px]: {}\n", dimx).as_bytes());
-                    },
+                        let _ =
+                            stream.write(format!("# region diameter [px]: {}\n", dimx).as_bytes());
+                    }
                     Beam::Square => {
                         // beam width / height [deg]
-                        let _ = stream.write(format!("# region width [deg]: {}\n", beam_width).as_bytes());
-                        let _ = stream.write(format!("# region height [deg]: {}\n", beam_height).as_bytes());
+                        let _ = stream
+                            .write(format!("# region width [deg]: {}\n", beam_width).as_bytes());
+                        let _ = stream
+                            .write(format!("# region height [deg]: {}\n", beam_height).as_bytes());
 
                         // beam width / height [px]
                         let _ = stream.write(format!("# region width [px]: {}\n", dimx).as_bytes());
-                        let _ = stream.write(format!("# region height [px]: {}\n", dimy).as_bytes());
-                    },
+                        let _ =
+                            stream.write(format!("# region height [px]: {}\n", dimy).as_bytes());
+                    }
                 };
 
                 // specsys
-                let _ = stream.write(format!("# spectral reference frame: {}\n", self.specsys).as_bytes());
+                let _ = stream
+                    .write(format!("# spectral reference frame: {}\n", self.specsys).as_bytes());
 
                 // deltaV [km/s]
-                let _ = stream.write(format!("# source velocity [km/s]: {}\n", (delta_v / 1000.0)).as_bytes());
+                let _ = stream.write(
+                    format!("# source velocity [km/s]: {}\n", (delta_v / 1000.0)).as_bytes(),
+                );
 
                 // ref_freq [GHz]
                 if ref_freq > 0.0 {
-                    let _ = stream.write(format!("# reference frequency [GHz]: {}\n", (ref_freq / 1.0e9)).as_bytes());
+                    let _ = stream.write(
+                        format!("# reference frequency [GHz]: {}\n", (ref_freq / 1.0e9)).as_bytes(),
+                    );
                 }
 
                 for i in 0..spectrum.len() {
@@ -6583,7 +6593,7 @@ impl FITS {
                             let _ = stream.write(b"\"velocity [km/s]\",");
                             let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
-                            has_header = true;                            
+                            has_header = true;
                         }
 
                         // write out CSV values
@@ -6598,7 +6608,7 @@ impl FITS {
                     if v != std::f64::NAN {
                         // write the CSV header
                         if !has_header {
-                            let _ = stream.write(b"\"channel\",");                            
+                            let _ = stream.write(b"\"channel\",");
                             let _ = stream.write(b"\"velocity [km/s]\",");
                             let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
@@ -6606,7 +6616,7 @@ impl FITS {
                         }
 
                         // write out CSV values
-                        let _ = stream.write(format!("{},", frame).as_bytes());                        
+                        let _ = stream.write(format!("{},", frame).as_bytes());
                         let _ = stream.write(format!("{},", v).as_bytes());
                         let _ = stream.write(format!("{}\n", spectrum[i]).as_bytes());
 
@@ -6617,7 +6627,7 @@ impl FITS {
                         // write the CSV header
                         if !has_header {
                             let _ = stream.write(b"\"channel\",");
-                            let _ = stream.write(format!("\"{}\",", frequency_column).as_bytes());                            
+                            let _ = stream.write(format!("\"{}\",", frequency_column).as_bytes());
                             let _ = stream.write(format!("\"{}\"\n", intensity_column).as_bytes());
 
                             has_header = true;
@@ -6625,7 +6635,7 @@ impl FITS {
 
                         // write out CSV values
                         let _ = stream.write(format!("{},", frame).as_bytes());
-                        let _ = stream.write(format!("{},", f).as_bytes());                        
+                        let _ = stream.write(format!("{},", f).as_bytes());
                         let _ = stream.write(format!("{}\n", spectrum[i]).as_bytes());
 
                         continue;

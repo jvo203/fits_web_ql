@@ -14,6 +14,8 @@ use thread_priority::*;
 
 use uuid::Uuid;
 
+use crate::fits::IMAGECACHE;
+use crate::fits::FITSCACHE;
 use crate::DATASETS;
 
 #[cfg(feature = "jvo")]
@@ -22,9 +24,11 @@ const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity tim
 #[cfg(not(feature = "jvo"))]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 10; //[s]; a dataset inactivity timeout
 
-const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60
+const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout; was 60 * 60
 
 const DUMMY_DATASET_TIMEOUT: u64 = 24 * 60 * 60; //[s]; 24 hours, plenty of time for a local jvox download to complete (or fail)
+
+const CACHE_DATASET_TIMEOUT: u64 = 30 * 24 * 60 * 60; //[s]; 30 days
 
 /// the server sends these messages to session
 /// New session is created
@@ -163,6 +167,126 @@ impl Default for SessionServer {
                     None => {},
                 }
             }
+
+            // clean up the disk cache too
+            let cache = std::path::Path::new(FITSCACHE);
+            let timeout = Duration::new(CACHE_DATASET_TIMEOUT as u64, 0);
+
+            for entry in cache.read_dir().expect("read_dir call failed") {
+                if let Ok(entry) = entry {
+                // check if a directory contains a ".ok" file
+                let mut ok_file = std::path::PathBuf::from(entry.path());
+                ok_file.push(".ok");
+
+                if ok_file.exists() {
+                    // obtain the metadata, check <last_accessed>
+                    if let Ok(metadata) = ok_file.metadata() {                        
+                        match metadata.accessed() {
+                            Ok(accessed) => {
+                                let now = SystemTime::now();
+                                let elapsed = now.duration_since(accessed);
+
+                                match elapsed {
+                                    Ok(elapsed) => {
+                                        if elapsed > timeout {                                                                                         
+                                            // get the key from the entry (remove .zfp)
+                                            let name = entry.path().with_extension("");
+                                            let key = name.file_name().unwrap().to_str().unwrap().to_string();
+                                            println!("[cache dataset cleanup]: entry: {:?}, key: {:?}, elapsed time: {:?}", entry, key, elapsed);
+
+                                            //check if there are no new active sessions
+                                            match datasets_copy.read().get(&key) {
+                                                Some(_) => {
+                                                    println!("[cache dataset cleanup]: an active session has been found for {}, doing nothing", key);
+                                                },
+                                                None => {
+                                                    println!("[cache dataset cleanup]: no active sessions found, {} will be deleted from the disk cache", key);
+
+                                                    // first delete the ".ok" file
+                                                    let _ = std::fs::remove_file(ok_file);                                                    
+
+                                                    // then pass the <key> to a directory removal thread
+                                                    std::thread::spawn(move || {
+                                                        #[cfg(target_os = "linux")]
+                                                        {
+                                                            match set_current_thread_priority(ThreadPriority::Min) {
+                                                                Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
+                                                                Err(err) => println!("error changing the thread priority: {:?}", err),
+                                                            }
+                                                        };
+                    
+                                                        // remove the <entry> DirEntry
+                                                        let _ = std::fs::remove_dir_all(entry.path());
+                                                        
+                                                        // remove the image file too
+                                                        let imagename = format!("{}/{}.img", IMAGECACHE, key);
+                                                        let imagepath = std::path::Path::new(&imagename);
+                                                        let _ = std::fs::remove_file(imagepath);
+                                                    });
+                                                }
+                                            }                                            
+                                        }
+                                    },
+                                    Err(err) => {
+                                        println!("SystemTime::duration_since failed: {}", err);                                 
+                                    }
+                                }
+                            },
+                            Err(_) =>{}
+                        }
+                    }
+                } else {
+                    // it might be a ".bin" file, check it out
+                    let file_name_buf = entry.file_name();
+                    let file_name = file_name_buf.to_str().unwrap();
+
+                    if !file_name.ends_with(".bin") {
+                        continue;
+                    }
+
+                    if let Ok(metadata) = entry.metadata() {                        
+                        match metadata.accessed() {
+                            Ok(accessed) => {
+                                let now = SystemTime::now();
+                                let elapsed = now.duration_since(accessed);
+
+                                match elapsed {
+                                    Ok(elapsed) => {
+                                        if elapsed > timeout {                                                                                         
+                                            // get the key from the entry (remove .bin)
+                                            let name = entry.path().with_extension("");
+                                            let key = name.file_name().unwrap().to_str().unwrap().to_string();
+                                            println!("[cache dataset cleanup]: entry: {:?}, key: {:?}, elapsed time: {:?}", entry, key, elapsed);
+
+                                            //check if there are no new active sessions
+                                            match datasets_copy.read().get(&key) {
+                                                Some(_) => {
+                                                    println!("[cache dataset cleanup]: an active session has been found for {}, doing nothing", key);
+                                                },
+                                                None => {
+                                                    println!("[cache dataset cleanup]: no active sessions found, {} will be deleted from the disk cache", key);                                                                    
+                                                        // remove the <entry> DirEntry
+                                                        let _ = std::fs::remove_file(entry.path());
+                                                        
+                                                        // remove the image file too
+                                                        let imagename = format!("{}/{}.img", IMAGECACHE, key);
+                                                        let imagepath = std::path::Path::new(&imagename);
+                                                        let _ = std::fs::remove_file(imagepath);                                                    
+                                                }
+                                            }                                            
+                                        }
+                                    },
+                                    Err(err) => {
+                                        println!("SystemTime::duration_since failed: {}", err);                                 
+                                    }
+                                }
+                            },
+                            Err(_) =>{}
+                        }
+                    }
+                }
+            }
+    }
         });
 
         SessionServer {
