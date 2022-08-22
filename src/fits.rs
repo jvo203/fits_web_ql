@@ -590,7 +590,6 @@ impl FITS {
                 .map(|frame| {
                     //frame is i32
                     let offset = header_offset + (frame as usize) * frame_size;
-
                     let mut data_u8: Vec<u8> = vec![0; frame_size];
 
                     //parallel read at offset
