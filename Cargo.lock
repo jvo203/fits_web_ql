@@ -665,9 +665,9 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1079fb8528d9f9c888b1e8aa651e6e079ade467323d58f75faf1d30b1808f540"
+checksum = "dc948ebb96241bb40ab73effeb80d9f93afaad49359d159a5e61be51619fe813"
 dependencies = [
  "libc",
 ]
@@ -2576,9 +2576,9 @@ dependencies = [
 
 [[package]]
 name = "thread-priority"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "114a589d58bd02e1b026cee5c1232a6cdd868330deea7b828b770f11b1b05565"
+checksum = "3b51c677dfac164acfeb69c7ed5eae0307d3417c551daa953c418deb6c9cef4a"
 dependencies = [
  "cfg-if",
  "libc",
