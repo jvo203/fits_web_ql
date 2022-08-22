@@ -596,11 +596,11 @@ impl FITS {
                     let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
                         Ok(size) => size,
                         Err(err) => {
-                            print!("read_at error: {}", err);
-                            0
+                            // print!("read_at error: {}", err);
+                            // 0
 
                             // resize the data_u8 vector to 0
-                            /*data_u8.resize(0, 0);
+                            data_u8.resize(0, 0);
 
                             // read data in 256KB chunks
                             let chunk_size: usize = 256 * 1024;
@@ -634,7 +634,7 @@ impl FITS {
                                 0
                             } else {
                                 bytes_read
-                            }*/
+                            }
                         }
                     };
 
