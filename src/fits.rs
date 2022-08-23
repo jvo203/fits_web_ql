@@ -590,15 +590,51 @@ impl FITS {
                 .map(|frame| {
                     //frame is i32
                     let offset = header_offset + (frame as usize) * frame_size;
-
                     let mut data_u8: Vec<u8> = vec![0; frame_size];
 
                     //parallel read at offset
                     let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
                         Ok(size) => size,
-                        Err(err) => {
-                            print!("read_at error: {}", err);
-                            0
+                        Err(_err) => {
+                            // print!("read_at error: {}", err);
+                            // 0
+
+                            // resize the data_u8 vector to 0
+                            data_u8.resize(0, 0);
+
+                            // read data in 256KB chunks
+                            let chunk_size: usize = 256 * 1024;
+                            let mut bytes_read = 0;
+
+                            for chunk_offset in (offset..offset + frame_size).step_by(chunk_size) {
+                                let buf_size = chunk_size.min(offset + frame_size - chunk_offset);
+                                let mut data_chunk: Vec<u8> = vec![0; buf_size];
+
+                                bytes_read += match f.read_at(chunk_offset as u64, &mut data_chunk)
+                                {
+                                    Ok(size) => {
+                                        data_u8.extend_from_slice(&data_chunk);
+                                        size
+                                    }
+                                    Err(err) => {
+                                        print!(
+                                            "read_at error: {}, chunk_offset: {}, buf_size: {}",
+                                            err, chunk_offset, buf_size
+                                        );
+                                        0
+                                    }
+                                };
+                            }
+
+                            if bytes_read != frame_size {
+                                println!(
+                                    "read_at error: {} bytes read, {} bytes expected",
+                                    bytes_read, frame_size
+                                );
+                                0
+                            } else {
+                                bytes_read
+                            }
                         }
                     };
 

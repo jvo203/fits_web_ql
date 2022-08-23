@@ -1,0 +1,30 @@
+numbers_upsampled: reading FITS data in parallel at an offset of 5760 bytes
+custom thread pool: ThreadPool { num_threads: 8, id: RegistryId { addr: 5289083648 } }
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 0, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 2, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 3, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 1, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 4, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 12, requested 2400000000 bytes
+CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 8, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 14, requested 2400000000 bytes
+executing garbage collection for smiley_upsampled
+[garbage collection]: no active sessions found, smiley_upsampled will be expunged from memory
+resuming the actix server thread
+non-blocking drop for smiley_upsampled
+smiley_upsampled: writing half-float f16 data to cache
+deleting smiley_upsampled
+removing a symbolic link to Some("smiley_upsampled.fits")
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 9, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 15, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 13, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 5, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 10, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 6, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 11, requested 2400000000 bytes
+read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 7, requested 2400000000 bytes
+stopping a websocket connection for numbers_upsampled/9f359d7b-3f70-4eb3-8433-0f243c93b054
+dropping a websocket session for numbers_upsampled
+[SessionServer]: removing a session numbers_upsampled/9f359d7b-3f70-4eb3-8433-0f243c93b054
+[SessionServer]: unlinking a dataset numbers_upsampled
+

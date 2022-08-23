@@ -57,10 +57,10 @@ export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform floa
 {
   uniform float frame_min = references[0];
   uniform float frame_max = references[1];
-  uniform float mean = references[2];
-  uniform float integrated = references[3];
+  uniform double mean = references[2];
+  uniform double integrated = references[3];
 
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
 
   float partial_min = frame_min ;
@@ -90,19 +90,18 @@ export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform floa
       }
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
-      
-      mean = sum / (float) count ;
-      integrated = sum * cdelt3 ;
+      mean = (double)(sum / (double) count) ;
+      integrated = (double)(sum * cdelt3) ;
     }
   else
     {
-      mean = 0.0f ;
-      integrated = 0.0f ;
+      mean = 0.0 ;
+      integrated = 0.0 ;
     }
 
   frame_min = reduce_min(partial_min);
@@ -110,18 +109,18 @@ export void make_image_spectrumF16_minmax(uniform int16 fitsData[], uniform floa
 
   references[0] = frame_min ;
   references[1] = frame_max ;
-  references[2] = mean ;
-  references[3] = integrated ;
+  references[2] = (float)mean ;
+  references[3] = (float)integrated ;
 } ;
 
 export void make_image_spectrumU8_minmax(uniform uint8_t fitsData[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
 {
   uniform float frame_min = references[0];
   uniform float frame_max = references[1];
-  uniform float mean = references[2];
-  uniform float integrated = references[3];
+  uniform double mean = references[2];
+  uniform double integrated = references[3];
 
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
 
   float partial_min = frame_min ;
@@ -144,19 +143,18 @@ export void make_image_spectrumU8_minmax(uniform uint8_t fitsData[], uniform flo
       }
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
-      
-      mean = sum / (float) count ;
-      integrated = sum * cdelt3 ;
+      mean = (double)(sum / (double) count) ;
+      integrated = (double)(sum * cdelt3) ;
     }
   else
     {
-      mean = 0.0f ;
-      integrated = 0.0f ;
+      mean = 0.0 ;
+      integrated = 0.0 ;
     }
 
   frame_min = reduce_min(partial_min);
@@ -164,18 +162,18 @@ export void make_image_spectrumU8_minmax(uniform uint8_t fitsData[], uniform flo
 
   references[0] = frame_min ;
   references[1] = frame_max ;
-  references[2] = mean ;
-  references[3] = integrated ;
+  references[2] = (float)mean ;
+  references[3] = (float)integrated ;
 } ;
 
 export void make_image_spectrumI16_minmax(uniform int16_t fitsData[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
 {
   uniform float frame_min = references[0];
   uniform float frame_max = references[1];
-  uniform float mean = references[2];
-  uniform float integrated = references[3];
+  uniform double mean = references[2];
+  uniform double integrated = references[3];
 
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
 
   float partial_min = frame_min ;
@@ -198,19 +196,18 @@ export void make_image_spectrumI16_minmax(uniform int16_t fitsData[], uniform fl
       }
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
-      
-      mean = sum / (float) count ;
-      integrated = sum * cdelt3 ;
+      mean = (double)(sum / (double) count) ;
+      integrated = (double)(sum * cdelt3) ;
     }
   else
     {
-      mean = 0.0f ;
-      integrated = 0.0f ;
+      mean = 0.0 ;
+      integrated = 0.0 ;
     }
 
   frame_min = reduce_min(partial_min);
@@ -218,18 +215,18 @@ export void make_image_spectrumI16_minmax(uniform int16_t fitsData[], uniform fl
 
   references[0] = frame_min ;
   references[1] = frame_max ;
-  references[2] = mean ;
-  references[3] = integrated ;
+  references[2] = (float)mean ;
+  references[3] = (float)integrated ;
 } ;
 
 export void make_image_spectrumI32_minmax(uniform int32_t fitsData[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
 {
   uniform float frame_min = references[0];
   uniform float frame_max = references[1];
-  uniform float mean = references[2];
-  uniform float integrated = references[3];
+  uniform double mean = references[2];
+  uniform double integrated = references[3];
 
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
 
   float partial_min = frame_min ;
@@ -252,19 +249,18 @@ export void make_image_spectrumI32_minmax(uniform int32_t fitsData[], uniform fl
       }
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
-      
-      mean = sum / (float) count ;
-      integrated = sum * cdelt3 ;
+      mean = (double)(sum / (double) count) ;
+      integrated = (double)(sum * cdelt3) ;
     }
   else
     {
-      mean = 0.0f ;
-      integrated = 0.0f ;
+      mean = 0.0 ;
+      integrated = 0.0 ;
     }
 
   frame_min = reduce_min(partial_min);
@@ -272,18 +268,18 @@ export void make_image_spectrumI32_minmax(uniform int32_t fitsData[], uniform fl
 
   references[0] = frame_min ;
   references[1] = frame_max ;
-  references[2] = mean ;
-  references[3] = integrated ;
+  references[2] = (float)mean ;
+  references[3] = (float)integrated ;
 } ;
 
 export void make_image_spectrumF64_minmax(uniform double fitsData[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
 {
   uniform float frame_min = references[0];
   uniform float frame_max = references[1];
-  uniform float mean = references[2];
-  uniform float integrated = references[3];
+  uniform double mean = references[2];
+  uniform double integrated = references[3];
 
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
 
   float partial_min = frame_min ;
@@ -313,19 +309,18 @@ export void make_image_spectrumF64_minmax(uniform double fitsData[], uniform flo
       }
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
-      
-      mean = sum / (float) count ;
-      integrated = sum * cdelt3 ;
+      mean = (double)(sum / (double) count) ;
+      integrated = (double)(sum * cdelt3) ;
     }
   else
     {
-      mean = 0.0f ;
-      integrated = 0.0f ;
+      mean = 0.0 ;
+      integrated = 0.0 ;
     }
 
   frame_min = reduce_min(partial_min);
@@ -333,18 +328,18 @@ export void make_image_spectrumF64_minmax(uniform double fitsData[], uniform flo
 
   references[0] = frame_min ;
   references[1] = frame_max ;
-  references[2] = mean ;
-  references[3] = integrated ;
+  references[2] = (float)mean ;
+  references[3] = (float)integrated ;
 } ;
 
 export void make_image_spectrumF32_minmax(uniform int32 src[], uniform int16 dest[], uniform float bzero, uniform float bscale, uniform float ignrval, uniform float datamin, uniform float datamax, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 mask[], uniform unsigned int total_size, uniform float references[])
 {
   uniform float frame_min = references[0];
   uniform float frame_max = references[1];
-  uniform float mean = references[2];
-  uniform float integrated = references[3];
+  uniform double mean = references[2];
+  uniform double integrated = references[3];
 
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
 
   float partial_min = frame_min ;
@@ -377,19 +372,18 @@ export void make_image_spectrumF32_minmax(uniform int32 src[], uniform int16 des
       }
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
-      
-      mean = sum / (float) count ;
-      integrated = sum * cdelt3 ;
+      mean = (double)(sum / (double) count) ;
+      integrated = (double)(sum * cdelt3) ;
     }
   else
     {
-      mean = 0.0f ;
-      integrated = 0.0f ;
+      mean = 0.0 ;
+      integrated = 0.0 ;
     }
 
   frame_min = reduce_min(partial_min);
@@ -397,16 +391,16 @@ export void make_image_spectrumF32_minmax(uniform int32 src[], uniform int16 des
 
   references[0] = frame_min ;
   references[1] = frame_max ;
-  references[2] = mean ;
-  references[3] = integrated ;
+  references[2] = (float)mean ;
+  references[3] = (float)integrated ;
 } ;
 
 export void make_image_spectrumF32_2_F16(uniform float src[], uniform unsigned int8 src_mask[], uniform float frame_min, uniform float frame_max, uniform int16 dest[], uniform float bzero, uniform float bscale, uniform float cdelt3, uniform float pixels[], uniform unsigned int8 dst_mask[], uniform unsigned int total_size, uniform float references[])
 {  
-  uniform float mean = references[0];
-  uniform float integrated = references[1];
+  uniform double mean = references[0];
+  uniform double integrated = references[1];
 
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
 
   foreach(j=0 ... total_size)
@@ -432,23 +426,22 @@ export void make_image_spectrumF32_2_F16(uniform float src[], uniform unsigned i
       }
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
-      
-      mean = sum / (float) count ;
-      integrated = sum * cdelt3 ;
+      mean = (double)(sum / (double) count) ;
+      integrated = (double)(sum * cdelt3) ;
     }
   else
     {
-      mean = 0.0f ;
-      integrated = 0.0f ;
+      mean = 0.0 ;
+      integrated = 0.0 ;
     }
   
-  references[0] = mean ;
-  references[1] = integrated ;
+  references[0] = (float)mean ;
+  references[1] = (float)integrated ;
 } ;
 
 export void join_pixels_masks(uniform float pixels[], uniform float pixels_tid[], uniform unsigned int8 mask[], uniform unsigned int8 mask_tid[], uniform float cdelt3, uniform unsigned int total_size)
@@ -462,7 +455,7 @@ export void join_pixels_masks(uniform float pixels[], uniform float pixels_tid[]
 
 export uniform float calculate_radial_spectrumF16(uniform int16 cubeData[], uniform float bzero, uniform float bscale, uniform float datamin, uniform float datamax, uniform unsigned int width, uniform int x1, uniform int x2, uniform int y1, uniform int y2, uniform int cx, uniform int cy, uniform int r2, uniform bool average, uniform float cdelt3)
 {  
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
   
   foreach (y=y1 ... y2, x=x1 ... x2)
@@ -477,15 +470,15 @@ export uniform float calculate_radial_spectrumF16(uniform int16 cubeData[], unif
       partial_count += (nan || exclude) ? 0 : 1 ;
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
       if(average)
-	      return sum / (float) count ;
+	      return (float)(sum / (double) count) ;
       else
-	      return sum * cdelt3 ;
+	      return (float)(sum * cdelt3) ;
     }
   else
     return 0.0f ;
@@ -493,7 +486,7 @@ export uniform float calculate_radial_spectrumF16(uniform int16 cubeData[], unif
 
 export uniform float calculate_square_spectrumF16(uniform int16 cubeData[], uniform float bzero, uniform float bscale, uniform float datamin, uniform float datamax, uniform unsigned int width, uniform int x1, uniform int x2, uniform int y1, uniform int y2, uniform bool average, uniform float cdelt3)
 {
-  float partial_sum = 0.0f ;
+  double partial_sum = 0.0 ;
   unsigned int64 partial_count = 0 ;
   
   foreach (y=y1 ... y2, x=x1 ... x2)
@@ -505,15 +498,15 @@ export uniform float calculate_square_spectrumF16(uniform int16 cubeData[], unif
       partial_count += nan ? 0 : 1 ;
     } ;
 
-  uniform float sum = reduce_add(partial_sum) ;
+  uniform double sum = reduce_add(partial_sum) ;
   uniform int64 count = reduce_add(partial_count) ;
 
   if(count > 0)
     {
       if(average)
-	      return sum / (float) count ;
+	      return (float)(sum / (double) count) ;
       else
-	      return sum * cdelt3 ;
+	      return (float)(sum * cdelt3) ;
     }
   else
     return 0.0f ;
