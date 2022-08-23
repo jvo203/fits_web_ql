@@ -595,7 +595,7 @@ impl FITS {
                     //parallel read at offset
                     let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
                         Ok(size) => size,
-                        Err(err) => {
+                        Err(_err) => {
                             // print!("read_at error: {}", err);
                             // 0
 
