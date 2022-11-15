@@ -921,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "fits_web_ql"
-version = "4.4.4"
+version = "4.4.5"
 dependencies = [
  "actix",
  "actix-files",
