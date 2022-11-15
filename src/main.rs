@@ -2939,7 +2939,7 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
                             let std_duration = ts.duration_since(std::time::UNIX_EPOCH).unwrap();
                             let chrono_duration =
                                 ::chrono::Duration::from_std(std_duration).unwrap();
-                            let unix = chrono::NaiveDateTime::from_timestamp(0, 0);
+                            let unix = chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap();
                             let naive = unix + chrono_duration;
 
                             let dir_entry = json!({
@@ -2973,7 +2973,7 @@ fn get_directory(path: std::path::PathBuf) -> HttpResponse {
                                     ts.duration_since(std::time::UNIX_EPOCH).unwrap();
                                 let chrono_duration =
                                     ::chrono::Duration::from_std(std_duration).unwrap();
-                                let unix = chrono::NaiveDateTime::from_timestamp(0, 0);
+                                let unix = chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap();
                                 let naive = unix + chrono_duration;
 
                                 let file_entry = json!({
