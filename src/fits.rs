@@ -7535,6 +7535,7 @@ impl FITS {
                 "depth" : self.depth,
                 "polarisation" : self.polarisation,
                 "filesize" : self.filesize,
+                "url": self.url,
                 "IGNRVAL" : self.ignrval,
                 "CRVAL1" : self.crval1,
                 "CRVAL2" : self.crval2,
