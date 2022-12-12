@@ -294,6 +294,7 @@ pub enum Intensity {
 pub struct FITS {
     created: Instant,
     pub dataset_id: String,
+    url: String,
     filesize: u64,
     //basic header/votable
     pub telescope: String,
@@ -399,7 +400,7 @@ struct FITSImage {
 }
 
 impl FITS {
-    pub fn new(id: &String, flux: &String) -> FITS {
+    pub fn new(id: &String, url: &String, flux: &String) -> FITS {
         let obj_name = match Uuid::parse_str(id) {
             Ok(_) => String::from(""),
             Err(_) => id.clone().replace(".fits", "").replace(".FITS", ""),
@@ -408,6 +409,7 @@ impl FITS {
         let fits = FITS {
             created: Instant::now(),
             dataset_id: id.clone(),
+            url: url.clone(),
             filesize: 0,
             telescope: String::from(""),
             obj_name: obj_name,
@@ -1315,7 +1317,7 @@ impl FITS {
         filepath: &std::path::Path,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux);
+        let mut fits = FITS::new(id, &"".to_owned(), flux);
         fits.is_dummy = false;
 
         //load data from filepath
@@ -1666,7 +1668,7 @@ impl FITS {
         url: &String,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
-        let mut fits = FITS::new(id, flux);
+        let mut fits = FITS::new(id, url, flux);
         fits.is_dummy = false;
 
         println!("FITS::from_url({})", url);
@@ -8718,7 +8720,7 @@ impl FITS {
 
 impl Clone for FITS {
     fn clone(&self) -> FITS {
-        let mut fits = FITS::new(&self.dataset_id, &self.flux);
+        let mut fits = FITS::new(&self.dataset_id, &self.url, &self.flux);
 
         //only a limited clone (fields needed by get_frequency_range())
 
