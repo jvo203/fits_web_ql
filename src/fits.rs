@@ -1315,9 +1315,10 @@ impl FITS {
         id: &String,
         flux: &String,
         filepath: &std::path::Path,
+        url: &String,
         server: &Addr<server::SessionServer>,
     ) -> FITS {
-        let mut fits = FITS::new(id, &"".to_owned(), flux);
+        let mut fits = FITS::new(id, url, flux);
         fits.is_dummy = false;
 
         //load data from filepath

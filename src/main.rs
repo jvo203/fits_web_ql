@@ -2675,7 +2675,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.4.5";
-static VERSION_STRING: &'static str = "R/SV2022-12-12.0";
+static VERSION_STRING: &'static str = "R/SV2022-12-13.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4217,6 +4217,7 @@ fn external_fits(
                     &my_data_id.clone(),
                     &"".to_owned(),
                     filepath.as_path(),
+                    &my_url.clone(),
                     &my_server,
                 )
             } else {
@@ -4336,6 +4337,7 @@ fn internal_fits(
                     &my_data_id.clone(),
                     &my_flux.clone(),
                     filepath.as_path(),
+                    &"".to_owned(),
                     &my_server,
                 ); //from_path or from_path_mmap
 

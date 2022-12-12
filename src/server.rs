@@ -14,8 +14,8 @@ use thread_priority::*;
 
 use uuid::Uuid;
 
-use crate::fits::IMAGECACHE;
 use crate::fits::FITSCACHE;
+use crate::fits::IMAGECACHE;
 use crate::DATASETS;
 
 #[cfg(feature = "jvo")]
