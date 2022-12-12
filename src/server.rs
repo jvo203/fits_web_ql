@@ -180,7 +180,7 @@ impl Default for SessionServer {
 
                 if ok_file.exists() {
                     // obtain the metadata, check <last_accessed>
-                    if let Ok(metadata) = ok_file.metadata() {                        
+                    if let Ok(metadata) = ok_file.metadata() {
                         match metadata.accessed() {
                             Ok(accessed) => {
                                 let now = SystemTime::now();
@@ -188,7 +188,7 @@ impl Default for SessionServer {
 
                                 match elapsed {
                                     Ok(elapsed) => {
-                                        if elapsed > timeout {                                                                                         
+                                        if elapsed > timeout {
                                             // get the key from the entry (remove .zfp)
                                             let name = entry.path().with_extension("");
                                             let key = name.file_name().unwrap().to_str().unwrap().to_string();
@@ -203,7 +203,7 @@ impl Default for SessionServer {
                                                     println!("[cache dataset cleanup]: no active sessions found, {} will be deleted from the disk cache", key);
 
                                                     // first delete the ".ok" file
-                                                    let _ = std::fs::remove_file(ok_file);                                                    
+                                                    let _ = std::fs::remove_file(ok_file);
 
                                                     // then pass the <key> to a directory removal thread
                                                     std::thread::spawn(move || {
@@ -214,17 +214,17 @@ impl Default for SessionServer {
                                                                 Err(err) => println!("error changing the thread priority: {:?}", err),
                                                             }
                                                         };
-                    
+
                                                         // remove the <entry> DirEntry
                                                         let _ = std::fs::remove_dir_all(entry.path());
-                                                        
+
                                                         // remove the image file too
                                                         let imagename = format!("{}/{}.img", IMAGECACHE, key);
                                                         let imagepath = std::path::Path::new(&imagename);
                                                         let _ = std::fs::remove_file(imagepath);
                                                     });
                                                 }
-                                            }                                            
+                                            }
                                         }
                                     },
                                     Err(err) => {
@@ -244,7 +244,7 @@ impl Default for SessionServer {
                         continue;
                     }
 
-                    if let Ok(metadata) = entry.metadata() {                        
+                    if let Ok(metadata) = entry.metadata() {
                         match metadata.accessed() {
                             Ok(accessed) => {
                                 let now = SystemTime::now();
@@ -252,7 +252,7 @@ impl Default for SessionServer {
 
                                 match elapsed {
                                     Ok(elapsed) => {
-                                        if elapsed > timeout {                                                                                         
+                                        if elapsed > timeout {
                                             // get the key from the entry (remove .bin)
                                             let name = entry.path().with_extension("");
                                             let key = name.file_name().unwrap().to_str().unwrap().to_string();
@@ -267,13 +267,13 @@ impl Default for SessionServer {
                                                     println!("[cache dataset cleanup]: no active sessions found, {} will be deleted from the disk cache", key);                                                                    
                                                         // remove the <entry> DirEntry
                                                         let _ = std::fs::remove_file(entry.path());
-                                                        
+
                                                         // remove the image file too
                                                         let imagename = format!("{}/{}.img", IMAGECACHE, key);
                                                         let imagepath = std::path::Path::new(&imagename);
-                                                        let _ = std::fs::remove_file(imagepath);                                                    
+                                                        let _ = std::fs::remove_file(imagepath);
                                                 }
-                                            }                                            
+                                            }
                                         }
                                     },
                                     Err(err) => {
