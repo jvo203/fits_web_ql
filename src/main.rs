@@ -2675,7 +2675,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.4.5";
-static VERSION_STRING: &'static str = "R/SV2022-11-15.0";
+static VERSION_STRING: &'static str = "R/SV2022-12-12.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4202,6 +4202,7 @@ fn external_fits(
             my_data_id.clone(),
             Arc::new(RwLock::new(Box::new(fits::FITS::new(
                 &my_data_id,
+                &my_url,
                 &"".to_owned(),
             )))),
         );
@@ -4304,6 +4305,7 @@ fn internal_fits(
                 my_data_id.clone(),
                 Arc::new(RwLock::new(Box::new(fits::FITS::new(
                     &my_data_id,
+                    &"".to_owned(),
                     &my_flux,
                 )))),
             );
