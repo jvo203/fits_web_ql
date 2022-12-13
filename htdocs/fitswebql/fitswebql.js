@@ -1,5 +1,5 @@
 function get_js_version() {
-  return "JS2022-12-12.0";
+  return "JS2022-12-13.0";
 }
 
 const wasm_supported = (() => {
@@ -9641,7 +9641,15 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
 
         let url = fitsData.url;
         if (url != "") {
-          d3.select("#FITS").attr("href", url);
+          d3.select("#FITS")
+            .attr("href", url)
+            .attr("target", "_blank");
+
+          // add a download attribute to the link so that the browser will download the file
+          // instead of navigating to it
+          // see https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#Attributes
+          // unfortunately it does not work due to cross-domain origin checks
+          $('#FITS').attr('download', '');
         }
       }
 
