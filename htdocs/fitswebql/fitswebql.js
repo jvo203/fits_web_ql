@@ -9654,7 +9654,7 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
           // add a download attribute to the link so that the browser will download the file
           // instead of navigating to it
           // see https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#Attributes
-          // unfortunately it does not work due to cross-domain origin checks
+          // unfortunately it does not work with external URLs due to cross-domain origin checks
           $('#FITS').attr('download', '');
         }
       }
