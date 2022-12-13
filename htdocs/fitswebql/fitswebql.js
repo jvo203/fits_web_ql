@@ -9641,9 +9641,15 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
 
         let url = fitsData.url;
         if (url != "") {
+          // extract the filename from the URL after the last slash
+          let filename = url.substring(url.lastIndexOf('/') + 1);
+
+          let _url = "get_fits?datasetId=" + encodeURIComponent(datasetId);
+          _url += "&filename=" + encodeURIComponent(filename);
+
           d3.select("#FITS")
-            .attr("href", url);
-          //.attr("target", "_blank");
+            .attr("href", _url)
+            .attr("target", "_blank");
 
           // add a download attribute to the link so that the browser will download the file
           // instead of navigating to it
