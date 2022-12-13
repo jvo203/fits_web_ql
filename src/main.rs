@@ -3711,6 +3711,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
 
     #[cfg(feature = "jvo")]*/
     let dataset = "datasetId"; //JavaScript get_fits? always uses datasetId
+    let mut full_download = false;
 
     let dataset_id = match query.get(dataset) {
         Some(x) => vec![x.as_str()],
@@ -3755,14 +3756,16 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let x1 = match query.get("x1") {
         Some(x) => x,
         None => {
-            return HttpResponse::NotFound()
-                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                .append_header(("Pragma", "no-cache"))
-                .append_header(("Expires", "0"))
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_fits/x1 parameter not found</p>"
-                ));
+            full_download = true;
+            "-1"
+            /*return HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
+            .content_type("text/html")
+            .body(format!(
+                "<p><b>Critical Error</b>: get_fits/x1 parameter not found</p>"
+            ));*/
         }
     };
 
@@ -3775,14 +3778,16 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let x2 = match query.get("x2") {
         Some(x) => x,
         None => {
-            return HttpResponse::NotFound()
-                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                .append_header(("Pragma", "no-cache"))
-                .append_header(("Expires", "0"))
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_fits/x2 parameter not found</p>"
-                ));
+            full_download = true;
+            "-1"
+            /*return HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
+            .content_type("text/html")
+            .body(format!(
+                "<p><b>Critical Error</b>: get_fits/x2 parameter not found</p>"
+            ));*/
         }
     };
 
@@ -3795,14 +3800,16 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let y1 = match query.get("y1") {
         Some(x) => x,
         None => {
-            return HttpResponse::NotFound()
-                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                .append_header(("Pragma", "no-cache"))
-                .append_header(("Expires", "0"))
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_fits/y1 parameter not found</p>"
-                ));
+            full_download = true;
+            "-1"
+            /*return HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
+            .content_type("text/html")
+            .body(format!(
+                "<p><b>Critical Error</b>: get_fits/y1 parameter not found</p>"
+            ));*/
         }
     };
 
@@ -3815,14 +3822,16 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let y2 = match query.get("y2") {
         Some(x) => x,
         None => {
-            return HttpResponse::NotFound()
-                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                .append_header(("Pragma", "no-cache"))
-                .append_header(("Expires", "0"))
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_fits/y2 parameter not found</p>"
-                ));
+            full_download = true;
+            "-1"
+            /*return HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
+            .content_type("text/html")
+            .body(format!(
+                "<p><b>Critical Error</b>: get_fits/y2 parameter not found</p>"
+            ));*/
         }
     };
 
@@ -3835,14 +3844,16 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let frame_start = match query.get("frame_start") {
         Some(x) => x,
         None => {
-            return HttpResponse::NotFound()
-                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                .append_header(("Pragma", "no-cache"))
-                .append_header(("Expires", "0"))
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_fits/frame_start parameter not found</p>"
-                ));
+            full_download = true;
+            "0.0"
+            /*return HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
+            .content_type("text/html")
+            .body(format!(
+                "<p><b>Critical Error</b>: get_fits/frame_start parameter not found</p>"
+            ));*/
         }
     };
 
@@ -3855,14 +3866,16 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let frame_end = match query.get("frame_end") {
         Some(x) => x,
         None => {
-            return HttpResponse::NotFound()
-                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                .append_header(("Pragma", "no-cache"))
-                .append_header(("Expires", "0"))
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_fits/frame_end parameter not found</p>"
-                ));
+            full_download = true;
+            "0.0"
+            /*return HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
+            .content_type("text/html")
+            .body(format!(
+                "<p><b>Critical Error</b>: get_fits/frame_end parameter not found</p>"
+            ));*/
         }
     };
 
@@ -3875,14 +3888,16 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     let ref_freq = match query.get("ref_freq") {
         Some(x) => x,
         None => {
-            return HttpResponse::NotFound()
-                .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                .append_header(("Pragma", "no-cache"))
-                .append_header(("Expires", "0"))
-                .content_type("text/html")
-                .body(format!(
-                    "<p><b>Critical Error</b>: get_fits/ref_freq parameter not found</p>"
-                ));
+            full_download = true;
+            "0.0"
+            /*return HttpResponse::NotFound()
+            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+            .append_header(("Pragma", "no-cache"))
+            .append_header(("Expires", "0"))
+            .content_type("text/html")
+            .body(format!(
+                "<p><b>Critical Error</b>: get_fits/ref_freq parameter not found</p>"
+            ));*/
         }
     };
 
@@ -3896,7 +3911,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         dataset_id, x1, y1, x2, y2, frame_start, frame_end, ref_freq
     );
 
-    if dataset_id.len() > 1 {
+    if dataset_id.len() > 1 && !full_download {
         let mut ar = Builder::new(Vec::new());
 
         //dataset_id.iter().for_each(|entry| {//not used for now; problems accessing inner data of Arc<RwLock<Builder>> later on
@@ -4027,6 +4042,27 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
     } else {
         //only one dataset, no need to use tarball, stream the data instead
         let entry = dataset_id[0];
+
+        // URL filename
+        let filename = match query.get("filename") {
+            Some(f) => {
+                full_download = true;
+                // check if f is not an emptry string
+                if f.len() > 0 {
+                    String::from(f)
+                } else {
+                    format!("{}.fits", entry.replace("/", "_"))
+                }
+            }
+            None => {
+                full_download = false;
+                format!("{}.fits", entry.replace("/", "_"))
+            }
+        };
+
+        if full_download {
+            println!("full FITS download: as '{}'", filename);
+        }
 
         let datasets = DATASETS.read();
 
