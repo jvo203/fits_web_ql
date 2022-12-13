@@ -8008,6 +8008,58 @@ impl FITS {
         Some(stream_rx)
     }
 
+    pub fn get_full_stream(&self) -> Option<mpsc::Receiver<Vec<u8>>> {
+        let (stream_tx, stream_rx): (mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>) =
+            mpsc::channel();
+
+        //open the original FITS file
+        let filename = format!("{}/{}.fits", FITSCACHE, self.dataset_id.replace("/", "_"));
+        let filepath = std::path::Path::new(&filename);
+
+        let mut f = match File::open(filepath) {
+            Ok(x) => x,
+            Err(x) => {
+                println!("CRITICAL ERROR {:?}: {:?}", filepath, x);
+
+                return None;
+            }
+        };
+
+        //reset the file
+        if let Err(err) = f.seek(SeekFrom::Start(0)) {
+            println!("CRITICAL ERROR seeking within the FITS file: {}", err);
+            return None;
+        }
+
+        // read the whole file in chunks
+        thread::spawn(move || {
+            let stream = stream_tx.clone();
+
+            // make a 256KB buffer
+            let mut buffer = [0; 262144];
+
+            loop {
+                let bytes_read = match f.read(&mut buffer) {
+                    // read up to 256KB
+                    Ok(0) => return, // reached EOF
+                    Ok(n) => n,
+                    Err(_) => return, // ignore errors
+                };
+
+                let slice = &buffer[0..bytes_read];
+                match stream.send(slice.to_vec()) {
+                    Ok(()) => {}
+                    Err(err) => {
+                        println!("CRITICAL ERROR STREAMING FULL FITS: {}", err);
+                        return;
+                    }
+                }
+            }
+        });
+
+        Some(stream_rx)
+    }
+
     #[cfg(feature = "zfp")]
     fn zfp_compress(&self) -> bool {
         #[cfg(not(feature = "raid"))]
