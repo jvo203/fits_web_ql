@@ -4043,7 +4043,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
         //only one dataset, no need to use tarball, stream the data instead
         let entry = dataset_id[0];
 
-        // URL filename
+        // get the URL filename, if there is any, otherwise use the dataset name
         let filename = match query.get("filename") {
             Some(f) => {
                 full_download = true;
@@ -4101,36 +4101,68 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
 
         if fits.has_data {
             //streaming version (an immediate response, low memory footprint)
-            match fits.get_cutout_stream(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
-                Some(rx) => {
-                    let fits_stream = FITSDataStream::new(rx);
+            if !full_download {
+                match fits.get_cutout_stream(x1, y1, x2, y2, frame_start, frame_end, ref_freq) {
+                    Some(rx) => {
+                        let fits_stream = FITSDataStream::new(rx);
 
-                    let disposition_filename = format!(
-                        "attachment; filename={}-subregion.fits",
-                        entry.replace("/", "_")
-                    );
+                        let disposition_filename = format!(
+                            "attachment; filename={}-subregion.fits",
+                            entry.replace("/", "_")
+                        );
 
-                    return HttpResponse::Ok()
-                        .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                        .append_header(("Pragma", "no-cache"))
-                        .append_header(("Expires", "0"))
-                        .content_type("application/force-download")
-                        .append_header(("Content-Encoding", "identity")) // disable compression
-                        .append_header(("Content-Disposition", disposition_filename))
-                        .append_header(("Content-Transfer-Encoding", "binary"))
-                        .append_header(("Accept-Ranges", "bytes"))
-                        .streaming(fits_stream.map(|x| Ok(x) as Result<Bytes, Error>));
+                        return HttpResponse::Ok()
+                            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                            .append_header(("Pragma", "no-cache"))
+                            .append_header(("Expires", "0"))
+                            .content_type("application/force-download")
+                            .append_header(("Content-Encoding", "identity")) // disable compression
+                            .append_header(("Content-Disposition", disposition_filename))
+                            .append_header(("Content-Transfer-Encoding", "binary"))
+                            .append_header(("Accept-Ranges", "bytes"))
+                            .streaming(fits_stream.map(|x| Ok(x) as Result<Bytes, Error>));
+                    }
+                    None => {
+                        return HttpResponse::NotFound()
+                            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                            .append_header(("Pragma", "no-cache"))
+                            .append_header(("Expires", "0"))
+                            .content_type("text/html")
+                            .body(format!(
+                                "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
+                                entry
+                            ));
+                    }
                 }
-                None => {
-                    return HttpResponse::NotFound()
-                        .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
-                        .append_header(("Pragma", "no-cache"))
-                        .append_header(("Expires", "0"))
-                        .content_type("text/html")
-                        .body(format!(
-                            "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
-                            entry
-                        ));
+            } else {
+                match fits.get_full_stream() {
+                    Some(rx) => {
+                        let fits_stream = FITSDataStream::new(rx);
+
+                        let disposition_filename = format!("attachment; filename={}", filename);
+
+                        return HttpResponse::Ok()
+                            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                            .append_header(("Pragma", "no-cache"))
+                            .append_header(("Expires", "0"))
+                            .content_type("application/force-download")
+                            .append_header(("Content-Encoding", "identity")) // disable compression
+                            .append_header(("Content-Disposition", disposition_filename))
+                            .append_header(("Content-Transfer-Encoding", "binary"))
+                            .append_header(("Accept-Ranges", "bytes"))
+                            .streaming(fits_stream.map(|x| Ok(x) as Result<Bytes, Error>));
+                    }
+                    None => {
+                        return HttpResponse::NotFound()
+                            .append_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+                            .append_header(("Pragma", "no-cache"))
+                            .append_header(("Expires", "0"))
+                            .content_type("text/html")
+                            .body(format!(
+                                "<p><b>Critical Error</b>: get_fits: {} contains no data</p>",
+                                entry
+                            ));
+                    }
                 }
             }
         } else {
