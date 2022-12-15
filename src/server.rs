@@ -253,7 +253,7 @@ impl Default for SessionServer {
                                 match elapsed {
                                     Ok(elapsed) => {
                                         if elapsed > timeout {
-                                            // get the key from the entry (remove .bin)
+                                            // get the key from the entry (remove .bin or .fits)
                                             let name = entry.path().with_extension("");
                                             let key = name.file_name().unwrap().to_str().unwrap().to_string();
                                             println!("[cache dataset cleanup]: entry: {:?}, key: {:?}, elapsed time: {:?}", entry, key, elapsed);
