@@ -236,11 +236,11 @@ impl Default for SessionServer {
                         }
                     }
                 } else {
-                    // it might be a ".bin" file, check it out
+                    // it might be a ".bin" or a ".fits" file, check it out
                     let file_name_buf = entry.file_name();
                     let file_name = file_name_buf.to_str().unwrap();
 
-                    if !file_name.ends_with(".bin") {
+                    if !(file_name.ends_with(".bin") || file_name.ends_with(".fits")) {
                         continue;
                     }
 
