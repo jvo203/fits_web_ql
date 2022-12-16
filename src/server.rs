@@ -24,7 +24,7 @@ const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity tim
 #[cfg(not(feature = "jvo"))]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 10; //[s]; a dataset inactivity timeout
 
-const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout; was 60 * 60
+const ORPHAN_GARBAGE_COLLECTION_TIMEOUT: i64 = 1 * 60; //[s]; a dataset inactivity timeout; was 60 * 60
 
 const DUMMY_DATASET_TIMEOUT: u64 = 24 * 60 * 60; //[s]; 24 hours, plenty of time for a local jvox download to complete (or fail)
 
@@ -174,6 +174,9 @@ impl Default for SessionServer {
 
             for entry in cache.read_dir().expect("read_dir call failed") {
                 if let Ok(entry) = entry {
+                  // print the entry
+                  println!("{:?}", entry.path());
+
                 // check if a directory contains a ".ok" file
                 let mut ok_file = std::path::PathBuf::from(entry.path());
                 ok_file.push(".ok");
