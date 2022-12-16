@@ -173,8 +173,8 @@ impl Default for SessionServer {
             let timeout = Duration::new(CACHE_DATASET_TIMEOUT as u64, 0);
 
             // print the current time
-            let ts = chrono::Local::now();
-            println!("\nCache Cleanup @ {}", ts.format("%Y-%m-%d %H:%M:%S"));
+            // let ts = chrono::Local::now();
+            // println!("\nCache Cleanup @ {}", ts.format("%Y-%m-%d %H:%M:%S"));
 
             for entry in cache.read_dir().expect("read_dir call failed") {
                 if let Ok(entry) = entry {
