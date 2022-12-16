@@ -188,7 +188,8 @@ impl Default for SessionServer {
                 if ok_file.exists() {
                     // obtain the metadata, check <last_accessed>
                     if let Ok(metadata) = ok_file.metadata() {
-                        match metadata.accessed() {
+                        // use created instead of accessed
+                        match metadata.created() {
                             Ok(accessed) => {
                                 let now = SystemTime::now();
                                 let elapsed = now.duration_since(accessed);
@@ -233,7 +234,7 @@ impl Default for SessionServer {
                                                 }
                                             }
                                         } else {
-                                            println!("[cache dataset cleanup]: entry: {:?}, elapsed time {:?} <= timeout {:?}", entry, elapsed, timeout);                                            
+                                            // println!("[cache dataset cleanup]: entry: {:?}, elapsed time {:?} <= timeout {:?}", entry, elapsed, timeout);                                            
                                         }
                                     },
                                     Err(err) => {
@@ -254,7 +255,8 @@ impl Default for SessionServer {
                     }
 
                     if let Ok(metadata) = entry.metadata() {
-                        match metadata.accessed() {
+                        // use created instead of accessed
+                        match metadata.created() {
                             Ok(accessed) => {
                                 let now = SystemTime::now();
                                 let elapsed = now.duration_since(accessed);
@@ -284,7 +286,7 @@ impl Default for SessionServer {
                                                 }
                                             }
                                         } else {
-                                            println!("[cache dataset cleanup]: entry: {:?}, elapsed time {:?} <= timeout {:?}", entry, elapsed, timeout);                                            
+                                            // println!("[cache dataset cleanup]: entry: {:?}, elapsed time {:?} <= timeout {:?}", entry, elapsed, timeout);                                            
                                         }
                                     },
                                     Err(err) => {
