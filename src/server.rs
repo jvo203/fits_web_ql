@@ -172,10 +172,13 @@ impl Default for SessionServer {
             let cache = std::path::Path::new(FITSCACHE);
             let timeout = Duration::new(CACHE_DATASET_TIMEOUT as u64, 0);
 
+            // print the current time
+            println!("Running a Cache Cleanup @ {:?}", SystemTime::now());
+
             for entry in cache.read_dir().expect("read_dir call failed") {
                 if let Ok(entry) = entry {
                   // print the entry
-                  println!("{:?}", entry.path());
+                  println!("Cache Entry {:?}", entry.path());                  
 
                 // check if a directory contains a ".ok" file
                 let mut ok_file = std::path::PathBuf::from(entry.path());
