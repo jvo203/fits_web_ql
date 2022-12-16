@@ -232,6 +232,8 @@ impl Default for SessionServer {
                                                     });
                                                 }
                                             }
+                                        } else {
+                                            println!("[cache dataset cleanup]: entry: {:?}, elapsed time {:?} <= timeout {:?}", entry, elapsed, timeout);                                            
                                         }
                                     },
                                     Err(err) => {
@@ -281,6 +283,8 @@ impl Default for SessionServer {
                                                         let _ = std::fs::remove_file(imagepath);
                                                 }
                                             }
+                                        } else {
+                                            println!("[cache dataset cleanup]: entry: {:?}, elapsed time {:?} <= timeout {:?}", entry, elapsed, timeout);                                            
                                         }
                                     },
                                     Err(err) => {
@@ -293,8 +297,8 @@ impl Default for SessionServer {
                     }
                 }
             }
-    }
-        });
+        }
+    });
 
         SessionServer {
             sessions: HashMap::new(),
