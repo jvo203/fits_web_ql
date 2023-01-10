@@ -4701,12 +4701,12 @@ fn http_fits_response(
     #[cfg(feature = "production")]
     html.push_str(
         "<!-- Global site tag (gtag.js) - Google Analytics -->
-        <script async src='https://www.googletagmanager.com/gtag/js?id=UA-72136224-3'></script>
+        <script async src='https://www.googletagmanager.com/gtag/js?id=G-YM4BZGDN25'></script>
         <script>
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'UA-72136224-3');
+          gtag('config', 'G-YM4BZGDN25');
         </script>\n",
     );
 
