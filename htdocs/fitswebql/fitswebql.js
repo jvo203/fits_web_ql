@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2022-12-22.0";
+    return "JS2023-01-10.0";
 }
 
 const wasm_supported = (() => {
@@ -1825,6 +1825,9 @@ function open_websocket_connection(_datasetId, index) {
                                     decoder.frameBuffer.y.stride,
                                     alpha,
                                     index);
+
+                                if (displayContours)
+                                    update_contours();
                             });
                         }
 
