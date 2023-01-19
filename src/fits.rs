@@ -6622,7 +6622,10 @@ impl FITS {
 
                     let (f, v) = self.get_frame2freq_vel(frame, ref_freq, delta_v, rest);
 
-                    //println!("channel: {}, f: {} GHz, v: {} km/s, intensity: {}", frame, f, v, spectrum[i]);
+                    println!(
+                        "channel: {}, f: {} GHz, v: {} km/s, intensity: {}",
+                        frame, f, v, spectrum[i]
+                    );
 
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
@@ -7219,7 +7222,7 @@ impl FITS {
     fn Einstein_velocity_addition(v1: f64, v2: f64) -> f64 {
         let c = 299792458_f64; //speed of light [m/s]
 
-        return (v1 + v2) / (1.0 + v1 * v2 / c * c);
+        return (v1 + v2) / (1.0 + v1 * v2 / (c * c));
     }
 
     fn Einstein_relative_velocity(f: f64, f0: f64, delta_v: f64) -> f64 {
@@ -7279,6 +7282,9 @@ impl FITS {
             + self.cdelt3 * self.frame_multiplier * (frame as f64 - self.crpix3);
 
         if has_frequency {
+            // no velocity info, only frequency
+            println!("has_frequency: {} {} {} {}", val, ref_freq, delta_v, rest);
+
             let f = if rest {
                 FITS::relativistic_rest_frequency(val, delta_v)
             } else {
