@@ -6622,10 +6622,10 @@ impl FITS {
 
                     let (f, v) = self.get_frame2freq_vel(frame, ref_freq, delta_v, rest);
 
-                    println!(
+                    /*println!(
                         "channel: {}, f: {} GHz, v: {} km/s, intensity: {}",
                         frame, f, v, spectrum[i]
-                    );
+                    );*/
 
                     if f != std::f64::NAN && v != std::f64::NAN {
                         // write the CSV header
@@ -7282,9 +7282,6 @@ impl FITS {
             + self.cdelt3 * self.frame_multiplier * (frame as f64 - self.crpix3);
 
         if has_frequency {
-            // no velocity info, only frequency
-            println!("has_frequency: {} {} {} {}", val, ref_freq, delta_v, rest);
-
             let f = if rest {
                 FITS::relativistic_rest_frequency(val, delta_v)
             } else {
