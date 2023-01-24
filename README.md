@@ -180,7 +180,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 it is best to append these lines into your .bashrc
 
 ## macOS
-on macOS (especially 13.2 and higher) the following environment variable needs to be set (for example in your .zshrc):
+on macOS (especially macOS Ventura 13.2 and higher) the following environment variable needs to be set (for example in your .zshrc):
 
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:/usr/local/lib
 
