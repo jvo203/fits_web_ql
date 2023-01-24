@@ -107,6 +107,9 @@ sudo apt-get install nasm yasm
 ##
 install a libyuv library (YUV rescaling/image inversion):
 
+(macOS libyuv compilation problem, for the solution see:
+https://github.com/lemenkov/libyuv/issues/18)
+
 git clone https://github.com/lemenkov/libyuv
 
 cd libyuv
