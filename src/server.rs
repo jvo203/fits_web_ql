@@ -177,7 +177,7 @@ impl Default for SessionServer {
 
             // check if delete_file exists
             if delete_file.exists() {
-                println!("cache cleanup is disabled");
+                // println!("cache cleanup is disabled");
                 return;
             }
 
