@@ -170,6 +170,17 @@ impl Default for SessionServer {
 
             // clean up the disk cache too
             let cache = std::path::Path::new(FITSCACHE);
+
+            // check if the cache directory contains ".DONOTDELETE" file
+            let mut delete_file = std::path::PathBuf::from(cache);
+            delete_file.push(".DONOTDELETE");
+
+            // check if delete_file exists
+            if delete_file.exists() {
+                println!("cache cleanup is disabled");
+                return;
+            }
+
             let timeout = Duration::new(CACHE_DATASET_TIMEOUT as u64, 0);
 
             // print the current time
