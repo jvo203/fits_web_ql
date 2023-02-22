@@ -773,9 +773,9 @@ dependencies = [
 
 [[package]]
 name = "curl-sys"
-version = "0.4.59+curl-7.86.0"
+version = "0.4.60+curl-7.88.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cfce34829f448b08f55b7db6d0009e23e2e86a34e8c2b366269bf5799b4a407"
+checksum = "717abe2cb465a5da6ce06617388a3980c9a2844196734bec8ccb8e575250f13f"
 dependencies = [
  "cc",
  "libc",
@@ -2189,6 +2189,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustversion"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5583e89e108996506031660fe09baa5011b9dd0341b89029313006d1fb508d70"
+
+[[package]]
 name = "ryu"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2428,13 +2434,14 @@ dependencies = [
 
 [[package]]
 name = "thread-priority"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "978519ae4c6891352f964b88da4ab5a3a9b74a40247cda5baee145dae6cd3b71"
+checksum = "6987223f444b5a7f16f9cbc640ab22a363a3d34dd801e3af3740e14635bc028b"
 dependencies = [
  "cfg-if",
  "libc",
  "log",
+ "rustversion",
  "winapi",
 ]
 
