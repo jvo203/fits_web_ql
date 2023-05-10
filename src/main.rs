@@ -2674,7 +2674,7 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.4.9";
+static SERVER_STRING: &'static str = "FITSWebQL v4.4.10";
 static VERSION_STRING: &'static str = "R/SV2023-03-16.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
@@ -2712,9 +2712,8 @@ fn fpzip_compress(src: &Vec<f32>, high_quality: bool) -> Option<Vec<u8>> {
     let mut buffer: Vec<u8> = vec![0; bufsize];
 
     /* compress to memory */
-    let fpz = unsafe {
-        fpzip_write_to_buffer(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize as u64)
-    };
+    let fpz =
+        unsafe { fpzip_write_to_buffer(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize) };
 
     unsafe {
         (*fpz).type_ = FPZIP_TYPE_FLOAT as i32;
