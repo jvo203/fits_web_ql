@@ -194,8 +194,7 @@ fn zfp_decompress_float_array2d(
 
     let bufsize = buffer.len();
     /* associate bit stream with a compressed buffer */
-    let stream =
-        unsafe { stream_open(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize as u64) };
+    let stream = unsafe { stream_open(buffer.as_mut_ptr() as *mut std::ffi::c_void, bufsize) };
     unsafe {
         zfp_stream_set_bit_stream(zfp, stream);
         zfp_stream_rewind(zfp);
