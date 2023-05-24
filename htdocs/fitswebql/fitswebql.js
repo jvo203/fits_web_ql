@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2023-04-21.0";
+    return "JS2023-05-24.0";
 }
 
 const wasm_supported = (() => {
@@ -9348,6 +9348,14 @@ function display_molecules() {
 
     var num = mol_list.length;
 
+    if (num > displayLimit) {
+        console.log("Too many spectral lines to display:", num, ", applying a hard limit of", displayLimit, ". Please refine your search.");
+
+        // randomly select a subset of the molecules
+        mol_list = mol_list.sort(() => Math.random() - Math.random()).slice(0, displayLimit);
+        num = mol_list.length;
+    }
+
     var fontStyle = Math.round(0.67 * emFontSize) + "px";// Helvetica";
     var strokeStyle = "#FFCC00";
 
@@ -13022,6 +13030,7 @@ async*/ function mainRenderer() {
         displayToyaMA = localStorage_read_boolean("displayToyaMA", false);
         displayOSU = localStorage_read_boolean("displayOSU", false);
         displayIntensity = localStorage_read_number("displayIntensity", -1);
+        displayLimit = localStorage_read_number("displayLimit", 500);
 
         realtime_spectrum = localStorage_read_boolean("realtime_spectrum", true);
         realtime_video = localStorage_read_boolean("realtime_video", true);
