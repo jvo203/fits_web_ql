@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.4.11"
+version = "4.4.12"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2021"
 

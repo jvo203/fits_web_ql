@@ -169,8 +169,8 @@ fn zfp_decompress_float_array2d(
         zfp_field_2d(
             array.as_mut_ptr() as *mut std::ffi::c_void,
             data_type,
-            nx as u32,
-            ny as u32,
+            nx as usize,
+            ny as usize,
         )
     };
 
@@ -8181,8 +8181,8 @@ impl FITS {
                     zfp_field_2d(
                         array.as_mut_ptr() as *mut std::ffi::c_void,
                         data_type,
-                        self.width as u32,
-                        self.height as u32,
+                        self.width as usize,
+                        self.height as usize,
                     )
                 };
 
