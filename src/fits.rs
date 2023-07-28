@@ -691,7 +691,7 @@ impl FITS {
                     let mask_raw = unsafe { slice::from_raw_parts_mut(mask_ptr, mask_len) };
 
                     if is_cache {
-                        mem::forget(data_u8);
+                        let _ = mem::forget(data_u8);
 
                         unsafe {
                             spmd::make_image_spectrumF16_minmax(
@@ -5186,7 +5186,7 @@ impl FITS {
             return None;
         };
 
-        mem::forget(ret); // img and ret are the same
+        let _ = mem::forget(ret); // img and ret are the same
 
         let stride_u = raw.stride[1];
         let stride_v = raw.stride[2];
@@ -5672,7 +5672,7 @@ impl FITS {
             println!("VP9 image frame error: image allocation failed");
             return None;
         }
-        mem::forget(ret); // img and ret are the same
+        let _ = mem::forget(ret); // img and ret are the same
         print!("dimx: {}, dimy: {}, {:#?}", dimx, dimy, raw);
 
         //I420
@@ -6043,7 +6043,7 @@ impl FITS {
             println!("VP9 image frame error: image allocation failed");
             return;
         }
-        mem::forget(ret); // img and ret are the same
+        let _ = mem::forget(ret); // img and ret are the same
         println!("{:#?}", raw);
 
         let mut y: Vec<u8> = {

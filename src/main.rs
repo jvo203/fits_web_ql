@@ -1758,7 +1758,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     println!("VP9 image frame error: image allocation failed");
                                     return;
                                 }
-                                mem::forget(ret); // img and ret are the same
+                                let _ = mem::forget(ret); // img and ret are the same
                                 print!("{:#?}", raw);
 
                                 //redo the image based on new user parameters, pixels and mask
@@ -2674,8 +2674,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.4.12";
-static VERSION_STRING: &'static str = "R/SV2023-06-16.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.4.13";
+static VERSION_STRING: &'static str = "R/SV2023-07-28.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
