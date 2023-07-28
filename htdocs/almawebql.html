@@ -2,330 +2,357 @@
 <html lang="en">
 
 <head>
-	<title>FITSWebQL</title>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-	<script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
-	<link rel="stylesheet" href="almawebql.css" />
-	<script src="almawebql.js"></script>
+    <title>FITSWebQL</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
+    <link rel="stylesheet" href="almawebql.css" />
+    <script src="almawebql.js"></script>
 </head>
 
 <body>
 
-	<div class="container">
-		<h1>WebQL TEST PAGE</h1>
+    <div class="container">
+        <h1>WebQL TEST PAGE</h1>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h2>external URL</h2>
-			</div>
-			<div class="panel-body">
-				<div class="form-inline">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>external URL</h2>
+            </div>
+            <div class="panel-body">
+                <div class="form-inline">
 
-					<div class="form-group">
-						<label for="url">URL:</label>
-						<input type="text" class="form-control" id="url" size="80"
-							value="https://fits.gsfc.nasa.gov/samples/FOCx38i0101t_c0f.fits">
-						<!-- https://fits.gsfc.nasa.gov/samples/WFPC2ASSNu5780205bx.fits, https://fits.gsfc.nasa.gov/samples/UITfuv2582gc.fits -->
-					</div>
+                    <div class="form-group">
+                        <label for="url">URL:</label>
+                        <input type="text" class="form-control" id="url" size="80"
+                            value="https://fits.gsfc.nasa.gov/samples/FOCx38i0101t_c0f.fits">
+                        <!-- https://fits.gsfc.nasa.gov/samples/WFPC2ASSNu5780205bx.fits, https://fits.gsfc.nasa.gov/samples/UITfuv2582gc.fits -->
+                    </div>
 
-					<button type="submit" class="btn btn-default" onclick="view_url()">Submit</button>
-				</div>
-			</div>
-		</div>
+                    <button type="submit" class="btn btn-default" onclick="view_url()">Submit</button>
+                </div>
+            </div>
+        </div>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h2>AKARI</h2>
-			</div>
-			<div class="panel-body">
-				<div class="form-inline">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>AKARI</h2>
+            </div>
+            <div class="panel-body">
+                <div class="form-inline">
 
-					<div class="form-group">
-						<label for="akari_dataid">dataId:</label>
-						<input type="text" class="form-control" id="akari_dataid" value="AKAI013000001">
-					</div>
+                    <div class="form-group">
+                        <label for="akari_dataid">dataId:</label>
+                        <input type="text" class="form-control" id="akari_dataid" value="AKAI013000001">
+                    </div>
 
-					<div class="form-group">
-						<label for="akari_db">db:</label>
-						<input type="text" class="form-control" id="akari_db" size="5" value="akari">
-					</div>
+                    <div class="form-group">
+                        <label for="akari_db">db:</label>
+                        <input type="text" class="form-control" id="akari_db" size="5" value="akari">
+                    </div>
 
-					<div class="form-group">
-						<label for="akari_table">table:</label>
-						<input type="text" class="form-control" id="akari_table" size="10" value="fis_image_v1">
-					</div>
+                    <div class="form-group">
+                        <label for="akari_table">table:</label>
+                        <input type="text" class="form-control" id="akari_table" size="10" value="fis_image_v1">
+                    </div>
 
-					<div class="form-group">
-						<label for="akari_colourmap">colourmap:</label>
-						<input type="text" class="form-control" id="akari_colourmap" size="5" value="red">
-					</div>
+                    <div class="form-group">
+                        <label for="akari_colourmap">colourmap:</label>
+                        <input type="text" class="form-control" id="akari_colourmap" size="5" value="red">
+                    </div>
 
-					<button type="submit" class="btn btn-default" onclick="view_akari()">Submit</button>
-				</div>
-			</div>
-		</div>
+                    <button type="submit" class="btn btn-default" onclick="view_akari()">Submit</button>
+                </div>
+            </div>
+        </div>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h2>ALMA</h2>
-			</div>
-			<div class="panel-body">
-				<div class="form-inline">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>ALMA</h2>
+            </div>
+            <div class="panel-body">
+                <div class="form-inline">
 
-					<div class="form-group">
-						<label for="datasetid">datasetId:</label>
-						<input type="text" class="form-control" id="datasetid" value="ALMA01084695">
-						<!-- ALMA01128274, ALMA01031054 -->
-					</div>
+                    <div class="form-group">
+                        <label for="datasetid">datasetId:</label>
+                        <input type="text" class="form-control" id="datasetid" value="ALMA01084695">
+                        <!-- ALMA01128274, ALMA01031054 -->
+                    </div>
 
-					<div class="form-group">
-						<label for="alma_db">db:</label>
-						<input type="text" class="form-control" id="alma_db" size="5" value="alma">
-					</div>
+                    <div class="form-group">
+                        <label for="alma_db">db:</label>
+                        <input type="text" class="form-control" id="alma_db" size="5" value="alma">
+                    </div>
 
-					<div class="form-group">
-						<label for="alma_table">table:</label>
-						<input type="text" class="form-control" id="alma_table" size="5" value="cube">
-					</div>
+                    <div class="form-group">
+                        <label for="alma_table">table:</label>
+                        <input type="text" class="form-control" id="alma_table" size="5" value="cube">
+                    </div>
 
-					<button type="submit" class="btn btn-default" onclick="view_alma()">Submit</button>
-					<button type="submit" class="btn btn-default pull-right" onclick="randomise_alma()">Random
-						sample</button>
-				</div>
-			</div>
-		</div>
+                    <button type="submit" class="btn btn-default" onclick="view_alma()">Submit</button>
+                    <button type="submit" class="btn btn-default pull-right" onclick="randomise_alma()">Random
+                        sample</button>
+                </div>
+            </div>
+        </div>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h2>HSC</h2>
-			</div>
-			<div class="panel-body">
-				<div class="form-inline">
-					<div class="form-group">
-						<label for="hsc_dataid">dataId:</label>
-						<input type="text" class="form-control" id="hsc_dataid" value="HSCU_0876521">
-					</div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>HSC</h2>
+            </div>
+            <div class="panel-body">
+                <div class="form-inline">
+                    <div class="form-group">
+                        <label for="hsc_dataid">dataId:</label>
+                        <input type="text" class="form-control" id="hsc_dataid" value="HSCU_0876521">
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" class="hsc_filter" id="G"> G</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" class="hsc_filter" id="G"> G</label>
+                            </div>
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" class="hsc_filter" id="R"> R</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" class="hsc_filter" id="R"> R</label>
+                            </div>
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" class="hsc_filter" id="I"> I</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" class="hsc_filter" id="I"> I</label>
+                            </div>
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" class="hsc_filter" id="Z"> Z</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" class="hsc_filter" id="Z"> Z</label>
+                            </div>
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" class="hsc_filter" id="Y"> Y</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" class="hsc_filter" id="Y"> Y</label>
+                            </div>
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" class="hsc_filter" id="NB0816"> NB0816</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" class="hsc_filter" id="NB0816"> NB0816</label>
+                            </div>
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" class="hsc_filter" id="NB0921"> NB0921</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" class="hsc_filter" id="NB0921"> NB0921</label>
+                            </div>
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" id="hsc_composite"> RGB composite view (only valid for up
-									to 3 entries)</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" id="hsc_composite"> RGB composite view (only valid for up
+                                    to 3 entries)</label>
+                            </div>
+                        </div>
+                    </div>
 
-				</div>
+                </div>
 
-				</br>
+                </br>
 
-				<div class="form-inline">
+                <div class="form-inline">
 
-					<div class="form-group">
-						<label for="hsc_db">db:</label>
-						<input type="text" class="form-control" id="hsc_db" size="5" value="hsc_dr1">
-					</div>
+                    <div class="form-group">
+                        <label for="hsc_db">db:</label>
+                        <input type="text" class="form-control" id="hsc_db" size="5" value="hsc_dr1">
+                    </div>
 
-					<div class="form-group">
-						<label for="hsc_table">table:</label>
-						<input type="text" class="form-control" id="hsc_table" size="10" value="image_meta">
-					</div>
+                    <div class="form-group">
+                        <label for="hsc_table">table:</label>
+                        <input type="text" class="form-control" id="hsc_table" size="10" value="image_meta">
+                    </div>
 
-					<div class="form-group">
-						<label for="hsc_colourmap">colourmap:</label>
-						<input type="text" class="form-control" id="hsc_colourmap" size="5" value="negative">
-					</div>
+                    <div class="form-group">
+                        <label for="hsc_colourmap">colourmap:</label>
+                        <input type="text" class="form-control" id="hsc_colourmap" size="5" value="negative">
+                    </div>
 
-					<button type="submit" class="btn btn-default" onclick="view_hsc()">Submit</button>
-				</div>
-			</div>
-		</div>
+                    <button type="submit" class="btn btn-default" onclick="view_hsc()">Submit</button>
+                </div>
+            </div>
+        </div>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h2>MOIRCS</h2>
-			</div>
-			<div class="panel-body">
-				<div class="form-inline">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>MOIRCS</h2>
+            </div>
+            <div class="panel-body">
+                <div class="form-inline">
 
-					<div class="form-group">
-						<label for="moircs_dataid">dataId:</label>
-						<input type="text" class="form-control" id="moircs_dataid" size="25"
-							value="MCSM08535D4704B0400">
-					</div>
+                    <div class="form-group">
+                        <label for="moircs_dataid">dataId:</label>
+                        <input type="text" class="form-control" id="moircs_dataid" size="25"
+                            value="MCSM08535D4704B0400">
+                    </div>
 
-					<div class="form-group">
-						<label for="moircs_db">db:</label>
-						<input type="text" class="form-control" id="moircs_db" size="5" value="moircs">
-					</div>
+                    <div class="form-group">
+                        <label for="moircs_db">db:</label>
+                        <input type="text" class="form-control" id="moircs_db" size="5" value="moircs">
+                    </div>
 
-					<div class="form-group">
-						<label for="moircs_table">table:</label>
-						<input type="text" class="form-control" id="moircs_table" size="10" value="mosaic_meta">
-					</div>
+                    <div class="form-group">
+                        <label for="moircs_table">table:</label>
+                        <input type="text" class="form-control" id="moircs_table" size="10" value="mosaic_meta">
+                    </div>
 
-					<div class="form-group">
-						<label for="moircs_colourmap">colourmap:</label>
-						<input type="text" class="form-control" id="moircs_colourmap" size="5" value="negative">
-					</div>
+                    <div class="form-group">
+                        <label for="moircs_colourmap">colourmap:</label>
+                        <input type="text" class="form-control" id="moircs_colourmap" size="5" value="negative">
+                    </div>
 
-					<button type="submit" class="btn btn-default" onclick="view_moircs()">Submit</button>
-				</div>
-			</div>
-		</div>
+                    <button type="submit" class="btn btn-default" onclick="view_moircs()">Submit</button>
+                </div>
+            </div>
+        </div>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h2>NRO45M</h2>
-			</div>
-			<div class="panel-body">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>NRO45M #1</h2>
+            </div>
+            <div class="panel-body">
 
-				<div class="form-horizontal">
-					<div class="form-group">
+                <div class="form-horizontal">
+                    <div class="form-group">
 
-						<label class="control-label col-sm-2" for="datasetid1">datasetId1:</label>
-						<div class="col-sm-10">
-							<input type="text" class="form-control datasetid" id="datasetid1" value="FGN00000000">
-						</div>
-					</div>
+                        <label class="control-label col-sm-2" for="datasetid1">datasetId1:</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control datasetid" id="datasetid1" value="FGN00000000">
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<label class="control-label col-sm-2" for="datasetid2">datasetId2:</label>
-						<div class="col-sm-10">
-							<input type="text" class="form-control datasetid" id="datasetid2" value="FGN00000003">
-						</div>
-					</div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2" for="datasetid2">datasetId2:</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control datasetid" id="datasetid2" value="FGN00000003">
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<label class="control-label col-sm-2" for="datasetid3">datasetId3:</label>
-						<div class="col-sm-10">
-							<input type="text" class="form-control datasetid" id="datasetid3" value="FGN00000006">
-						</div>
-					</div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2" for="datasetid3">datasetId3:</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control datasetid" id="datasetid3" value="FGN00000006">
+                        </div>
+                    </div>
 
-					<div class="form-group">
-						<div class="col-sm-offset-2 col-sm-10">
-							<div class="checkbox">
-								<label><input type="checkbox" id="composite"> RGB composite view (only valid for up to 3
-									entries)</label>
-							</div>
-						</div>
-					</div>
+                    <div class="form-group">
+                        <div class="col-sm-offset-2 col-sm-10">
+                            <div class="checkbox">
+                                <label><input type="checkbox" id="composite"> RGB composite view (only valid for up to 3
+                                    entries)</label>
+                            </div>
+                        </div>
+                    </div>
 
-				</div>
+                </div>
 
-				<div class="form-inline">
+                <div class="form-inline">
 
-					<div class="form-group">
-						<label for="nro_db">db:</label>
-						<input type="text" class="form-control" id="nro_db" size="10" value="nro45m">
-					</div>
+                    <div class="form-group">
+                        <label for="nro_db">db:</label>
+                        <input type="text" class="form-control" id="nro_db" size="10" value="nro45m">
+                    </div>
 
-					<div class="form-group">
-						<label for="nro_table">table:</label>
-						<input type="text" class="form-control" id="nro_table" size="15" value="fugin.fugin_meta">
-					</div>
+                    <div class="form-group">
+                        <label for="nro_table">table:</label>
+                        <input type="text" class="form-control" id="nro_table" size="15" value="fugin.fugin_meta">
+                    </div>
 
-					<button type="submit" class="btn btn-default" onclick="view_nro45m()">Submit</button>
-				</div>
+                    <button type="submit" class="btn btn-default" onclick="view_nro45m()">Submit</button>
+                </div>
 
-			</div>
-		</div>
+            </div>
+        </div>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<h2>Suprime-Cam</h2>
-			</div>
-			<div class="panel-body">
-				<div class="form-inline">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>NRO45M #2</h2>
+            </div>
+            <div class="panel-body">
+                <div class="form-inline">
 
-					<div class="form-group">
-						<label for="spcam_dataid">dataId:</label>
-						<input type="text" class="form-control" id="spcam_dataid" size="25"
-							value="SUPM139CB9FF03412700">
-					</div>
+                    <div class="form-group">
+                        <label for="nro2_dataid">dataId:</label>
+                        <input type="text" class="form-control" id="nro2_dataid" value="NROA00000001">
+                    </div>
 
-					<div class="form-group">
-						<label for="spcam_db">db:</label>
-						<input type="text" class="form-control" id="spcam_db" size="5" value="spcam">
-					</div>
+                    <div class="form-group">
+                        <label for="nro2_db">db:</label>
+                        <input type="text" class="form-control" id="nro2_db" size="10" value="nro45m">
+                    </div>
 
-					<div class="form-group">
-						<label for="spcam_table">table:</label>
-						<input type="text" class="form-control" id="spcam_table" size="10" value="mosaic_meta">
-					</div>
+                    <div class="form-group">
+                        <label for="nro2_table">table:</label>
+                        <input type="text" class="form-control" id="nro2_table" size="20" value="archive.archive_meta">
+                    </div>
 
-					<div class="form-group">
-						<label for="spcam_colourmap">colourmap:</label>
-						<input type="text" class="form-control" id="spcam_colourmap" size="5" value="negative">
-					</div>
+                    <button type="submit" class="btn btn-default" onclick="view_nro45m2()">Submit</button>
+                </div>
+            </div>
+        </div>
 
-					<button type="submit" class="btn btn-default" onclick="view_spcam()">Submit</button>
-				</div>
-			</div>
-		</div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2>Suprime-Cam</h2>
+            </div>
+            <div class="panel-body">
+                <div class="form-inline">
 
-	</div>
+                    <div class="form-group">
+                        <label for="spcam_dataid">dataId:</label>
+                        <input type="text" class="form-control" id="spcam_dataid" size="25"
+                            value="SUPM139CB9FF03412700">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spcam_db">db:</label>
+                        <input type="text" class="form-control" id="spcam_db" size="5" value="spcam">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spcam_table">table:</label>
+                        <input type="text" class="form-control" id="spcam_table" size="10" value="mosaic_meta">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spcam_colourmap">colourmap:</label>
+                        <input type="text" class="form-control" id="spcam_colourmap" size="5" value="negative">
+                    </div>
+
+                    <button type="submit" class="btn btn-default" onclick="view_spcam()">Submit</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </body>
 
 </html>
