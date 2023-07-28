@@ -4456,7 +4456,10 @@ fn http_fits_response(
         "<link href=\"https://fonts.googleapis.com/css?family=Material+Icons\" rel=\"stylesheet\"/>\n",
     );
 
-    html.push_str("<script src=\"https://d3js.org/d3.v5.min.js\"></script>\n");
+    #[cfg(not(feature = "cdn"))]
+    html.push_str("<script src=\"https://d3js.org/d3.v7.min.js\"></script>\n");
+    #[cfg(feature = "cdn")]
+    html.push_str("<script src=\"https://cdn.jsdelivr.net/npm/d3@7\"></script>\n");
 
     #[cfg(not(feature = "cdn"))]
     html.push_str("<script src=\"reconnecting-websocket.js\"></script>\n");
