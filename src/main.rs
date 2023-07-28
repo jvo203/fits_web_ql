@@ -4208,13 +4208,25 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
                         let filename = match table.find('.') {
                             Some(index) => {
                                 let table = &table[0..index];
-                                format!(
-                                    "{}/{}/{}/{}",
-                                    fits::FITSHOME,
-                                    db,
-                                    table.to_string().to_ascii_uppercase(),
-                                    path
-                                )
+
+                                // if the table contains "fugin" use upper case
+                                if table.contains("fugin") {
+                                    format!(
+                                        "{}/{}/{}/{}",
+                                        fits::FITSHOME,
+                                        db,
+                                        table.to_string().to_ascii_uppercase(),
+                                        path
+                                    )
+                                } else {
+                                    format!(
+                                        "{}/{}/{}/{}",
+                                        fits::FITSHOME,
+                                        db,
+                                        table.to_string().to_ascii_lowercase(),
+                                        path
+                                    )
+                                }
                             }
                             None => match db.as_ref() {
                                 "spcam" => {
