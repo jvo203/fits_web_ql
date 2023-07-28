@@ -200,3 +200,20 @@ function view_nro45m() {
     //console.log(url) ;
     window.location.href = url;
 }
+
+
+function view_nro45m2() {
+    var dataId = document.getElementById("nro2_dataid").value.trim();
+    var db = document.getElementById("nro2_db").value.trim();
+    var table = document.getElementById("nro2_table").value.trim();
+
+    if (dataId != "") {
+        var url = null;
+
+        url = "/fitswebql/FITSWebQL.html?" + "db=" + encodeURIComponent(db) + "&table=" + encodeURIComponent(table) + "&datasetId=" + encodeURIComponent(dataId);
+
+        window.location.href = url;
+    }
+    else
+        alert("no datasetId found !");
+}
