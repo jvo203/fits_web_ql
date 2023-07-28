@@ -1,0 +1,27 @@
+Using Intel IPP 2021.9.0
+Number of threads in a global pool: 16
+server interface: 0.0.0.0, port: 8080, path: fitswebql_v4
+detected number of logical CPU cores: 32, physical: 16
+started a fits_web_ql server process on port 8080
+send SIGINT to shut down, i.e. killall -s SIGINT fits_web_ql
+FITSWebQL path: fitswebql, db: nro45m, table: archive.archive_meta, dataset_id: ["NROA00000001"], composite: false, flux:
+calling http_fits_response for ["NROA00000001"]
+PostgreSQL connection URL: postgresql://jvo@localhost/nro45m
+connected to PostgreSQL
+SQL: SELECT path FROM archive.archive_meta WHERE data_id = 'NROA00000001';
+ROW: Row { columns: [Column { name: "path", type: Text }] }
+filepath: "/home/nro45m/ARCHIVE/2021/11/10/nro-20211110JST172927-v200811ms_v211001-pipe/products/NROA00000001.fits"
+loading FITS data from "FITSCACHE/NROA00000001.fits"
+CRITICAL ERROR "FITSCACHE/NROA00000001.fits": Os { code: 2, kind: NotFound, message: "No such file or directory" }
+FITS::from_url(http://jvox.vo.nao.ac.jp:8060/skynode/getDataForALMA.do?db=alma&table=cube&data_id=NROA00000001_00_00_00)
+buffer length: 12, checking for compression...no compression found.
+555 bytes remaining in the libcurl download buffer; has_data: false
+deleting NROA00000001
+deleting NROA00000001
+[get_molecules] http request for NROA00000001: freq_start=0, freq_end=0 [GHz]
+new websocket request for ["NROA00000001"], user agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.188"
+allocating a new websocket session for NROA00000001
+websocket connection started for NROA00000001
+[SessionServer]: registering a new session NROA00000001/14cfbedd-ad19-43d9-94e0-3c36afe0c907
+[debug] WebAssembly is supported
+
