@@ -1758,7 +1758,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     println!("VP9 image frame error: image allocation failed");
                                     return;
                                 }
-                                let _ = mem::forget(ret); // img and ret are the same
+                                // calls to `std::mem::forget` with a value that implements `Copy` does nothing
+                                // mem::forget(ret); // img and ret are the same
                                 print!("{:#?}", raw);
 
                                 //redo the image based on new user parameters, pixels and mask
