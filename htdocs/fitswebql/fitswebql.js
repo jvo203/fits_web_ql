@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2023-07-31.0";
+    return "JS2023-07-31.1";
 }
 
 const wasm_supported = (() => {
@@ -10772,18 +10772,29 @@ function display_menu() {
         .on("click", show_fits_header)
         .html('display header');
 
-    if (!isLocal && va_count == 1 && (window.location.search.indexOf('ALMA') > 0 || window.location.search.indexOf('ALMB') > 0)) {
+    if (!isLocal && va_count == 1 && (window.location.search.indexOf('ALMA') > 0 || window.location.search.indexOf('ALMB') > 0 || window.location.search.indexOf('FGN') > 0 || window.location.search.indexOf('NROA') > 0)) {
         var url = "";
 
-        if (datasetId.localeCompare("ALMA01000000") < 0)
-            url = "http://jvo.nao.ac.jp/portal/alma/sv.do?action=download.fits&dataId=";
-        else
-            url = "http://jvo.nao.ac.jp/portal/alma/archive.do?action=download.fits&dataId=";
+        if (window.location.search.indexOf('ALMA') > 0 || window.location.search.indexOf('ALMB') > 0) {
+            // ALMA
+            if (datasetId.localeCompare("ALMA01000000") < 0)
+                url = "http://jvo.nao.ac.jp/portal/alma/sv.do?action=download.fits&dataId=";
+            else
+                url = "http://jvo.nao.ac.jp/portal/alma/archive.do?action=download.fits&dataId=";
+
+            url += datasetId + '_00_00_00';
+        } else if (window.location.search.indexOf('FGN') > 0) {
+            // FUGIN
+            url = "http://jvo.nao.ac.jp/portal/nobeyama/fugin/download.do?action=download.fits&dataId=" + datasetId;
+        } else if (window.location.search.indexOf('NROA') > 0) {
+            // NRO45M
+            url = "http://jvo.nao.ac.jp/portal/nobeyama/archive/download.do?action=download.fits&dataId=" + datasetId;
+        }
 
         fitsDropdown.append("li")
             .append("a")
             .attr("id", "FITS")
-            .attr("href", url + datasetId + '_00_00_00')
+            .attr("href", url)
             .html('full FITS download <span class="fas fa-save"></span>');
     }
     else {
