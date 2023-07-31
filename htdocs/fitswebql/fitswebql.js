@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2023-05-24.0";
+    return "JS2023-07-31.0";
 }
 
 const wasm_supported = (() => {
@@ -10772,7 +10772,7 @@ function display_menu() {
         .on("click", show_fits_header)
         .html('display header');
 
-    if (!isLocal && va_count == 1 && (window.location.search.indexOf('ALMA') > 0 || window.location.search.indexOf('ALMB'))) {
+    if (!isLocal && va_count == 1 && (window.location.search.indexOf('ALMA') > 0 || window.location.search.indexOf('ALMB') > 0)) {
         var url = "";
 
         if (datasetId.localeCompare("ALMA01000000") < 0)
