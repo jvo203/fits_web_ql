@@ -2676,7 +2676,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.4.13";
-static VERSION_STRING: &'static str = "R/SV2023-07-28.0";
+static VERSION_STRING: &'static str = "R/SV2023-08-01.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4210,7 +4210,10 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
                                 let table = &table[0..index];
 
                                 // if the table contains "fugin" use upper case
-                                if table.contains("fugin") {
+                                if table.contains("fugin")
+                                    || table.contains("coming")
+                                    || table.contains("sfp")
+                                {
                                     format!(
                                         "{}/{}/{}/{}",
                                         fits::FITSHOME,
