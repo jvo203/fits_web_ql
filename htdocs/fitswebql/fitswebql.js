@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2023-07-31.1";
+    return "JS2023-08-01.0";
 }
 
 const wasm_supported = (() => {
@@ -10772,7 +10772,7 @@ function display_menu() {
         .on("click", show_fits_header)
         .html('display header');
 
-    if (!isLocal && va_count == 1 && (window.location.search.indexOf('ALMA') > 0 || window.location.search.indexOf('ALMB') > 0 || window.location.search.indexOf('FGN') > 0 || window.location.search.indexOf('NROA') > 0)) {
+    if (!isLocal && va_count == 1 && (window.location.search.indexOf('ALMA') > 0 || window.location.search.indexOf('ALMB') > 0 || window.location.search.indexOf('FGN') > 0 || window.location.search.indexOf('CMG') > 0 || window.location.search.indexOf('SFP') > 0 || window.location.search.indexOf('NROA') > 0)) {
         var url = "";
 
         if (window.location.search.indexOf('ALMA') > 0 || window.location.search.indexOf('ALMB') > 0) {
@@ -10786,6 +10786,12 @@ function display_menu() {
         } else if (window.location.search.indexOf('FGN') > 0) {
             // FUGIN
             url = "http://jvo.nao.ac.jp/portal/nobeyama/fugin/download.do?action=download.fits&dataId=" + datasetId;
+        } else if (window.location.search.indexOf('CMG') > 0) {
+            // COMING
+            url = "http://jvo.nao.ac.jp/portal/nobeyama/coming/download.do?action=download.fits&dataId=" + datasetId;
+        } else if (window.location.search.indexOf('SFP') > 0) {
+            // SFP
+            url = "http://jvo.nao.ac.jp/portal/nobeyama/sfp/download.do?action=download.fits&dataId=" + datasetId;
         } else if (window.location.search.indexOf('NROA') > 0) {
             // NRO45M
             url = "http://jvo.nao.ac.jp/portal/nobeyama/archive/download.do?action=download.fits&dataId=" + datasetId;
