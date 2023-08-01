@@ -4209,7 +4209,7 @@ fn get_jvo_path(dataset_id: &String, db: &str, table: &str) -> Option<std::path:
                             Some(index) => {
                                 let table = &table[0..index];
 
-                                // if the table contains "fugin" use upper case
+                                // if the table contains {"fugin","coming","sfp"} use upper case
                                 if table.contains("fugin")
                                     || table.contains("coming")
                                     || table.contains("sfp")
