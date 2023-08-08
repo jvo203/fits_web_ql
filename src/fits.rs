@@ -2253,6 +2253,11 @@ impl FITS {
                     self.is_optical = false;
                 }
 
+                if self.telescope.contains("nro") {
+                    //disable optical
+                    self.is_optical = false;
+                }
+
                 if self.telescope.contains("nro45m") {
                     //disable optical
                     self.is_optical = false;
