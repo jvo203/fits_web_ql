@@ -2675,8 +2675,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.4.13";
-static VERSION_STRING: &'static str = "R/SV2023-08-08.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.4.14";
+static VERSION_STRING: &'static str = "R/SV2023-09-05.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
 
@@ -4689,66 +4689,6 @@ fn http_fits_response(
         };
         mainRenderer();
     </script>\n",
-    );
-
-    //Google Analytics
-    #[cfg(feature = "development")]
-    html.push_str(
-        "<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ 
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), 
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) 
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-  ga('create', 'UA-72136224-1', 'auto');				
-  ga('send', 'pageview');						  									
-  </script>\n",
-    );
-
-    #[cfg(feature = "test")]
-    html.push_str(
-        "<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ 
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), 
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) 
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-  ga('create', 'UA-72136224-2', 'auto');				
-  ga('send', 'pageview');  									
-  </script>\n",
-    );
-
-    #[cfg(feature = "production")]
-    html.push_str(
-        "<!-- Global site tag (gtag.js) - Google Analytics -->
-        <script async src='https://www.googletagmanager.com/gtag/js?id=G-YM4BZGDN25'></script>
-        <script>
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-YM4BZGDN25');
-        </script>\n",
-    );
-
-    /*html.push_str(
-          "<script>
-    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-    ga('create', 'UA-72136224-3', 'auto');
-    ga('send', 'pageview');
-    </script>\n",
-      );*/
-
-    #[cfg(not(feature = "jvo"))]
-    html.push_str(
-        "<script>
-      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-      ga('create', 'UA-72136224-5', 'auto');
-      ga('send', 'pageview');
-      </script>\n",
     );
 
     html.push_str("</body></html>\n");
