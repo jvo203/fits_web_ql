@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2023-08-01.0";
+    return "JS2023-09-11.0";
 }
 
 const wasm_supported = (() => {
@@ -10722,9 +10722,17 @@ function change_intensity_threshold(refresh) {
 }
 
 function hide_navigation_bar() {
-    console.log("hide_navigation_bar");
-    document.getElementById('menu').style.display = "none";
-    d3.select("#menu_activation_area").attr("opacity", 0.1);//was 0.7
+    // console.log("hide_navigation_bar");
+
+    try {
+        // d3 select all elements with class "dropdown-menu" and set their display to "none"
+        d3.selectAll(".dropdown-menu").style("display", "none");
+    } catch (e) { }
+
+    try {
+        document.getElementById('menu').style.display = "none";
+        d3.select("#menu_activation_area").attr("opacity", 0.1);//was 0.7
+    } catch (e) { }
 }
 
 function display_menu() {
