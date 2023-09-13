@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2023-09-11.0";
+    return "JS2023-09-13.0";
 }
 
 const wasm_supported = (() => {
@@ -542,6 +542,9 @@ function plot_spectrum(dataArray) {
         let scale = spectrum_scale[index];
 
         data = largestTriangleThreeBuckets(data, dx / 2);
+
+        // binning
+        data = largestTriangleThreeBuckets(data, Math.max(2, Math.floor(data.length / binning)));
 
         var incrx = dx / (data.length - 1);
         var offset = range.xMin;
@@ -4671,6 +4674,42 @@ function enable_autoscale() {
     user_data_max = null;
 };
 
+function change_binning() {
+    try {
+        binning = parseInt(document.getElementById('binning').value);
+    }
+    catch (e) { };
+
+    let fitsData = fitsContainer[va_count - 1];
+
+    if (fitsData != null) {
+        if (fitsData.depth > 1) {
+            if (va_count == 1) {
+                if (intensity_mode == "mean") {
+                    plot_spectrum([fitsData.mean_spectrum]);
+                    replot_y_axis();
+                }
+
+                if (intensity_mode == "integrated") {
+                    plot_spectrum([fitsData.integrated_spectrum]);
+                    replot_y_axis();
+                }
+            }
+            else {
+                if (intensity_mode == "mean") {
+                    plot_spectrum(mean_spectrumContainer);
+                    replot_y_axis();
+                }
+
+                if (intensity_mode == "integrated") {
+                    plot_spectrum(integrated_spectrumContainer);
+                    replot_y_axis();
+                }
+            }
+        }
+    }
+}
+
 function change_video_fps_control() {
     video_fps_control = document.getElementById('video_fps_control').value;
 
@@ -5681,6 +5720,26 @@ function display_preferences(index) {
             }
         })
         .html(htmlStr);
+
+    //----------------------------------------	
+    tmpA = prefDropdown.append("li")
+        .attr("id", "binning_li")
+        //.style("background-color", "#FFF")
+        .append("a")
+        .style("class", "form-group")
+        .attr("class", "form-horizontal");
+
+    tmpA.append("label")
+        .attr("for", "binning")
+        .attr("class", "control-label")
+        .html("spectrum binning:&nbsp; ");
+
+    tmpA.append("select")
+        .attr("id", "binning")
+        .attr("onchange", "javascript:change_binning();")
+        .html("<option value='1'>1:1</option><option value='2'>1:2</option><option value='4'>1:4</option><option value='8'>1:8</option><option value='16'>1:16</option>");
+
+    document.getElementById('binning').value = binning.toString();
 
     //----------------------------------------
     var tmpA;
@@ -13029,6 +13088,9 @@ async*/ function mainRenderer() {
         recv_seq_id = 0;
         sent_seq_id = 0;
         last_seq_id = 0;
+
+        //spectrum
+        binning = 1;
 
         //video
         if (video_fps_control == 'auto')
