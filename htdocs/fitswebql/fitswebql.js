@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2023-09-13.0";
+    return "JS2023-09-14.0";
 }
 
 const wasm_supported = (() => {
@@ -316,6 +316,36 @@ function get_frame_bounds(lo, hi, index) {
         return get_velocity_bounds(lo, hi, fitsData);
 }
 
+function spectrum_binning(data, factor) {
+    if (factor <= 1)
+        return data;
+
+    var len = data.length;
+    var new_len = Math.floor(len / factor);
+
+    if (new_len <= 1)
+        return data;
+
+    var new_data = new Array(new_len);
+
+    for (var i = 0; i < new_len; i++) {
+        var sum = 0.0;
+
+        for (var j = 0; j < factor; j++) {
+            let idx = i * factor + j;
+            sum += data[idx];
+
+            if (idx >= len)
+                break;
+
+        };
+
+        new_data[i] = sum / factor;
+    };
+
+    return new_data;
+}
+
 function largestTriangleThreeBuckets(data, threshold) {
 
     var floor = Math.floor,
@@ -544,7 +574,7 @@ function plot_spectrum(dataArray) {
         data = largestTriangleThreeBuckets(data, dx / 2);
 
         // binning
-        data = largestTriangleThreeBuckets(data, Math.max(2, Math.floor(data.length / binning)));
+        data = spectrum_binning(data, binning);
 
         var incrx = dx / (data.length - 1);
         var offset = range.xMin;
