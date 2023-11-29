@@ -2675,7 +2675,7 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.4.17";
+static SERVER_STRING: &'static str = "FITSWebQL v4.4.18";
 static VERSION_STRING: &'static str = "R/SV2023-11-29.0";
 static WASM_STRING: &'static str = "WASM2020-06-22.0";
 static FPZIP_STRING: &'static str = "WASM2020-06-18.0";
