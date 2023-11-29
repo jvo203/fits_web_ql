@@ -4015,7 +4015,7 @@ async fn get_fits(query: web::Query<HashMap<String, String>>) -> HttpResponse {
                 let timestamp = Local::now();
                 let disposition_filename = format!(
                     "attachment; filename=fits_web_ql_{}.tar",
-                    timestamp.format("%Y-%m-%d_%H:%M:%S")
+                    timestamp.format("%Y-%m-%d_%H-%M-%S")
                 );
 
                 HttpResponse::Ok()
