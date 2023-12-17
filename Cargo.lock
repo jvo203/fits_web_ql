@@ -395,29 +395,6 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.65.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfdf7b466f9a4903edc73f95d6d2bcd5baf8ae620638762244d3f60143643cc5"
-dependencies = [
- "bitflags 1.3.2",
- "cexpr",
- "clang-sys",
- "lazy_static",
- "lazycell",
- "log",
- "peeking_take_while",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash",
- "shlex",
- "syn 2.0.41",
- "which",
-]
-
-[[package]]
-name = "bindgen"
 version = "0.69.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ffcebc3849946a7170a05992aac39da343a90676ab392c51a4280981d6379c2"
@@ -909,7 +886,7 @@ dependencies = [
  "actix-web-actors",
  "atomic",
  "bincode",
- "bindgen 0.69.1",
+ "bindgen",
  "byteorder 1.5.0",
  "bytes",
  "bzip2",
@@ -1000,11 +977,11 @@ dependencies = [
 
 [[package]]
 name = "fpzip-sys"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5e24026c5f6f77de549759f61a21898bde324fe1afb00cbc63c7977f280dd04"
+checksum = "57db0a9be73a4ed704db7fed035c84a81613ff555187f4fb01ffcede17eec0a5"
 dependencies = [
- "bindgen 0.65.1",
+ "bindgen",
  "cmake",
 ]
 
@@ -1344,7 +1321,7 @@ version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ccb1400821c68d7cada10bb3198fa013b0397294c8a943f0f606d3437e915ec6"
 dependencies = [
- "bindgen 0.69.1",
+ "bindgen",
  "cc",
  "libc",
  "regex",
@@ -1465,7 +1442,7 @@ name = "libvpx-native-sys"
 version = "4.0.8"
 source = "git+https://github.com/jvo203/rust-vpx.git#159d0d6b8d1187b86bd470b078ad17ef65404800"
 dependencies = [
- "bindgen 0.69.1",
+ "bindgen",
  "pkg-config",
  "semver-parser",
 ]
@@ -2970,7 +2947,7 @@ version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a47f08caab4a883da2e0ca331b23c723e937d9cc271f53563db3c92d1c53a099"
 dependencies = [
- "bindgen 0.69.1",
+ "bindgen",
  "cmake",
 ]
 
