@@ -38,7 +38,7 @@ brew install rust
 
 other platforms:
 
-https://www.rust-lang.org/install.html
+https://www.rust-lang.org
 
 ##
 make and other command-line software development tools
