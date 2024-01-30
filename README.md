@@ -93,6 +93,10 @@ Ubuntu Linux:
 
 sudo apt install clang llvm
 
+CentOS:
+
+sudo dnf install llvm-devel clang-devel
+
 ##
 install nasm and yasm assembler compilers
 
