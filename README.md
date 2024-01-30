@@ -177,7 +177,6 @@ Ubuntu Linux: "sudo apt install libsqlite3-dev"
 some Linux systems, for example Ubuntu, CentOS 6 and 7, need the following environment variables to be set before running fits_web_ql:
 
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
-
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
 it is best to append these lines into your .bashrc
