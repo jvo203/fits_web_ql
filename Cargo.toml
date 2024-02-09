@@ -34,7 +34,7 @@ thread-priority = "*"
 [dependencies]
 jemallocator = "*"
 jemalloc-sys = { version = "*", optional = true }
-actix = "0.13.2"
+actix = "0.13.3"
 actix-http = "3.6.0"
 actix-web = "4.5.1"
 actix-web-actors = "4.3.0"
