@@ -85,7 +85,7 @@ impl Default for SessionServer {
         let datasets_copy = datasets.clone();
 
         let timer = timer::Timer::new();
-        let guard = timer.schedule_repeating(chrono::Duration::seconds(ORPHAN_GARBAGE_COLLECTION_TIMEOUT), move || {
+        let guard = timer.schedule_repeating(chrono::Duration::try_seconds(ORPHAN_GARBAGE_COLLECTION_TIMEOUT).expect("a valid number of seconds"), move || {
             //println!("cleaning orphaned datasets");
 
             let orphans: Vec<_> = {
@@ -390,62 +390,69 @@ impl Handler<Disconnect> for SessionServer {
                 self.datasets.write().remove(&msg.dataset_id);
                 let datasets = self.datasets.clone();
 
-                self.timer.schedule_with_delay(chrono::Duration::seconds(GARBAGE_COLLECTION_TIMEOUT), move || {
-                    // This closure is executed on the scheduler thread
-                    println!("executing garbage collection for {}", &msg.dataset_id);
+                match chrono::Duration::try_seconds(GARBAGE_COLLECTION_TIMEOUT) {
+                    Some(delay) => {
+                        self.timer.schedule_with_delay(delay, move || {
+                            // This closure is executed on the scheduler thread
+                            println!("executing garbage collection for {}", &msg.dataset_id);
+        
+                            //check if there are no new active sessions
+                            match datasets.read().get(&msg.dataset_id) {
+                                Some(_) => {
+                                    println!("[garbage collection]: an active session has been found for {}, doing nothing", &msg.dataset_id);
+                                },
+                                None => {
+                                    println!("[garbage collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);
+        
+                                    let is_dummy = {
+                                        let tmp = DATASETS.read();
+                                        let fits = tmp.get(&msg.dataset_id);
+        
+                                        match fits {
+                                            Some(lock) => {
+                                                let fits = lock.read();
+                                                fits.is_dummy
+                                            },
+                                            None => {
+                                                println!("[garbage collection]: (warning) {} not found in a HashMap", &msg.dataset_id);
+                                                return;
+                                            }
+                                        }
+                                    };
+        
+                                    //do not remove dummy datasets (loading progress etc)
+                                    //they will be cleaned in a separate garbage collection thread
+                                    if !is_dummy {
+                                        let entry = DATASETS.write().remove(&msg.dataset_id) ;
+                                        match entry {
+                                            Some(value) => {
+                                                std::thread::spawn(move || {
+                                                    #[cfg(target_os = "linux")]
+                                                    {
+                                                        match set_current_thread_priority(ThreadPriority::Min) {
+                                                            Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
+                                                            Err(err) => println!("error changing the thread priority: {:?}", err),
+                                                        }
+                                                    };
 
-                    //check if there are no new active sessions
-                    match datasets.read().get(&msg.dataset_id) {
-                        Some(_) => {
-                            println!("[garbage collection]: an active session has been found for {}, doing nothing", &msg.dataset_id);
-                        },
-                        None => {
-                            println!("[garbage collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);
+                                                    let fits = value.read();
+                                                    println!("non-blocking drop for {}", fits.dataset_id);
+                                                    fits.drop_to_cache();
+                                                });
 
-                            let is_dummy = {
-                                let tmp = DATASETS.read();
-                                let fits = tmp.get(&msg.dataset_id);
-
-                                match fits {
-                                    Some(lock) => {
-                                        let fits = lock.read();
-                                        fits.is_dummy
-                                    },
-                                    None => {
-                                        println!("[garbage collection]: (warning) {} not found in a HashMap", &msg.dataset_id);
-                                        return;
+                                                println!("resuming the actix server thread");
+                                            },
+                                            None => println!("{} not found in the DATASETS", &msg.dataset_id),
+                                        };
                                     }
                                 }
                             };
-
-                            //do not remove dummy datasets (loading progress etc)
-                            //they will be cleaned in a separate garbage collection thread
-                            if !is_dummy {
-                                let entry = DATASETS.write().remove(&msg.dataset_id) ;
-                                match entry {
-                                    Some(value) => {
-                                        std::thread::spawn(move || {
-                                            #[cfg(target_os = "linux")]
-                                            {
-                                                match set_current_thread_priority(ThreadPriority::Min) {
-                                                    Ok(_) => println!("successfully lowered priority for the dataset drop thread"),
-                                                    Err(err) => println!("error changing the thread priority: {:?}", err),
-                                                }
-                                            };
-
-                                            let fits = value.read();
-                                            println!("non-blocking drop for {}", fits.dataset_id);
-                                            fits.drop_to_cache();
-                                        });
-
-                                        println!("resuming the actix server thread");
-                                    },
-                                    None => println!("{} not found in the DATASETS", &msg.dataset_id),
-                                };
-                            }
-                        }
-                    };
-                }).ignore();
+                        }).ignore();
+                    }
+                    None => {
+                        println!("error creating a chrono::Duration");
+                    }
+                }
             }
         }
     }
