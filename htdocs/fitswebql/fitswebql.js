@@ -10716,6 +10716,7 @@ function partial_fits_download(offsetx, offsety, width, height) {
     //console.log(url) ;
     //window.location.assign(url);
     window.open(url, '_blank');
+    window.focus();
 }
 
 function ok_download() {
@@ -11600,7 +11601,7 @@ function show_welcome() {
     }
 
     bodyDiv.append("p")
-        .html('For optimum performance we recommend <a href="https://www.google.com/chrome/index.html" style="color:' + textColour + '"><b>Google Chrome</b></a>. Firefox Quantum is pretty much OK. Safari on MacOS works. We do NOT recommend IE.');
+        .html('For optimum performance we recommend <a href="https://www.google.com/chrome/index.html" style="color:' + textColour + '"><b>Google Chrome</b></a>. Firefox, MS Edge and Safari work fine. We do NOT recommend MS IE.');
 
     //bodyDiv.append("hr");    
 
