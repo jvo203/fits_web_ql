@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2023-09-14.0";
+    return "JS2024-03-18.0";
 }
 
 const wasm_supported = (() => {
@@ -9736,7 +9736,7 @@ function fetch_spectrum(datasetId, index, add_timestamp) {
             if (!isLocal) {
                 //let filesize = fitsData.HEADERSIZE + 4 * fitsData.width*fitsData.height*fitsData.depth*fitsData.polarisation ;
                 let filesize = fitsData.filesize;
-                let strFileSize = numeral(filesize).format('0.0b');
+                let strFileSize = numeral(filesize).format('0.0 ib');
                 d3.select("#FITS").html("full download (" + strFileSize + ")");
 
                 let url = fitsData.url;
@@ -11883,7 +11883,7 @@ function setup_help() {
         .text("CREDITS:");
 
     footer.append("p")
-        .text("Site design Ⓒ Christopher A. Zapart @ NAOJ, 2015 - 2023. JavaScript RA/DEC conversion Ⓒ Robert Martin Ayers, 2009, 2011, 2014.");
+        .text("Site design Ⓒ Christopher A. Zapart @ NAOJ, 2015 - 2024. JavaScript RA/DEC conversion Ⓒ Robert Martin Ayers, 2009, 2011, 2014.");
 
     footer.append("h3")
         .text("VERSION:");
