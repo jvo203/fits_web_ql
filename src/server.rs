@@ -395,7 +395,7 @@ impl Handler<Disconnect> for SessionServer {
                         self.timer.schedule_with_delay(delay, move || {
                             // This closure is executed on the scheduler thread
                             println!("executing garbage collection for {}", &msg.dataset_id);
-        
+
                             //check if there are no new active sessions
                             match datasets.read().get(&msg.dataset_id) {
                                 Some(_) => {
@@ -403,11 +403,11 @@ impl Handler<Disconnect> for SessionServer {
                                 },
                                 None => {
                                     println!("[garbage collection]: no active sessions found, {} will be expunged from memory", &msg.dataset_id);
-        
+
                                     let is_dummy = {
                                         let tmp = DATASETS.read();
                                         let fits = tmp.get(&msg.dataset_id);
-        
+
                                         match fits {
                                             Some(lock) => {
                                                 let fits = lock.read();
@@ -419,7 +419,7 @@ impl Handler<Disconnect> for SessionServer {
                                             }
                                         }
                                     };
-        
+
                                     //do not remove dummy datasets (loading progress etc)
                                     //they will be cleaned in a separate garbage collection thread
                                     if !is_dummy {
