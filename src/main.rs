@@ -2677,7 +2677,7 @@ static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.4.20";
 static VERSION_STRING: &'static str = "R/SV2024-04-25.0";
-static WASM_STRING: &'static str = "WASM2020-06-22.0";
+static WASM_STRING: &'static str = "WASM2024-04-25.0";
 static FPZIP_STRING: &'static str = "WASM2024-04-25.0";
 
 #[cfg(not(feature = "jvo"))]

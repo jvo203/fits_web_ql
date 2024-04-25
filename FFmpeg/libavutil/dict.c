@@ -259,7 +259,7 @@ int avpriv_dict_set_timestamp(AVDictionary **dict, const char *key, int64_t time
 {
     time_t seconds = timestamp / 1000000;
     struct tm *ptm, tmbuf;
-    ptm = gmtime_r(&seconds, &tmbuf);
+    ptm = (struct tm *)gmtime_r(&seconds, &tmbuf);
     if (ptm) {
         char buf[32];
         if (!strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", ptm))

@@ -8,7 +8,7 @@
 
 #include <string.h>
 
-//colourmaps
+// colourmaps
 #include "colourmap.h"
 
 static AVCodec *codec;
@@ -17,15 +17,15 @@ static AVFrame **avframe = NULL;
 static AVPacket **avpkt = NULL;
 
 extern AVCodec ff_hevc_decoder;
-//extern AVCodecParser ff_hevc_parser;
+// extern AVCodecParser ff_hevc_parser;
 
-EMSCRIPTEN_KEEPALIVE static void hevc_init(int va_count);
-EMSCRIPTEN_KEEPALIVE static void hevc_destroy(int va_count);
-EMSCRIPTEN_KEEPALIVE static double hevc_decode_nal_unit(int index, const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap);
+void hevc_init(int va_count);
+void hevc_destroy(int va_count);
+double hevc_decode_nal_unit(int index, const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap);
 
-EMSCRIPTEN_KEEPALIVE static void hevc_init(int va_count)
+void hevc_init(int va_count)
 {
-    //the "standard" way
+    // the "standard" way
     codec = &ff_hevc_decoder;
 
     if (avctx == NULL)
@@ -79,7 +79,7 @@ EMSCRIPTEN_KEEPALIVE static void hevc_init(int va_count)
     }
 }
 
-EMSCRIPTEN_KEEPALIVE static void hevc_destroy(int va_count)
+void hevc_destroy(int va_count)
 {
     if (avctx != NULL)
     {
@@ -112,7 +112,7 @@ EMSCRIPTEN_KEEPALIVE static void hevc_destroy(int va_count)
     }
 }
 
-EMSCRIPTEN_KEEPALIVE static double hevc_decode_nal_unit(int index, const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap)
+double hevc_decode_nal_unit(int index, const unsigned char *data, size_t data_len, unsigned char *canvas, unsigned int _w, unsigned int _h, const unsigned char *alpha, unsigned char *bytes, const char *colourmap)
 {
     if (avctx == NULL || avpkt == NULL || avframe == NULL)
         return 0.0;
@@ -174,7 +174,7 @@ EMSCRIPTEN_KEEPALIVE static double hevc_decode_nal_unit(int index, const unsigne
 
             if (w == _w && h == _h && stride_y == stride_u && stride_y == stride_v)
             {
-                //carry YUV (RGB) over to the canvas
+                // carry YUV (RGB) over to the canvas
                 apply_yuv(canvas, y, u, v, w, h, stride_y, alpha);
             }
             else
@@ -184,7 +184,7 @@ EMSCRIPTEN_KEEPALIVE static double hevc_decode_nal_unit(int index, const unsigne
         {
             printf("processing a YUV400 format\n");
 
-            //apply a colourmap etc.
+            // apply a colourmap etc.
             int w = avframe[index]->width;
             int h = avframe[index]->height;
             int stride = avframe[index]->linesize[0];
@@ -192,7 +192,7 @@ EMSCRIPTEN_KEEPALIVE static double hevc_decode_nal_unit(int index, const unsigne
 
             if (w == _w && h == _h)
             {
-                //copy luma into bytes
+                // copy luma into bytes
                 if (bytes != NULL)
                 {
                     size_t dst_offset = 0;
@@ -206,7 +206,7 @@ EMSCRIPTEN_KEEPALIVE static double hevc_decode_nal_unit(int index, const unsigne
                     }
                 }
 
-                //apply a colourmap
+                // apply a colourmap
                 if (strcmp(colourmap, "red") == 0)
                 {
                     apply_colourmap(canvas, luma, w, h, stride, false, ocean_g, ocean_r, ocean_b, alpha);
@@ -261,7 +261,7 @@ EMSCRIPTEN_KEEPALIVE static double hevc_decode_nal_unit(int index, const unsigne
                 }
                 else
                 {
-                    //no colour by default
+                    // no colour by default
                     apply_greyscale(canvas, luma, w, h, stride, alpha, false);
                 };
             }
