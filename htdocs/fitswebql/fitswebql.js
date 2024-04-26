@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2024-03-18.0";
+    return "JS2024-04-26.0";
 }
 
 const wasm_supported = (() => {
@@ -11665,7 +11665,7 @@ function setup_help() {
     var csv = bodyDiv.append("video")
         .attr("width", "100%")
         .attr("controls", "")
-        .attr("preload", "metadata");
+        .attr("preload", "none"); // metadata
 
     csv.append("source")
         .attr("src", "https://cdn.jsdelivr.net/gh/jvo203/FITSWEBQLSE/htdocs/fitswebql/spectrum_export.mp4");
@@ -11826,7 +11826,7 @@ function setup_help() {
     var vid = bodyDiv.append("video")
         .attr("width", "100%")
         .attr("controls", "")
-        .attr("preload", "metadata");
+        .attr("preload", "none"); // metadata
 
     vid.append("source")
         .attr("src", "https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/fixed_scale_y_axis.mp4");
