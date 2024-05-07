@@ -13,8 +13,7 @@ thor:
 #-s ALLOW_MEMORY_GROWTH=1
 EMCC_TOTAL_MEMORY=536870912
 
-#WASM_STRING = WASM2019-02-08.1
-WASM_STRING = WASM2024-04-25.0
+WASM_STRING = WASM2024-05-07.0
 
 hevc:
 #em++ -O3 -Wno-deprecated -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' -s EXPORTED_FUNCTIONS="['_malloc','_free']"  -I$(HOME)/jctvc-hm/source/Lib $(HOME)/jctvc-hm/source/Lib/TLibCommon/*.cpp $(HOME)/jctvc-hm/source/Lib/TLibDecoder/*.cpp src/colourmap.c src/hevc_decoder.cpp -o build/hevc.js
@@ -25,7 +24,7 @@ hevc:
 vpx:
 	emcc -Oz -s ALLOW_MEMORY_GROWTH=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap"]' -s EXPORTED_FUNCTIONS="['_malloc','_free']" -I/home/chris/ogv.js/build/js/root/include -L/home/chris/ogv.js/build/js/root/lib /home/chris/ogv.js/build/js/root/lib/libvpx.so src/colourmap.c src/vpx_decoder.c -o build/vpx.js
 
-FPZIP_STRING = WASM2024-04-25.0
+FPZIP_STRING = WASM2024-05-07.0
 
 FPZIP=fpzip
 SRC=$(FPZIP)/src/*.cpp
