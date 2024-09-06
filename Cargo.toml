@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.4.20"
+version = "4.4.21"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2021"
 
@@ -35,9 +35,9 @@ thread-priority = "*"
 jemallocator = "*"
 jemalloc-sys = { version = "*", optional = true }
 actix = "0.13.5"
-actix-http = "3.8.0"
-actix-web = "4.8.0"
-actix-web-actors = "4.3.0"
+actix-http = "3.9.0"
+actix-web = "4.9.0"
+actix-web-actors = "4.3.1+deprecated"
 actix-files = "0.6.6"
 http = "*"
 serde_json = "*"
