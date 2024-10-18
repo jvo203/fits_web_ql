@@ -971,11 +971,11 @@ dependencies = [
 
 [[package]]
 name = "fpzip-sys"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57db0a9be73a4ed704db7fed035c84a81613ff555187f4fb01ffcede17eec0a5"
+checksum = "3b3ed9f1b49142b9fcebb729022aa8075856fa44a0336de3b01c892423899c66"
 dependencies = [
- "bindgen 0.69.5",
+ "bindgen 0.70.1",
  "cmake",
 ]
 
@@ -2971,11 +2971,11 @@ dependencies = [
 
 [[package]]
 name = "zfp-sys"
-version = "0.1.15"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf69043aebc6069a823b130b451a2999dfc4f6a2141de59e18e29b50305655c6"
+checksum = "3642348da18d4605a9e43ca60f664536f8e570f960c24fd9030c10202da6585c"
 dependencies = [
- "bindgen 0.69.5",
+ "bindgen 0.70.1",
  "cmake",
 ]
 
