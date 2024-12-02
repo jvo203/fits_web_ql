@@ -87,7 +87,11 @@ brew install llvm
 
 followed by
 
+Intel macOS:
 echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.zshrc
+
+Apple Silicon macOS:
+echo 'export PATH="/opt/homebrew/opt/llvm/bin:$PATH"' >> ~/.zshrc
 
 Ubuntu Linux:
 
