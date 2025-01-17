@@ -2172,7 +2172,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                                     let mut nal_count: u32 = 0;
                                     let mut p_nal: *mut x265_nal = ptr::null_mut();
-                                    let mut p_out: *mut x265_picture = ptr::null_mut();
+                                    let p_out: *mut x265_picture = ptr::null_mut();
 
                                     //encode
                                     let ret = unsafe {
@@ -2181,7 +2181,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             &mut p_nal,
                                             &mut nal_count,
                                             self.pic,
-                                            &mut p_out,
+                                            p_out,
                                         )
                                     };
 
@@ -2519,7 +2519,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                                 let mut nal_count: u32 = 0;
                                 let mut p_nal: *mut x265_nal = ptr::null_mut();
-                                let mut p_out: *mut x265_picture = ptr::null_mut();
+                                let p_out: *mut x265_picture = ptr::null_mut();
 
                                 //encode
                                 let ret = unsafe {
@@ -2528,7 +2528,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         &mut p_nal,
                                         &mut nal_count,
                                         self.pic,
-                                        &mut p_out,
+                                        p_out,
                                     )
                                 };
 
@@ -2678,7 +2678,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.5.0";
-static VERSION_STRING: &'static str = "R/SV2024-12-02.0";
+static VERSION_STRING: &'static str = "R/SV2025-01-17.0";
 static WASM_STRING: &'static str = "WASM2024-09-06.0";
 static FPZIP_STRING: &'static str = "WASM2024-09-06.0";
 

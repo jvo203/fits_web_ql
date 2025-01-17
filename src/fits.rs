@@ -5572,10 +5572,10 @@ impl FITS {
 
         let mut nal_count: u32 = 0;
         let mut p_nal: *mut x265_nal = ptr::null_mut();
-        let mut p_out: *mut x265_picture = ptr::null_mut();
+        let p_out: *mut x265_picture = ptr::null_mut();
 
         //encode
-        let ret = unsafe { x265_encoder_encode(enc, &mut p_nal, &mut nal_count, pic, &mut p_out) };
+        let ret = unsafe { x265_encoder_encode(enc, &mut p_nal, &mut nal_count, pic, p_out) };
 
         println!("x265 hevc viewport encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
 
@@ -5604,7 +5604,7 @@ impl FITS {
         //flush the encoder to signal the end
         loop {
             let ret = unsafe {
-                x265_encoder_encode(enc, &mut p_nal, &mut nal_count, ptr::null_mut(), &mut p_out)
+                x265_encoder_encode(enc, &mut p_nal, &mut nal_count, ptr::null_mut(), p_out)
             };
 
             if ret > 0 {
