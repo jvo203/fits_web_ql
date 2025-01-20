@@ -244,17 +244,8 @@ static JVO_FITS_DB: &'static str = "alma";
 #[cfg(feature = "jvo")]
 pub static FITSHOME: &'static str = "/home";
 
-//#[cfg(not(feature = "production"))]
 pub static FITSCACHE: &'static str = "FITSCACHE";
-
-//#[cfg(not(feature = "production"))]
 pub static IMAGECACHE: &'static str = "IMAGECACHE";
-
-/*#[cfg(feature = "production")]
-pub static FITSCACHE: &'static str = "/ssd0/chris/fitswebql/FITSCACHE";
-
-#[cfg(feature = "production")]
-pub static IMAGECACHE: &'static str = "/ssd0/chris/fitswebql/IMAGECACHE";*/
 
 #[cfg(feature = "raid")]
 pub static RAID_PREFIX: &'static str = "/Volumes/SSD";

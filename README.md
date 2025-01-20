@@ -152,7 +152,7 @@ sudo make install
 (when compiling from source enforce -fPIC by means of the configure flag --enable-pic)
 
 ##
-install x265 version 2.8 or higher
+install x265 version 4.1 or higher (the code does not work with 4.0 or lower due to API changes in the x265 library)
 
 macOS: "brew install x265"
 
@@ -160,16 +160,14 @@ other systems follow:
 
 http://www.linuxfromscratch.org/blfs/view/svn/multimedia/x265.html
 
-cd x265_2.9
+wget https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.1.tar.gz
+tar zxvf x265_4.1.tar.gz
+cd x265_4.1
 
 mkdir -p build
-
 cd build
-
 cmake ../source
-
 make
-
 sudo make install
 
 please be sure to have nasm installed beforehand when building from source, plus NUMA API: numactl and numa development library libnuma (package libnuma-dev on Ubuntu)
@@ -214,15 +212,15 @@ target/release/fits_web_ql --port 8080 --interface 0.0.0.0 --home /a/path/to/you
 # How to Run the Production Server (only at the Japanese Virtual Observatory)
 cd into the fits_web_ql directory and execute
 
-cargo run --features 'jvo production cdn zfp' --release
+cargo run --features 'jvo cdn zfp' --release
 
 or
 
-cargo run --features 'jvo production cdn zfp' --release -- --path fitswebql_v4
+cargo run --features 'jvo cdn zfp' --release -- --path fitswebql_v4
 
 # extra features and options
 
-The "--features" option enables extra functionality. JVO-reserved features are "jvo" and "production". "cdn" can be used by anyone to speed up delivery of static resources by utilising a jsDelivr open-source content delivery network (https://www.jsdelivr.com). "cdn" is especially recommended if many users are accessing a remote FITSWebQL server. There is no need to use it on your personal computer. "zfp" enables ZFP compression for FITS data cubes held in an internal FITSWebQL cache in order to (theoretically) speed-up loading times (see a note at the end of this README). "ipp" enables use of the Intel Integrated Performance Primitives (IPP) library in some places (for example rescaling images/videos).
+The "--features" option enables extra functionality. A JVO-reserved feature is named "jvo". "cdn" can be used by anyone to speed up delivery of static resources by utilising a jsDelivr open-source content delivery network (https://www.jsdelivr.com). "cdn" is especially recommended if many users are accessing a remote FITSWebQL server. There is no need to use it on your personal computer. "zfp" enables ZFP compression for FITS data cubes held in an internal FITSWebQL cache in order to (theoretically) speed-up loading times (see a note at the end of this README). "ipp" enables use of the Intel Integrated Performance Primitives (IPP) library in some places (for example rescaling images/videos).
 
 an alternative HTTP port
 
@@ -230,7 +228,7 @@ cargo run --features 'cdn' --release -- --port 8000
 
 an alternative URL path (JVO-specific)
 
-cargo run --features 'jvo production cdn zfp' --release -- --path fitswebql_v4
+cargo run --features 'jvo cdn zfp' --release -- --path fitswebql_v4
 
 an alternative network interface (only needed to make the local version operate in a remote-server mode)
 
