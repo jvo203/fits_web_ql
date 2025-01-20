@@ -161,13 +161,19 @@ other systems follow:
 http://www.linuxfromscratch.org/blfs/view/svn/multimedia/x265.html
 
 wget https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.1.tar.gz
+
 tar zxvf x265_4.1.tar.gz
+
 cd x265_4.1
 
 mkdir -p build
+
 cd build
+
 cmake ../source
+
 make
+
 sudo make install
 
 please be sure to have nasm installed beforehand when building from source, plus NUMA API: numactl and numa development library libnuma (package libnuma-dev on Ubuntu)
