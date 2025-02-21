@@ -14,9 +14,9 @@ use thread_priority::*;
 
 use uuid::Uuid;
 
+use crate::DATASETS;
 use crate::fits::FITSCACHE;
 use crate::fits::IMAGECACHE;
-use crate::DATASETS;
 
 #[cfg(feature = "jvo")]
 const GARBAGE_COLLECTION_TIMEOUT: i64 = 60 * 60; //[s]; a dataset inactivity timeout//was 60

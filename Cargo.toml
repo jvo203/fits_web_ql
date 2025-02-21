@@ -1,8 +1,8 @@
 [package]
 name = "fits_web_ql"
-version = "4.5.1"
+version = "4.5.2"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
-edition = "2021"
+edition = "2024"
 
 [features]
 default = ["hevc"]

@@ -51,15 +51,15 @@ use std::time::SystemTime;
 use std::{env, mem, ptr};
 
 use fpzip_sys::*;
-use lttb::{lttb, DataPoint};
+use lttb::{DataPoint, lttb};
 
 use actix::prelude::*;
 use actix::{Actor, Addr, Running, StreamHandler};
 use actix_files as fs;
-use actix_web::http::{header::HeaderValue, StatusCode};
+use actix_web::http::{StatusCode, header::HeaderValue};
 use actix_web::middleware::{Compress, Logger};
 use actix_web::web::{Bytes, Data};
-use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer};
+use actix_web::{App, Error, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer, web};
 use actix_web::{FromRequest, Responder};
 use actix_web_actors::ws;
 
@@ -70,9 +70,9 @@ use percent_encoding::percent_decode;
 use tar::{Builder, Header};
 use uuid::Uuid;
 
+use futures::Stream;
 use futures::prelude::*;
 use futures::task::Poll;
-use futures::Stream;
 use std::sync::mpsc;
 
 use rayon::prelude::*;
@@ -761,7 +761,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                             let compressed_alpha = lz4_compress::compress(&alpha);
 
-                            println!("alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}", alpha.len(), compressed_alpha.len(), watch.elapsed());
+                            println!(
+                                "alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}",
+                                alpha.len(),
+                                compressed_alpha.len(),
+                                watch.elapsed()
+                            );
 
                             compressed_alpha
                         };
@@ -1028,7 +1033,23 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                 _ => 0.0,
                             };
 
-                            println!("type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}, Δv: {}", msg_type, ra, dec, x1, x2, y1, y2, frame_start, frame_end, ref_freq, beam, intensity, rest, delta_v);
+                            println!(
+                                "type: {}, ra: {}, dec: {}, x1: {}, x2: {}, y1: {}, y2: {}, frame_start: {}, frame_end: {}, ref_freq: {}, beam: {:?}, intensity: {:?}, rest: {}, Δv: {}",
+                                msg_type,
+                                ra,
+                                dec,
+                                x1,
+                                x2,
+                                y1,
+                                y2,
+                                frame_start,
+                                frame_end,
+                                ref_freq,
+                                beam,
+                                intensity,
+                                rest,
+                                delta_v
+                            );
 
                             if fits.has_data {
                                 match fits.get_csv_spectrum(
@@ -1054,7 +1075,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         let compressed_csv = lz4_compress::compress(&data);
                                         let compressed_size = compressed_csv.len();
 
-                                        println!("CSV UTF-8 length: {} bytes; after LZ4 compression: {} bytes", original_size, compressed_size);
+                                        println!(
+                                            "CSV UTF-8 length: {} bytes; after LZ4 compression: {} bytes",
+                                            original_size, compressed_size
+                                        );
 
                                         let ws_csv = WsCSV {
                                             ts: timestamp as f32,
@@ -1071,8 +1095,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 ctx.binary(bin);
                                             }
                                             Err(err) => println!(
-                                        "error serializing a WebSocket CSV spectrum export response: {}",
-                                        err)
+                                                "error serializing a WebSocket CSV spectrum export response: {}",
+                                                err
+                                            ),
                                         }
                                     }
                                     None => {}
@@ -1087,7 +1112,37 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                 if (&text).contains("[spectrum]") {
                     //println!("{}", text.replace("&", " "));
-                    let (dx, x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[spectrum] dx={} x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}", i32, i32, i32, i32, i32, bool, String, String, String, String, String, i32, String);
+                    let (
+                        dx,
+                        x1,
+                        y1,
+                        x2,
+                        y2,
+                        image,
+                        beam,
+                        intensity,
+                        frame_start,
+                        frame_end,
+                        ref_freq,
+                        seq_id,
+                        timestamp,
+                    ) = scan_fmt_some!(
+                        &text.replace("&", " "),
+                        "[spectrum] dx={} x1={} y1={} x2={} y2={} image={} beam={} intensity={} frame_start={} frame_end={} ref_freq={} seq_id={} timestamp={}",
+                        i32,
+                        i32,
+                        i32,
+                        i32,
+                        i32,
+                        bool,
+                        String,
+                        String,
+                        String,
+                        String,
+                        String,
+                        i32,
+                        String
+                    );
 
                     let dx = match dx {
                         Some(x) => x,
@@ -1172,7 +1227,22 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                         _ => 0.0,
                     };
 
-                    println!("[spectrum] dx:{} x1:{} y1:{} x2:{} y2:{} image:{} beam:{:?} intensity:{:?} frame_start:{} frame_end:{} ref_freq:{} seq_id:{} timestamp:{}", dx, x1, y1, x2, y2, image, beam, intensity, frame_start, frame_end, ref_freq, seq_id, timestamp);
+                    println!(
+                        "[spectrum] dx:{} x1:{} y1:{} x2:{} y2:{} image:{} beam:{:?} intensity:{:?} frame_start:{} frame_end:{} ref_freq:{} seq_id:{} timestamp:{}",
+                        dx,
+                        x1,
+                        y1,
+                        x2,
+                        y2,
+                        image,
+                        beam,
+                        intensity,
+                        frame_start,
+                        frame_end,
+                        ref_freq,
+                        seq_id,
+                        timestamp
+                    );
 
                     //get a read lock to the dataset
                     let datasets = DATASETS.read();
@@ -1257,9 +1327,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 ctx.binary(bin);
                                             }
                                             Err(err) => println!(
-                                        "error serializing a WebSocket spectrum response: {}",
-                                        err
-                                    ),
+                                                "error serializing a WebSocket spectrum response: {}",
+                                                err
+                                            ),
                                         }
                                     }
                                     None => {}
@@ -1305,7 +1375,31 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                 if (&text).contains("[image]") {
                     //println!("{}", text.replace("&", " "));
-                    let (black, white, median, noise, flux, frame_start, frame_end, ref_freq, hist, timestamp) = scan_fmt_some!(&text.replace("&"," "), "[image] black={} white={} median={} noise={} flux={} frame_start={} frame_end={} ref_freq={} hist={} timestamp={}", String, String, String, String, String, String, String, String, bool, String);
+                    let (
+                        black,
+                        white,
+                        median,
+                        noise,
+                        flux,
+                        frame_start,
+                        frame_end,
+                        ref_freq,
+                        hist,
+                        timestamp,
+                    ) = scan_fmt_some!(
+                        &text.replace("&", " "),
+                        "[image] black={} white={} median={} noise={} flux={} frame_start={} frame_end={} ref_freq={} hist={} timestamp={}",
+                        String,
+                        String,
+                        String,
+                        String,
+                        String,
+                        String,
+                        String,
+                        String,
+                        bool,
+                        String
+                    );
 
                     let black = match black {
                         Some(s) => match s.parse::<f32>() {
@@ -1381,7 +1475,19 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                         _ => 0.0,
                     };
 
-                    println!("[image] black:{} white:{} median:{} noise:{} flux:{} frame_start:{} frame_end:{} ref_freq:{} hist:{} timestamp:{}", black, white, median, noise, flux, frame_start, frame_end, ref_freq, refresh_image, timestamp);
+                    println!(
+                        "[image] black:{} white:{} median:{} noise:{} flux:{} frame_start:{} frame_end:{} ref_freq:{} hist:{} timestamp:{}",
+                        black,
+                        white,
+                        median,
+                        noise,
+                        flux,
+                        frame_start,
+                        frame_end,
+                        ref_freq,
+                        refresh_image,
+                        timestamp
+                    );
 
                     let datasets = DATASETS.read();
 
@@ -1536,11 +1642,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 .zip(mask.par_iter())
                                                 .map(
                                                     |(x, m)| {
-                                                        if *m > 0 {
-                                                            *x
-                                                        } else {
-                                                            std::f32::NAN
-                                                        }
+                                                        if *m > 0 { *x } else { std::f32::NAN }
                                                     },
                                                 )
                                                 .collect();
@@ -1613,9 +1715,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                             ctx.binary(bin);
                                                         }
                                                         Err(err) => println!(
-                                        "error serializing a WebSocket spectra response: {}",
-                                        err
-                                    ),
+                                                            "error serializing a WebSocket spectra response: {}",
+                                                            err
+                                                        ),
                                                     }
 
                                                     //send a histogram refresh
@@ -1644,9 +1746,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                             ctx.binary(bin);
                                                         }
                                                         Err(err) => println!(
-                                        "error serializing a WebSocket histogram response: {}",
-                                        err
-                                    ),
+                                                            "error serializing a WebSocket histogram response: {}",
+                                                            err
+                                                        ),
                                                     }
                                                 }
                                                 None => {}
@@ -1676,9 +1778,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         h = ((h as f32) / ratio) as u32;
 
                                         println!(
-                    "downscaling the image from {}x{} to {}x{}, default ratio: {}",
-                    fits.width, fits.height, w, h, ratio
-                );
+                                            "downscaling the image from {}x{} to {}x{}, default ratio: {}",
+                                            fits.width, fits.height, w, h, ratio
+                                        );
                                     } else if ratio > 3.0 {
                                         // 1/4
                                         w = w / 4;
@@ -1815,11 +1917,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     let compressed_alpha = lz4_compress::compress(&alpha);
 
                                     println!(
-                "alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}",
-                alpha.len(),
-                compressed_alpha.len(),
-                watch.elapsed()
-            );
+                                        "alpha original length {}, lz4-compressed {} bytes, elapsed time {:?}",
+                                        alpha.len(),
+                                        compressed_alpha.len(),
+                                        watch.elapsed()
+                                    );
 
                                     compressed_alpha
                                 };
@@ -2059,7 +2161,14 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                     println!(
                         "[video] frame:{} keyframe:{} is_composite:{} ref_freq:{} fps:{} seq_id:{} target_bitrate:{} timestamp:{}",
-                        frame, keyframe, is_composite, ref_freq, fps, seq_id, target_bitrate, timestamp
+                        frame,
+                        keyframe,
+                        is_composite,
+                        ref_freq,
+                        fps,
+                        seq_id,
+                        target_bitrate,
+                        timestamp
                     );
 
                     //let deltat = timestamp - self.video_timestamp;
@@ -2185,7 +2294,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         )
                                     };
 
-                                    println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
+                                    println!(
+                                        "x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}",
+                                        watch.elapsed(),
+                                        1000000000 / watch.elapsed().as_nanos(),
+                                        ret,
+                                        nal_count
+                                    );
 
                                     //y falls out of scope
                                     unsafe {
@@ -2223,11 +2338,17 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                                             match serialize(&ws_frame) {
                                                 Ok(bin) => {
-                                                    println!("WsFrame binary length: {}", bin.len());
+                                                    println!(
+                                                        "WsFrame binary length: {}",
+                                                        bin.len()
+                                                    );
                                                     //println!("{}", bin);
                                                     ctx.binary(bin);
-                                                },
-                                                Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                                }
+                                                Err(err) => println!(
+                                                    "error serializing a WebSocket video frame response: {}",
+                                                    err
+                                                ),
                                             }
 
                                             /*match self.hevc {
@@ -2379,7 +2500,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         }
                                     }
 
-                                    println!("VP9 video frame prepare/encode time: {:?}, speed {} frames per second, frame length: {} bytes", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), video_frame.len());
+                                    println!(
+                                        "VP9 video frame prepare/encode time: {:?}, speed {} frames per second, frame length: {} bytes",
+                                        watch.elapsed(),
+                                        1000000000 / watch.elapsed().as_nanos(),
+                                        video_frame.len()
+                                    );
 
                                     if !video_frame.is_empty() {
                                         //println!("VP9 video frame length: {} bytes", video_frame.len());
@@ -2398,8 +2524,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
                                                 ctx.binary(bin);
-                                            },
-                                            Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                            }
+                                            Err(err) => println!(
+                                                "error serializing a WebSocket video frame response: {}",
+                                                err
+                                            ),
                                         }
                                     }
                                 }
@@ -2532,7 +2661,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     )
                                 };
 
-                                println!("x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
+                                println!(
+                                    "x265 hevc video frame prepare/encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}",
+                                    watch.elapsed(),
+                                    1000000000 / watch.elapsed().as_nanos(),
+                                    ret,
+                                    nal_count
+                                );
 
                                 //yuv planes fall out of scope
                                 for i in 0..3 {
@@ -2575,8 +2710,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
                                                 ctx.binary(bin);
-                                            },
-                                            Err(err) => println!("error serializing a WebSocket video frame response: {}", err)
+                                            }
+                                            Err(err) => println!(
+                                                "error serializing a WebSocket video frame response: {}",
+                                                err
+                                            ),
                                         }
 
                                         /*match self.hevc {
@@ -2677,8 +2815,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.5.1";
-static VERSION_STRING: &'static str = "R/SV2025-01-20.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.5.2";
+static VERSION_STRING: &'static str = "R/SV2025-02-21.0";
 static WASM_STRING: &'static str = "WASM2025-01-20.0";
 static FPZIP_STRING: &'static str = "WASM2025-01-20.0";
 
@@ -4865,7 +5003,8 @@ async fn main() {
         .build_global()
         .unwrap();
 
-    std::env::set_var("RUST_LOG", "actix_web=info");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("RUST_LOG", "actix_web=info") };
 
     #[cfg(feature = "jvo")]
     flexi_logger::Logger::try_with_env_or_str("fits_web_ql=info")

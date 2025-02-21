@@ -26,8 +26,8 @@ use bincode::serialize;
 use lz4_compress;
 use uuid::Uuid;
 
-use crate::server;
 use crate::UserParams;
+use crate::server;
 use ::actix::*;
 use rayon;
 use rayon::prelude::*;
@@ -1324,7 +1324,10 @@ impl FITS {
                 //a desperate attempt to download FITS using the ALMA URL (will fail for non-ALMA datasets)
                 #[cfg(feature = "jvo")]
                 {
-                    let url = format!("http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00", JVO_FITS_SERVER, JVO_FITS_DB, id) ;
+                    let url = format!(
+                        "http://{}:8060/skynode/getDataForALMA.do?db={}&table=cube&data_id={}_00_00_00",
+                        JVO_FITS_SERVER, JVO_FITS_DB, id
+                    );
 
                     return FITS::from_url(&id, &flux, &url, &server);
                 }
@@ -3757,7 +3760,19 @@ impl FITS {
             };
         };
 
-        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {:?}", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, watch.elapsed());
+        println!(
+            "pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {:?}",
+            pmin,
+            pmax,
+            median,
+            mad,
+            mad_p,
+            mad_n,
+            black,
+            white,
+            sensitivity,
+            watch.elapsed()
+        );
 
         //the histogram part
         let dx = (pmax - pmin) / (NBINS as f32);
@@ -3961,7 +3976,19 @@ impl FITS {
                 };
         };
 
-        println!("pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {:?}", pmin, pmax, median, mad, mad_p, mad_n, black, white, sensitivity, watch.elapsed());
+        println!(
+            "pixels: range {} ~ {}, median = {}, mad = {}, mad_p = {}, mad_n = {}, black = {}, white = {}, sensitivity = {}, elapsed time {:?}",
+            pmin,
+            pmax,
+            median,
+            mad,
+            mad_p,
+            mad_n,
+            black,
+            white,
+            sensitivity,
+            watch.elapsed()
+        );
 
         self.pmin = pmin;
         self.pmax = pmax;
@@ -5568,7 +5595,13 @@ impl FITS {
         //encode
         let ret = unsafe { x265_encoder_encode(enc, &mut p_nal, &mut nal_count, pic, p_out) };
 
-        println!("x265 hevc viewport encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}", watch.elapsed(), 1000000000/watch.elapsed().as_nanos(), ret, nal_count);
+        println!(
+            "x265 hevc viewport encode time: {:?}, speed {} frames per second, ret = {}, nal_count = {}",
+            watch.elapsed(),
+            1000000000 / watch.elapsed().as_nanos(),
+            ret,
+            nal_count
+        );
 
         //y falls out of scope
         unsafe {
@@ -5632,11 +5665,7 @@ impl FITS {
             }
         }
 
-        if frames.len() > 0 {
-            Some(frames)
-        } else {
-            None
-        }
+        if frames.len() > 0 { Some(frames) } else { None }
     }
 
     fn make_vpx_viewport(&self, dimx: u32, dimy: u32, y: &Vec<u8>) -> Option<Vec<Vec<u8>>> {
@@ -6489,7 +6518,10 @@ impl FITS {
         let beam_width = (ra2 - ra1).abs(); // [deg]
         let beam_height = (dec2 - dec1).abs(); // [deg]
 
-        println!("first channel: {}, last channel: {}, ra {} [deg], dec {} [deg], beam width [deg]: {}, beam height [deg]: {}", start, end, lng_value, lat_value, beam_width, beam_height);
+        println!(
+            "first channel: {}, last channel: {}, ra {} [deg], dec {} [deg], beam width [deg]: {}, beam height [deg]: {}",
+            start, end, lng_value, lat_value, beam_width, beam_height
+        );
 
         let mut intensity_column = format!("intensity [{}", self.beam_unit);
 
@@ -8745,9 +8777,9 @@ impl FITS {
                                     Ok(()) => {}
                                     Err(err) => {
                                         println!(
-                                        "binary cache write error: {}, removing the temporary file",
-                                        err
-                                    );
+                                            "binary cache write error: {}, removing the temporary file",
+                                            err
+                                        );
 
                                         let _ = std::fs::remove_file(tmp_filepath);
 
