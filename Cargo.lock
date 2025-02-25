@@ -387,26 +387,6 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.70.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f49d8fed880d473ea71efb9bf597651e77201bdd4893efe54c9e5d65ae04ce6f"
-dependencies = [
- "bitflags 2.8.0",
- "cexpr",
- "clang-sys",
- "itertools",
- "log",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash 1.1.0",
- "shlex",
- "syn",
-]
-
-[[package]]
-name = "bindgen"
 version = "0.71.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f58bf3d7db68cfbac37cfc485a8d711e87e064c3d0fe0435b92f7a407f9d6b3"
@@ -420,7 +400,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "rustc-hash 2.1.1",
+ "rustc-hash",
  "shlex",
  "syn",
 ]
@@ -890,7 +870,7 @@ dependencies = [
  "actix-web-actors",
  "atomic",
  "bincode",
- "bindgen 0.71.1",
+ "bindgen",
  "byteorder 1.5.0",
  "bytes",
  "bzip2",
@@ -984,11 +964,11 @@ dependencies = [
 
 [[package]]
 name = "fpzip-sys"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42470796e63069e11a76ffa6c1b2d006ad700f8ae50f0f6c9ce85e055a160ab3"
+checksum = "8b6e18a70ec285cb730c2dfed8244ce139e9426628cba330bbbdee69fb726f8a"
 dependencies = [
- "bindgen 0.70.1",
+ "bindgen",
  "cmake",
 ]
 
@@ -1454,7 +1434,7 @@ version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36014ee6fc071a277be8b9f1071185bf7dd0f28449b02ef612684e438f3ca95f"
 dependencies = [
- "bindgen 0.71.1",
+ "bindgen",
  "cc",
  "libc",
  "regex",
@@ -1579,7 +1559,7 @@ name = "libvpx-native-sys"
 version = "4.0.8"
 source = "git+https://github.com/jvo203/rust-vpx.git#9fd21a03dac6e72ce991f0af844d37c46e2b09fa"
 dependencies = [
- "bindgen 0.71.1",
+ "bindgen",
  "pkg-config",
  "semver-parser",
 ]
@@ -2330,12 +2310,6 @@ name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "719b953e2095829ee67db738b3bfa9fa368c94900df327b3f07fe6e794d2fe1f"
-
-[[package]]
-name = "rustc-hash"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc-hash"
@@ -3240,7 +3214,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb835717af53d4cd6c7a9b25045fa1565ca26cb183156007636dc1e6f0b8496c"
 dependencies = [
- "bindgen 0.71.1",
+ "bindgen",
  "cmake",
 ]
 
