@@ -3236,11 +3236,11 @@ dependencies = [
 
 [[package]]
 name = "zfp-sys"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c73bc0ccabf2001b5230d7f837cc892f2efd2587270128a2e84cd64d3344fc3"
+checksum = "cb835717af53d4cd6c7a9b25045fa1565ca26cb183156007636dc1e6f0b8496c"
 dependencies = [
- "bindgen 0.70.1",
+ "bindgen 0.71.1",
  "cmake",
 ]
 
