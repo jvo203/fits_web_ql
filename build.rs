@@ -50,7 +50,7 @@ fn main() {
         // bindings for.
         .raw_line(format!(
             "pub unsafe fn x265_encoder_open(params: *mut x265_param) -> *mut x265_encoder {{
-                               x265_encoder_open_{}(params)
+                               unsafe {{ x265_encoder_open_{}(params) }}
                           }}",
             apiver
         ))
