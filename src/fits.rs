@@ -22,7 +22,7 @@ use std::time::Instant;
 use std::time::SystemTime;
 use std::{mem, ptr};
 
-use bincode::serialize;
+use bincode::{Encode, config, encode_to_vec};
 use lz4_compress;
 use uuid::Uuid;
 
@@ -380,7 +380,7 @@ pub struct FITS {
     pub status_code: u16,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Encode, Debug)]
 struct FITSImage {
     identifier: String,
     width: u32,
@@ -6306,7 +6306,7 @@ impl FITS {
             alpha: alpha_frame,
         };
 
-        match serialize(&image_frame) {
+        match encode_to_vec(&image_frame, config::standard()) {
             Ok(bin) => {
                 println!("FITSImage binary length: {}", bin.len());
 

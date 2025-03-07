@@ -63,8 +63,6 @@ libvpx-native-sys = { version = "*", git = "https://github.com/jvo203/rust-vpx.g
 ] }
 num = "*"
 num_cpus = "*"
-serde = "*"
-serde_derive = "*"
 bincode = "*"
 curl = "*"
 timer = "*"

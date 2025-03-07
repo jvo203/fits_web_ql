@@ -917,8 +917,6 @@ dependencies = [
  "regex",
  "rusqlite",
  "scan_fmt",
- "serde",
- "serde_derive",
  "serde_json",
  "tar",
  "thread-priority",

@@ -35,10 +35,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_json;
 
-#[macro_use]
-extern crate serde_derive;
-
-use bincode::serialize;
+use bincode::{Encode, config, encode_to_vec};
 use chrono::Local;
 use std::collections::BTreeMap;
 use std::ffi::CString;
@@ -103,7 +100,7 @@ use crate::molecule::Molecule;
 
 const PROGRESS_INTERVAL: u64 = 250; //[ms]
 
-#[derive(Serialize, Debug)]
+#[derive(Encode, Debug)]
 pub struct WsCSV {
     pub ts: f32,
     pub seq_id: u32,
@@ -112,7 +109,7 @@ pub struct WsCSV {
     pub csv: Vec<u8>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Encode, Debug)]
 pub struct WsSpectrum {
     pub ts: f32,
     pub seq_id: u32,
@@ -121,7 +118,7 @@ pub struct WsSpectrum {
     pub spectrum: Vec<u8>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Encode, Debug)]
 pub struct WsSpectra {
     pub ts: f32,
     pub seq_id: u32,
@@ -130,7 +127,7 @@ pub struct WsSpectra {
     pub integrated_spectrum: Vec<f32>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Encode, Debug)]
 pub struct WsHistogram {
     pub ts: f32,
     pub seq_id: u32,
@@ -145,7 +142,7 @@ pub struct WsHistogram {
     pub hist: Vec<i32>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Encode, Debug)]
 pub struct WsFrame {
     pub ts: f32,
     pub seq_id: u32,
@@ -154,7 +151,7 @@ pub struct WsFrame {
     pub frame: Vec<u8>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Encode, Debug)]
 pub struct WsImage {
     pub ts: f32,
     pub seq_id: u32,
@@ -166,7 +163,7 @@ pub struct WsImage {
     pub alpha: Vec<u8>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Encode, Debug)]
 pub struct WsViewport {
     pub ts: f32,
     pub seq_id: u32,
@@ -1088,7 +1085,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             csv: compressed_csv,
                                         };
 
-                                        match serialize(&ws_csv) {
+                                        match bincode::encode_to_vec(&ws_csv, config::standard()) {
                                             Ok(bin) => {
                                                 println!("WcCSV binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -1320,7 +1317,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             spectrum: spectrum,
                                         };
 
-                                        match serialize(&ws_spectrum) {
+                                        match encode_to_vec(&ws_spectrum, config::standard()) {
                                             Ok(bin) => {
                                                 println!("binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -1355,7 +1352,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         alpha: alpha,
                                     };
 
-                                    match serialize(&ws_viewport) {
+                                    match encode_to_vec(&ws_viewport, config::standard()) {
                                         Ok(bin) => {
                                             println!("binary length: {}", bin.len());
                                             //println!("{}", bin);
@@ -1705,7 +1702,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                         integrated_spectrum: integrated_spectrum,
                                                     };
 
-                                                    match serialize(&ws_spectra) {
+                                                    match encode_to_vec(
+                                                        &ws_spectra,
+                                                        config::standard(),
+                                                    ) {
                                                         Ok(bin) => {
                                                             println!(
                                                                 "binary length: {}",
@@ -1736,7 +1736,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                         hist: hist,
                                                     };
 
-                                                    match serialize(&ws_histogram) {
+                                                    match encode_to_vec(
+                                                        &ws_histogram,
+                                                        config::standard(),
+                                                    ) {
                                                         Ok(bin) => {
                                                             println!(
                                                                 "binary length: {}",
@@ -2068,7 +2071,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     alpha: alpha_frame,
                                 };
 
-                                match serialize(&ws_image) {
+                                match encode_to_vec(&ws_image, config::standard()) {
                                     Ok(bin) => {
                                         println!("binary length: {}", bin.len());
                                         //println!("{}", bin);
@@ -2336,7 +2339,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 frame: payload.to_vec(),
                                             };
 
-                                            match serialize(&ws_frame) {
+                                            match encode_to_vec(&ws_frame, config::standard()) {
                                                 Ok(bin) => {
                                                     println!(
                                                         "WsFrame binary length: {}",
@@ -2408,7 +2411,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                     frame: payload.to_vec(),
                                                 };
 
-                                                match serialize(&ws_frame) {
+                                                match encode_to_vec(&ws_frame, config::standard()) {
                                                     Ok(bin) => {
                                                     println!("WsFrame binary length: {}", bin.len());
                                                     //println!("{}", bin);
@@ -2519,7 +2522,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             frame: video_frame,
                                         };
 
-                                        match serialize(&ws_frame) {
+                                        match encode_to_vec(&ws_frame, config::standard()) {
                                             Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -2705,7 +2708,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             frame: payload.to_vec(),
                                         };
 
-                                        match serialize(&ws_frame) {
+                                        match encode_to_vec(&ws_frame, config::standard()) {
                                             Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -2774,7 +2777,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 frame: payload.to_vec(),
                                             };
 
-                                            match serialize(&ws_frame) {
+                                            match encode_to_vec(&ws_frame, config::standard()) {
                                                 Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -2816,7 +2819,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.5.2";
-static VERSION_STRING: &'static str = "R/SV2025-02-21.0";
+static VERSION_STRING: &'static str = "R/SV2025-03-07.0";
 static WASM_STRING: &'static str = "WASM2025-01-20.0";
 static FPZIP_STRING: &'static str = "WASM2025-01-20.0";
 
