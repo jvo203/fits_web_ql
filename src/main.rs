@@ -1085,7 +1085,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             csv: compressed_csv,
                                         };
 
-                                        match bincode::encode_to_vec(&ws_csv, config::standard()) {
+                                        match bincode::encode_to_vec(&ws_csv, config::legacy()) {
                                             Ok(bin) => {
                                                 println!("WcCSV binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -1317,7 +1317,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             spectrum: spectrum,
                                         };
 
-                                        match encode_to_vec(&ws_spectrum, config::standard()) {
+                                        match encode_to_vec(&ws_spectrum, config::legacy()) {
                                             Ok(bin) => {
                                                 println!("binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -1352,7 +1352,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         alpha: alpha,
                                     };
 
-                                    match encode_to_vec(&ws_viewport, config::standard()) {
+                                    match encode_to_vec(&ws_viewport, config::legacy()) {
                                         Ok(bin) => {
                                             println!("binary length: {}", bin.len());
                                             //println!("{}", bin);
@@ -1704,7 +1704,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                                                     match encode_to_vec(
                                                         &ws_spectra,
-                                                        config::standard(),
+                                                        config::legacy(),
                                                     ) {
                                                         Ok(bin) => {
                                                             println!(
@@ -1738,7 +1738,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
 
                                                     match encode_to_vec(
                                                         &ws_histogram,
-                                                        config::standard(),
+                                                        config::legacy(),
                                                     ) {
                                                         Ok(bin) => {
                                                             println!(
@@ -2071,7 +2071,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     alpha: alpha_frame,
                                 };
 
-                                match encode_to_vec(&ws_image, config::standard()) {
+                                match encode_to_vec(&ws_image, config::legacy()) {
                                     Ok(bin) => {
                                         println!("binary length: {}", bin.len());
                                         //println!("{}", bin);
@@ -2339,7 +2339,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 frame: payload.to_vec(),
                                             };
 
-                                            match encode_to_vec(&ws_frame, config::standard()) {
+                                            match encode_to_vec(&ws_frame, config::legacy()) {
                                                 Ok(bin) => {
                                                     println!(
                                                         "WsFrame binary length: {}",
@@ -2411,7 +2411,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                     frame: payload.to_vec(),
                                                 };
 
-                                                match encode_to_vec(&ws_frame, config::standard()) {
+                                                match encode_to_vec(&ws_frame, config::legacy()) {
                                                     Ok(bin) => {
                                                     println!("WsFrame binary length: {}", bin.len());
                                                     //println!("{}", bin);
@@ -2522,7 +2522,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             frame: video_frame,
                                         };
 
-                                        match encode_to_vec(&ws_frame, config::standard()) {
+                                        match encode_to_vec(&ws_frame, config::legacy()) {
                                             Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -2708,7 +2708,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             frame: payload.to_vec(),
                                         };
 
-                                        match encode_to_vec(&ws_frame, config::standard()) {
+                                        match encode_to_vec(&ws_frame, config::legacy()) {
                                             Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -2777,7 +2777,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 frame: payload.to_vec(),
                                             };
 
-                                            match encode_to_vec(&ws_frame, config::standard()) {
+                                            match encode_to_vec(&ws_frame, config::legacy()) {
                                                 Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
