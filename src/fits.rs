@@ -6309,7 +6309,7 @@ impl FITS {
             alpha: alpha_frame,
         };
 
-        match encode_to_vec(&image_frame, config::standard()) {
+        match encode_to_vec(&image_frame, config::legacy()) {
             Ok(bin) => {
                 println!("FITSImage binary length: {}", bin.len());
 
