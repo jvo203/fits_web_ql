@@ -54,13 +54,13 @@ pub const HEIGHT_PER_THREAD: u32 = 512;
 use zfp_sys::*;
 
 #[cfg(feature = "zfp")]
-use bincode::{deserialize, serialize_into};
+use bincode::{Decode, decode_from_slice, encode_into_std_write};
 
 #[cfg(feature = "zfp")]
 use std::sync::atomic::AtomicBool;
 
 #[cfg(feature = "zfp")]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Encode, Decode, Debug)]
 pub struct ZFPMaskedArray {
     pub array: Vec<u8>,
     pub mask: Vec<u8>,
@@ -820,6 +820,8 @@ impl FITS {
         cdelt3: f32,
         server: &Addr<server::SessionServer>,
     ) -> bool {
+        use bincode::error::DecodeError;
+
         #[cfg(not(feature = "raid"))]
         {
             let filename = format!("{}/{}.zfp", FITSCACHE, id.replace("/", "_"));
@@ -948,9 +950,10 @@ impl FITS {
                             let mut buffer = Vec::new();
                             match f.read_to_end(&mut buffer) {
                                 Ok(_) => {
-                                    let res: Result<ZFPMaskedArray, _> = deserialize(&mut buffer);
+                                    let res: Result<(ZFPMaskedArray, _), DecodeError> =
+                                        decode_from_slice(&mut buffer, config::legacy());
                                     match res {
-                                        Ok(zfp_frame) => {
+                                        Ok((zfp_frame, _)) => {
                                             //decompress a ZFPMaskedArray object
                                             match zfp_decompress_float_array2d(
                                                 zfp_frame.array,
@@ -8312,7 +8315,7 @@ impl FITS {
                     match File::create(cache_file) {
                         Ok(f) => {
                             let mut buffer = std::io::BufWriter::new(f);
-                            match serialize_into(&mut buffer, &zfp_frame) {
+                            match encode_into_std_write(&zfp_frame, &mut buffer, config::legacy()) {
                                 Ok(_) => {
                                     //flush the buffer, check for any errors
                                     match buffer.into_inner() {
