@@ -505,9 +505,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.19"
+version = "1.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e3a13707ac958681c13b39b458c073d0d9bc8a22cb1b2f4c8e55eb72c13f362"
+checksum = "04da6a0d40b948dfc4fa8f5bbf402b0fc1a64a28dbf7d12ffd683550f2c1b63a"
 dependencies = [
  "jobserver",
  "libc",
@@ -980,9 +980,9 @@ dependencies = [
 
 [[package]]
 name = "fpzip-sys"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b6e18a70ec285cb730c2dfed8244ce139e9426628cba330bbbdee69fb726f8a"
+checksum = "ca99f73f220f02e37a8ddb52200a3b57de1e8e26422f800f4361b102fa39e71a"
 dependencies = [
  "bindgen",
  "cmake",
