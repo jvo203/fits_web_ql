@@ -31,13 +31,13 @@ vpx = "1.11.0"
 thread-priority = "*"
 
 [dependencies]
-jemallocator = "*"
-jemalloc-sys = { version = "*", optional = true }
+actix-http = "3.11.1"
+jemallocator = "0.5.4"
+jemalloc-sys = { version = "0.5.4", optional = true }
 actix = "0.13.5"
-actix-http = "3.11.0"
 actix-web = "4.11.0"
-actix-web-actors = "4.3.1+deprecated"
-actix-files = "0.6.6"
+actix-web-actors = "4.3.0"
+actix-files = "0.6.7"
 http = "*"
 serde_json = "*"
 chrono = "*"
