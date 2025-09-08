@@ -3,16 +3,18 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+use tikv_jemallocator::Jemalloc;
+
 /*#[global_allocator]
 static GLOBAL: System = System;*/
 
 #[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static GLOBAL: Jemalloc = Jemalloc;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[cfg(feature = "mem")]
-use jemalloc_sys::*;
+use tikv_jemalloc_sys::*;
 
 #[cfg(feature = "mem")]
 use timer;
@@ -2819,7 +2821,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.5.2";
-static VERSION_STRING: &'static str = "R/SV2025-03-07.0";
+static VERSION_STRING: &'static str = "R/SV2025-09-08.0";
 static WASM_STRING: &'static str = "WASM2025-01-20.0";
 static FPZIP_STRING: &'static str = "WASM2025-01-20.0";
 
