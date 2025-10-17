@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2025-01-17.0";
+    return "JS2025-10-17.0";
 }
 
 const wasm_supported = (() => {
@@ -185,6 +185,17 @@ function get_image_scale(width, height, img_width, img_height) {
 
         return scale;
     }
+}
+
+function get_clip_size(width, height) {
+    // legacy code (does not work well with extremely non-square images)
+    // return Math.min(width, height) / zoom_scale;
+
+    // an arithmetic mean of width and height
+    return (width + height) / (2.0 * zoom_scale);
+
+    // a geometric mean of width and height
+    // return Math.sqrt(width * height) / zoom_scale;
 }
 
 function get_spectrum_direction(fitsData) {
@@ -3542,7 +3553,7 @@ function zoom_beam() {
 
         var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
         var imageCanvas = imageContainer[va_count - 1].imageCanvas;
-        var clipSize = Math.min(image_bounding_dims.width, image_bounding_dims.height) / zoom_scale;
+        var clipSize = get_clip_size(image_bounding_dims.width, image_bounding_dims.height);
         var fitsSize = clipSize * fitsData.width / imageCanvas.width;
 
         var rx = 0.5 * fitsData.BMAJ / Math.abs(fitsData.CDELT1);
@@ -9229,7 +9240,7 @@ function setup_image_selection() {
                     swap_viewports();
                 }
 
-                var clipSize = Math.min(image_bounding_dims.width, image_bounding_dims.height) / zoom_scale;
+                var clipSize = get_clip_size(image_bounding_dims.width, image_bounding_dims.height);
                 var sel_width = clipSize * scale;
                 var sel_height = clipSize * scale;
 
@@ -10307,7 +10318,7 @@ function imageTimeout() {
 
     console.log("idle", "x", x, "y", y);
 
-    var clipSize = Math.min(image_bounding_dims.width, image_bounding_dims.height) / zoom_scale;
+    var clipSize = get_clip_size(image_bounding_dims.width, image_bounding_dims.height);
     var sel_width = clipSize * scale;
     var sel_height = clipSize * scale;
 
