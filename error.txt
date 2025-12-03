@@ -1,30 +1,23 @@
-numbers_upsampled: reading FITS data in parallel at an offset of 5760 bytes
-custom thread pool: ThreadPool { num_threads: 8, id: RegistryId { addr: 5289083648 } }
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 0, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 2, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 3, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 1, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 4, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 12, requested 2400000000 bytes
-CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 8, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 14, requested 2400000000 bytes
-executing garbage collection for smiley_upsampled
-[garbage collection]: no active sessions found, smiley_upsampled will be expunged from memory
-resuming the actix server thread
-non-blocking drop for smiley_upsampled
-smiley_upsampled: writing half-float f16 data to cache
-deleting smiley_upsampled
-removing a symbolic link to Some("smiley_upsampled.fits")
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 9, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 15, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 13, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 5, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 10, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 6, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 11, requested 2400000000 bytes
-read_at error: Invalid argument (os error 22)CRITICAL ERROR "/Users/chris/Downloads/numbers_upsampled.fits": read 0 bytes @ frame 7, requested 2400000000 bytes
-stopping a websocket connection for numbers_upsampled/9f359d7b-3f70-4eb3-8433-0f243c93b054
-dropping a websocket session for numbers_upsampled
-[SessionServer]: removing a session numbers_upsampled/9f359d7b-3f70-4eb3-8433-0f243c93b054
-[SessionServer]: unlinking a dataset numbers_upsampled
+FGN00000540
 
+[video] frame:115197322038.692 keyframe:false is_composite:false ref_freq:115271202000 fps:30 seq_id:540 target_bitrate:4152 timestamp:41185
+Kalman Filter: KalmanFilter { estimate_position: 115197442468.3519, estimate_velocity: -32193.26168979559, p_xx: 503374098.77910846, p_xv: 487081.8850025935, p_vv: 11238093.138186393, position_variance: 11520500184.439407, velocity_variance: 1152050.018443941, r: 1152050018.4439409, has_velocity: true }; current = 115197322038.692, predicted = 115197320948.90141
+frame index = 449
+data_to_luminance: tmp = 1, num_threads = 1, work_size = 179776
+index: 0, offset: 0, work_size: 179776, len = 179776
+[ipp_resize] src height: 424, using 1 threads
+Y video plane preparation time: 1.835534ms
+x265 [info]: Unknown profile, Level-3 (Main tier)
+x265 hevc video frame prepare/encode time: 8.656059ms, speed 115 frames per second, ret = 1, nal_count = 1
+NAL unit type: 1, size: 13010
+WsFrame binary length: 13034
+[video] frame:115197706028.9771 keyframe:false is_composite:false ref_freq:115271202000 fps:30 seq_id:541 target_bitrate:4200 timestamp:41220.199999999255
+Kalman Filter: KalmanFilter { estimate_position: 115197558025.48184, estimate_velocity: -32129.901622470556, p_xx: 507877101.90073574, p_xv: 493190.83042523963, p_vv: 11278369.404416502, position_variance: 11520500184.439407, velocity_variance: 1152050.018443941, r: 1152050018.4439409, has_velocity: true }; current = 115197706028.9771, predicted = 115197704899.81068
+frame index = 447
+data_to_luminance: tmp = 1, num_threads = 1, work_size = 179776
+index: 0, offset: 0, work_size: 179776, len = 179776
+[ipp_resize] src height: 424, using 1 threads
+Y video plane preparation time: 1.812793ms
+x265 [info]: Unknown profile, Level-3 (Main tier)
+Segmentation fault (core dumped)
+[chris@jvow fits_web_ql]$
