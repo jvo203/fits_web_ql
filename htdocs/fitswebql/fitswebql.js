@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2025-10-17.0";
+    return "JS2026-01-05.0";
 }
 
 const wasm_supported = (() => {
@@ -11895,7 +11895,7 @@ function setup_help() {
         .text("CREDITS:");
 
     footer.append("p")
-        .text("Site design Ⓒ Christopher A. Zapart @ NAOJ, 2015 - 2025. JavaScript RA/DEC conversion Ⓒ Robert Martin Ayers, 2009, 2011, 2014.");
+        .text("Site design Ⓒ Christopher A. Zapart @ NAOJ, 2015 - 2026. JavaScript RA/DEC conversion Ⓒ Robert Martin Ayers, 2009, 2011, 2014.");
 
     footer.append("h3")
         .text("VERSION:");

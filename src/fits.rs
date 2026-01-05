@@ -22,9 +22,9 @@ use std::time::Instant;
 use std::time::SystemTime;
 use std::{mem, ptr};
 
-use bincode::{Encode, config, encode_to_vec};
 use lz4_compress;
 use uuid::Uuid;
+use wincode_derive::SchemaWrite;
 
 use crate::UserParams;
 use crate::server;
@@ -54,13 +54,13 @@ pub const HEIGHT_PER_THREAD: u32 = 512;
 use zfp_sys::*;
 
 #[cfg(feature = "zfp")]
-use bincode::{Decode, decode_from_slice, encode_into_std_write};
+use wincode_derive::SchemaRead;
 
 #[cfg(feature = "zfp")]
 use std::sync::atomic::AtomicBool;
 
 #[cfg(feature = "zfp")]
-#[derive(Encode, Decode, Debug)]
+#[derive(SchemaWrite, SchemaRead, Debug)]
 pub struct ZFPMaskedArray {
     pub array: Vec<u8>,
     pub mask: Vec<u8>,
@@ -380,7 +380,7 @@ pub struct FITS {
     pub status_code: u16,
 }
 
-#[derive(Encode, Debug)]
+#[derive(SchemaWrite, Debug)]
 struct FITSImage {
     identifier: String,
     width: u32,
@@ -820,7 +820,7 @@ impl FITS {
         cdelt3: f32,
         server: &Addr<server::SessionServer>,
     ) -> bool {
-        use bincode::error::DecodeError;
+        use wincode::error::ReadError;
 
         #[cfg(not(feature = "raid"))]
         {
@@ -946,14 +946,13 @@ impl FITS {
 
                     match File::open(cache_file) {
                         Ok(mut f) => {
-                            //let mut buffer = std::io::BufReader::new(f);//BufReader is slower
                             let mut buffer = Vec::new();
                             match f.read_to_end(&mut buffer) {
                                 Ok(_) => {
-                                    let res: Result<(ZFPMaskedArray, _), DecodeError> =
-                                        decode_from_slice(&mut buffer, config::legacy());
+                                    let res: Result<ZFPMaskedArray, ReadError> =
+                                        wincode::deserialize::<ZFPMaskedArray>(&buffer);
                                     match res {
-                                        Ok((zfp_frame, _)) => {
+                                        Ok(zfp_frame) => {
                                             //decompress a ZFPMaskedArray object
                                             match zfp_decompress_float_array2d(
                                                 zfp_frame.array,
@@ -1457,8 +1456,6 @@ impl FITS {
 
         //next read the data HUD(s)
         let frame_size: usize = fits.init_data_storage();
-
-        //let mut f = BufReader::with_capacity(frame_size, f);
 
         println!("FITS cube frame size: {} bytes", frame_size);
 
@@ -6309,7 +6306,7 @@ impl FITS {
             alpha: alpha_frame,
         };
 
-        match encode_to_vec(&image_frame, config::legacy()) {
+        match wincode::serialize(&image_frame) {
             Ok(bin) => {
                 println!("FITSImage binary length: {}", bin.len());
 
@@ -8313,15 +8310,17 @@ impl FITS {
                     cache_file.push(format!("{}.bin", frame));
 
                     match File::create(cache_file) {
-                        Ok(f) => {
-                            let mut buffer = std::io::BufWriter::new(f);
-                            match encode_into_std_write(&zfp_frame, &mut buffer, config::legacy()) {
-                                Ok(_) => {
-                                    //flush the buffer, check for any errors
-                                    match buffer.into_inner() {
+                        Ok(mut f) => {
+                            match wincode::serialize(&zfp_frame) {
+                                Ok(bin) => {
+                                    // write the serialized data directly to the file f
+                                    match f.write_all(&bin) {
                                         Ok(_) => {}
                                         Err(err) => {
-                                            println!("error flushing a zfp stream: {}", err);
+                                            println!(
+                                                "error writing a zfp stream to a cache file: {}",
+                                                err
+                                            );
                                             res = false;
                                         }
                                     };

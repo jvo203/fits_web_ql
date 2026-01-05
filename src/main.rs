@@ -41,7 +41,6 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_json;
 
-use bincode::{Encode, config, encode_to_vec};
 use chrono::Local;
 use std::collections::BTreeMap;
 use std::ffi::CString;
@@ -52,6 +51,7 @@ use std::thread;
 use std::time::Instant;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
+use wincode_derive::SchemaWrite;
 
 use fpzip_sys::*;
 use lttb::{DataPoint, lttb};
@@ -106,7 +106,7 @@ use crate::molecule::Molecule;
 
 const PROGRESS_INTERVAL: u64 = 250; //[ms]
 
-#[derive(Encode, Debug)]
+#[derive(SchemaWrite, Debug)]
 pub struct WsCSV {
     pub ts: f32,
     pub seq_id: u32,
@@ -115,7 +115,7 @@ pub struct WsCSV {
     pub csv: Vec<u8>,
 }
 
-#[derive(Encode, Debug)]
+#[derive(SchemaWrite, Debug)]
 pub struct WsSpectrum {
     pub ts: f32,
     pub seq_id: u32,
@@ -124,7 +124,7 @@ pub struct WsSpectrum {
     pub spectrum: Vec<u8>,
 }
 
-#[derive(Encode, Debug)]
+#[derive(SchemaWrite, Debug)]
 pub struct WsSpectra {
     pub ts: f32,
     pub seq_id: u32,
@@ -133,7 +133,7 @@ pub struct WsSpectra {
     pub integrated_spectrum: Vec<f32>,
 }
 
-#[derive(Encode, Debug)]
+#[derive(SchemaWrite, Debug)]
 pub struct WsHistogram {
     pub ts: f32,
     pub seq_id: u32,
@@ -148,7 +148,7 @@ pub struct WsHistogram {
     pub hist: Vec<i32>,
 }
 
-#[derive(Encode, Debug)]
+#[derive(SchemaWrite, Debug)]
 pub struct WsFrame {
     pub ts: f32,
     pub seq_id: u32,
@@ -157,7 +157,7 @@ pub struct WsFrame {
     pub frame: Vec<u8>,
 }
 
-#[derive(Encode, Debug)]
+#[derive(SchemaWrite, Debug)]
 pub struct WsImage {
     pub ts: f32,
     pub seq_id: u32,
@@ -169,7 +169,7 @@ pub struct WsImage {
     pub alpha: Vec<u8>,
 }
 
-#[derive(Encode, Debug)]
+#[derive(SchemaWrite, Debug)]
 pub struct WsViewport {
     pub ts: f32,
     pub seq_id: u32,
@@ -1091,7 +1091,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             csv: compressed_csv,
                                         };
 
-                                        match bincode::encode_to_vec(&ws_csv, config::legacy()) {
+                                        match wincode::serialize(&ws_csv) {
                                             Ok(bin) => {
                                                 println!("WcCSV binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -1323,7 +1323,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             spectrum: spectrum,
                                         };
 
-                                        match encode_to_vec(&ws_spectrum, config::legacy()) {
+                                        match wincode::serialize(&ws_spectrum) {
                                             Ok(bin) => {
                                                 println!("binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -1358,7 +1358,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         alpha: alpha,
                                     };
 
-                                    match encode_to_vec(&ws_viewport, config::legacy()) {
+                                    match wincode::serialize(&ws_viewport) {
                                         Ok(bin) => {
                                             println!("binary length: {}", bin.len());
                                             //println!("{}", bin);
@@ -1708,10 +1708,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                         integrated_spectrum: integrated_spectrum,
                                                     };
 
-                                                    match encode_to_vec(
-                                                        &ws_spectra,
-                                                        config::legacy(),
-                                                    ) {
+                                                    match wincode::serialize(&ws_spectra) {
                                                         Ok(bin) => {
                                                             println!(
                                                                 "binary length: {}",
@@ -1742,10 +1739,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                         hist: hist,
                                                     };
 
-                                                    match encode_to_vec(
-                                                        &ws_histogram,
-                                                        config::legacy(),
-                                                    ) {
+                                                    match wincode::serialize(&ws_histogram) {
                                                         Ok(bin) => {
                                                             println!(
                                                                 "binary length: {}",
@@ -2077,7 +2071,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     alpha: alpha_frame,
                                 };
 
-                                match encode_to_vec(&ws_image, config::legacy()) {
+                                match wincode::serialize(&ws_image) {
                                     Ok(bin) => {
                                         println!("binary length: {}", bin.len());
                                         //println!("{}", bin);
@@ -2345,7 +2339,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 frame: payload.to_vec(),
                                             };
 
-                                            match encode_to_vec(&ws_frame, config::legacy()) {
+                                            match wincode::serialize(&ws_frame) {
                                                 Ok(bin) => {
                                                     println!(
                                                         "WsFrame binary length: {}",
@@ -2714,7 +2708,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             frame: payload.to_vec(),
                                         };
 
-                                        match encode_to_vec(&ws_frame, config::legacy()) {
+                                        match wincode::serialize(&ws_frame) {
                                             Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -2824,8 +2818,8 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.5.3";
-static VERSION_STRING: &'static str = "R/SV2025-10-17.0";
+static SERVER_STRING: &'static str = "FITSWebQL v4.5.4";
+static VERSION_STRING: &'static str = "R/SV2026-01-05.0";
 static WASM_STRING: &'static str = "WASM2025-01-20.0";
 static FPZIP_STRING: &'static str = "WASM2025-01-20.0";
 
