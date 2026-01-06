@@ -178,6 +178,8 @@ sudo make install
 
 please be sure to have nasm installed beforehand when building from source, plus NUMA API: numactl and numa development library libnuma (package libnuma-dev on Ubuntu)
 
+# comment: -DENABLE_MONOCHROME=ON -DENABLE_8BIT=ON are not recognized CMake options in x265 4.1
+
 ##
 install sqlite3
 
