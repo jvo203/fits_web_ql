@@ -24,6 +24,7 @@ use std::{mem, ptr};
 
 use lz4_compress;
 use uuid::Uuid;
+use wincode::config::Configuration;
 use wincode_derive::SchemaWrite;
 
 use crate::UserParams;
@@ -949,8 +950,13 @@ impl FITS {
                             let mut buffer = Vec::new();
                             match f.read_to_end(&mut buffer) {
                                 Ok(_) => {
+                                    // remove the preallocation limit
+                                    let config =
+                                        Configuration::default().disable_preallocation_size_limit();
                                     let res: Result<ZFPMaskedArray, ReadError> =
-                                        wincode::deserialize::<ZFPMaskedArray>(&buffer);
+                                        wincode::config::deserialize::<ZFPMaskedArray, _>(
+                                            &buffer, config,
+                                        );
                                     match res {
                                         Ok(zfp_frame) => {
                                             //decompress a ZFPMaskedArray object
@@ -6306,7 +6312,9 @@ impl FITS {
             alpha: alpha_frame,
         };
 
-        match wincode::serialize(&image_frame) {
+        // remove the preallocation limit
+        let config = Configuration::default().disable_preallocation_size_limit();
+        match wincode::config::serialize(&image_frame, config) {
             Ok(bin) => {
                 println!("FITSImage binary length: {}", bin.len());
 
@@ -8311,7 +8319,10 @@ impl FITS {
 
                     match File::create(cache_file) {
                         Ok(mut f) => {
-                            match wincode::serialize(&zfp_frame) {
+                            // remove the preallocation limit
+                            let config =
+                                Configuration::default().disable_preallocation_size_limit();
+                            match wincode::config::serialize(&zfp_frame, config) {
                                 Ok(bin) => {
                                     // write the serialized data directly to the file f
                                     match f.write_all(&bin) {

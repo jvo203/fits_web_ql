@@ -51,6 +51,7 @@ use std::thread;
 use std::time::Instant;
 use std::time::SystemTime;
 use std::{env, mem, ptr};
+use wincode::config::Configuration;
 use wincode_derive::SchemaWrite;
 
 use fpzip_sys::*;
@@ -1091,7 +1092,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             csv: compressed_csv,
                                         };
 
-                                        match wincode::serialize(&ws_csv) {
+                                        // remove the preallocation limit
+                                        let config = Configuration::default()
+                                            .disable_preallocation_size_limit();
+                                        match wincode::config::serialize(&ws_csv, config) {
                                             Ok(bin) => {
                                                 println!("WcCSV binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -1323,7 +1327,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             spectrum: spectrum,
                                         };
 
-                                        match wincode::serialize(&ws_spectrum) {
+                                        // remove the preallocation limit
+                                        let config = Configuration::default()
+                                            .disable_preallocation_size_limit();
+                                        match wincode::config::serialize(&ws_spectrum, config) {
                                             Ok(bin) => {
                                                 println!("binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -1358,7 +1365,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                         alpha: alpha,
                                     };
 
-                                    match wincode::serialize(&ws_viewport) {
+                                    // remove the preallocation limit
+                                    let config =
+                                        Configuration::default().disable_preallocation_size_limit();
+                                    match wincode::config::serialize(&ws_viewport, config) {
                                         Ok(bin) => {
                                             println!("binary length: {}", bin.len());
                                             //println!("{}", bin);
@@ -1708,7 +1718,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                         integrated_spectrum: integrated_spectrum,
                                                     };
 
-                                                    match wincode::serialize(&ws_spectra) {
+                                                    // remove the preallocation limit
+                                                    let config = Configuration::default()
+                                                        .disable_preallocation_size_limit();
+                                                    match wincode::config::serialize(
+                                                        &ws_spectra,
+                                                        config,
+                                                    ) {
                                                         Ok(bin) => {
                                                             println!(
                                                                 "binary length: {}",
@@ -1739,7 +1755,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                         hist: hist,
                                                     };
 
-                                                    match wincode::serialize(&ws_histogram) {
+                                                    // remove the preallocation limit
+                                                    let config = Configuration::default()
+                                                        .disable_preallocation_size_limit();
+                                                    match wincode::config::serialize(
+                                                        &ws_histogram,
+                                                        config,
+                                                    ) {
                                                         Ok(bin) => {
                                                             println!(
                                                                 "binary length: {}",
@@ -2071,7 +2093,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                     alpha: alpha_frame,
                                 };
 
-                                match wincode::serialize(&ws_image) {
+                                // remove the preallocation limit
+                                let config =
+                                    Configuration::default().disable_preallocation_size_limit();
+                                match wincode::config::serialize(&ws_image, config) {
                                     Ok(bin) => {
                                         println!("binary length: {}", bin.len());
                                         //println!("{}", bin);
@@ -2339,7 +2364,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                                 frame: payload.to_vec(),
                                             };
 
-                                            match wincode::serialize(&ws_frame) {
+                                            // remove the preallocation limit
+                                            let config = Configuration::default()
+                                                .disable_preallocation_size_limit();
+                                            match wincode::config::serialize(&ws_frame, config) {
                                                 Ok(bin) => {
                                                     println!(
                                                         "WsFrame binary length: {}",
@@ -2708,7 +2736,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserSession {
                                             frame: payload.to_vec(),
                                         };
 
-                                        match wincode::serialize(&ws_frame) {
+                                        // remove the preallocation limit
+                                        let config = Configuration::default()
+                                            .disable_preallocation_size_limit();
+                                        match wincode::config::serialize(&ws_frame, config) {
                                             Ok(bin) => {
                                                 println!("WsFrame binary length: {}", bin.len());
                                                 //println!("{}", bin);
@@ -2819,7 +2850,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.5.4";
-static VERSION_STRING: &'static str = "R/SV2026-01-29.0";
+static VERSION_STRING: &'static str = "R/SV2026-03-02.0";
 static WASM_STRING: &'static str = "WASM2025-01-20.0";
 static FPZIP_STRING: &'static str = "WASM2025-01-20.0";
 
