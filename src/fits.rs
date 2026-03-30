@@ -2233,6 +2233,33 @@ impl FITS {
                 return Ok(true);
             }
 
+            // handle INSTRUME= 'Hyper Suprime-Cam'
+            if line.contains("INSTRUME= 'Hyper Suprime-Cam'") {
+                //switch on optical astronomy settings
+                self.is_optical = true;
+                self.flux = String::from("ratio");
+            }
+
+            // handle HIERARCHICAL keywords
+            if line.contains("HIERARCH") {
+                // read the INSTRUMENT keyword
+                if line.contains("INSTRUMENT") {
+                    let instrument = match scan_fmt_some!(line, "HIERARCH INSTRUMENT = {}", String)
+                    {
+                        Some(x) => x.replace("'", "").to_lowercase(),
+                        _ => String::from(""),
+                    };
+
+                    println!("instrument: {}", instrument);
+
+                    if instrument.contains("hsc") {
+                        //switch on optical astronomy settings
+                        self.is_optical = true;
+                        self.flux = String::from("ratio");
+                    }
+                }
+            }
+
             if line.contains("TELESCOP= ") {
                 let telescope = match scan_fmt_some!(line, "TELESCOP= {}", String) {
                     Some(x) => x.replace("'", "").to_lowercase(),
@@ -2271,6 +2298,13 @@ impl FITS {
 
                 // Tomo-e Gozen
                 if self.telescope.contains("kiso") {
+                    //enable optical
+                    self.is_optical = true;
+                    self.flux = String::from("ratio");
+                }
+
+                // subaru telescope
+                if self.telescope.contains("subaru") {
                     //enable optical
                     self.is_optical = true;
                     self.flux = String::from("ratio");
