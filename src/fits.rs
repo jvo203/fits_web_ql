@@ -2329,6 +2329,14 @@ impl FITS {
                 }
             }
 
+            // Subaru HSC 2024 (calexp) pipeline uses DATE-AVG instead of DATE-OBS
+            if line.contains("DATE-AVG= ") {
+                self.obs_date = match scan_fmt_some!(line, "DATE-AVG= {}", String) {
+                    Some(x) => x.replace("'", ""),
+                    _ => String::from(""),
+                }
+            }
+
             if line.contains("LINE    = ") {
                 self.line = match scan_fmt_some!(line, "LINE    = {}", String) {
                     Some(x) => x.replace("'", ""),
