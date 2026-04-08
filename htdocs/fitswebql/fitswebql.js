@@ -3154,16 +3154,22 @@ function display_cd_gridlines() {
 
     //scale
     var gridScale = inverse_CD_matrix(60, 60);//dx was 10
-    var angle = gridScale[2] * Math.sign(gridScale[0]);
+
+    for (let i = 0; i < gridScale.length; i++)
+        if (isNaN(gridScale[i]))
+            throw "CD matrix is not available";
+
+    // Extract the image rotation angle (CROTA2) from the CD matrix.
+    // CD = R(θ) · S where S = diag(CDELT1, CDELT2), so:
+    //   CD1_1 = CDELT1·cos(θ), CD2_1 = CDELT1·sin(θ)
+    // With CDELT1 < 0 (standard): θ = atan2(-CD2_1, -CD1_1)
+    var angle = Math.atan2(-fitsData.CD2_1, -fitsData.CD1_1) * toDegrees;
+    var angleRad = angle / toDegrees;
 
     var label_angle = -45;
 
     if (Math.sign(angle) != 0)
         label_angle *= Math.sign(angle);
-
-    for (let i = 0; i < gridScale.length; i++)
-        if (isNaN(gridScale[i]))
-            throw "CD matrix is not available";
 
     if (fitsData.CTYPE1.indexOf("RA") < 0 && fitsData.CTYPE1.indexOf("GLON") < 0 && fitsData.CTYPE1.indexOf("ELON") < 0) {
         d3.select("#displayGridlines")
@@ -3237,8 +3243,8 @@ function display_cd_gridlines() {
                 var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
                 var imageCanvas = imageContainer[va_count - 1].imageCanvas;
 
-                var dx = d * Math.cos(angle / toDegrees);
-                var dy = d * Math.sin(angle / toDegrees);
+                var dx = d * Math.cos(angleRad);
+                var dy = d * Math.sin(angleRad);
 
                 //convert dx, dy to a 0 .. 1 range
                 var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
@@ -3291,8 +3297,8 @@ function display_cd_gridlines() {
                 var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
                 var imageCanvas = imageContainer[va_count - 1].imageCanvas;
 
-                var dx = d * Math.cos(angle / toDegrees);
-                var dy = d * Math.sin(angle / toDegrees);
+                var dx = d * Math.cos(angleRad);
+                var dy = d * Math.sin(angleRad);
 
                 //convert dx, dy to a 0 .. 1 range
                 var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
@@ -3392,8 +3398,8 @@ function display_cd_gridlines() {
                 var image_bounding_dims = imageContainer[va_count - 1].image_bounding_dims;
                 var imageCanvas = imageContainer[va_count - 1].imageCanvas;
 
-                var dx = d * Math.sin(angle / toDegrees);
-                var dy = d * Math.cos(angle / toDegrees);
+                var dx = d * Math.sin(angleRad);
+                var dy = d * Math.cos(angleRad);
 
                 //convert dx, dy to a 0 .. 1 range
                 var tmpx = image_bounding_dims.x1 + (dx + 1) / 2 * (image_bounding_dims.width - 1);
