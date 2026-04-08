@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2026-01-05.0";
+    return "JS2026-04-08.0";
 }
 
 const wasm_supported = (() => {
@@ -2516,7 +2516,7 @@ function matrix_invert(M) {
     return I;
 }
 
-function inverse_CD_matrix(arcx, arcy) {
+function legacy_inverse_CD_matrix(arcx, arcy) {
     let fitsData = fitsContainer[va_count - 1];
 
     if (fitsData == null)
@@ -2573,6 +2573,64 @@ function inverse_CD_matrix(arcx, arcy) {
     DY = DC2_2 * y;
 
     var gridScale = new Array(DX / fitsData.width, Math.sign(CD2_2) * Math.abs(DY) / fitsData.height, theta);
+
+    return gridScale;
+}
+
+// arcx and arcy are in arc seconds, and the output gridScale is in degrees per pixel
+function inverse_CD_matrix(arcx, arcy) {
+    let fitsData = fitsContainer[va_count - 1];
+
+    if (fitsData == null)
+        return;
+
+    //convert from arcseconds to radians
+    var dx = (arcx / 3600.0) / toDegrees;//["] RA
+    var dy = (arcy / 3600.0) / toDegrees;//["] Dec
+
+    //convert to radians
+    var CRVAL1 = fitsData.CRVAL1 / toDegrees;
+    var CRVAL2 = fitsData.CRVAL2 / toDegrees;
+
+    var RA = CRVAL1 + dx;
+    var DEC = CRVAL2 + dy;
+
+    console.log(RadiansPrintHMS(CRVAL1), RadiansPrintHMS(RA));
+    console.log(RadiansPrintDMS(CRVAL2), RadiansPrintDMS(DEC));
+
+    var y = (1 - Math.tan(CRVAL2) * Math.cos(dx) / Math.tan(DEC)) / (Math.tan(CRVAL2) + Math.cos(dx) / Math.tan(DEC));
+    var x = Math.tan(dx) * Math.cos(CRVAL2) * (1 - y * Math.tan(CRVAL2));
+
+    //convert from radians to degrees
+    x = x * toDegrees;
+    y = y * toDegrees;
+
+    //console.log("inverse: x = ", x, "y = ", y);
+
+    var CD1_1 = fitsData.CD1_1;
+    var CD1_2 = fitsData.CD1_2;
+    var CD2_1 = fitsData.CD2_1;
+    var CD2_2 = fitsData.CD2_2;
+
+    var M = [[CD1_1, CD1_2], [CD2_1, CD2_2]];
+    var invM = matrix_invert(M);
+
+    var DC1_1 = invM[0][0];
+    var DC1_2 = invM[0][1];
+    var DC2_1 = invM[1][0];
+    var DC2_2 = invM[1][1];
+
+    var DX = DC1_1 * x + DC1_2 * y;
+    var DY = DC2_1 * x + DC2_2 * y;
+
+    // calculate the position angle of North in the image (degrees clockwise from screen-up)
+    // DC1_2 and DC2_2 are the x,y pixel displacements per unit Dec, giving the North direction in pixel space;
+    // atan2(DC1_2, DC2_2) recovers the rotation angle correctly for any CD matrix (rotation + shear + unequal scale)
+    var theta = Math.atan2(DC1_2, DC2_2) * toDegrees;
+
+    var gridScale = new Array(DX / fitsData.width, DY / fitsData.height, theta);
+
+    //console.log("grid scale: ", gridScale);
 
     return gridScale;
 }
@@ -2675,8 +2733,8 @@ function display_scale_info() {
     var scale = imageCanvas.height / image_bounding_dims.height;
 
     //scale
-    var arcmins = 60;
-    var gridScale = inverse_CD_matrix(arcmins, arcmins);
+    var arcsecs = 60;
+    var gridScale = inverse_CD_matrix(arcsecs, arcsecs);
 
     for (let i = 0; i < gridScale.length; i++)
         if (isNaN(gridScale[i]))
@@ -2686,8 +2744,8 @@ function display_scale_info() {
         //reduce the scale
         console.log("Vertical height:", Math.abs(gridScale[1]) * scale);
 
-        arcmins = 10;
-        gridScale = inverse_CD_matrix(arcmins, arcmins);
+        arcsecs = 10;
+        gridScale = inverse_CD_matrix(arcsecs, arcsecs);
 
         for (let i = 0; i < gridScale.length; i++)
             if (isNaN(gridScale[i]))
@@ -2751,44 +2809,32 @@ function display_scale_info() {
         .attr("font-size", "1.0em")
         .attr("text-anchor", "middle")
         .attr("stroke", "none")
-        .text(arcmins + "\"");
+        .text(arcsecs + "\"");
 
     //N-E compass
-    var L = 3 * emFontSize;//*Math.sign(gridScale[0]) ;
+    var L = 3 * emFontSize;
     var X = 0.02 * width + L + 1.5 * emFontSize;
     var Y = Y - L / 2;
     if (composite_view)
         X += img_x + img_width;
-    //var Y = 0.01*width + L + emFontSize;
-    //var Y = L + img_y;//Math.max(Y - 1.5 * emFontSize, 0.01 * width + L + emFontSize);
 
-    //rotation
-    var compass = svg.append("g")
-        .attr("id", "compass")
-        .attr("transform", 'rotate(' + gridScale[2] * Math.sign(gridScale[0]) + ' ' + X + ' ' + Y + ')');
+    // Derive North and East angles directly from the CD matrix.
+    // The inverse CD matrix column for Dec, (DC1_2, DC2_2), gives the pixel
+    // displacement (x, y_FITS) per unit Dec — i.e. the North direction in FITS pixels.
+    // The inverse CD matrix column for RA,  (DC1_1, DC2_1), gives East similarly.
+    // SVG y is flipped relative to FITS, so the SVG North vector is (DC1_2, -DC2_2)
+    // and East is (DC1_1, -DC2_1).
+    // Clockwise angle from screen-up (0,-1) to vector (vx, -vy_FITS) = atan2(vx, vy_FITS).
+    var compassInvM = matrix_invert([[fitsData.CD1_1, fitsData.CD1_2], [fitsData.CD2_1, fitsData.CD2_2]]);
+    var northAngle = Math.atan2(compassInvM[0][1], compassInvM[1][1]) * toDegrees;
+    var eastAngle = Math.atan2(compassInvM[0][0], compassInvM[1][0]) * toDegrees;
 
-    var east = compass.append("g")
-        .attr("id", "east");
+    var compass = svg.append("g").attr("id", "compass");
 
-    east.append("path")
-        .attr("marker-end", "url(#arrow)")
-        .style("stroke-width", (emStrokeWidth))
-        .style("fill", "none")
-        .attr("d", "M" + X + "," + Y + " L" + (X + L * Math.sign(gridScale[0])) + "," + Y);
-
-    east.append("text")
-        .attr("x", (X + L * Math.sign(gridScale[0]) + Math.sign(gridScale[0]) * emFontSize / 2))
-        .attr("y", (Y + emFontSize / 2.5))
-        .attr("font-family", "Monospace")
-        .attr("font-size", "1.0em")
-        .attr("text-anchor", "middle")
-        .attr("stroke", "none")
-        .text("E");
-
+    // North arrow: draw pointing screen-up, rotate to the true North direction
     var north = compass.append("g")
-        .attr("id", "north");
-
-    L *= Math.sign(gridScale[1]);
+        .attr("id", "north")
+        .attr("transform", 'rotate(' + northAngle + ' ' + X + ' ' + Y + ')');
 
     north.append("path")
         .attr("marker-end", "url(#arrow)")
@@ -2796,24 +2842,34 @@ function display_scale_info() {
         .style("fill", "none")
         .attr("d", "M" + X + "," + Y + " L" + X + "," + (Y - L));
 
-    if (L > 0)
-        north.append("text")
-            .attr("x", (X))
-            .attr("y", (Y - L - emFontSize / 4))
-            .attr("font-family", "Monospace")
-            .attr("font-size", "1.1em")
-            .attr("text-anchor", "middle")
-            .attr("stroke", "none")
-            .text("N");
-    else
-        north.append("text")
-            .attr("x", (X))
-            .attr("y", (Y - L + emFontSize))
-            .attr("font-family", "Monospace")
-            .attr("font-size", "1.0em")
-            .attr("text-anchor", "middle")
-            .attr("stroke", "none")
-            .text("N");
+    north.append("text")
+        .attr("x", X)
+        .attr("y", (Y - L - emFontSize / 4))
+        .attr("font-family", "Monospace")
+        .attr("font-size", "1.1em")
+        .attr("text-anchor", "middle")
+        .attr("stroke", "none")
+        .text("N");
+
+    // East arrow: draw pointing screen-up, rotate to the true East direction
+    var east = compass.append("g")
+        .attr("id", "east")
+        .attr("transform", 'rotate(' + eastAngle + ' ' + X + ' ' + Y + ')');
+
+    east.append("path")
+        .attr("marker-end", "url(#arrow)")
+        .style("stroke-width", (emStrokeWidth))
+        .style("fill", "none")
+        .attr("d", "M" + X + "," + Y + " L" + X + "," + (Y - L));
+
+    east.append("text")
+        .attr("x", X)
+        .attr("y", (Y - L - emFontSize / 4))
+        .attr("font-family", "Monospace")
+        .attr("font-size", "1.0em")
+        .attr("text-anchor", "middle")
+        .attr("stroke", "none")
+        .text("E");
 }
 
 
