@@ -462,9 +462,9 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "bytestring"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "113b4343b5f6617e7ad401ced8de3cc8b012e73a594347c307b90db3e9271289"
+checksum = "86566c496f2f47d9b8147a4c8b02ffdb69c919fe0c2b2e7195d22cbba0e635c9"
 dependencies = [
  "bytes",
 ]
@@ -1047,11 +1047,11 @@ dependencies = [
 
 [[package]]
 name = "fpzip-sys"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca99f73f220f02e37a8ddb52200a3b57de1e8e26422f800f4361b102fa39e71a"
+checksum = "59bd8892b64bd198cd54c9b5673cec86fba113a1abaae77d8e9518ab9c9343f9"
 dependencies = [
- "bindgen 0.71.1",
+ "bindgen 0.72.1",
  "cmake",
 ]
 
