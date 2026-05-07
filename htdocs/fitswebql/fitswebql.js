@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2026-04-08.0";
+    return "JS2026-05-07.0";
 }
 
 const wasm_supported = (() => {
@@ -13465,7 +13465,7 @@ async*/ function mainRenderer() {
             .attr("id", "jvoLogo")
             .attr("x", (width - 1 - 199))
             .attr("y", (height - 1 - 109))
-            .attr("xlink:href", "http://jvo.nao.ac.jp/images/JVO_logo_199x109.png")
+            .attr("xlink:href", "https://jvo.nao.ac.jp/images/JVO_logo_199x109.png")
             .attr("width", 199)
             .attr("height", 109)
             .attr("opacity", 0.5);
