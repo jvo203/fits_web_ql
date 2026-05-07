@@ -2849,7 +2849,7 @@ lazy_static! {
 #[cfg(feature = "jvo")]
 static LOG_DIRECTORY: &'static str = "LOGS";
 
-static SERVER_STRING: &'static str = "FITSWebQL v4.5.7";
+static SERVER_STRING: &'static str = "FITSWebQL v4.5.8";
 static VERSION_STRING: &'static str = "R/SV2026-05-07.0";
 static WASM_STRING: &'static str = "WASM2025-01-20.0";
 static FPZIP_STRING: &'static str = "WASM2025-01-20.0";
@@ -4699,7 +4699,7 @@ fn http_fits_response(
     #[cfg(feature = "cdn")]    
     html.push_str("<script src=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/FileSaver.js\"></script>\n");
 
-    // Font Awesome
+    // Font Awesome Free Kit
     //html.push_str("<script src=\"https://kit.fontawesome.com/8433b7dde2.js?ver=5.15.4\" crossorigin=\"anonymous\"></script>\n");
     // self-host Font Awesome
     #[cfg(not(feature = "cdn"))]
