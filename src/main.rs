@@ -4702,6 +4702,12 @@ fn http_fits_response(
     // Font Awesome
     //html.push_str("<script src=\"https://kit.fontawesome.com/8433b7dde2.js?ver=5.15.4\" crossorigin=\"anonymous\"></script>\n");
     // local hosting
+    #[cfg(not(feature = "cdn"))]
+    {
+        html.push_str("<link rel=\"stylesheet\" href=\"css/fontawesome.min.css\"/>\n");
+        html.push_str("<link rel=\"stylesheet\" href=\"css/solid.min.css\"/>\n");
+        html.push_str("<link rel=\"stylesheet\" href=\"css/regular.min.css\"/>\n");
+    }
 
     //VP9 decoder
     #[cfg(not(feature = "cdn"))]
