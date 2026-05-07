@@ -4701,12 +4701,18 @@ fn http_fits_response(
 
     // Font Awesome
     //html.push_str("<script src=\"https://kit.fontawesome.com/8433b7dde2.js?ver=5.15.4\" crossorigin=\"anonymous\"></script>\n");
-    // local hosting
+    // self-host Font Awesome
     #[cfg(not(feature = "cdn"))]
     {
         html.push_str("<link rel=\"stylesheet\" href=\"css/fontawesome.min.css\"/>\n");
         html.push_str("<link rel=\"stylesheet\" href=\"css/solid.min.css\"/>\n");
         html.push_str("<link rel=\"stylesheet\" href=\"css/regular.min.css\"/>\n");
+    }
+    #[cfg(feature = "cdn")]
+    {
+        html.push_str("<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/css/fontawesome.min.css\"/>\n");
+        html.push_str("<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/css/solid.min.css\"/>\n");
+        html.push_str("<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/css/regular.min.css\"/>\n");
     }
 
     //VP9 decoder
