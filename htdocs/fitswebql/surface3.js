@@ -1,7 +1,5 @@
 // standard global variables
-var container, scene, camera, renderer, controls;//, stats;
-var keyboard = new THREEx.KeyboardState();
-var clock = new THREE.Clock();
+var container, scene, camera, renderer, controls;
 var resize, fullscreen;
 var wireTexture, geometry, material, plane;
 
@@ -92,9 +90,6 @@ function init_surface() {
             camera = null;
             renderer = null;
             controls = null;
-            //stats = null ;
-            /*keyboard = null ;
-            clock = null ;*/
         })
         .text("×");
 
@@ -207,13 +202,8 @@ function animate_surface() {
 }
 
 function update() {
-    /*if ( keyboard.pressed("z") ) 
-    { 
-	// do something
-    }*/
 
     controls.update();
-    //stats.update();
 }
 
 function render() {
