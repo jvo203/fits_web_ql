@@ -3,7 +3,7 @@ var container, scene, camera, renderer, controls;
 var resize, fullscreen;
 var wireTexture, geometry, material, plane;
 
-var segments = 512;//512
+const segments = 512;
 var is_active;
 
 //get z from imageDataCopy r,g,b
