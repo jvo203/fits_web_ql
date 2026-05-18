@@ -2850,7 +2850,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.5.8";
-static VERSION_STRING: &'static str = "R/SV2026-05-07.0";
+static VERSION_STRING: &'static str = "R/SV2026-05-18.0";
 static WASM_STRING: &'static str = "WASM2025-01-20.0";
 static FPZIP_STRING: &'static str = "WASM2025-01-20.0";
 
@@ -4822,6 +4822,16 @@ fn http_fits_response(
     ));
     /*#[cfg(feature = "cdn")]
     html.push_str("<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/fitswebql.css\"/>\n");*/
+
+    // Three.js import script (used by the 3D viewer)
+    html.push_str(concat!(
+        "<script type=\"module\">\n",
+        "  import * as THREE from 'https://esm.sh/three@0.184.0';\n",
+        "  import { OrbitControls } from 'https://esm.sh/three@0.184.0/examples/jsm/controls/OrbitControls.js';\n",
+        "  window.THREE = THREE;\n",
+        "  window.OrbitControls = OrbitControls;\n",
+        "</script>\n",
+    ));
 
     html.push_str("<title>FITSWebQL</title></head><body>\n");
     html.push_str(&format!(
