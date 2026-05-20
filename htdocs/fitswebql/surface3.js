@@ -17,6 +17,19 @@ let initTimer = 0;
 const segments = 512;
 let is_active = false;
 
+// Handle page unload/navigation to dispose resources
+window.addEventListener('beforeunload', function () {
+    if (is_active) {
+        closeSurface();
+    }
+});
+
+window.addEventListener('pagehide', function () {
+    if (is_active) {
+        closeSurface();
+    }
+});
+
 function ensureThreeDeps() {
     if (THREE != null && OrbitControls != null) {
         return Promise.resolve();
