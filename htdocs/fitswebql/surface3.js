@@ -117,6 +117,22 @@ function colourFunction(x, y) {
 function disposeSurfaceResources() {
     window.removeEventListener('resize', onWindowResize);
 
+    // Clear lights from scene
+    if (scene != null) {
+        scene.clear();  // Removes all objects and lights from the scene
+    }
+
+    // Dispose camera
+    if (camera != null) {
+        camera.clear();
+    }
+
+    // Dispose mesh
+    if (plane != null) {
+        plane.geometry.dispose();  // Already done separately, but ensures mesh cleanup
+        plane.material.dispose();  // Already done separately
+    }
+
     if (renderer != null) {
         renderer.setAnimationLoop(null);
         renderer.dispose();
@@ -147,6 +163,8 @@ function disposeSurfaceResources() {
     geometry = null;
     material = null;
     plane = null;
+
+    console.log('Surface resources disposed');
 }
 
 function closeSurface() {
@@ -157,6 +175,7 @@ function closeSurface() {
 
     is_active = false;
     disposeSurfaceResources();
+    threeReadyPromise = null;  // Reset promise for next open
     d3.select('#ThreeJS').remove();
 }
 
@@ -243,6 +262,7 @@ function init_graph() {
     plane = new THREE.Mesh(geometry, material);
     scene.add(plane);
 
+    window.removeEventListener('resize', onWindowResize);  // Remove first to avoid duplicates
     window.addEventListener('resize', onWindowResize);
     d3.select('#hourglassThreeJS').remove();
 }
