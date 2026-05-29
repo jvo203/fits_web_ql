@@ -1,5 +1,5 @@
 function get_js_version() {
-    return "JS2026-05-20.0";
+    return "JS2026-05-29.0";
 }
 
 const wasm_supported = (() => {
@@ -12949,81 +12949,10 @@ function enable_3d_view() {
     if (test_webgl_support()) {
         console.log("WebGL supported");
 
-        /*(function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'three.min.js' + '?' + encodeURIComponent(get_js_version());
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
         (function () {
             var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'Detector.js' + '?' + encodeURIComponent(get_js_version());
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'threex.keyboardstate.js' + '?' + encodeURIComponent(get_js_version());
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'threex.windowresize.js' + '?' + encodeURIComponent(get_js_version());
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'THREEx.FullScreen.js' + '?' + encodeURIComponent(get_js_version());
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'TrackballControls.js' + '?' + encodeURIComponent(get_js_version());
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();*/
-
-        /*(function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/three.min.js';
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/Detector.min.js';
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/threex.keyboardstate.min.js';
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/threex.windowresize.min.js';
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/THREEx.FullScreen.min.js';
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/TrackballControls.min.js';
-            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-        })();*/
-
-        (function () {
-            var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'surface3.js' + '?' + encodeURIComponent(get_js_version());
+            //po.src = 'surface3.js' + '?' + encodeURIComponent(get_js_version());
+            po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/surface3.min.js';
             var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
         })();
 
