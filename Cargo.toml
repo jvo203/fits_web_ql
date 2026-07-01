@@ -32,11 +32,11 @@ thread-priority = "*"
 
 [dependencies]
 mimalloc = "*"
-tikv-jemallocator = "0.6.1"
-tikv-jemalloc-sys = { version = "0.6.1", optional = true }
-actix-http = "3.12.1"
+tikv-jemallocator = "0.7.0"
+tikv-jemalloc-sys = { version = "0.7.1+5.3.1-0-g81034ce1f1373e37dc865038e1bc8eeecf559ce8", optional = true }
+actix-http = "3.13.1"
 actix = "0.13.5"
-actix-web = "4.13.0"
+actix-web = "4.14.0"
 actix-web-actors = "4.3.1+deprecated"
 actix-files = "0.6.10"
 http = "*"
@@ -56,7 +56,7 @@ futures = "*"
 parking_lot = "*"
 rusqlite = "*"
 rayon = "*"
-time = "*"
+time = "=0.3.51"
 num-integer = "*"
 num-rational = "*"
 libvpx-native-sys = { version = "*", git = "https://github.com/jvo203/rust-vpx.git", features = [
