@@ -152,7 +152,7 @@ sudo make install
 (when compiling from source enforce -fPIC by means of the configure flag --enable-pic)
 
 ##
-install x265 version 4.1 or higher (the code does not work with 4.0 or lower due to API changes in the x265 library)
+install x265 version 4.3 or higher (the code does not work with 4.0 or lower due to API changes in the x265 library)
 
 macOS: "brew install x265"
 
@@ -160,20 +160,14 @@ other systems follow:
 
 http://www.linuxfromscratch.org/blfs/view/svn/multimedia/x265.html
 
-wget https://bitbucket.org/multicoreware/x265_git/downloads/x265_4.1.tar.gz
-
-tar zxvf x265_4.1.tar.gz
-
-cd x265_4.1
+wget https://github.com/Multicorewareinc/x265/releases/download/4.3/x265_4.3.tar.gz
+tar zxvf x265_4.3.tar.gz
+cd x265_4.3
 
 mkdir -p build
-
 cd build
-
 cmake ../source
-
-make
-
+make -j16
 sudo make install
 
 please be sure to have nasm installed beforehand when building from source, plus NUMA API: numactl and numa development library libnuma (package libnuma-dev on Ubuntu)
