@@ -414,8 +414,8 @@ impl FITS {
             filter: String::from(""),
             obsra: 0.0,
             obsdec: 0.0,
-            datamin: std::f32::MIN,
-            datamax: std::f32::MAX,
+            datamin: f32::MIN,
+            datamax: f32::MAX,
             bitpix: 0,
             naxis: 0,
             naxes: [0; 4],
@@ -436,37 +436,37 @@ impl FITS {
             pixels: Vec::new(),
             bscale: 1.0,
             bzero: 0.0,
-            ignrval: std::f32::MIN,
+            ignrval: f32::MIN,
             crval1: 0.0,
-            cdelt1: std::f64::NAN,
+            cdelt1: f64::NAN,
             crpix1: 0.0,
             cunit1: String::from(""),
             ctype1: String::from(""),
             crval2: 0.0,
-            cdelt2: std::f64::NAN,
+            cdelt2: f64::NAN,
             crpix2: 0.0,
             cunit2: String::from(""),
             ctype2: String::from(""),
             crval3: 0.0,
-            cdelt3: 1.0, //std::f64::NAN,
+            cdelt3: 1.0, //f64::NAN,
             crpix3: 0.0,
             cunit3: String::from(""),
             ctype3: String::from(""),
-            cd1_1: std::f64::NAN,
-            cd1_2: std::f64::NAN,
-            cd2_1: std::f64::NAN,
-            cd2_2: std::f64::NAN,
+            cd1_1: f64::NAN,
+            cd1_2: f64::NAN,
+            cd2_1: f64::NAN,
+            cd2_2: f64::NAN,
             frame_min: Vec::new(),
             frame_max: Vec::new(),
-            dmin: std::f32::MAX, //no mistake here
-            dmax: std::f32::MIN, //no mistake here
+            dmin: f32::MAX, //no mistake here
+            dmax: f32::MIN, //no mistake here
             data_hist: RwLock::new(Vec::new()),
             data_median: RwLock::new(0.0),
             data_mad: RwLock::new(0.0),
             data_mad_p: RwLock::new(0.0),
             data_mad_n: RwLock::new(0.0),
-            pmin: std::f32::MIN,
-            pmax: std::f32::MAX,
+            pmin: f32::MIN,
+            pmax: f32::MAX,
             lmin: (0.5f32).ln(),
             lmax: (1.5f32).ln(),
             hist: Vec::new(),
@@ -552,8 +552,8 @@ impl FITS {
             thread_pixels.push(RwLock::new(vec![0.0; self.pixels.len()]));
             thread_mask.push(RwLock::new(vec![0; self.mask.len()]));
 
-            thread_min.push(atomic::Atomic::new(std::f32::MAX));
-            thread_max.push(atomic::Atomic::new(std::f32::MIN));
+            thread_min.push(atomic::Atomic::new(f32::MAX));
+            thread_max.push(atomic::Atomic::new(f32::MIN));
         }
 
         let mut thread_mean_spectrum: Vec<atomic::Atomic<f32>> =
@@ -569,8 +569,8 @@ impl FITS {
             thread_mean_spectrum.push(atomic::Atomic::new(0.0));
             thread_integrated_spectrum.push(atomic::Atomic::new(0.0));
 
-            thread_frame_min.push(atomic::Atomic::new(std::f32::MAX));
-            thread_frame_max.push(atomic::Atomic::new(std::f32::MIN));
+            thread_frame_min.push(atomic::Atomic::new(f32::MAX));
+            thread_frame_max.push(atomic::Atomic::new(f32::MIN));
         }
 
         //at first fill-in the self.data_f16 vector in parallel
@@ -658,8 +658,8 @@ impl FITS {
                     };
 
                     //parallel data processing
-                    let mut frame_min = std::f32::MAX;
-                    let mut frame_max = std::f32::MIN;
+                    let mut frame_min = f32::MAX;
+                    let mut frame_max = f32::MIN;
 
                     let mut mean_spectrum = 0.0_f32;
                     let mut integrated_spectrum = 0.0_f32;
@@ -893,8 +893,8 @@ impl FITS {
             thread_pixels.push(RwLock::new(vec![0.0; self.pixels.len()]));
             thread_mask.push(RwLock::new(vec![0; self.mask.len()]));
 
-            thread_min.push(atomic::Atomic::new(std::f32::MAX));
-            thread_max.push(atomic::Atomic::new(std::f32::MIN));
+            thread_min.push(atomic::Atomic::new(f32::MAX));
+            thread_max.push(atomic::Atomic::new(f32::MIN));
         }
 
         let mut thread_mean_spectrum: Vec<atomic::Atomic<f32>> =
@@ -910,8 +910,8 @@ impl FITS {
             thread_mean_spectrum.push(atomic::Atomic::new(0.0));
             thread_integrated_spectrum.push(atomic::Atomic::new(0.0));
 
-            thread_frame_min.push(atomic::Atomic::new(std::f32::MAX));
-            thread_frame_max.push(atomic::Atomic::new(std::f32::MIN));
+            thread_frame_min.push(atomic::Atomic::new(f32::MAX));
+            thread_frame_max.push(atomic::Atomic::new(f32::MIN));
         }
 
         //at first fill-in the self.data_f16 vector in parallel
@@ -1235,8 +1235,8 @@ impl FITS {
             let mut count: i32 = 0;
 
             //no mistake here, the initial ranges are supposed to be broken
-            let mut frame_min = std::f32::MAX;
-            let mut frame_max = std::f32::MIN;
+            let mut frame_min = f32::MAX;
+            let mut frame_max = f32::MIN;
 
             {
                 let mut rdr = Cursor::new(data);
@@ -1603,12 +1603,12 @@ impl FITS {
         fits.status_code = 200;
 
         if !fits.pixels.is_empty() && !fits.mask.is_empty() {
-            //apply std::f32::NAN to masked pixels
+            //apply f32::NAN to masked pixels
             let mut ord_pixels: Vec<f32> = fits
                 .pixels
                 .par_iter()
                 .zip(fits.mask.par_iter())
-                .map(|(x, m)| if *m > 0 { *x } else { std::f32::NAN })
+                .map(|(x, m)| if *m > 0 { *x } else { f32::NAN })
                 .collect();
 
             //sort the pixels in parallel using rayon
@@ -1958,12 +1958,12 @@ impl FITS {
 
         if fits.has_data {
             if !fits.pixels.is_empty() && !fits.mask.is_empty() {
-                //apply std::f32::NAN to masked pixels
+                //apply f32::NAN to masked pixels
                 let mut ord_pixels: Vec<f32> = fits
                     .pixels
                     .par_iter()
                     .zip(fits.mask.par_iter())
-                    .map(|(x, m)| if *m > 0 { *x } else { std::f32::NAN })
+                    .map(|(x, m)| if *m > 0 { *x } else { f32::NAN })
                     .collect();
 
                 //sort the pixels in parallel using rayon
@@ -2049,8 +2049,8 @@ impl FITS {
         self.mean_spectrum.resize(self.depth as usize, 0.0);
         self.integrated_spectrum.resize(self.depth as usize, 0.0);
 
-        self.frame_min.resize(self.depth as usize, std::f32::MAX);
-        self.frame_max.resize(self.depth as usize, std::f32::MIN);
+        self.frame_min.resize(self.depth as usize, f32::MAX);
+        self.frame_max.resize(self.depth as usize, f32::MIN);
 
         match self.bitpix {
             8 => self
@@ -2340,7 +2340,7 @@ impl FITS {
                     self.is_optical = false;
                     self.is_xray = true;
                     self.flux = String::from("legacy");
-                    if self.ignrval == std::f32::MIN {
+                    if self.ignrval == f32::MIN {
                         self.ignrval = -1.0;
                     }
                 }
@@ -2583,12 +2583,12 @@ impl FITS {
 
                 self.datamin = match s.parse::<f32>() {
                     Ok(x) => x,
-                    Err(_) => std::f32::MIN,
+                    Err(_) => f32::MIN,
                 };
 
                 if self.datamin == self.datamax {
-                    self.datamin = std::f32::MIN;
-                    self.datamax = std::f32::MAX;
+                    self.datamin = f32::MIN;
+                    self.datamax = f32::MAX;
                 };
             }
 
@@ -2600,12 +2600,12 @@ impl FITS {
 
                 self.datamax = match s.parse::<f32>() {
                     Ok(x) => x,
-                    Err(_) => std::f32::MAX,
+                    Err(_) => f32::MAX,
                 };
 
                 if self.datamin == self.datamax {
-                    self.datamin = std::f32::MIN;
-                    self.datamax = std::f32::MAX;
+                    self.datamin = f32::MIN;
+                    self.datamax = f32::MAX;
                 };
             }
 
@@ -2641,7 +2641,7 @@ impl FITS {
 
                 self.ignrval = match s.parse::<f32>() {
                     Ok(x) => x,
-                    Err(_) => std::f32::MIN,
+                    Err(_) => f32::MIN,
                 }
             }
 
@@ -2857,8 +2857,8 @@ impl FITS {
         let mut count: i32 = 0;
 
         //no mistake here, the initial ranges are supposed to be broken
-        let mut frame_min = std::f32::MAX;
-        let mut frame_max = std::f32::MIN;
+        let mut frame_min = f32::MAX;
+        let mut frame_max = f32::MIN;
 
         match self.bitpix {
             8 => {
@@ -3045,8 +3045,8 @@ impl FITS {
 
         println!("custom thread pool: {:?}", pool);
 
-        let mut dmin = std::f32::MAX; //no mistake here
-        let mut dmax = std::f32::MIN; //no mistake here
+        let mut dmin = f32::MAX; //no mistake here
+        let mut dmax = f32::MIN; //no mistake here
 
         let mut pixels: Vec<f32> = vec![0.0; self.pixels.len()];
         let mask: Vec<u8> = vec![0; self.mask.len()];
@@ -3062,8 +3062,8 @@ impl FITS {
             thread_pixels.push(RwLock::new(vec![0.0; self.pixels.len()]));
             thread_mask.push(RwLock::new(vec![0; self.mask.len()]));
 
-            thread_min.push(atomic::Atomic::new(std::f32::MAX));
-            thread_max.push(atomic::Atomic::new(std::f32::MIN));
+            thread_min.push(atomic::Atomic::new(f32::MAX));
+            thread_max.push(atomic::Atomic::new(f32::MIN));
         }
 
         let total = end - start + 1;
@@ -3096,8 +3096,8 @@ impl FITS {
                 println!("tid: {}, index: {}, frame: {}", tid, index, frame);
 
                 //parallel data processing
-                let mut frame_min = std::f32::MAX;
-                let mut frame_max = std::f32::MIN;
+                let mut frame_min = f32::MAX;
+                let mut frame_max = f32::MIN;
 
                 let mut mean_spectrum = 0.0_f32;
                 let mut integrated_spectrum = 0.0_f32;
@@ -6703,7 +6703,7 @@ impl FITS {
                         frame, f, v, spectrum[i]
                     );*/
 
-                    if f != std::f64::NAN && v != std::f64::NAN {
+                    if !f.is_nan() && !v.is_nan() {
                         // write the CSV header
                         if !has_header {
                             let _ = stream.write(b"\"channel\",");
@@ -6723,7 +6723,7 @@ impl FITS {
                         continue;
                     }
 
-                    if v != std::f64::NAN {
+                    if !v.is_nan() {
                         // write the CSV header
                         if !has_header {
                             let _ = stream.write(b"\"channel\",");
@@ -6741,7 +6741,7 @@ impl FITS {
                         continue;
                     }
 
-                    if f != std::f64::NAN {
+                    if !f.is_nan() {
                         // write the CSV header
                         if !has_header {
                             let _ = stream.write(b"\"channel\",");
@@ -7375,11 +7375,11 @@ impl FITS {
 
             // what about Δv ???
 
-            return (std::f64::NAN, val / 1000.0); // [km/s]
+            return (f64::NAN, val / 1000.0); // [km/s]
         };
 
         // if we got to this point there is nothing to report ...
-        return (std::f64::NAN, std::f64::NAN);
+        return (f64::NAN, f64::NAN);
     }
 
     fn pix_to_world(&self, x: i32, y: i32) -> (f64, f64) {
@@ -7389,7 +7389,7 @@ impl FITS {
         {
             self.crval1 + (x as f64 - self.crpix1) * self.cdelt1 // [deg]
         } else {
-            std::f64::NAN
+            f64::NAN
         };
 
         let dec = if self.ctype2.contains("DEC")
@@ -7398,7 +7398,7 @@ impl FITS {
         {
             self.crval2 + (y as f64 - self.crpix2) * self.cdelt2 // [deg]
         } else {
-            std::f64::NAN
+            f64::NAN
         };
 
         return (ra, dec);
@@ -8563,10 +8563,10 @@ impl FITS {
             let frame_min = self.frame_min[frame];
             let frame_max = self.frame_max[frame];
 
-            let mut x1min = std::f32::MAX;
-            let mut x1max = std::f32::MIN;
-            let mut x2min = std::f32::MAX;
-            let mut x2max = std::f32::MIN;
+            let mut x1min = f32::MAX;
+            let mut x1max = f32::MIN;
+            let mut x2min = f32::MAX;
+            let mut x2max = f32::MIN;
 
             let mut offset: usize = 0;
 
