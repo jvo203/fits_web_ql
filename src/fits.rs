@@ -29,7 +29,6 @@ use wincode_derive::SchemaWrite;
 
 use crate::UserParams;
 use crate::server;
-use ::actix::*;
 use rayon;
 use rayon::prelude::*;
 
