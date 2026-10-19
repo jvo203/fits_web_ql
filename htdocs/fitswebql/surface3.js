@@ -12,7 +12,11 @@ let material;
 let plane;
 let surfacePoint = null;
 let threeReadyPromise = null;
+let threeDepsTimer = 0;
 let initTimer = 0;
+let surfacePrepared = false;
+let wireTextureReady = false;
+let wireTextureLoadFailed = false;
 
 const segments = 512;
 let is_active = false;
@@ -41,6 +45,8 @@ function ensureThreeDeps() {
 
     threeReadyPromise = new Promise((resolve) => {
         function attemptResolve() {
+            threeDepsTimer = 0;
+
             if (window.THREE != null && window.OrbitControls != null) {
                 THREE = window.THREE;
                 OrbitControls = window.OrbitControls;
@@ -49,7 +55,7 @@ function ensureThreeDeps() {
                 return;
             }
 
-            setTimeout(attemptResolve, 10);
+            threeDepsTimer = setTimeout(attemptResolve, 10);
         }
 
         attemptResolve();
@@ -159,6 +165,10 @@ function disposeSurfaceResources() {
         wireTexture.dispose();
     }
 
+    surfacePrepared = false;
+    wireTextureReady = false;
+    wireTextureLoadFailed = false;
+
     if (geometry != null) {
         geometry.dispose();
     }
@@ -181,6 +191,11 @@ function disposeSurfaceResources() {
 }
 
 function closeSurface() {
+    if (threeDepsTimer !== 0) {
+        clearTimeout(threeDepsTimer);
+        threeDepsTimer = 0;
+    }
+
     if (initTimer !== 0) {
         clearTimeout(initTimer);
         initTimer = 0;
@@ -218,6 +233,43 @@ function buildGeometry() {
     geometry.computeVertexNormals();
 }
 
+function showPreparedSurface() {
+    if (!is_active || !surfacePrepared || !wireTextureReady || renderer == null || material == null) {
+        return;
+    }
+
+    if (wireTextureLoadFailed) {
+        console.error('Unable to load the 3D surface wire texture; showing the surface without the wire overlay.');
+        material.map = null;
+        material.needsUpdate = true;
+        if (wireTexture != null) {
+            wireTexture.dispose();
+            wireTexture = null;
+        }
+
+        const errorMessage = document.createElement('div');
+        errorMessage.setAttribute('role', 'alert');
+        errorMessage.textContent = 'Wire texture failed to load; showing the surface without the wire overlay.';
+        Object.assign(errorMessage.style, {
+            position: 'absolute',
+            top: '12px',
+            left: '12px',
+            zIndex: '1',
+            padding: '8px',
+            color: 'white',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            pointerEvents: 'none'
+        });
+        container.appendChild(errorMessage);
+    }
+
+    controls.update();
+    renderer.render(scene, camera);
+    renderer.domElement.style.visibility = 'visible';
+    renderer.setAnimationLoop(animate_surface);
+    d3.select('#hourglassThreeJS').remove();
+}
+
 function init_graph() {
     initTimer = 0;
 
@@ -238,10 +290,39 @@ function init_graph() {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(screenWidth, screenHeight);
-    renderer.setAnimationLoop(animate_surface);
+    renderer.domElement.style.visibility = 'hidden';
 
     container = document.getElementById('ThreeJS');
     container.appendChild(renderer.domElement);
+
+    surfacePrepared = false;
+    wireTextureReady = false;
+    wireTextureLoadFailed = false;
+    let loadedTexture;
+    loadedTexture = new THREE.TextureLoader().load(
+        ROOT_PATH + 'square.png',
+        () => {
+            if (!is_active || wireTexture !== loadedTexture) {
+                return;
+            }
+            wireTextureReady = true;
+            showPreparedSurface();
+        },
+        undefined,
+        () => {
+            if (!is_active || wireTexture !== loadedTexture) {
+                return;
+            }
+            wireTextureLoadFailed = true;
+            wireTextureReady = true;
+            showPreparedSurface();
+        }
+    );
+    wireTexture = loadedTexture;
+    wireTexture.wrapS = THREE.RepeatWrapping;
+    wireTexture.wrapT = THREE.RepeatWrapping;
+    wireTexture.repeat.set(segments, segments);
+    wireTexture.colorSpace = THREE.SRGBColorSpace;
 
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -260,12 +341,6 @@ function init_graph() {
 
     buildGeometry();
 
-    wireTexture = new THREE.TextureLoader().load(ROOT_PATH + 'square.png');
-    wireTexture.wrapS = THREE.RepeatWrapping;
-    wireTexture.wrapT = THREE.RepeatWrapping;
-    wireTexture.repeat.set(segments, segments);
-    wireTexture.colorSpace = THREE.SRGBColorSpace;
-
     material = new THREE.MeshPhongMaterial({
         map: wireTexture,
         vertexColors: true,
@@ -277,7 +352,8 @@ function init_graph() {
 
     window.removeEventListener('resize', onWindowResize);  // Remove first to avoid duplicates
     window.addEventListener('resize', onWindowResize);
-    d3.select('#hourglassThreeJS').remove();
+    surfacePrepared = true;
+    showPreparedSurface();
 }
 
 function init_surface() {
