@@ -30,7 +30,6 @@ use wincode_derive::SchemaWrite;
 use crate::UserParams;
 use crate::server;
 use rayon;
-use rayon::prelude::*;
 
 use bzip2::read::BzDecoder;
 use bzip2::write::BzDecoder as BzDecompressor;
