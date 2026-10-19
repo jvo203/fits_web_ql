@@ -12951,8 +12951,8 @@ function enable_3d_view() {
 
         (function () {
             var po = document.createElement('script'); po.type = 'text/javascript'; po.async = false;
-            po.src = 'surface3.js' + '?' + encodeURIComponent(get_js_version());
-            //po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/surface3.min.js';
+            //po.src = 'surface3.js' + '?' + encodeURIComponent(get_js_version());
+            po.src = 'https://cdn.jsdelivr.net/gh/jvo203/fits_web_ql/htdocs/fitswebql/surface3.min.js';
             var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
         })();
 
