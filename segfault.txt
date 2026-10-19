@@ -1,0 +1,28 @@
+PostgreSQL connection URL: postgresql://jvo@localhost/alma
+connected to PostgreSQL
+SQL: SELECT path FROM cube WHERE data_id = 'ALMA02128336_00_00_00';
+new websocket request for ["ALMA02128336"], user agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
+allocating a new websocket session for ALMA02128336
+websocket connection started for ALMA02128336
+[SessionServer]: registering a new session ALMA02128336/856f2cfd-f56e-4f03-a0f6-895f4f031594
+[get_molecules] http request for ALMA02128336: freq_start=0, freq_end=0 [GHz]
+[debug] WebAssembly is supported
+[get_molecules] http request for ALMA02128336: freq_start=0, freq_end=0 [GHz]
+[get_molecules] http request for ALMA02128336: freq_start=0, freq_end=0 [GHz]
+ROW: Row { columns: [Column { name: "path", table_oid: Some(22843), column_id: Some(49), type_modifier: -1, type: Text }] }
+filepath: "/home/alma/fits_archive/2026/05/21/jvor_260521s/2024.1.01570.S/A001_X3788_X81f3/ALMA02128336_00_00_00.fits"
+loading FITS data from "/home/alma/fits_archive/2026/05/21/jvor_260521s/2024.1.01570.S/A001_X3788_X81f3/ALMA02128336_00_00_00.fits"
+File { fd: 60, path: "/nfs/p20_d01/alma/fits_archive/2026/05/21/jvor_260521s/2024.1.01570.S/A001_X3788_X81f3/ALMA02128336.fits", read: true, write: false }, 18100549440 bytes
+is_gzip: false, is_bzip2: false, is_compressed: false
+ALMA02128336: reading a FITS file header...
+telescope: alma
+deleting ALMA02128336
+ALMA02128336/#hdu = 10, FITS { created: Instant { tv_sec: 4245710, tv_nsec: 554320530 }, dataset_id: "ALMA02128336", url: "", filesize: 18100549440, telescope: "alma", obj_name: "HerBS-4 ", obs_date: "2025-05-04T20:48:39.072000", timesys: "UTC", specsys: "LSRK", beam_unit: "Jy/beam", beam_type: "Intensity", bmaj: 4.429174543081e-5, bmin: 3.026410769154e-5, bpa: 89.31351562833, restfrq: 314352000000.0, line: "", filter: "", obsra: 127.7125, obsdec: 1.540277777778, datamin: -0.16256718, datamax: 0.1635148, bitpix: -32, naxis: 4, naxes: [1536, 1536, 1918, 1], width: 1536, height: 1536, depth: 1918, polarisation: 1, data_u8: [], data_i16: [], data_i32: [], data_f16: [], data_f64: [], header: "", mean_spectrum: [], integrated_spectrum: [], mask: [], pixels: [], bscale: 1.0, bzero: 0.0, ignrval: -3.4028235e38, crval1: 127.7125, cdelt1: -5.833333333333e-6, crpix1: 769.0, cunit1: "deg", ctype1: "RA---SIN", crval2: 1.540277777778, cdelt2: 5.833333333333e-6, crpix2: 769.0, cunit2: "deg", ctype2: "DEC--SIN", crval3: 313455378472.6, cdelt3: 976726.4000244, crpix3: 1.0, cunit3: "Hz", ctype3: "FREQ", cd1_1: NaN, cd1_2: NaN, cd2_1: NaN, cd2_2: NaN, frame_min: [], frame_max: [], dmin: 3.4028235e38, dmax: -3.4028235e38, data_hist: RwLock { data: [] }, data_median: RwLock { data: 0.0 }, data_mad: RwLock { data: 0.0 }, data_mad_p: RwLock { data: 0.0 }, data_mad_n: RwLock { data: 0.0 }, pmin: -3.4028235e38, pmax: 3.4028235e38, lmin: -0.6931472, lmax: 0.4054651, hist: [], median: 0.0, mad: 0.0, mad_p: 0.0, mad_n: 0.0, black: 0.0, white: 0.0, sensitivity: 0.0, ratio_sensitivity: 0.0, flux: "", has_frequency: true, has_velocity: false, frame_multiplier: 1.0, has_header: true, has_data: false, timestamp: RwLock { data: SystemTime { tv_sec: 1792385882, tv_nsec: 413404562 } }, is_optical: false, is_xray: false, is_dummy: false, status_code: 404 }
+FITS cube frame size: 9437184 bytes
+setting cdelt3 to 1
+ALMA02128336: reading half-float f16 data from cache
+custom thread pool: ThreadPool { num_threads: 24, id: RegistryId { addr: 5721292213376 } }
+memory allocation of 4718592 bytes failed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Aborted (core dumped)
+[chris@jvow fits_web_ql]$
