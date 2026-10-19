@@ -84,7 +84,6 @@ use std::cmp::Ordering::Equal;
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 //use openjpeg2_sys as ffi;
-use vpx_sys::*;
 
 use crate::*; //bindings to local C libraries
 
