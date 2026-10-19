@@ -580,32 +580,58 @@ impl FITS {
                 .map(|frame| {
                     //frame is i32
                     let offset = header_offset + (frame as usize) * frame_size;
-                    let mut data_u8: Vec<u8> = vec![0; frame_size];
+
+                    // The destination buffer is always allocated as Vec<f16> so that it is
+                    // deallocated with the same Layout it was allocated with. Re-typing a
+                    // Vec<u8> into a Vec<f16> via from_raw_parts is undefined behaviour
+                    // (alignment/size mismatch on free) and corrupted the allocator heap.
+                    let mut data_f16: Vec<f16> = if is_cache {
+                        //half-float occupies 2 bytes
+                        vec![f16::from_f32(0.0); frame_size.div_ceil(2)]
+                    } else {
+                        //float32 takes up 4 bytes
+                        let no_bytes = (self.bitpix.abs() / 8) as usize;
+                        vec![f16::from_f32(0.0); frame_size / no_bytes]
+                    };
+
+                    // raw big-endian FITS bytes; only needed for the non-cache (F32) path
+                    let mut data_u8: Vec<u8> = if is_cache {
+                        Vec::new()
+                    } else {
+                        vec![0; frame_size]
+                    };
+
+                    // the byte view the file is read into: the f16 storage itself for the
+                    // cache (f16 is repr(transparent) over u16, any bit pattern is valid)
+                    let dst: &mut [u8] = if is_cache {
+                        unsafe {
+                            slice::from_raw_parts_mut(
+                                data_f16.as_mut_ptr() as *mut u8,
+                                frame_size,
+                            )
+                        }
+                    } else {
+                        &mut data_u8[..]
+                    };
 
                     //parallel read at offset
-                    let bytes_read = match f.read_at(offset as u64, &mut data_u8) {
+                    let bytes_read = match f.read_at(offset as u64, dst) {
                         Ok(size) => size,
                         Err(_err) => {
                             // print!("read_at error: {}", err);
                             // 0
 
-                            // resize the data_u8 vector to 0
-                            data_u8.resize(0, 0);
-
-                            // read data in 256KB chunks
+                            // read data in 256KB chunks straight into the destination
                             let chunk_size: usize = 256 * 1024;
                             let mut bytes_read = 0;
 
                             for chunk_offset in (offset..offset + frame_size).step_by(chunk_size) {
                                 let buf_size = chunk_size.min(offset + frame_size - chunk_offset);
-                                let mut data_chunk: Vec<u8> = vec![0; buf_size];
+                                let start = chunk_offset - offset;
+                                let data_chunk = &mut dst[start..start + buf_size];
 
-                                bytes_read += match f.read_at(chunk_offset as u64, &mut data_chunk)
-                                {
-                                    Ok(size) => {
-                                        data_u8.extend_from_slice(&data_chunk);
-                                        size
-                                    }
+                                bytes_read += match f.read_at(chunk_offset as u64, data_chunk) {
+                                    Ok(size) => size,
                                     Err(err) => {
                                         print!(
                                             "read_at error: {}, chunk_offset: {}, buf_size: {}",
@@ -642,21 +668,6 @@ impl FITS {
                         );
                     };
 
-                    let len = data_u8.len();
-
-                    let data_f16: Vec<f16> = if is_cache {
-                        //need to mutate data_u8 into vec_f16
-                        let ptr = data_u8.as_ptr() as *mut f16;
-                        let capacity = data_u8.capacity();
-
-                        //half-float occupies 2 bytes
-                        unsafe { Vec::from_raw_parts(ptr, len / 2, capacity / 2) }
-                    } else {
-                        //float32 takes up 4 bytes
-                        let no_bytes = (self.bitpix.abs() / 8) as usize;
-                        vec![f16::from_f32(0.0); len / no_bytes]
-                    };
-
                     //parallel data processing
                     let mut frame_min = f32::MAX;
                     let mut frame_max = f32::MIN;
@@ -670,7 +681,7 @@ impl FITS {
                     let mut pixels = thread_pixels[tid].write();
                     let mask = thread_mask[tid].write();
 
-                    let vec_ptr = data_f16.as_ptr() as *mut i16;
+                    let vec_ptr = data_f16.as_mut_ptr() as *mut i16;
                     let vec_len = data_f16.len();
 
                     let mask_ptr = mask.as_ptr() as *mut u8;
@@ -680,8 +691,6 @@ impl FITS {
                     let mask_raw = unsafe { slice::from_raw_parts_mut(mask_ptr, mask_len) };
 
                     if is_cache {
-                        mem::forget(data_u8);
-
                         unsafe {
                             spmd::make_image_spectrumF16_minmax(
                                 vec_raw.as_mut_ptr(),
