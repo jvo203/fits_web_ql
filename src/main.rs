@@ -3,17 +3,20 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use mimalloc::MiMalloc;
-use tikv_jemallocator::Jemalloc;
-
 /*#[global_allocator]
 static GLOBAL: System = System;*/
+
+use mimalloc::MiMalloc;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-/*#[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;*/
+/*
+use tikv_jemallocator::Jemalloc;
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+*/
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -2846,7 +2849,7 @@ lazy_static! {
 static LOG_DIRECTORY: &'static str = "LOGS";
 
 static SERVER_STRING: &'static str = "FITSWebQL v4.5.11";
-static VERSION_STRING: &'static str = "R/SV2026-10-19.2";
+static VERSION_STRING: &'static str = "R/SV2026-10-20.0";
 static WASM_STRING: &'static str = "WASM2025-01-20.0";
 static FPZIP_STRING: &'static str = "WASM2025-01-20.0";
 
