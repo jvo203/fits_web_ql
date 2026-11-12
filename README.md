@@ -175,11 +175,7 @@ please be sure to have nasm installed beforehand when building from source, plus
 # comment: -DENABLE_MONOCHROME=ON -DENABLE_8BIT=ON are not recognized CMake options in x265 4.1
 
 ##
-install sqlite3
-
-macOS: normally sqlite3 comes pre-installed in macOS, if not you may install it manually with "brew install sqlite3"
-
-Ubuntu Linux: "sudo apt install libsqlite3-dev"
+SQLite is bundled and built with the application; a system SQLite installation is not required.
 
 ## WARNING
 some Linux systems, for example Ubuntu, CentOS 6 and 7, need the following environment variables to be set before running fits_web_ql:

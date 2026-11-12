@@ -1,6 +1,6 @@
 [package]
 name = "fits_web_ql"
-version = "4.5.12"
+version = "4.5.13"
 authors = ["jvo203 <chris.zapart@nao.ac.jp>"]
 edition = "2024"
 
@@ -54,7 +54,7 @@ uuid = { version = "*", features = ["v3", "v4"] }
 percent-encoding = "*"
 futures = "*"
 parking_lot = "*"
-rusqlite = "*"
+rusqlite = { version = "*", features = ["bundled"] }
 rayon = "*"
 time = "*"
 num-integer = "*"

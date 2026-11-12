@@ -974,7 +974,7 @@ checksum = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"
 
 [[package]]
 name = "fits_web_ql"
-version = "4.5.12"
+version = "4.5.13"
 dependencies = [
  "actix",
  "actix-files",
@@ -1622,6 +1622,7 @@ version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b06e69070b7e12262b0cd90832f0a7396f142a2b330181255562decf9f0c6215"
 dependencies = [
+ "cc",
  "pkg-config",
  "vcpkg",
 ]
